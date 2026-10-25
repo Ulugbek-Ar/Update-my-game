@@ -6,6 +6,7 @@ import { Boss } from "./boss";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { Effects } from "./effects";
+import { renderUpgradeIcon } from "./sprites";
 import { WAVES, BOSS_WAVE, pickUpgrades, type Upgrade } from "./waves";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
@@ -77,6 +78,10 @@ export class Game {
   waveHurt = false;
   banner = { title: "", sub: "", timer: 0 };
   paused = false;
+  /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
+  touch = false;
+  /** "Bosh menyuga qaytish" bosilganda React menyusini ko'rsatadi. */
+  onExit: (() => void) | null = null;
   msgTimer = 0;
   time = 0;
   private freeze = 0;
@@ -172,6 +177,12 @@ export class Game {
     else sfx.resume();
   }
 
+  /** O'yinni to'xtatib, React bosh menyusiga qaytish. */
+  exitToMenu() {
+    this.setPaused(false);
+    this.onExit?.();
+  }
+
   /** Urinish sonini o'zgartirmasdan boshidan boshlash. */
   restart() {
     this.reset();
@@ -179,8 +190,9 @@ export class Game {
   }
 
   // Tugmalar (xona koordinatalarida)
-  private resumeBtn = { x: ROOM.w / 2 - 70, y: ROOM.h / 2 + 4, w: 140, h: 18 };
-  private restartBtn = { x: ROOM.w / 2 - 70, y: ROOM.h / 2 + 28, w: 140, h: 18 };
+  private resumeBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 4, w: 160, h: 18 };
+  private restartBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 28, w: 160, h: 18 };
+  private menuBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 52, w: 160, h: 18 };
   private cardRect(i: number) {
     const w = 92,
       gap = 8,
@@ -208,6 +220,7 @@ export class Game {
     if (this.paused) {
       if (hit(this.resumeBtn)) this.setPaused(false);
       else if (hit(this.restartBtn)) this.restart();
+      else if (hit(this.menuBtn)) this.exitToMenu();
       return;
     }
     if (this.phase === "victory") return this.newRun();
@@ -760,9 +773,8 @@ export class Game {
         const lift = sel ? -3 : 0;
         px(c, sel ? u.color : "#5c4a6e", r.x, r.y + lift, r.w, r.h);
         px(c, "#1f1730", r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
-        px(c, u.color, r.x + r.w / 2 - 6, r.y + 10 + lift, 12, 12);
-        px(c, "#1f1730", r.x + r.w / 2 - 4, r.y + 12 + lift, 8, 8);
-        this.text(String(i + 1), r.x + r.w / 2, r.y + 19 + lift, 6, u.color);
+        renderUpgradeIcon(c, u.id, u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
+        this.text(String(i + 1), r.x + 8, r.y + 12 + lift, 6, u.color);
         this.wrap(u.name, 12).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color),
         );
@@ -776,21 +788,32 @@ export class Game {
       px(c, "rgba(0,0,0,0.7)", 0, 0, ROOM.w, ROOM.h);
       this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - 34, 18, "#ffcc33");
       this.text(
-        `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (M)`,
+        this.touch
+          ? `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"}`
+          : `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (M)`,
         ROOM.w / 2,
         ROOM.h / 2 - 14,
         6,
         "#b8a8cc",
       );
       for (const [b, label] of [
-        [this.resumeBtn, "Davom etish: Esc"],
+        [this.resumeBtn, this.touch ? "Davom etish" : "Davom etish: Esc"],
         [this.restartBtn, "Qaytadan boshlash"],
+        [this.menuBtn, "Bosh menyuga qaytish"],
       ] as const) {
         px(c, "#ffcc33", b.x, b.y, b.w, b.h);
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
       }
-      this.text("WASD yurish · Space zarba · Shift dash", ROOM.w / 2, ROOM.h - 30, 5, "#b8a8cc");
+      this.text(
+        this.touch
+          ? "Chap doira yurish · ZARBA hujum · DASH sirpanish"
+          : "WASD yurish · Space zarba · Shift dash",
+        ROOM.w / 2,
+        ROOM.h - 22,
+        5,
+        "#b8a8cc",
+      );
     }
     if (this.phase === "attempt") {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);

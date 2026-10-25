@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { spritePixels, type SpriteKind } from "./sprites";
+import { spritePixels, UPGRADE_ICONS, type SpriteKind } from "./sprites";
+import { UPGRADES } from "./waves";
 import { Player } from "./player";
 import { Enemy } from "./enemy";
 import { Boss } from "./boss";
@@ -41,6 +42,17 @@ describe("Code-drawn character frames", () => {
     for (const kind of ["blob", "wisp"] as const) {
       const enemy = new Enemy(kind, 50, 50);
       expect(Object.values(enemy.anim.defs).map((def) => def.frames)).toEqual([2, 4, 3, 1, 3]);
+    }
+  });
+});
+
+describe("Upgrade card icons", () => {
+  it("draws a 12x12 icon for every upgrade", () => {
+    for (const u of UPGRADES) {
+      const rows = UPGRADE_ICONS[u.id];
+      expect(rows, u.id).toBeDefined();
+      expect(rows!.length).toBe(12);
+      for (const row of rows!) expect(row).toMatch(/^[.Xogk]{12}$/);
     }
   });
 });

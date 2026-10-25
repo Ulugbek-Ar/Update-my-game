@@ -75,12 +75,18 @@ function Index() {
   useEffect(() => {
     if (!started || !canvasRef.current) return;
     const g = new Game(canvasRef.current);
+    g.touch = touch;
+    g.onExit = () => {
+      setBest(g.best);
+      setGame(null);
+      setStarted(false);
+    };
     gameRef.current = g;
     setGame(g);
     if (import.meta.env.DEV) (window as unknown as { __game?: Game }).__game = g;
     g.start();
     return () => g.stop();
-  }, [started]);
+  }, [started, touch]);
 
   return (
     <main className="game-viewport font-pixel">

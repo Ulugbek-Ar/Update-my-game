@@ -639,3 +639,141 @@ export function renderSprite(
   ctx.drawImage(canvas, -size / 2, -size / 2, size, size);
   ctx.restore();
 }
+
+// Kuch kartalari ikonkalari (12x12): X — kuch rangi, qolganlari ICON_COLORS dan.
+const ICON_COLORS: Record<string, string> = { o: "#ffffff", g: "#5bc85b", k: "#8a6a3a" };
+export const UPGRADE_ICONS: Record<string, readonly string[]> = {
+  heart: [
+    "............",
+    ".XXX....XXX.",
+    "XXoXX..XXXXX",
+    "XoXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    ".XXXXXXXXXX.",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+    "....XXXX....",
+    ".....XX.....",
+    "............",
+  ],
+  blade: [
+    "..........oX",
+    ".........oXX",
+    "........oXX.",
+    ".......oXX..",
+    "......oXX...",
+    ".....oXX....",
+    ".k..oXX.....",
+    "..koXX......",
+    "...kk.......",
+    "..kkkk......",
+    ".kk..k......",
+    "kk..........",
+  ],
+  reach: [
+    "............",
+    "............",
+    ".k..........",
+    ".kkooooooo..",
+    "kkkXXXXXXXXX",
+    ".kkXXXXXXXX.",
+    ".k..........",
+    "............",
+    ".o........o.",
+    "oooooooooooo",
+    ".o........o.",
+    "............",
+  ],
+  haste: [
+    "...XXXXXX...",
+    "..XoooXooX..",
+    ".XooooXoooX.",
+    "XoooooXooooX",
+    "XoooooXooooX",
+    "XoooooXXXXoX",
+    "XooooooooooX",
+    "XooooooooooX",
+    ".XooooooooX.",
+    "..XooooooX..",
+    "...XXXXXX...",
+    "............",
+  ],
+  wind: [
+    "............",
+    "X...........",
+    "XX..........",
+    "XXX.........",
+    "XoXX........",
+    "XXoXXX......",
+    ".XXoXXXX....",
+    ".XXXoXXXXX..",
+    "..XXXoXXXXXX",
+    "...XXXXoXXX.",
+    "....XXXXX...",
+    "......XX....",
+  ],
+  vamp: [
+    ".....XX.....",
+    ".....XX.....",
+    "....XXXX....",
+    "....XXXX....",
+    "...XXXXXX...",
+    "..XXXXXXXX..",
+    "..XoXXXXXX..",
+    ".XXoXXXXXXX.",
+    ".XXoXXXXXXX.",
+    ".XXXXXXXXXX.",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+  ],
+  mend: [
+    "....kkkk....",
+    ".....XX.....",
+    ".....XX.....",
+    "....XXXX....",
+    "..XXXXXXXX..",
+    ".XoXXXXXXXX.",
+    ".XggggggggX.",
+    "XgoggggggggX",
+    "XggggggggggX",
+    "XggggggggggX",
+    ".XggggggggX.",
+    "..XXXXXXXX..",
+  ],
+};
+
+const iconCache = new Map<string, HTMLCanvasElement>();
+
+/** Kuch ikonkasini (x, y) chap-yuqori burchakdan size x size o'lchamda chizadi. */
+export function renderUpgradeIcon(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  color: string,
+  x: number,
+  y: number,
+  size = 12,
+) {
+  const rows = UPGRADE_ICONS[id];
+  if (!rows) return;
+  const key = `${id}:${color}`;
+  let canvas = iconCache.get(key);
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 12;
+    const raster = canvas.getContext("2d");
+    if (!raster) return;
+    rows.forEach((row, py) =>
+      [...row].forEach((ch, px) => {
+        if (ch === ".") return;
+        raster.fillStyle = ch === "X" ? color : (ICON_COLORS[ch] ?? color);
+        raster.fillRect(px, py, 1, 1);
+      }),
+    );
+    iconCache.set(key, canvas);
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(canvas, Math.round(x), Math.round(y), size, size);
+  ctx.restore();
+}

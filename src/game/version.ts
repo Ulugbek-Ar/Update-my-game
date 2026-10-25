@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.1.0";
+export const GAME_VERSION = "1.2.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.2.0",
+    date: "2026-10-25",
+    notes:
+      'Kuch kartalarida piksel ikonkalar. Pauzada "Bosh menyuga qaytish" tugmasi. Telefonda pauza ekranida sensor ko\'rsatmasi',
+  },
   {
     version: "1.1.0",
     date: "2026-10-25",
