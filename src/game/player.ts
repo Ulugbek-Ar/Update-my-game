@@ -9,6 +9,10 @@ const HURT_TIME = 0.25;
 const INVULN = 0.8;
 const DASH_TIME = 0.16;
 const DASH_SPEED = 270;
+/** Kuchli (aylana) zarba: shuncha bosib turib qo'yib yuborish kerak */
+export const CHARGE_TIME = 0.6;
+export const SPIN_CD = 3;
+export const SPIN_TIME = 0.3;
 
 export class Player implements Body {
   x = 160;
@@ -29,6 +33,12 @@ export class Player implements Body {
   dashCooldown = 0;
   dashX = 0;
   dashY = 0;
+  /** Ketma-ket qolgan dashlar (Ikki karra dash bilan 2 ta) */
+  dashCharges = 1;
+  /** Hujum tugmasi bosib turilgan vaqt */
+  charge = 0;
+  spinTimer = 0;
+  spinCooldown = 0;
   // Kuchaytirishlar o'zgartiradigan ko'rsatkichlar
   speed = 90;
   damage = 1;
@@ -37,6 +47,9 @@ export class Player implements Body {
   dashCd = 0.8;
   /** 0 — yo'q, aks holda har N o'ldirishda +1 yurak */
   lifesteal = 0;
+  dashMax = 1;
+  /** Zarba yeganda yaqin dushmanga 1 zarar */
+  thorns = false;
   /** Joriy hujumda allaqachon urilganlar */
   hitSet = new Set<object>();
   anim = new Animator({
@@ -55,6 +68,20 @@ export class Player implements Body {
     return this.dashTimer > 0;
   }
 
+  get spinning() {
+    return this.spinTimer > 0;
+  }
+
+  /** Kuchli zarba tayyor va tugma yetarlicha bosib turilgan. */
+  get charged() {
+    return this.charge >= CHARGE_TIME;
+  }
+
+  /** Joriy zarba zarari: aylana zarba 2x. */
+  get hitDamage() {
+    return this.spinning ? this.damage * 2 : this.damage;
+  }
+
   /** Zarba tegsa true qaytaradi. Dash paytida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
     if (this.invuln > 0 || this.dead || this.dashing) return false;
@@ -69,6 +96,7 @@ export class Player implements Body {
     this.vx = (dx / l) * force;
     this.vy = (dy / l) * force;
     this.attackTimer = 0;
+    this.charge = 0;
     if (this.hp <= 0) this.anim.set("death", true);
     else {
       this.hurtTimer = HURT_TIME;
@@ -85,6 +113,8 @@ export class Player implements Body {
 
   /** Hujum zonasi (faqat hujum vaqtida). */
   attackBox(): Body | null {
+    // aylana zarba — o'yinchi atrofidagi katta maydon
+    if (this.spinning) return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
     if (this.attackTimer <= 0) return null;
     const off = this.reach * 0.75;
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
@@ -98,7 +128,10 @@ export class Player implements Body {
     this.invuln -= dt;
     this.hurtTimer -= dt;
     this.dashCooldown -= dt;
+    this.spinCooldown -= dt;
+    if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
+    if (this.spinTimer > 0) this.spinTimer -= dt;
 
     const wantAttack = input.consumeAttack();
     const wantDash = input.consumeDash();
@@ -112,7 +145,7 @@ export class Player implements Body {
       return;
     }
 
-    if (wantDash && this.dashCooldown <= 0 && this.hurtTimer <= 0) {
+    if (wantDash && this.dashCharges > 0 && this.hurtTimer <= 0) {
       let dx = x,
         dy = y;
       if (!dx && !dy) {
@@ -123,14 +156,31 @@ export class Player implements Body {
       this.dashX = dx / l;
       this.dashY = dy / l;
       this.dashTimer = DASH_TIME;
+      this.dashCharges--;
       this.dashCooldown = this.dashCd;
       this.attackTimer = 0;
+      this.charge = 0;
       sfx.dash();
       this.anim.set("walk");
       return;
     }
 
-    if (wantAttack && this.cooldown <= 0 && this.hurtTimer <= 0) {
+    // bosib turish -> qo'yib yuborilganda aylana zarba
+    if (input.attackHeld()) {
+      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning) this.charge += dt;
+    } else {
+      if (this.charged && this.spinCooldown <= 0) {
+        this.spinTimer = SPIN_TIME;
+        this.spinCooldown = SPIN_CD;
+        this.attackTimer = 0;
+        this.hitSet.clear();
+        sfx.spin();
+        this.anim.set("attack", true);
+      }
+      this.charge = 0;
+    }
+
+    if (wantAttack && this.cooldown <= 0 && this.hurtTimer <= 0 && !this.spinning) {
       this.attackTimer = ATTACK_TIME;
       this.cooldown = this.attackCd;
       this.hitSet.clear();
@@ -138,7 +188,7 @@ export class Player implements Body {
       this.anim.set("attack", true);
     }
 
-    const busy = this.attackTimer > 0 || this.hurtTimer > 0;
+    const busy = this.attackTimer > 0 || this.hurtTimer > 0 || this.spinning;
     if (!busy) {
       if (x || y) {
         const l = Math.max(1, Math.hypot(x, y));

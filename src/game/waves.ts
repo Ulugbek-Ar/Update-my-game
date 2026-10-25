@@ -5,12 +5,49 @@ import type { Player } from "./player";
 export const WAVES: EnemyKind[][] = [
   ["blob", "blob", "blob"],
   ["blob", "blob", "wisp", "wisp"],
-  ["wisp", "wisp", "rammer", "rammer", "blob"],
-  ["rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob"],
+  ["wisp", "wisp", "rammer", "rammer", "blob", "archer"],
+  ["rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob", "archer", "archer"],
   ["blob", "blob"],
 ];
 
 export const BOSS_WAVE = WAVES.length - 1;
+
+// ---- Cheksiz rejim: Boss mag'lub bo'lgach to'lqinlar indeksi BOSS_WAVE+1 dan davom etadi ----
+/** Har nechanchi cheksiz to'lqinda Boss qaytadi */
+export const ENDLESS_BOSS_EVERY = 5;
+const ENDLESS_KINDS: EnemyKind[] = ["blob", "wisp", "rammer", "archer"];
+
+/** Cheksiz rejimdagi tartib raqami (1, 2, ...); asosiy to'lqinlarda 0. */
+export function endlessNumber(i: number) {
+  return Math.max(0, i - BOSS_WAVE);
+}
+
+export function isBossWave(i: number) {
+  const n = endlessNumber(i);
+  return i === BOSS_WAVE || (n > 0 && n % ENDLESS_BOSS_EVERY === 0);
+}
+
+/** Boss joni: har qaytishda ko'proq. */
+export function bossHp(i: number) {
+  return 30 + 15 * Math.floor(endlessNumber(i) / ENDLESS_BOSS_EVERY);
+}
+
+/** To'lqin oshgani sari dushmanlar tezlashadi (cheksiz rejimda chegaralangan). */
+export function waveSpeed(i: number) {
+  const n = endlessNumber(i);
+  return n === 0 ? 1 + i * 0.07 : Math.min(2, 1 + BOSS_WAVE * 0.07 + n * 0.04);
+}
+
+/** To'lqindagi dushmanlar: asosiy to'lqinlar qat'iy, cheksizda soni oshib boradi. */
+export function waveEnemies(i: number, rand = Math.random): EnemyKind[] {
+  const n = endlessNumber(i);
+  if (n === 0) return WAVES[i]!;
+  const count = isBossWave(i) ? 2 + n / ENDLESS_BOSS_EVERY : Math.min(16, 5 + n);
+  return Array.from(
+    { length: count },
+    () => ENDLESS_KINDS[Math.floor(rand() * ENDLESS_KINDS.length)]!,
+  );
+}
 
 export interface Upgrade {
   id: string;
@@ -75,6 +112,22 @@ export const UPGRADES: Upgrade[] = [
     color: "#b23238",
     apply: (p) => (p.lifesteal = p.lifesteal ? Math.max(3, p.lifesteal - 2) : 6),
     ok: (p) => p.lifesteal !== 3,
+  },
+  {
+    id: "thorns",
+    name: "TIKANLI ZIRH",
+    desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+    color: "#c9a26b",
+    apply: (p) => (p.thorns = true),
+    ok: (p) => !p.thorns,
+  },
+  {
+    id: "dash2",
+    name: "IKKI KARRA DASH",
+    desc: "Ketma-ket 2 ta dash",
+    color: "#7fd8ff",
+    apply: (p) => (p.dashMax = 2),
+    ok: (p) => p.dashMax < 2,
   },
   {
     id: "mend",

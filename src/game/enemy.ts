@@ -2,14 +2,26 @@ import { Animator, Body, updatePhysics, isFlashing, clampToRoom } from "./animat
 import type { Player } from "./player";
 import { renderSprite } from "./sprites";
 
-export type EnemyKind = "blob" | "wisp" | "rammer";
+export type EnemyKind = "blob" | "wisp" | "rammer" | "archer";
 
 const SPAWN_TIME = 1;
+const ARCHER_RELOAD = 1.5;
+/** Kamonchi tortish vaqti (attack animatsiyasi) — shundan so'ng o'q uchadi */
+const ARCHER_DRAW = 0.55;
+const ARROW_SPEED = 110;
+
+export interface Arrow {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
 
 /**
  * blob   – sekin, sakrab-sakrab o'yinchini quvadi
  * wisp   – tez, to'lqinsimon (sinus) uchib aylanadi
  * rammer – to'xtab nishon oladi, so'ng tez yugurib uriladi
+ * archer – masofani saqlaydi va har 1.5s da o'q otadi
  */
 export class Enemy implements Body {
   vx = 0;
@@ -29,6 +41,8 @@ export class Enemy implements Body {
   spawnMax = SPAWN_TIME;
   /** To'lqin oshgani sari biroz tezlashadi */
   speedMul = 1;
+  /** O'yin olib ketadigan o'qlar (kamonchi) */
+  shots: Arrow[] = [];
   private facingLeft = false;
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.4, loop: true },
@@ -43,8 +57,9 @@ export class Enemy implements Body {
     public x: number,
     public y: number,
   ) {
-    this.hp = this.maxHp = kind === "blob" ? 3 : kind === "wisp" ? 2 : 4;
-    this.size = kind === "rammer" ? 14 : 11;
+    this.hp = this.maxHp = kind === "blob" ? 3 : kind === "wisp" ? 2 : kind === "archer" ? 3 : 4;
+    this.size = kind === "rammer" || kind === "archer" ? 14 : 11;
+    if (kind === "archer") this.aiTimer = ARCHER_RELOAD;
   }
 
   get dead() {
@@ -96,6 +111,30 @@ export class Enemy implements Body {
       this.x += ((dx / d) * 55 * m + px_ * wave) * dt;
       this.y += ((dy / d) * 55 * m + py_ * wave) * dt;
       this.anim.set("walk");
+    } else if (this.kind === "archer") {
+      // 70..110 oralig'ida turadi: yaqinlashsa qochadi, uzoqlashsa yaqinlashadi, aks holda yonga yuradi
+      const away = d < 70 ? -1 : d > 110 ? 1 : 0;
+      const side = Math.sin(this.t * 0.9) > 0 ? 1 : -1;
+      const sx = away ? (dx / d) * away : (-dy / d) * side * 0.5;
+      const sy = away ? (dy / d) * away : (dx / d) * side * 0.5;
+      this.aiTimer -= dt;
+      if (this.aiTimer <= ARCHER_DRAW) {
+        // tortish paytida joyida turadi — o'yinchi uchun ogohlantirish
+        this.anim.set("attack");
+        if (this.aiTimer <= 0) {
+          this.shots.push({
+            x: this.x,
+            y: this.y - 2,
+            vx: (dx / d) * ARROW_SPEED,
+            vy: (dy / d) * ARROW_SPEED,
+          });
+          this.aiTimer = ARCHER_RELOAD;
+        }
+      } else {
+        this.x += sx * 40 * m * dt;
+        this.y += sy * 40 * m * dt;
+        this.anim.set("walk");
+      }
     } else {
       this.aiTimer -= dt;
       if (this.dashing) {
@@ -137,11 +176,17 @@ export class Enemy implements Body {
     }
     renderSprite(
       ctx,
-      this.kind === "rammer" ? "skeleton" : this.kind === "blob" ? "slime" : "bat",
+      this.kind === "rammer"
+        ? "skeleton"
+        : this.kind === "archer"
+          ? "archer"
+          : this.kind === "blob"
+            ? "slime"
+            : "bat",
       state,
       frame,
       this.x,
-      this.kind === "rammer" ? this.y : this.y - 3,
+      this.kind === "rammer" || this.kind === "archer" ? this.y : this.y - 3,
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );

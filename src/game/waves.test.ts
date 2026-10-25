@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { WAVES, BOSS_WAVE, UPGRADES, pickUpgrades } from "./waves";
+import {
+  WAVES,
+  BOSS_WAVE,
+  UPGRADES,
+  pickUpgrades,
+  isBossWave,
+  bossHp,
+  waveEnemies,
+  waveSpeed,
+} from "./waves";
 import { Player } from "./player";
 
 describe("Waves and upgrades", () => {
@@ -31,5 +40,30 @@ describe("Waves and upgrades", () => {
     p.dashTimer = 0.1;
     expect(p.takeHit(1, 0, 0, 100)).toBe(false);
     expect(p.hp).toBe(6);
+  });
+
+  it("adds archers to waves 3 and 4", () => {
+    expect(WAVES[2]).toContain("archer");
+    expect(WAVES[3]).toContain("archer");
+  });
+
+  it("endless mode grows waves and brings the boss back every 5th wave with more HP", () => {
+    expect(isBossWave(BOSS_WAVE)).toBe(true);
+    expect(isBossWave(BOSS_WAVE + 1)).toBe(false);
+    expect(isBossWave(BOSS_WAVE + 5)).toBe(true);
+    expect(isBossWave(BOSS_WAVE + 10)).toBe(true);
+    expect(bossHp(BOSS_WAVE)).toBe(30);
+    expect(bossHp(BOSS_WAVE + 5)).toBeGreaterThan(30);
+    expect(bossHp(BOSS_WAVE + 10)).toBeGreaterThan(bossHp(BOSS_WAVE + 5));
+    expect(waveEnemies(BOSS_WAVE + 2).length).toBeGreaterThan(waveEnemies(BOSS_WAVE + 1).length);
+    expect(waveSpeed(BOSS_WAVE + 2)).toBeGreaterThan(waveSpeed(BOSS_WAVE + 1));
+    expect(waveSpeed(BOSS_WAVE + 1)).toBeGreaterThan(waveSpeed(BOSS_WAVE));
+    expect(waveEnemies(0)).toEqual(WAVES[0]);
+  });
+
+  it("double dash allows two dashes back to back", () => {
+    const p = new Player();
+    UPGRADES.find((u) => u.id === "dash2")!.apply(p);
+    expect(p.dashMax).toBe(2);
   });
 });

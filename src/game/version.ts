@@ -12,7 +12,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.2.0",
     date: "2026-10-25",
     notes:
-      'Kuch kartalarida piksel ikonkalar. Pauzada "Bosh menyuga qaytish" tugmasi. Telefonda pauza ekranida sensor ko\'rsatmasi',
+      "Yangi dushman: Kamonchi skelet. Boss g'alabasidan keyin CHEKSIZ REJIM (alohida rekord). Kuchli aylana zarba (Space'ni bosib turish). Yangi kuchlar: Tikanli zirh, Ikki karra dash. Har to'lqinda xona bezagi o'zgaradi. Kuch kartalarida piksel ikonkalar. Pauzada \"Bosh menyuga qaytish\" tugmasi. Telefonda pauza ekranida sensor ko'rsatmasi",
   },
   {
     version: "1.1.0",

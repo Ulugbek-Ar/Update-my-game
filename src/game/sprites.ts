@@ -1,6 +1,6 @@
 import type { AnimState } from "./animation";
 
-export type SpriteKind = "knight" | "skeleton" | "demon" | "slime" | "bat";
+export type SpriteKind = "knight" | "skeleton" | "archer" | "demon" | "slime" | "bat";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -118,6 +118,8 @@ const poses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]> = {
 const palettes: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
+  // Kamonchi: o'sha skelet chizmasi, moxli-yashil palitra
+  archer: ["#0e1410", "#4e6b45", "#cfd8b0", "#6b4226", "#a8743a"],
   demon: ["#170b11", "#681e2b", "#b23238", "#f4cb45", "#a7a3a0"],
   slime: ["#0b1a10", "#2c7a3c", "#5bc85b", "#a6f08e", "#f2fbe4"],
   bat: ["#120a1a", "#4a2470", "#8a4fc0", "#c99ae8", "#ffe14d"],
@@ -395,7 +397,7 @@ function demon(p: Pixels, pose: Pose, attackFrame: number | null) {
 }
 
 function fallen(p: Pixels, kind: SpriteKind, frame: number) {
-  const skeletonBody = kind === "skeleton";
+  const skeletonBody = kind === "skeleton" || kind === "archer";
   const light = skeletonBody ? 3 : kind === "knight" ? 4 : 3;
   // Separate buckling, side-fall, and fully prone silhouettes.
   if (frame === 0) {
@@ -591,7 +593,7 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     const pose = poses[state][frame] ?? poses[state][0];
     if (pose) {
       if (kind === "knight") knight(p, pose, back);
-      else if (kind === "skeleton") skeleton(p, pose);
+      else if (kind === "skeleton" || kind === "archer") skeleton(p, pose);
       else demon(p, pose, state === "attack" ? frame : null);
     }
   }
@@ -726,6 +728,34 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     ".XXXXXXXXXX.",
     "..XXXXXXXX..",
     "...XXXXXX...",
+  ],
+  thorns: [
+    "X....XX....X",
+    ".X.XXXXXX.X.",
+    "..XooooooX..",
+    ".XXoXXXXoXX.",
+    "XXXoXXXXoXXX",
+    ".XXoXXXXoXX.",
+    "..XoXXXXoX..",
+    ".XXXoXXoXXX.",
+    "X.XXXooXXX.X",
+    "...XXXXXX...",
+    "....XXXX....",
+    ".....XX.....",
+  ],
+  dash2: [
+    "............",
+    "X.....X.....",
+    "XX....XX....",
+    "oXX...oXX...",
+    ".oXX...oXX..",
+    "..oXX...oXX.",
+    "..oXX...oXX.",
+    ".oXX...oXX..",
+    "oXX...oXX...",
+    "XX....XX....",
+    "X.....X.....",
+    "............",
   ],
   mend: [
     "....kkkk....",

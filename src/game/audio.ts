@@ -95,6 +95,17 @@ class SoundFX {
     this.tone(260, 0.12, "triangle", 0.07, 900);
   }
 
+  /** Kuchli aylana zarba */
+  spin() {
+    this.tone(300, 0.22, "sawtooth", 0.07, 1200);
+    this.tone(900, 0.18, "square", 0.04, 200, 0.06);
+  }
+
+  /** Kamonchi o'q uzdi */
+  arrow() {
+    this.tone(1200, 0.07, "triangle", 0.04, 500);
+  }
+
   /** Dushman o'ldi */
   kill() {
     this.tone(520, 0.1, "square", 0.05, 260);

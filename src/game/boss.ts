@@ -20,8 +20,8 @@ export class Boss implements Body {
   size = 28;
   vx = 0;
   vy = 0;
-  hp = BOSS_MAX_HP;
-  maxHp = BOSS_MAX_HP;
+  hp: number;
+  maxHp: number;
   flash = 0;
   slamTimer = 3;
   windup = 0;
@@ -45,6 +45,10 @@ export class Boss implements Body {
     hurt: { frames: 1, frameTime: 0.16, loop: false },
     death: { frames: 3, frameTime: 1.4 / 3, loop: false },
   });
+
+  constructor(hp = BOSS_MAX_HP) {
+    this.hp = this.maxHp = hp;
+  }
 
   get dead() {
     return this.anim.state === "death";

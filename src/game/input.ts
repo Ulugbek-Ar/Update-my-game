@@ -9,6 +9,7 @@ export class Input {
   private enterQueued = false;
   private pauseQueued = false;
   private touch = { x: 0, y: 0 };
+  private touchAttack = false;
 
   private down = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
@@ -28,6 +29,7 @@ export class Input {
   private blur = () => {
     this.keys.clear();
     this.touch = { x: 0, y: 0 };
+    this.touchAttack = false;
   };
 
   attach() {
@@ -58,6 +60,13 @@ export class Input {
   }
   pressAttack() {
     this.attackQueued = true;
+  }
+  /** ZARBA tugmasi bosib turilganmi (kuchli zarba uchun). */
+  setTouchAttack(on: boolean) {
+    this.touchAttack = on;
+  }
+  attackHeld() {
+    return this.keys.has("Space") || this.keys.has("KeyJ") || this.touchAttack;
   }
   pressDash() {
     this.dashQueued = true;

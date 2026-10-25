@@ -7,10 +7,23 @@ import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { Effects } from "./effects";
 import { renderUpgradeIcon } from "./sprites";
-import { WAVES, BOSS_WAVE, pickUpgrades, type Upgrade } from "./waves";
+import {
+  WAVES,
+  BOSS_WAVE,
+  pickUpgrades,
+  isBossWave,
+  bossHp,
+  endlessNumber,
+  waveEnemies,
+  waveSpeed,
+  type Upgrade,
+} from "./waves";
+import { CHARGE_TIME, SPIN_CD, SPIN_TIME } from "./player";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 export const BEST_KEY = "pixel-rpg-best";
+/** Cheksiz rejim rekordi alohida saqlanadi */
+export const ENDLESS_BEST_KEY = "pixel-rpg-endless-best";
 type Phase = "play" | "attempt" | "victory";
 type Stage = "fight" | "upgrade";
 
@@ -20,6 +33,8 @@ interface Shot {
   vx: number;
   vy: number;
   size: number;
+  /** Kamonchi o'qi (aks holda Boss olov shari) */
+  arrow?: boolean;
 }
 interface Drop {
   x: number;
@@ -27,11 +42,52 @@ interface Drop {
   life: number;
 }
 
-const KILL_POINTS: Record<EnemyKind, number> = { blob: 10, wisp: 15, rammer: 20 };
+const KILL_POINTS: Record<EnemyKind, number> = { blob: 10, wisp: 15, rammer: 20, archer: 20 };
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
   wisp: "#8a4fc0",
   rammer: "#d6d9cf",
+  archer: "#cfd8b0",
+};
+
+/** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
+interface FloorTheme {
+  a: string;
+  b: string;
+  grout: string;
+  wall: string;
+  wallDark: string;
+  brick: string;
+  /** Mox bilan qoplangan plitalar ulushi */
+  moss: number;
+  /** Qizil (lavali) yoriqlar — Boss xonasi */
+  red: boolean;
+}
+const STONE_WALLS = { wall: "#5c4a6e", wallDark: "#4a3b59", brick: "#6e5a82" };
+const FLOORS: FloorTheme[] = [
+  { a: "#3a2f4a", b: "#342a43", grout: "#2c2339", ...STONE_WALLS, moss: 0, red: false },
+  { a: "#3e3047", b: "#382a40", grout: "#2f2337", ...STONE_WALLS, moss: 0, red: false },
+  { a: "#34344b", b: "#2f2f44", grout: "#272739", ...STONE_WALLS, moss: 0, red: false },
+  {
+    a: "#333a40",
+    b: "#2e343a",
+    grout: "#262b31",
+    wall: "#4f5a56",
+    wallDark: "#404a47",
+    brick: "#5f6d66",
+    moss: 0.28,
+    red: false,
+  },
+];
+const BOSS_FLOOR: FloorTheme = {
+  a: "#3a2830",
+  b: "#34232b",
+  grout: "#2a1b22",
+  wall: "#5e3a44",
+  wallDark: "#4a2c36",
+  brick: "#734552",
+  moss: 0,
+  red: true,
 };
 const BOSS_POINTS = 300;
 const COMBO_TIME = 2.5;
@@ -76,6 +132,9 @@ export class Game {
   comboTimer = 0;
   killsForHeal = 0;
   waveHurt = false;
+  /** Boss yengilgandan keyingi cheksiz rejim */
+  endless = false;
+  endlessBest = 0;
   banner = { title: "", sub: "", timer: 0 };
   paused = false;
   /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
@@ -90,6 +149,7 @@ export class Game {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private floor: HTMLCanvasElement | null = null;
+  private floorKey = NaN;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -98,6 +158,7 @@ export class Game {
     const saved = load(STORAGE_KEY);
     this.attempt = saved > 0 ? saved : 1;
     this.best = load(BEST_KEY);
+    this.endlessBest = load(ENDLESS_BEST_KEY);
     this.reset();
   }
 
@@ -115,6 +176,7 @@ export class Game {
     this.comboTimer = 0;
     this.killsForHeal = 0;
     this.phase = "play";
+    this.endless = false;
     this.input.clearQueued();
     this.startWave(0);
   }
@@ -123,23 +185,30 @@ export class Game {
     this.wave = i;
     this.stage = "fight";
     this.waveHurt = false;
-    const boss = i === BOSS_WAVE;
+    this.boss = null;
+    this.player.charge = 0;
+    const boss = isBossWave(i);
+    const endless = endlessNumber(i);
     this.banner = boss
-      ? { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
-      : {
-          title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
-          sub: i === 0 ? "Shift — dash" : "",
-          timer: 1.6,
-        };
-    WAVES[i]!.forEach((kind, n) => {
+      ? endless
+        ? { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
+        : { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
+      : endless
+        ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
+        : {
+            title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
+            sub: i === 0 ? "Shift — dash" : "",
+            timer: 1.6,
+          };
+    waveEnemies(i).forEach((kind, n) => {
       const [x, y] = this.spawnPoint();
       const e = new Enemy(kind, x, y);
       e.spawn = e.spawnMax = 1 + n * 0.18 + (boss ? 1.2 : 0);
-      e.speedMul = 1 + i * 0.07;
+      e.speedMul = waveSpeed(i);
       this.enemies.push(e);
     });
     if (boss) {
-      this.boss = new Boss();
+      this.boss = new Boss(bossHp(i));
       this.boss.spawn = this.boss.spawnMax = 1.6;
       sfx.roar();
       this.fx.addShake(0.4);
@@ -193,6 +262,8 @@ export class Game {
   private resumeBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 4, w: 160, h: 18 };
   private restartBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 28, w: 160, h: 18 };
   private menuBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 52, w: 160, h: 18 };
+  private endlessBtn = { x: ROOM.w / 2 - 80, y: 162, w: 160, h: 18 };
+  private newRunBtn = { x: ROOM.w / 2 - 80, y: 186, w: 160, h: 18 };
   private cardRect(i: number) {
     const w = 92,
       gap = 8,
@@ -223,7 +294,11 @@ export class Game {
       else if (hit(this.menuBtn)) this.exitToMenu();
       return;
     }
-    if (this.phase === "victory") return this.newRun();
+    if (this.phase === "victory") {
+      if (hit(this.endlessBtn)) this.startEndless();
+      else if (hit(this.newRunBtn)) this.newRun();
+      return;
+    }
     if (this.phase === "play" && this.stage === "upgrade") {
       if (this.upgradeLock > 0) return;
       for (let i = 0; i < this.choices.length; i++)
@@ -251,6 +326,7 @@ export class Game {
       if (this.paused) {
         // pauzada bosilgan hujum/Enter navbatlari tozalanadi
         this.input.clearQueued();
+        this.player.charge = 0;
       } else {
         this.update(dt);
       }
@@ -277,11 +353,32 @@ export class Game {
   }
 
   private commitBest() {
-    if (this.score > this.best) {
+    if (this.endless) {
+      if (this.score > this.endlessBest) {
+        this.endlessBest = this.score;
+        this.newBest = true;
+        save(ENDLESS_BEST_KEY, this.endlessBest);
+      }
+    } else if (this.score > this.best) {
       this.best = this.score;
       this.newBest = true;
       save(BEST_KEY, this.best);
     }
+  }
+
+  /** G'alabadan so'ng: kuchlar saqlanadi, ochko 0 dan, to'lqinlar cheksiz. */
+  private startEndless() {
+    this.endless = true;
+    this.phase = "play";
+    this.score = 0;
+    this.newBest = false;
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.player.hp = this.player.maxHp;
+    this.shots = [];
+    this.drops = [];
+    this.input.clearQueued();
+    this.startWave(BOSS_WAVE + 1);
   }
 
   private choose(i: number) {
@@ -343,6 +440,39 @@ export class Game {
     this.comboTimer = 0;
     this.fx.addShake(0.25);
     this.fx.burst(p.x, p.y, "#ff4d6d", 10, 70);
+    if (p.thorns) {
+      // tikanli zirh: eng yaqin dushmanga 1 zarar
+      const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+      if (this.boss?.active) targets.push(this.boss);
+      let near: Enemy | Boss | null = null;
+      let nearD = Infinity;
+      for (const t of targets) {
+        const d = Math.hypot(t.x - p.x, t.y - p.y) - t.size / 2;
+        if (d < 40 && d < nearD) {
+          nearD = d;
+          near = t;
+        }
+      }
+      if (near) {
+        this.fx.burst(near.x, near.y, "#c9a26b", 8, 60);
+        this.damageTarget(near, 1);
+      }
+    }
+  }
+
+  /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
+  private damageTarget(t: Enemy | Boss, dmg: number) {
+    const p = this.player;
+    applyHit(t, dmg, p.x, p.y, t instanceof Boss ? 120 : 220);
+    if (t.hp > 0) return;
+    if (t instanceof Enemy) this.onKill(t);
+    else {
+      this.score += BOSS_POINTS;
+      this.fx.text(t.x, t.y - 24, `+${BOSS_POINTS}`, "#ffcc33");
+      this.fx.burst(t.x, t.y, "#f4cb45", 40, 120, 3);
+      this.fx.addShake(0.6);
+      this.shots = [];
+    }
   }
 
   update(dt: number) {
@@ -350,12 +480,16 @@ export class Game {
     this.fx.update(dt);
     if (this.phase === "attempt") {
       this.msgTimer -= dt;
-      if (this.msgTimer <= 0) this.reset();
+      if (this.msgTimer <= 0) {
+        if (this.endless) this.newRun();
+        else this.reset();
+      }
       return;
     }
     if (this.phase === "victory") {
       this.boss?.update(dt, this.player);
-      if (this.input.consumeEnter()) this.newRun();
+      if (this.input.consumeEnter()) this.startEndless();
+      else if (this.input.consumeKey("KeyR")) this.newRun();
       return;
     }
     if (this.stage === "upgrade") return this.updateUpgrade(dt);
@@ -371,7 +505,14 @@ export class Game {
     const hpBefore = p.hp;
     p.update(dt, this.input);
     if (p.dashing) this.fx.trail(p.x, p.y + 2, "rgba(104,205,228,0.8)");
-    for (const e of this.enemies) e.update(dt, p);
+    for (const e of this.enemies) {
+      e.update(dt, p);
+      if (e.shots.length) {
+        for (const s of e.shots) this.shots.push({ ...s, size: 4, arrow: true });
+        e.shots = [];
+        sfx.arrow();
+      }
+    }
     const boss = this.boss;
     if (boss) {
       boss.update(dt, p);
@@ -401,7 +542,7 @@ export class Game {
     for (const s of this.shots) {
       s.x += s.vx * dt;
       s.y += s.vy * dt;
-      if (Math.random() < 0.5) this.fx.trail(s.x, s.y, "rgba(255,140,40,0.7)");
+      if (!s.arrow && Math.random() < 0.5) this.fx.trail(s.x, s.y, "rgba(255,140,40,0.7)");
     }
     const inRoom = (s: Shot) =>
       s.x > ROOM.wall && s.x < ROOM.w - ROOM.wall && s.y > ROOM.wall && s.y < ROOM.h - ROOM.wall;
@@ -416,27 +557,17 @@ export class Game {
         if (!p.hitSet.has(t) && overlap(box, t)) {
           p.hitSet.add(t);
           sfx.hit();
-          applyHit(t, p.damage, p.x, p.y, t === boss ? 120 : 220);
           this.freeze = 0.045;
-          this.fx.addShake(0.08);
-          this.fx.burst(t.x, t.y, "#ffffff", 5, 60, 1);
-          if (t.hp <= 0) {
-            if (t instanceof Enemy) this.onKill(t);
-            else {
-              this.score += BOSS_POINTS;
-              this.fx.text(t.x, t.y - 24, `+${BOSS_POINTS}`, "#ffcc33");
-              this.fx.burst(t.x, t.y, "#f4cb45", 40, 120, 3);
-              this.fx.addShake(0.6);
-              this.shots = [];
-            }
-          }
+          this.fx.addShake(p.spinning ? 0.14 : 0.08);
+          this.fx.burst(t.x, t.y, p.spinning ? "#ffcc33" : "#ffffff", 5, 60, 1);
+          this.damageTarget(t, p.hitDamage);
         }
       }
-      // qilich olov sharini ham urib yo'q qiladi
+      // qilich olov shari va o'qlarni ham urib yo'q qiladi
       const before = this.shots.length;
       this.shots = this.shots.filter((s) => {
         if (!overlap(box, s as unknown as Body)) return true;
-        this.fx.burst(s.x, s.y, "#ff9a3c", 6, 50);
+        this.fx.burst(s.x, s.y, s.arrow ? "#cfd8b0" : "#ff9a3c", 6, 50);
         return false;
       });
       if (this.shots.length < before) this.score += 5 * (before - this.shots.length);
@@ -472,8 +603,11 @@ export class Game {
     if (p.dead) {
       if (p.anim.done) {
         this.commitBest();
-        this.attempt++;
-        save(STORAGE_KEY, this.attempt);
+        // cheksiz rejimda o'yin allaqachon yutilgan — urinish oshmaydi
+        if (!this.endless) {
+          this.attempt++;
+          save(STORAGE_KEY, this.attempt);
+        }
         this.phase = "attempt";
         this.msgTimer = 2.6;
       }
@@ -482,11 +616,14 @@ export class Game {
 
     // to'lqin tugadi
     if (this.enemies.length === 0) {
-      if (this.wave === BOSS_WAVE) {
+      if (isBossWave(this.wave)) {
         if (boss?.dead && boss.anim.done) {
-          this.commitBest();
-          this.phase = "victory";
-          sfx.victory();
+          if (this.endless) this.clearWave();
+          else {
+            this.commitBest();
+            this.phase = "victory";
+            sfx.victory();
+          }
         }
       } else this.clearWave();
     }
@@ -511,7 +648,15 @@ export class Game {
 
   // ---------------- chizish ----------------
 
-  private buildFloor() {
+  /** Joriy to'lqin uchun pol varianti: -1 — Boss xonasi. */
+  private floorIndex() {
+    if (isBossWave(this.wave)) return -1;
+    const n = endlessNumber(this.wave);
+    return n > 0 ? n % FLOORS.length : Math.min(this.wave, FLOORS.length - 1);
+  }
+
+  private buildFloor(index: number) {
+    const t = index < 0 ? BOSS_FLOOR : FLOORS[index]!;
     const cv = document.createElement("canvas");
     cv.width = ROOM.w;
     cv.height = ROOM.h;
@@ -519,11 +664,14 @@ export class Game {
     px(c, "#1b1426", 0, 0, ROOM.w, ROOM.h);
     let seed = 7;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    // mox va yoriqlar alohida tasodifiy oqimda — asosiy naqsh o'zgarmaydi
+    let seed2 = 11 + Math.max(0, index);
+    const rnd2 = () => (seed2 = (seed2 * 16807) % 2147483647) / 2147483647;
     for (let y = ROOM.wall; y < ROOM.h - ROOM.wall; y += 16)
       for (let x = ROOM.wall; x < ROOM.w - ROOM.wall; x += 16) {
-        px(c, ((x + y) / 16) % 2 ? "#3a2f4a" : "#342a43", x, y, 16, 16);
-        px(c, "#2c2339", x, y + 15, 16, 1);
-        px(c, "#2c2339", x + 15, y, 1, 16);
+        px(c, ((x + y) / 16) % 2 ? t.a : t.b, x, y, 16, 16);
+        px(c, t.grout, x, y + 15, 16, 1);
+        px(c, t.grout, x + 15, y, 1, 16);
         const r = rnd();
         if (r < 0.12) {
           // yoriq
@@ -539,15 +687,39 @@ export class Game {
           px(c, "#8d8a84", x + 3, y + 7, 2, 1);
           px(c, "#8d8a84", x + 10, y + 9, 2, 1);
         }
+        if (rnd2() < t.moss) {
+          // mox to'dasi
+          const ox = Math.floor(rnd2() * 6),
+            oy = Math.floor(rnd2() * 6);
+          px(c, "#2f5a2c", x + ox, y + oy + 2, 9, 4);
+          px(c, "#3f6b3a", x + ox + 1, y + oy + 1, 7, 4);
+          px(c, "#4f8a45", x + ox + 2, y + oy + 1, 3, 2);
+          px(c, "#3f6b3a", x + ox + 6, y + oy + 6, 3, 2);
+        }
       }
+    if (t.red) {
+      // Boss xonasi: polda qizil cho'g'li yoriqlar
+      for (let k = 0; k < 9; k++) {
+        let cx = ROOM.wall + 8 + rnd2() * (ROOM.w - ROOM.wall * 2 - 16);
+        let cy = ROOM.wall + 8 + rnd2() * (ROOM.h - ROOM.wall * 2 - 16);
+        const dir = rnd2() * Math.PI * 2;
+        for (let st = 0; st < 14 + rnd2() * 10; st++) {
+          const a = dir + (rnd2() - 0.5) * 1.4;
+          cx += Math.cos(a) * 2;
+          cy += Math.sin(a) * 2;
+          px(c, "#1a0c10", cx - 1, cy, 3, 1);
+          px(c, st % 4 === 0 ? "#ff6a2a" : "#b23238", cx, cy, 2, 1);
+        }
+      }
+    }
     // devorlar
-    px(c, "#5c4a6e", 0, 0, ROOM.w, ROOM.wall);
-    px(c, "#4a3b59", 0, ROOM.h - ROOM.wall, ROOM.w, ROOM.wall);
-    px(c, "#4a3b59", 0, 0, ROOM.wall, ROOM.h);
-    px(c, "#4a3b59", ROOM.w - ROOM.wall, 0, ROOM.wall, ROOM.h);
+    px(c, t.wall, 0, 0, ROOM.w, ROOM.wall);
+    px(c, t.wallDark, 0, ROOM.h - ROOM.wall, ROOM.w, ROOM.wall);
+    px(c, t.wallDark, 0, 0, ROOM.wall, ROOM.h);
+    px(c, t.wallDark, ROOM.w - ROOM.wall, 0, ROOM.wall, ROOM.h);
     for (let x = 0; x < ROOM.w; x += 16) {
-      px(c, "#6e5a82", x, 2, 14, 5);
-      px(c, "#6e5a82", x + 8, 9, 14, 5);
+      px(c, t.brick, x, 2, 14, 5);
+      px(c, t.brick, x + 8, 9, 14, 5);
     }
     // devor ostidagi soya
     px(c, "rgba(0,0,0,0.35)", ROOM.wall, ROOM.wall, ROOM.w - ROOM.wall * 2, 4);
@@ -556,10 +728,12 @@ export class Game {
     // mash'ala tutqichlari
     for (const tx of [64, 160, 256]) px(c, "#2a1f38", tx - 2, 8, 4, 6);
     this.floor = cv;
+    this.floorKey = index;
   }
 
   private renderRoom(c: CanvasRenderingContext2D) {
-    if (!this.floor) this.buildFloor();
+    const fi = this.floorIndex();
+    if (!this.floor || this.floorKey !== fi) this.buildFloor(fi);
     c.drawImage(this.floor!, 0, 0);
     // mash'alalar
     for (const [i, tx] of [64, 160, 256].entries()) {
@@ -583,7 +757,36 @@ export class Game {
 
   private renderSlash(c: CanvasRenderingContext2D) {
     const p = this.player;
-    if (p.attackTimer <= 0 || p.dead) return;
+    if (p.dead) return;
+    // kuchli zarba yig'ilishi: o'yinchi atrofida to'lib boruvchi halqa
+    if (p.charge > 0.12) {
+      const k = Math.min(1, p.charge / CHARGE_TIME);
+      const full = k >= 1;
+      c.strokeStyle = full
+        ? `rgba(255,236,140,${0.6 + 0.4 * Math.sin(this.time * 30)})`
+        : "rgba(255,204,51,0.65)";
+      c.lineWidth = full ? 2 : 1;
+      c.beginPath();
+      c.arc(p.x, p.y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+      c.stroke();
+    }
+    if (p.spinning) {
+      const k = p.spinTimer / SPIN_TIME;
+      const r = p.reach * 1.2;
+      const a0 = (1 - k) * Math.PI * 4;
+      c.strokeStyle = `rgba(255,255,255,${0.85 * k})`;
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(p.x, p.y, r, a0, a0 + Math.PI * 1.6);
+      c.stroke();
+      c.strokeStyle = `rgba(255,204,51,${0.6 * k})`;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.arc(p.x, p.y, r * 0.75, 0, Math.PI * 2);
+      c.stroke();
+      return;
+    }
+    if (p.attackTimer <= 0) return;
     const k = p.attackTimer / 0.24;
     const ang = Math.atan2(p.fy, p.fx);
     c.strokeStyle = `rgba(255,255,255,${0.75 * k})`;
@@ -655,6 +858,17 @@ export class Game {
 
     this.renderSlash(c);
     for (const s of this.shots) {
+      if (s.arrow) {
+        // o'q: yog'och tayoq, temir uchi va pat
+        const l = Math.hypot(s.vx, s.vy) || 1;
+        const ux = s.vx / l,
+          uy = s.vy / l;
+        for (let k = -4; k <= 1; k++) px(c, "#a8743a", s.x + ux * k, s.y + uy * k, 1, 1);
+        px(c, "#e6e6e6", s.x + ux * 2 - 0.5, s.y + uy * 2 - 0.5, 2, 2);
+        px(c, "#cfd8b0", s.x - ux * 5 - uy, s.y - uy * 5 + ux, 1, 1);
+        px(c, "#cfd8b0", s.x - ux * 5 + uy, s.y - uy * 5 - ux, 1, 1);
+        continue;
+      }
       c.fillStyle = "rgba(255,120,40,0.35)";
       c.beginPath();
       c.arc(s.x, s.y, 5, 0, Math.PI * 2);
@@ -708,9 +922,27 @@ export class Game {
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
     px(c, k >= 1 ? "#68cde4" : "#287faf", 5, 14, 30 * k, 1);
+    if (p.dashMax > 1)
+      for (let i = 0; i < p.dashMax; i++)
+        px(c, i < p.dashCharges ? "#68cde4" : "#1d3a4a", 38 + i * 4, 13, 3, 3);
+    // kuchli zarba tayyorligi
+    const sk = Math.max(0, Math.min(1, 1 - p.spinCooldown / SPIN_CD));
+    px(c, "#000", 4, 17, 32, 3);
+    px(
+      c,
+      p.charged && Math.floor(this.time * 12) % 2 ? "#ffffff" : sk >= 1 ? "#ffcc33" : "#8a6a1a",
+      5,
+      18,
+      30 * sk,
+      1,
+    );
 
     this.text(
-      this.wave === BOSS_WAVE ? "BOSS" : `TO'LQIN ${this.wave + 1}/${TOTAL_WAVES}`,
+      isBossWave(this.wave)
+        ? "BOSS"
+        : this.endless
+          ? `CHEKSIZ ${endlessNumber(this.wave)}`
+          : `TO'LQIN ${this.wave + 1}/${TOTAL_WAVES}`,
       ROOM.w / 2,
       11,
       7,
@@ -721,7 +953,7 @@ export class Game {
     this.text(`URINISH ${this.attempt}`, 4, ROOM.h - 5, 5, "rgba(224,214,238,0.7)", "left");
 
     const boss = this.boss;
-    if (boss && this.wave === BOSS_WAVE && !(boss.dead && boss.anim.done)) {
+    if (boss && isBossWave(this.wave) && !(boss.dead && boss.anim.done)) {
       const bw = 140,
         bx = (ROOM.w - bw) / 2,
         by = ROOM.h - 10;
@@ -765,7 +997,15 @@ export class Game {
     const c = this.ctx;
     if (this.phase === "play" && this.stage === "upgrade" && !this.paused) {
       px(c, "rgba(8,4,16,0.78)", 0, 0, ROOM.w, ROOM.h);
-      this.text(`${this.wave + 1}-TO'LQIN TOZALANDI`, ROOM.w / 2, 40, 9, "#a6f08e");
+      this.text(
+        this.endless
+          ? `CHEKSIZ ${endlessNumber(this.wave)} TOZALANDI`
+          : `${this.wave + 1}-TO'LQIN TOZALANDI`,
+        ROOM.w / 2,
+        40,
+        9,
+        "#a6f08e",
+      );
       this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
@@ -818,9 +1058,17 @@ export class Game {
     if (this.phase === "attempt") {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
       this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30, 10, "#ff4d6d");
-      this.text(`Urinish №${this.attempt}`, ROOM.w / 2, ROOM.h / 2, 14, "#ffcc33");
       this.text(
-        `Ochko: ${this.score}   Rekord: ${this.best}`,
+        this.endless ? `CHEKSIZ: ${endlessNumber(this.wave)}-TO'LQIN` : `Urinish №${this.attempt}`,
+        ROOM.w / 2,
+        ROOM.h / 2,
+        this.endless ? 10 : 14,
+        "#ffcc33",
+      );
+      this.text(
+        this.endless
+          ? `Ochko: ${this.score}   Cheksiz rekord: ${this.endlessBest}`
+          : `Ochko: ${this.score}   Rekord: ${this.best}`,
         ROOM.w / 2,
         ROOM.h / 2 + 22,
         6,
@@ -840,7 +1088,14 @@ export class Game {
         6,
         this.newBest ? "#a6f08e" : "#b8a8cc",
       );
-      this.text("Enter yoki bosing — qaytadan", ROOM.w / 2, 180, 6, "#b8a8cc");
+      for (const [b, label] of [
+        [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
+        [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
+      ] as const) {
+        px(c, "#ffcc33", b.x, b.y, b.w, b.h);
+        px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+        this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
+      }
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
   }

@@ -9,7 +9,7 @@ import type { AnimState } from "./animation";
 const counts: Record<AnimState, number> = { idle: 2, walk: 4, attack: 3, hurt: 1, death: 3 };
 
 describe("Code-drawn character frames", () => {
-  for (const kind of ["knight", "skeleton", "demon", "slime", "bat"] as SpriteKind[]) {
+  for (const kind of ["knight", "skeleton", "archer", "demon", "slime", "bat"] as SpriteKind[]) {
     for (const [state, count] of Object.entries(counts) as [AnimState, number][]) {
       it(`${kind} has ${count} distinct ${state} frames within five colors`, () => {
         const frames = Array.from({ length: count }, (_, frame) =>

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Game, BEST_KEY } from "@/game/game";
+import { Game, BEST_KEY, ENDLESS_BEST_KEY } from "@/game/game";
 import { Button } from "@/components/ui/button";
 import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG } from "@/game/version";
@@ -34,6 +34,7 @@ function Index() {
   const [newVersion, setNewVersion] = useState<string | null>(null);
   const [muted, setMuted] = useState(sfx.muted);
   const [best, setBest] = useState(0);
+  const [endlessBest, setEndlessBest] = useState(0);
   const [touch, setTouch] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const startedRef = useRef(false);
@@ -43,6 +44,7 @@ function Index() {
     setMuted(sfx.loadMute());
     try {
       setBest(Number(localStorage.getItem(BEST_KEY)) || 0);
+      setEndlessBest(Number(localStorage.getItem(ENDLESS_BEST_KEY)) || 0);
     } catch {
       /* saqlash imkonsiz */
     }
@@ -78,6 +80,7 @@ function Index() {
     g.touch = touch;
     g.onExit = () => {
       setBest(g.best);
+      setEndlessBest(g.endlessBest);
       setGame(null);
       setStarted(false);
     };
@@ -101,12 +104,16 @@ function Index() {
                   Chap doira — yurish
                   <br />
                   ZARBA — hujum, DASH — sirpanish
+                  <br />
+                  ZARBA ni bosib turing — aylana zarba
                 </>
               ) : (
                 <>
                   WASD / strelkalar — yurish
                   <br />
                   Space / J — hujum
+                  <br />
+                  Space ni bosib turish — aylana zarba
                   <br />
                   Shift / K — dash
                   <br />
@@ -120,6 +127,12 @@ function Index() {
                 <>
                   <br />
                   <span className="text-primary">Rekord: {best}</span>
+                </>
+              )}
+              {endlessBest > 0 && (
+                <>
+                  <br />
+                  <span className="text-primary">Cheksiz rekord: {endlessBest}</span>
                 </>
               )}
             </p>
@@ -247,8 +260,12 @@ function TouchControls({ game }: { game: Game }) {
         className={`${btn} pointer-events-auto absolute bottom-8 right-6 h-20 w-20 text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
+          e.currentTarget.setPointerCapture(e.pointerId);
           game.input.pressAttack();
+          game.input.setTouchAttack(true);
         }}
+        onPointerUp={() => game.input.setTouchAttack(false)}
+        onPointerCancel={() => game.input.setTouchAttack(false)}
       >
         ZARBA
       </button>
@@ -309,7 +326,7 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
 }
 
 function CoachPanel() {
-  const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "boss">("boss");
+  const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "archer" | "boss">("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
   const [error, setError] = useState("");
@@ -343,6 +360,7 @@ function CoachPanel() {
           <option value="slime">Slime</option>
           <option value="bat">Ko'rshapalak</option>
           <option value="skeleton">Skelet jangchi</option>
+          <option value="archer">Kamonchi skelet</option>
           <option value="boss">Boss (iblis)</option>
         </select>
       </label>
