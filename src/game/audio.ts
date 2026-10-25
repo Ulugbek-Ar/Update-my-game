@@ -46,14 +46,22 @@ class SoundFX {
     return this.muted;
   }
 
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0) {
+  private tone(
+    freq: number,
+    dur: number,
+    type: OscillatorType,
+    vol: number,
+    slideTo?: number,
+    delay = 0,
+  ) {
     if (this.muted || !this.ctx || this.ctx.state !== "running") return;
     const t0 = this.ctx.currentTime + delay;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+    if (slideTo !== undefined)
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
     gain.gain.setValueAtTime(vol, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     osc.connect(gain).connect(this.ctx.destination);

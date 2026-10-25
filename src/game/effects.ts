@@ -28,12 +28,30 @@ export class Effects {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.4 + Math.random() * 0.8);
       const life = 0.25 + Math.random() * 0.35;
-      this.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, color, size });
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        life,
+        max: life,
+        color,
+        size,
+      });
     }
   }
 
   trail(x: number, y: number, color: string) {
-    this.particles.push({ x: x + (Math.random() - 0.5) * 6, y: y + (Math.random() - 0.5) * 6, vx: 0, vy: -8, life: 0.25, max: 0.25, color, size: 3 });
+    this.particles.push({
+      x: x + (Math.random() - 0.5) * 6,
+      y: y + (Math.random() - 0.5) * 6,
+      vx: 0,
+      vy: -8,
+      life: 0.25,
+      max: 0.25,
+      color,
+      size: 3,
+    });
   }
 
   text(x: number, y: number, s: string, color: string) {

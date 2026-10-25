@@ -83,13 +83,19 @@ export class Boss implements Body {
       if (this.windup <= 0) {
         this.shock = 0.3;
         this.justSlammed = true;
-        if (Math.hypot(p.x - this.x, p.y - this.y) < SLAM_RADIUS + p.size / 2) p.takeHit(2, this.x, this.y, 260);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < SLAM_RADIUS + p.size / 2)
+          p.takeHit(2, this.x, this.y, 260);
         if (this.enraged) {
           const n = this.hp < this.maxHp / 4 ? 12 : 8;
           const off = Math.random() * Math.PI;
           for (let i = 0; i < n; i++) {
             const a = off + (i / n) * Math.PI * 2;
-            this.shots.push({ x: this.x, y: this.y, vx: Math.cos(a) * SHOT_SPEED, vy: Math.sin(a) * SHOT_SPEED });
+            this.shots.push({
+              x: this.x,
+              y: this.y,
+              vx: Math.cos(a) * SHOT_SPEED,
+              vy: Math.sin(a) * SHOT_SPEED,
+            });
           }
         }
         this.slamTimer = (this.enraged ? 1.6 : 2.2) + Math.random() * 1.2;
@@ -100,7 +106,8 @@ export class Boss implements Body {
     if (this.anim.state === "hurt" && !this.anim.done) return;
 
     this.slamTimer -= dt;
-    const dx = p.x - this.x, dy = p.y - this.y;
+    const dx = p.x - this.x,
+      dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     if (dx !== 0) this.facingLeft = dx < 0;
     const speed = this.enraged ? 42 : 30;
@@ -140,8 +147,16 @@ export class Boss implements Body {
       ctx.fill();
     }
 
-    renderSprite(ctx, "demon", state, frame, this.x, this.y,
-      isFlashing(this) || state === "hurt", this.facingLeft);
+    renderSprite(
+      ctx,
+      "demon",
+      state,
+      frame,
+      this.x,
+      this.y,
+      isFlashing(this) || state === "hurt",
+      this.facingLeft,
+    );
     ctx.globalAlpha = 1;
   }
 }

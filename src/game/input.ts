@@ -16,7 +16,8 @@ export class Input {
     if (GAME_KEYS.includes(e.key) || e.code === "Space") e.preventDefault();
     if (!e.repeat) {
       if (e.code === "Space" || e.code === "KeyJ") this.attackQueued = true;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyK") this.dashQueued = true;
+      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyK")
+        this.dashQueued = true;
       if (e.code === "Enter" || e.code === "NumpadEnter") this.enterQueued = true;
       if (e.code === "Escape" || e.code === "KeyP") this.pauseQueued = true;
       this.pressed.add(e.code);
@@ -42,8 +43,11 @@ export class Input {
 
   axis() {
     const k = this.keys;
-    const x = (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
-    const y = (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) - (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0);
+    const x =
+      (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) -
+      (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
+    const y =
+      (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) - (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0);
     if (x || y) return { x, y };
     return { x: this.touch.x, y: this.touch.y };
   }

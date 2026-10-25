@@ -11,7 +11,9 @@ describe("Code-drawn character frames", () => {
   for (const kind of ["knight", "skeleton", "demon", "slime", "bat"] as SpriteKind[]) {
     for (const [state, count] of Object.entries(counts) as [AnimState, number][]) {
       it(`${kind} has ${count} distinct ${state} frames within five colors`, () => {
-        const frames = Array.from({ length: count }, (_, frame) => spritePixels(kind, state, frame));
+        const frames = Array.from({ length: count }, (_, frame) =>
+          spritePixels(kind, state, frame),
+        );
         expect(new Set(frames.map((pixels) => pixels.join(","))).size).toBe(count);
         for (const frame of frames) {
           expect(frame.length).toBe(32 * 32);

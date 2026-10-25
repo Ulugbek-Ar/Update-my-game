@@ -90,12 +90,19 @@ export function overlap(a: Body, b: Body) {
 
 /** Ikki tanani bir-biridan itaradi (ustma-ust yig'ilib qolmasligi uchun). ratio=1 — faqat a suriladi. */
 export function separate(a: Body, b: Body, ratio = 0.5) {
-  let dx = b.x - a.x, dy = b.y - a.y;
+  let dx = b.x - a.x,
+    dy = b.y - a.y;
   const min = (a.size + b.size) / 2;
   let d = Math.hypot(dx, dy);
   if (d >= min) return;
-  if (d === 0) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.hypot(dx, dy); }
-  const push = min - d, ux = dx / d, uy = dy / d;
+  if (d === 0) {
+    dx = Math.random() - 0.5;
+    dy = Math.random() - 0.5;
+    d = Math.hypot(dx, dy);
+  }
+  const push = min - d,
+    ux = dx / d,
+    uy = dy / d;
   a.x -= ux * push * ratio;
   a.y -= uy * push * ratio;
   b.x += ux * push * (1 - ratio);
@@ -106,7 +113,14 @@ export function isFlashing(b: Body) {
   return b.flash > 0 && Math.floor(b.flash * 25) % 2 === 0;
 }
 
-export function px(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) {
+export function px(
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.round(x), Math.round(y), w, h);
 }

@@ -14,7 +14,9 @@ O'lsang — urinish soni oshadi va hammasi 1-to'lqindan qayta boshlanadi.`;
 
 export const getCombatTip = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
-    z.object({ enemy: z.enum(["slime", "bat", "skeleton", "boss"]), problem: z.string().max(500) }).parse(d),
+    z
+      .object({ enemy: z.enum(["slime", "bat", "skeleton", "boss"]), problem: z.string().max(500) })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const apiKey = process.env["LOVABLE_API_KEY"];
@@ -26,7 +28,12 @@ export const getCombatTip = createServerFn({ method: "POST" })
       apiKey,
       headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     });
-    const names = { slime: "Slime", bat: "Ko'rshapalak", skeleton: "Skelet jangchi", boss: "Boss (iblis)" };
+    const names = {
+      slime: "Slime",
+      bat: "Ko'rshapalak",
+      skeleton: "Skelet jangchi",
+      boss: "Boss (iblis)",
+    };
     try {
       const result = streamText({
         model: provider.responses("openai/gpt-6-astra"),

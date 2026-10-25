@@ -63,7 +63,8 @@ export class Player implements Body {
     else sfx.hurt();
     this.flash = 0.4;
     this.invuln = INVULN;
-    const dx = this.x - fromX, dy = this.y - fromY;
+    const dx = this.x - fromX,
+      dy = this.y - fromY;
     const l = Math.hypot(dx, dy) || 1;
     this.vx = (dx / l) * force;
     this.vy = (dy / l) * force;
@@ -112,8 +113,12 @@ export class Player implements Body {
     }
 
     if (wantDash && this.dashCooldown <= 0 && this.hurtTimer <= 0) {
-      let dx = x, dy = y;
-      if (!dx && !dy) { dx = this.fx; dy = this.fy; }
+      let dx = x,
+        dy = y;
+      if (!dx && !dy) {
+        dx = this.fx;
+        dy = this.fy;
+      }
       const l = Math.hypot(dx, dy) || 1;
       this.dashX = dx / l;
       this.dashY = dy / l;
@@ -139,8 +144,13 @@ export class Player implements Body {
         const l = Math.max(1, Math.hypot(x, y));
         this.x += (x / l) * this.speed * dt;
         this.y += (y / l) * this.speed * dt;
-        if (Math.abs(x) >= Math.abs(y)) { this.fx = Math.sign(x); this.fy = 0; }
-        else { this.fx = 0; this.fy = Math.sign(y); }
+        if (Math.abs(x) >= Math.abs(y)) {
+          this.fx = Math.sign(x);
+          this.fy = 0;
+        } else {
+          this.fx = 0;
+          this.fy = Math.sign(y);
+        }
         this.anim.set("walk");
       } else this.anim.set("idle");
     }
@@ -149,8 +159,17 @@ export class Player implements Body {
 
   render(ctx: CanvasRenderingContext2D) {
     if (this.dashing) ctx.globalAlpha = 0.7;
-    renderSprite(ctx, "knight", this.anim.state, this.anim.frame, this.x, this.y,
-      isFlashing(this) || this.anim.state === "hurt", this.fx < 0, this.fy < 0);
+    renderSprite(
+      ctx,
+      "knight",
+      this.anim.state,
+      this.anim.frame,
+      this.x,
+      this.y,
+      isFlashing(this) || this.anim.state === "hurt",
+      this.fx < 0,
+      this.fy < 0,
+    );
     ctx.globalAlpha = 1;
   }
 }

@@ -140,7 +140,8 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     margin: 0;
     overflow: hidden;
     width: 100%;

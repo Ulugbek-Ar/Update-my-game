@@ -13,11 +13,25 @@ export const BEST_KEY = "pixel-rpg-best";
 type Phase = "play" | "attempt" | "victory";
 type Stage = "fight" | "upgrade";
 
-interface Shot { x: number; y: number; vx: number; vy: number; size: number }
-interface Drop { x: number; y: number; life: number }
+interface Shot {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+}
+interface Drop {
+  x: number;
+  y: number;
+  life: number;
+}
 
 const KILL_POINTS: Record<EnemyKind, number> = { blob: 10, wisp: 15, rammer: 20 };
-const KILL_COLOR: Record<EnemyKind, string> = { blob: "#5bc85b", wisp: "#8a4fc0", rammer: "#d6d9cf" };
+const KILL_COLOR: Record<EnemyKind, string> = {
+  blob: "#5bc85b",
+  wisp: "#8a4fc0",
+  rammer: "#d6d9cf",
+};
 const BOSS_POINTS = 300;
 const COMBO_TIME = 2.5;
 const DROP_CHANCE = 0.15;
@@ -107,7 +121,11 @@ export class Game {
     const boss = i === BOSS_WAVE;
     this.banner = boss
       ? { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
-      : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: i === 0 ? "Shift — dash" : "", timer: 1.6 };
+      : {
+          title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
+          sub: i === 0 ? "Shift — dash" : "",
+          timer: 1.6,
+        };
     WAVES[i]!.forEach((kind, n) => {
       const [x, y] = this.spawnPoint();
       const e = new Enemy(kind, x, y);
@@ -133,7 +151,10 @@ export class Game {
       const y = m + Math.random() * (ROOM.h - m * 2);
       const d = Math.hypot(x - this.player.x, y - this.player.y);
       if (d > 90) return [x, y];
-      if (d > bestD) { bestD = d; best = [x, y]; }
+      if (d > bestD) {
+        bestD = d;
+        best = [x, y];
+      }
     }
     return best;
   }
@@ -161,7 +182,9 @@ export class Game {
   private resumeBtn = { x: ROOM.w / 2 - 70, y: ROOM.h / 2 + 4, w: 140, h: 18 };
   private restartBtn = { x: ROOM.w / 2 - 70, y: ROOM.h / 2 + 28, w: 140, h: 18 };
   private cardRect(i: number) {
-    const w = 92, gap = 8, h = 100;
+    const w = 92,
+      gap = 8,
+      h = 100;
     const x0 = (ROOM.w - (w * 3 + gap * 2)) / 2;
     return { x: x0 + i * (w + gap), y: 74, w, h };
   }
@@ -190,7 +213,8 @@ export class Game {
     if (this.phase === "victory") return this.newRun();
     if (this.phase === "play" && this.stage === "upgrade") {
       if (this.upgradeLock > 0) return;
-      for (let i = 0; i < this.choices.length; i++) if (hit(this.cardRect(i))) return this.choose(i);
+      for (let i = 0; i < this.choices.length; i++)
+        if (hit(this.cardRect(i))) return this.choose(i);
     }
   };
 
@@ -266,7 +290,8 @@ export class Game {
     }
     const n = this.choices.length;
     const inp = this.input;
-    for (let i = 0; i < n; i++) if (inp.consumeKey(`Digit${i + 1}`, `Numpad${i + 1}`)) return this.choose(i);
+    for (let i = 0; i < n; i++)
+      if (inp.consumeKey(`Digit${i + 1}`, `Numpad${i + 1}`)) return this.choose(i);
     if (inp.consumeKey("ArrowLeft", "KeyA")) this.choiceIndex = (this.choiceIndex + n - 1) % n;
     if (inp.consumeKey("ArrowRight", "KeyD")) this.choiceIndex = (this.choiceIndex + 1) % n;
     if (inp.consumeEnter() || inp.consumeAttack()) this.choose(this.choiceIndex);
@@ -279,7 +304,12 @@ export class Game {
     const mult = Math.min(5, 1 + Math.floor((this.combo - 1) / 2));
     const pts = KILL_POINTS[e.kind] * mult;
     this.score += pts;
-    this.fx.text(e.x, e.y - 10, mult > 1 ? `+${pts} x${mult}` : `+${pts}`, mult > 1 ? "#ffcc33" : "#ffffff");
+    this.fx.text(
+      e.x,
+      e.y - 10,
+      mult > 1 ? `+${pts} x${mult}` : `+${pts}`,
+      mult > 1 ? "#ffcc33" : "#ffffff",
+    );
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
     sfx.kill();
     if (Math.random() < DROP_CHANCE) this.drops.push({ x: e.x, y: e.y, life: 9 });
@@ -475,7 +505,7 @@ export class Game {
     const c = cv.getContext("2d")!;
     px(c, "#1b1426", 0, 0, ROOM.w, ROOM.h);
     let seed = 7;
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let y = ROOM.wall; y < ROOM.h - ROOM.wall; y += 16)
       for (let x = ROOM.wall; x < ROOM.w - ROOM.wall; x += 16) {
         px(c, ((x + y) / 16) % 2 ? "#3a2f4a" : "#342a43", x, y, 16, 16);
@@ -592,9 +622,22 @@ export class Game {
       },
     }));
     const boss = this.boss;
-    if (boss) all.push({ y: boss.y, r: () => { if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30); boss.render(c); } });
+    if (boss)
+      all.push({
+        y: boss.y,
+        r: () => {
+          if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
+          boss.render(c);
+        },
+      });
     if (this.phase !== "attempt" || !p.dead)
-      all.push({ y: p.y, r: () => { if (!p.dead) this.shadow(c, p.x, p.y + 12, 12); p.render(c); } });
+      all.push({
+        y: p.y,
+        r: () => {
+          if (!p.dead) this.shadow(c, p.x, p.y + 12, 12);
+          p.render(c);
+        },
+      });
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
 
     this.renderSlash(c);
@@ -653,17 +696,32 @@ export class Game {
     px(c, "#000", 4, 13, 32, 3);
     px(c, k >= 1 ? "#68cde4" : "#287faf", 5, 14, 30 * k, 1);
 
-    this.text(this.wave === BOSS_WAVE ? "BOSS" : `TO'LQIN ${this.wave + 1}/${TOTAL_WAVES}`, ROOM.w / 2, 11, 7, "#e0d6ee");
+    this.text(
+      this.wave === BOSS_WAVE ? "BOSS" : `TO'LQIN ${this.wave + 1}/${TOTAL_WAVES}`,
+      ROOM.w / 2,
+      11,
+      7,
+      "#e0d6ee",
+    );
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
     this.text(`URINISH ${this.attempt}`, 4, ROOM.h - 5, 5, "rgba(224,214,238,0.7)", "left");
 
     const boss = this.boss;
     if (boss && this.wave === BOSS_WAVE && !(boss.dead && boss.anim.done)) {
-      const bw = 140, bx = (ROOM.w - bw) / 2, by = ROOM.h - 10;
+      const bw = 140,
+        bx = (ROOM.w - bw) / 2,
+        by = ROOM.h - 10;
       this.text("IBLIS", ROOM.w / 2, by - 2, 5, boss.enraged ? "#ff6a6a" : "#e0d6ee");
       px(c, "#000", bx - 1, by, bw + 2, 6);
-      px(c, boss.enraged ? "#b23238" : "#8e44ad", bx, by + 1, (bw * Math.max(0, boss.hp)) / boss.maxHp, 4);
+      px(
+        c,
+        boss.enraged ? "#b23238" : "#8e44ad",
+        bx,
+        by + 1,
+        (bw * Math.max(0, boss.hp)) / boss.maxHp,
+        4,
+      );
       px(c, "rgba(255,255,255,0.25)", bx, by + 1, (bw * Math.max(0, boss.hp)) / boss.maxHp, 1);
     }
 
@@ -705,15 +763,25 @@ export class Game {
         px(c, u.color, r.x + r.w / 2 - 6, r.y + 10 + lift, 12, 12);
         px(c, "#1f1730", r.x + r.w / 2 - 4, r.y + 12 + lift, 8, 8);
         this.text(String(i + 1), r.x + r.w / 2, r.y + 19 + lift, 6, u.color);
-        this.wrap(u.name, 12).forEach((l, j) => this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color));
-        this.wrap(u.desc, 15).forEach((l, j) => this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"));
+        this.wrap(u.name, 12).forEach((l, j) =>
+          this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color),
+        );
+        this.wrap(u.desc, 15).forEach((l, j) =>
+          this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),
+        );
       });
       this.text("A/D tanlash, Enter — olish", ROOM.w / 2, 196, 5, "#b8a8cc");
     }
     if (this.paused) {
       px(c, "rgba(0,0,0,0.7)", 0, 0, ROOM.w, ROOM.h);
       this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - 34, 18, "#ffcc33");
-      this.text(`Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (M)`, ROOM.w / 2, ROOM.h / 2 - 14, 6, "#b8a8cc");
+      this.text(
+        `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (M)`,
+        ROOM.w / 2,
+        ROOM.h / 2 - 14,
+        6,
+        "#b8a8cc",
+      );
       for (const [b, label] of [
         [this.resumeBtn, "Davom etish: Esc"],
         [this.restartBtn, "Qaytadan boshlash"],
@@ -728,7 +796,13 @@ export class Game {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
       this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30, 10, "#ff4d6d");
       this.text(`Urinish №${this.attempt}`, ROOM.w / 2, ROOM.h / 2, 14, "#ffcc33");
-      this.text(`Ochko: ${this.score}   Rekord: ${this.best}`, ROOM.w / 2, ROOM.h / 2 + 22, 6, "#e0d6ee");
+      this.text(
+        `Ochko: ${this.score}   Rekord: ${this.best}`,
+        ROOM.w / 2,
+        ROOM.h / 2 + 22,
+        6,
+        "#e0d6ee",
+      );
       if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, ROOM.h / 2 + 36, 6, "#a6f08e");
     }
     if (this.phase === "victory") {
@@ -736,13 +810,26 @@ export class Game {
       this.text("G'ALABA!", ROOM.w / 2, 80, 20, "#ffcc33");
       this.text(`${this.attempt}-urinishda yutdingiz`, ROOM.w / 2, 112, 8, "#ffffff");
       this.text(`Ochko: ${this.score}`, ROOM.w / 2, 134, 8, "#ffcc33");
-      this.text(this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`, ROOM.w / 2, 150, 6, this.newBest ? "#a6f08e" : "#b8a8cc");
+      this.text(
+        this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`,
+        ROOM.w / 2,
+        150,
+        6,
+        this.newBest ? "#a6f08e" : "#b8a8cc",
+      );
       this.text("Enter yoki bosing — qaytadan", ROOM.w / 2, 180, 6, "#b8a8cc");
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
   }
 
-  private text(s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = "center") {
+  private text(
+    s: string,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    align: CanvasTextAlign = "center",
+  ) {
     const c = this.ctx;
     c.font = `${size}px "Press Start 2P", monospace`;
     c.textAlign = align;

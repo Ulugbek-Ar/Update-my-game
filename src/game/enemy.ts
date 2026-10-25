@@ -38,7 +38,11 @@ export class Enemy implements Body {
     death: { frames: 3, frameTime: 0.16, loop: false },
   });
 
-  constructor(public kind: EnemyKind, public x: number, public y: number) {
+  constructor(
+    public kind: EnemyKind,
+    public x: number,
+    public y: number,
+  ) {
     this.hp = this.maxHp = kind === "blob" ? 3 : kind === "wisp" ? 2 : 4;
     this.size = kind === "rammer" ? 14 : 11;
   }
@@ -73,7 +77,8 @@ export class Enemy implements Body {
       return;
     }
     this.t += dt;
-    const dx = p.x - this.x, dy = p.y - this.y;
+    const dx = p.x - this.x,
+      dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     if (dx !== 0) this.facingLeft = dx < 0;
     const m = this.speedMul;
@@ -85,7 +90,8 @@ export class Enemy implements Body {
       this.y += (dy / d) * 45 * m * hop * dt;
       this.anim.set(hop > 0 ? "walk" : "idle");
     } else if (this.kind === "wisp") {
-      const px_ = -dy / d, py_ = dx / d; // perpendikulyar
+      const px_ = -dy / d,
+        py_ = dx / d; // perpendikulyar
       const wave = Math.sin(this.t * 4) * 70;
       this.x += ((dx / d) * 55 * m + px_ * wave) * dt;
       this.y += ((dy / d) * 55 * m + py_ * wave) * dt;
@@ -96,7 +102,10 @@ export class Enemy implements Body {
         this.x += this.dashX * 160 * m * dt;
         this.y += this.dashY * 160 * m * dt;
         this.anim.set("attack");
-        if (this.aiTimer <= 0) { this.dashing = false; this.aiTimer = 1.2; }
+        if (this.aiTimer <= 0) {
+          this.dashing = false;
+          this.aiTimer = 1.2;
+        }
       } else {
         this.anim.set("idle");
         if (this.aiTimer <= 0) {
@@ -126,9 +135,16 @@ export class Enemy implements Body {
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 16, 2, 4);
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 11, 2, 2);
     }
-    renderSprite(ctx, this.kind === "rammer" ? "skeleton" : this.kind === "blob" ? "slime" : "bat",
-      state, frame, this.x, this.kind === "rammer" ? this.y : this.y - 3,
-      isFlashing(this) || state === "hurt", this.facingLeft);
+    renderSprite(
+      ctx,
+      this.kind === "rammer" ? "skeleton" : this.kind === "blob" ? "slime" : "bat",
+      state,
+      frame,
+      this.x,
+      this.kind === "rammer" ? this.y : this.y - 3,
+      isFlashing(this) || state === "hurt",
+      this.facingLeft,
+    );
     ctx.globalAlpha = 1;
   }
 }

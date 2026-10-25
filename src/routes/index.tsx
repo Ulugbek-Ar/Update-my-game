@@ -11,7 +11,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Piksel Qal'a — retro top-down RPG" },
-      { name: "description", content: "Brauzerda 2D piksel uslubidagi RPG: dushmanlarni yeng va Bossni mag'lub et." },
+      {
+        name: "description",
+        content: "Brauzerda 2D piksel uslubidagi RPG: dushmanlarni yeng va Bossni mag'lub et.",
+      },
       { property: "og:title", content: "Piksel Qal'a — retro RPG" },
       { property: "og:description", content: "Bitta xona, 3 xil dushman va kuchli Boss." },
       { property: "og:type", content: "website" },
@@ -69,8 +72,6 @@ function Index() {
     };
   }, []);
 
-
-
   useEffect(() => {
     if (!started || !canvasRef.current) return;
     const g = new Game(canvasRef.current);
@@ -84,24 +85,26 @@ function Index() {
   return (
     <main className="game-viewport font-pixel">
       <div className="game-screen">
-        <canvas
-          ref={canvasRef}
-          width={960}
-          height={540}
-          className="game-canvas"
-        />
+        <canvas ref={canvasRef} width={960} height={540} className="game-canvas" />
         {!started && (
           <div className="game-menu absolute inset-0 flex flex-col items-center justify-center gap-6 bg-card/95 text-center px-4">
             <h1 className="text-primary text-lg sm:text-2xl">PIKSEL QAL'A</h1>
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
                 <>
-                  Chap doira — yurish<br />ZARBA — hujum, DASH — sirpanish
+                  Chap doira — yurish
+                  <br />
+                  ZARBA — hujum, DASH — sirpanish
                 </>
               ) : (
                 <>
-                  WASD / strelkalar — yurish<br />Space / J — hujum<br />Shift / K — dash
-                  <br />Esc — pauza, M — ovoz
+                  WASD / strelkalar — yurish
+                  <br />
+                  Space / J — hujum
+                  <br />
+                  Shift / K — dash
+                  <br />
+                  Esc — pauza, M — ovoz
                 </>
               )}
             </p>
@@ -131,7 +134,11 @@ function Index() {
             >
               Yangilanishlar
             </Button>
-            <Button variant="link" onClick={() => setCoachOpen(true)} className="text-[9px] sm:text-[10px] text-muted-foreground">
+            <Button
+              variant="link"
+              onClick={() => setCoachOpen(true)}
+              className="text-[9px] sm:text-[10px] text-muted-foreground"
+            >
               Jang maslahatchisi (AI)
             </Button>
             <button
@@ -163,8 +170,15 @@ function Index() {
         </div>
       )}
       <div hidden={!coachOpen} className="fixed inset-0 z-50 bg-letterbox/70 p-4">
-        <div role="dialog" aria-modal="true" aria-label="Jang maslahatchisi" className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4">
-          <Button variant="ghost" onClick={() => setCoachOpen(false)} className="mb-3 text-[10px]">YOPISH</Button>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Jang maslahatchisi"
+          className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4"
+        >
+          <Button variant="ghost" onClick={() => setCoachOpen(false)} className="mb-3 text-[10px]">
+            YOPISH
+          </Button>
           <CoachPanel />
         </div>
       </div>
@@ -183,11 +197,16 @@ function TouchControls({ game }: { game: Game }) {
     if (!el || pointer.current !== e.pointerId) return;
     const r = el.getBoundingClientRect();
     const R = r.width / 2;
-    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    let dx = e.clientX - (r.left + R),
+      dy = e.clientY - (r.top + R);
     const l = Math.hypot(dx, dy);
-    if (l > R) { dx = (dx / l) * R; dy = (dy / l) * R; }
+    if (l > R) {
+      dx = (dx / l) * R;
+      dy = (dy / l) * R;
+    }
     setKnob({ x: dx, y: dy });
-    const ax = dx / R, ay = dy / R;
+    const ax = dx / R,
+      ay = dy / R;
     game.input.setTouchAxis(Math.abs(ax) > 0.25 ? ax : 0, Math.abs(ay) > 0.25 ? ay : 0);
   };
   const end = () => {
@@ -195,7 +214,8 @@ function TouchControls({ game }: { game: Game }) {
     setKnob({ x: 0, y: 0 });
     game.input.setTouchAxis(0, 0);
   };
-  const btn = "flex items-center justify-center rounded-full border-2 border-primary/70 bg-card/60 text-primary select-none active:bg-primary/40";
+  const btn =
+    "flex items-center justify-center rounded-full border-2 border-primary/70 bg-card/60 text-primary select-none active:bg-primary/40";
 
   return (
     <div className="pointer-events-none fixed inset-0 z-40 touch-none select-none">
@@ -219,21 +239,30 @@ function TouchControls({ game }: { game: Game }) {
       <button
         aria-label="Hujum"
         className={`${btn} pointer-events-auto absolute bottom-8 right-6 h-20 w-20 text-[10px]`}
-        onPointerDown={(e) => { e.preventDefault(); game.input.pressAttack(); }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          game.input.pressAttack();
+        }}
       >
         ZARBA
       </button>
       <button
         aria-label="Dash"
         className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 text-[8px]`}
-        onPointerDown={(e) => { e.preventDefault(); game.input.pressDash(); }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          game.input.pressDash();
+        }}
       >
         DASH
       </button>
       <button
         aria-label="Pauza"
         className={`${btn} pointer-events-auto absolute right-3 top-3 h-10 w-10 text-[10px]`}
-        onPointerDown={(e) => { e.preventDefault(); game.input.pressPause(); }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          game.input.pressPause();
+        }}
       >
         II
       </button>
