@@ -49,6 +49,28 @@ describe("Code-drawn character frames", () => {
 describe("Kamonchi skelet sprite", () => {
   const count = (frame: Uint8Array, color: number) => frame.filter((c) => c === color).length;
 
+  it("has 13 distinct frames matching the archer's animation state machine", () => {
+    const enemy = new Enemy("archer", 50, 50);
+    const all: string[] = [];
+    for (const [state, n] of Object.entries(counts) as [AnimState, number][]) {
+      expect(enemy.anim.defs[state].frames).toBe(n);
+      for (let f = 0; f < n; f++) {
+        const frame = spritePixels("archer", state, f);
+        expect(frame.length).toBe(32 * 32);
+        expect(Math.max(...frame)).toBeLessThanOrEqual(5);
+        // chegarada faqat ink yoki bo'sh: rangli chizma kesilmaydi, outline to'liq
+        for (let i = 0; i < 32; i++)
+          for (const edge of [i, 31 * 32 + i, i * 32, i * 32 + 31])
+            expect(frame[edge]).toBeLessThanOrEqual(1);
+        // tirik kadrlarda qizil ko'zlar doim yonib turadi
+        if (state !== "death") expect(count(frame, 5)).toBeGreaterThanOrEqual(18);
+        all.push(frame.join(","));
+      }
+    }
+    expect(all.length).toBe(13);
+    expect(new Set(all).size).toBe(13);
+  });
+
   it("draws a bow instead of the skeleton's sword in every living state", () => {
     for (const [state, n] of Object.entries(counts) as [AnimState, number][]) {
       if (state === "death") continue;

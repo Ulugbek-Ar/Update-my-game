@@ -11,8 +11,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.2.1",
     date: "2026-10-26",
-    notes:
-      "Kamonchi skelet endi \"qora suyak\": ko'mir rang suyaklar, yorqin qizil ko'zlar, qora o'q va qizil uchi. O'z spritei: qilich o'rniga yog'och kamon va orqasida o'qdon. Otishdan oldin o'qni qo'yadi, ipni o'q chiqqunga qadar tortib turadi va o'q aynan qo'yib yuborish kadrida kamondan chiqadi. Kamonchi doim o'yinchiga qarab turadi; o'lganda kamon yerga tushadi",
+    notes: "Kamonchi skelet: kamon va tortib otish animatsiyasi, qora suyak ko'rinishi",
   },
   {
     version: "1.2.0",
