@@ -255,7 +255,8 @@ function knight(p: Pixels, pose: Pose, back: boolean) {
   sword(p, pose, false);
 }
 
-function skeleton(p: Pixels, pose: Pose) {
+/** Skelet tanasi (qurolsiz) — skelet jangchi va kamonchi uchun umumiy. */
+function boneBody(p: Pixels, pose: Pose) {
   const { bob: b, lean: l } = pose;
   p.line(2, [13, 21 + b], pose.leftFoot, 3);
   p.line(2, [19, 21 + b], pose.rightFoot, 3);
@@ -291,7 +292,169 @@ function skeleton(p: Pixels, pose: Pose) {
   p.rect(3, 13 + l, 12 + b, 6, 1);
   p.rect(1, 14 + l, 12 + b, 1, 1);
   p.rect(1, 17 + l, 12 + b, 1, 1);
+}
+
+function skeleton(p: Pixels, pose: Pose) {
+  boneBody(p, pose);
   sword(p, pose, true);
+}
+
+// ---- Kamonchi skelet: 4 — yog'och, 5 — och yog'och/o'q, 3 — ip va pat ----
+
+/** Yelka ortidagi o'qdon (tanadan oldin chiziladi, tana uni qisman yopadi). */
+function quiver(p: Pixels, b: number) {
+  p.line(4, [6, 21 + b], [9, 10 + b], 3);
+  p.line(5, [7, 18 + b], [8, 14 + b], 1);
+  // o'qlarning patlari yelka ustidan chiqib turadi
+  p.rect(3, 7, 6 + b, 1, 3);
+  p.rect(5, 9, 5 + b, 1, 3);
+  p.rect(3, 11, 6 + b, 1, 2);
+}
+
+/**
+ * Kamon: yog'och yoy top..bottom, oldinga (kamonchi qaragan tomonga) egilgan.
+ * pull — ip tortilgan nuqta (null bo'lsa ip to'g'ri), arrow — ipda o'q bor,
+ * twang — qo'yib yuborilgan ip titrashi.
+ */
+function bow(
+  p: Pixels,
+  top: Point,
+  bottom: Point,
+  bulge: number,
+  pull: Point | null,
+  arrow: boolean,
+  twang = false,
+) {
+  const mx = (top[0] + bottom[0]) / 2,
+    my = (top[1] + bottom[1]) / 2;
+  const dx = bottom[0] - top[0],
+    dy = bottom[1] - top[1];
+  const len = Math.hypot(dx, dy) || 1;
+  // ipga perpendikulyar, x musbat tomonga (oldinga)
+  let nx = -dy / len,
+    ny = dx / len;
+  if (nx < 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  const cx = mx + nx * bulge * 2,
+    cy = my + ny * bulge * 2;
+  // ip
+  if (pull) {
+    p.line(3, top, pull, 1);
+    p.line(3, pull, bottom, 1);
+  } else if (twang) {
+    const k: Point = [Math.round(mx + nx), Math.round(my + ny)];
+    p.line(3, top, k, 1);
+    p.line(3, k, bottom, 1);
+    p.rect(3, Math.round(mx - nx * 2), Math.round(my - 3), 1, 1);
+    p.rect(3, Math.round(mx - nx * 2), Math.round(my + 3), 1, 1);
+  } else p.line(3, top, bottom, 1);
+  // yoy (kvadratik egri)
+  const steps = 8;
+  let prev: Point = top;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps,
+      u = 1 - t;
+    const pt: Point = [
+      Math.round(u * u * top[0] + 2 * u * t * cx + t * t * bottom[0]),
+      Math.round(u * u * top[1] + 2 * u * t * cy + t * t * bottom[1]),
+    ];
+    p.line(4, prev, pt, 2);
+    prev = pt;
+  }
+  p.rect(5, Math.round(mx + nx * bulge) - 1, Math.round(my + ny * bulge) - 1, 2, 3);
+  // o'q: ipdan oldinga, uchi kamondan chiqib turadi
+  if (pull && arrow) {
+    const tipX = Math.min(30, Math.round(mx + nx * (bulge + 5)));
+    const tipY = pull[1];
+    p.line(5, pull, [tipX, tipY], 1);
+    p.rect(3, tipX - 1, tipY - 1, 2, 3);
+    p.rect(3, pull[0] - 1, pull[1] - 1, 1, 1);
+    p.rect(3, pull[0] - 1, pull[1] + 1, 1, 1);
+  }
+}
+
+/** Kamon tutgan qo'l yaqinidagi pastga tushirilgan kamon (ip to'g'ri). */
+function loweredBow(p: Pixels, hand: Point) {
+  bow(p, [hand[0] + 1, hand[1] - 7], [hand[0] - 2, hand[1] + 7], 3, null, false);
+}
+
+// attack: 0 — o'qni qo'yadi, 1 — to'liq tortgan, 2 — qo'yib yubordi
+const archerShots: readonly {
+  pose: Pose;
+  top: Point;
+  bottom: Point;
+  pull: Point | null;
+  arrow: boolean;
+  twang: boolean;
+}[] = [
+  {
+    pose: {
+      bob: 0,
+      lean: 0,
+      leftFoot: [12, 27],
+      rightFoot: [20, 27],
+      hand: [24, 15],
+      tip: [24, 15],
+      otherHand: [20, 16],
+    },
+    top: [24, 7],
+    bottom: [24, 23],
+    pull: [21, 15],
+    arrow: true,
+    twang: false,
+  },
+  {
+    pose: {
+      bob: 0,
+      lean: -1,
+      leftFoot: [10, 28],
+      rightFoot: [21, 27],
+      hand: [26, 14],
+      tip: [26, 14],
+      otherHand: [15, 14],
+    },
+    top: [25, 5],
+    bottom: [25, 23],
+    pull: [16, 14],
+    arrow: true,
+    twang: false,
+  },
+  {
+    pose: {
+      bob: 1,
+      lean: 0,
+      leftFoot: [10, 28],
+      rightFoot: [21, 27],
+      hand: [26, 15],
+      tip: [26, 15],
+      otherHand: [8, 13],
+    },
+    top: [26, 7],
+    bottom: [26, 24],
+    pull: null,
+    arrow: false,
+    twang: true,
+  },
+];
+
+function archer(p: Pixels, state: AnimState, frame: number) {
+  if (state === "attack") {
+    const shot = archerShots[frame] ?? archerShots[0]!;
+    quiver(p, shot.pose.bob);
+    boneBody(p, shot.pose);
+    // tortilgan bosqichda kamon oldinga qaraydi: yoy qattiqroq egiladi
+    bow(p, shot.top, shot.bottom, frame === 1 ? 3 : 2, shot.pull, shot.arrow, shot.twang);
+    return;
+  }
+  const pose = (
+    state === "idle" || state === "walk" || state === "hurt" ? poses[state] : poses.idle
+  )[frame];
+  if (!pose) return;
+  quiver(p, pose.bob);
+  boneBody(p, pose);
+  loweredBow(p, pose.hand);
 }
 
 const axePoses: readonly { hand: Point; tip: Point }[] = [
@@ -411,7 +574,12 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       otherHand: [7, 23],
     };
     if (kind === "knight") knight(p, pose, false);
-    else if (skeletonBody) skeleton(p, pose);
+    else if (kind === "archer") {
+      quiver(p, pose.bob);
+      boneBody(p, pose);
+      // kamon qo'ldan sirg'alib tushmoqda
+      bow(p, [27, 18], [22, 29], 2, null, false);
+    } else if (skeletonBody) skeleton(p, pose);
     else demon(p, pose, 2);
     return;
   }
@@ -436,6 +604,8 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       p.line(5, [10, 14], [11, 10], 2);
       p.rect(5, 26, 25, 4, 4);
     }
+    // kamon yerga qulamoqda
+    if (kind === "archer") bow(p, [24, 17], [29, 27], 2, null, false);
     return;
   }
   p.line(2, [16, 27], [27, 27], skeletonBody ? 2 : 4);
@@ -452,6 +622,8 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
     p.line(5, [8, 24], [10, 21], 2);
     p.rect(5, 26, 27, 4, 3);
   }
+  // kamon yerda yotibdi
+  if (kind === "archer") bow(p, [18, 29], [30, 29], 1, null, false);
 }
 
 /** Slime: dome body that squashes/stretches per frame. */
@@ -588,12 +760,16 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     bat(p, state, frame);
     return p.outlined();
   }
+  if (kind === "archer" && state !== "death") {
+    archer(p, state, frame);
+    return p.outlined();
+  }
   if (state === "death") fallen(p, kind, Math.min(2, Math.max(0, frame)));
   else {
     const pose = poses[state][frame] ?? poses[state][0];
     if (pose) {
       if (kind === "knight") knight(p, pose, back);
-      else if (kind === "skeleton" || kind === "archer") skeleton(p, pose);
+      else if (kind === "skeleton") skeleton(p, pose);
       else demon(p, pose, state === "attack" ? frame : null);
     }
   }

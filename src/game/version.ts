@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.2.0";
+export const GAME_VERSION = "1.2.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.2.1",
+    date: "2026-10-26",
+    notes:
+      "Kamonchi skeletga o'z spritei: qilich o'rniga yog'och kamon va orqasida o'qdon. Otishdan oldin o'qni qo'yish, ipni tortish va qo'yib yuborish kadrlari ko'rinadi; o'lganda kamon yerga tushadi",
+  },
   {
     version: "1.2.0",
     date: "2026-10-26",

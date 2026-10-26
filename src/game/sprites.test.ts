@@ -46,6 +46,34 @@ describe("Code-drawn character frames", () => {
   });
 });
 
+describe("Kamonchi skelet sprite", () => {
+  const count = (frame: Uint8Array, color: number) => frame.filter((c) => c === color).length;
+
+  it("draws a bow instead of the skeleton's sword in every living state", () => {
+    for (const [state, n] of Object.entries(counts) as [AnimState, number][]) {
+      if (state === "death") continue;
+      for (let f = 0; f < n; f++) {
+        expect(spritePixels("archer", state, f).join(",")).not.toBe(
+          spritePixels("skeleton", state, f).join(","),
+        );
+      }
+    }
+  });
+
+  it("shows the arrow only while drawing, not after release", () => {
+    const [nock, drawn, released] = [0, 1, 2].map((f) => spritePixels("archer", "attack", f));
+    // 5 — och yog'och: o'q tayoqchasi; qo'yib yuborilganda o'q yo'q
+    expect(count(drawn!, 5)).toBeGreaterThan(count(released!, 5));
+    expect(count(nock!, 5)).toBeGreaterThan(count(released!, 5));
+  });
+
+  it("keeps the wooden bow visible while it falls in every death frame", () => {
+    for (let f = 0; f < 3; f++) {
+      expect(count(spritePixels("archer", "death", f), 4)).toBeGreaterThan(6);
+    }
+  });
+});
+
 describe("Upgrade card icons", () => {
   it("draws a 12x12 icon for every upgrade", () => {
     for (const u of UPGRADES) {
