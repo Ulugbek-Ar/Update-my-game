@@ -1,13 +1,20 @@
-import { Animator, Body, updatePhysics, isFlashing, clampToRoom } from "./animation";
+import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
 import type { Player } from "./player";
 import { renderSprite } from "./sprites";
 
 export type EnemyKind = "blob" | "wisp" | "rammer" | "archer";
 
 const SPAWN_TIME = 1;
-const ARCHER_RELOAD = 1.5;
-/** Kamonchi tortish vaqti (attack animatsiyasi) — shundan so'ng o'q uchadi */
-const ARCHER_DRAW = 0.55;
+export const ARCHER_RELOAD = 1.5;
+/** Kamonchi tortish vaqti: o'q chiqishidan oldingi to'xtash */
+export const ARCHER_DRAW = 0.55;
+/** Tortishning boshida "o'qni qo'yish" kadri (attack 0), qolgani — to'liq tortish (attack 1) */
+export const ARCHER_NOCK = 0.2;
+/** O'q chiqqach "qo'yib yuborish" kadri (attack 2) shuncha ko'rinadi */
+export const ARCHER_RELEASE = 0.2;
+/** O'q kamondan chiqadigan nuqta (sprite markaziga nisbatan, o'yinchi tomonga) */
+export const BOW_OFFSET_X = 11;
+export const BOW_OFFSET_Y = -2;
 const ARROW_SPEED = 110;
 
 export interface Arrow {
@@ -43,7 +50,10 @@ export class Enemy implements Body {
   speedMul = 1;
   /** O'yin olib ketadigan o'qlar (kamonchi) */
   shots: Arrow[] = [];
-  private facingLeft = false;
+  /** Sprite chapga aks ettiriladi (o'yinchiga qarab) */
+  facingLeft = false;
+  /** Kamonchi: qo'yib yuborish kadri qolgan vaqti */
+  private releaseTimer = 0;
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.4, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -118,18 +128,29 @@ export class Enemy implements Body {
       const sx = away ? (dx / d) * away : (-dy / d) * side * 0.5;
       const sy = away ? (dy / d) * away : (dx / d) * side * 0.5;
       this.aiTimer -= dt;
-      if (this.aiTimer <= ARCHER_DRAW) {
+      if (this.releaseTimer > 0) this.releaseTimer -= dt;
+      if (this.aiTimer <= 0) {
+        // o'q kamondan chiqadi — aynan shu kadrda "qo'yib yuborish" ko'rinadi
+        const bx = Math.max(
+          ROOM.wall + 1,
+          Math.min(ROOM.w - ROOM.wall - 1, this.x + (this.facingLeft ? -1 : 1) * BOW_OFFSET_X),
+        );
+        const by = this.y + BOW_OFFSET_Y;
+        const ad = Math.hypot(p.x - bx, p.y - by) || 1;
+        this.shots.push({
+          x: bx,
+          y: by,
+          vx: ((p.x - bx) / ad) * ARROW_SPEED,
+          vy: ((p.y - by) / ad) * ARROW_SPEED,
+        });
+        this.aiTimer += ARCHER_RELOAD;
+        this.releaseTimer = ARCHER_RELEASE;
+        this.showAttackFrame(2);
+      } else if (this.releaseTimer > 0) {
+        this.showAttackFrame(2);
+      } else if (this.aiTimer <= ARCHER_DRAW) {
         // tortish paytida joyida turadi — o'yinchi uchun ogohlantirish
-        this.anim.set("attack");
-        if (this.aiTimer <= 0) {
-          this.shots.push({
-            x: this.x,
-            y: this.y - 2,
-            vx: (dx / d) * ARROW_SPEED,
-            vy: (dy / d) * ARROW_SPEED,
-          });
-          this.aiTimer = ARCHER_RELOAD;
-        }
+        this.showAttackFrame(this.aiTimer > ARCHER_DRAW - ARCHER_NOCK ? 0 : 1);
       } else {
         this.x += sx * 40 * m * dt;
         this.y += sy * 40 * m * dt;
@@ -156,6 +177,13 @@ export class Enemy implements Body {
       }
     }
     clampToRoom(this);
+  }
+
+  /** Kamonchi kadri Animator taymeri emas, otish vaqti bilan boshqariladi. */
+  private showAttackFrame(frame: number) {
+    this.anim.set("attack");
+    this.anim.frame = frame;
+    this.anim.t = 0;
   }
 
   render(ctx: CanvasRenderingContext2D) {
