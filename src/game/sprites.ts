@@ -118,8 +118,8 @@ const poses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]> = {
 const palettes: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
-  // Kamonchi: o'sha skelet chizmasi, moxli-yashil palitra
-  archer: ["#0e1410", "#4e6b45", "#cfd8b0", "#6b4226", "#a8743a"],
+  // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
+  archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
   demon: ["#170b11", "#681e2b", "#b23238", "#f4cb45", "#a7a3a0"],
   slime: ["#0b1a10", "#2c7a3c", "#5bc85b", "#a6f08e", "#f2fbe4"],
   bat: ["#120a1a", "#4a2470", "#8a4fc0", "#c99ae8", "#ffe14d"],
@@ -299,16 +299,23 @@ function skeleton(p: Pixels, pose: Pose) {
   sword(p, pose, true);
 }
 
-// ---- Kamonchi skelet: 4 — yog'och, 5 — och yog'och/o'q, 3 — ip va pat ----
+// ---- Kamonchi skelet: 2 — qora suyak/o'q, 3 — yaltiroq, ip va pat, 4 — yog'och, 5 — qizil (ko'z, o'q uchi) ----
 
 /** Yelka ortidagi o'qdon (tanadan oldin chiziladi, tana uni qisman yopadi). */
 function quiver(p: Pixels, b: number) {
   p.line(4, [6, 21 + b], [9, 10 + b], 3);
-  p.line(5, [7, 18 + b], [8, 14 + b], 1);
+  p.line(3, [7, 18 + b], [8, 14 + b], 1);
   // o'qlarning patlari yelka ustidan chiqib turadi
   p.rect(3, 7, 6 + b, 1, 3);
-  p.rect(5, 9, 5 + b, 1, 3);
+  p.rect(3, 9, 5 + b, 1, 3);
   p.rect(3, 11, 6 + b, 1, 2);
+}
+
+/** Ko'z teshiklari yorqin qizil (oddiy skeletda qora). */
+function redEyes(p: Pixels, pose: Pose) {
+  const { bob: b, lean: l } = pose;
+  p.rect(5, 12 + l, 8 + b, 3, 3);
+  p.rect(5, 17 + l, 8 + b, 3, 3);
 }
 
 /**
@@ -363,13 +370,14 @@ function bow(
     p.line(4, prev, pt, 2);
     prev = pt;
   }
-  p.rect(5, Math.round(mx + nx * bulge) - 1, Math.round(my + ny * bulge) - 1, 2, 3);
+  p.rect(3, Math.round(mx + nx * bulge) - 1, Math.round(my + ny * bulge) - 1, 2, 3);
   // o'q: ipdan oldinga, uchi kamondan chiqib turadi
   if (pull && arrow) {
     const tipX = Math.min(30, Math.round(mx + nx * (bulge + 5)));
     const tipY = pull[1];
-    p.line(5, pull, [tipX, tipY], 1);
-    p.rect(3, tipX - 1, tipY - 1, 2, 3);
+    // qora o'q, qizil uchi
+    p.line(2, pull, [tipX, tipY], 1);
+    p.rect(5, tipX - 1, tipY - 1, 2, 3);
     p.rect(3, pull[0] - 1, pull[1] - 1, 1, 1);
     p.rect(3, pull[0] - 1, pull[1] + 1, 1, 1);
   }
@@ -444,6 +452,7 @@ function archer(p: Pixels, state: AnimState, frame: number) {
     const shot = archerShots[frame] ?? archerShots[0]!;
     quiver(p, shot.pose.bob);
     boneBody(p, shot.pose);
+    redEyes(p, shot.pose);
     // tortilgan bosqichda kamon oldinga qaraydi: yoy qattiqroq egiladi
     bow(p, shot.top, shot.bottom, frame === 1 ? 3 : 2, shot.pull, shot.arrow, shot.twang);
     return;
@@ -454,6 +463,7 @@ function archer(p: Pixels, state: AnimState, frame: number) {
   if (!pose) return;
   quiver(p, pose.bob);
   boneBody(p, pose);
+  redEyes(p, pose);
   loweredBow(p, pose.hand);
 }
 
@@ -577,6 +587,7 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
     else if (kind === "archer") {
       quiver(p, pose.bob);
       boneBody(p, pose);
+      redEyes(p, pose);
       // kamon qo'ldan sirg'alib tushmoqda
       bow(p, [27, 18], [22, 29], 2, null, false);
     } else if (skeletonBody) skeleton(p, pose);
@@ -604,8 +615,11 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       p.line(5, [10, 14], [11, 10], 2);
       p.rect(5, 26, 25, 4, 4);
     }
-    // kamon yerga qulamoqda
-    if (kind === "archer") bow(p, [24, 17], [29, 27], 2, null, false);
+    if (kind === "archer") {
+      // ko'z so'nmoqda (oxirgi kadrda o'chadi), kamon yerga qulamoqda
+      p.rect(5, 7, 15, 1, 1);
+      bow(p, [24, 17], [29, 27], 2, null, false);
+    }
     return;
   }
   p.line(2, [16, 27], [27, 27], skeletonBody ? 2 : 4);

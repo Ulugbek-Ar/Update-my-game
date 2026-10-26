@@ -47,7 +47,7 @@ const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
   wisp: "#8a4fc0",
   rammer: "#d6d9cf",
-  archer: "#cfd8b0",
+  archer: "#8a88a3",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -567,7 +567,7 @@ export class Game {
       const before = this.shots.length;
       this.shots = this.shots.filter((s) => {
         if (!overlap(box, s as unknown as Body)) return true;
-        this.fx.burst(s.x, s.y, s.arrow ? "#cfd8b0" : "#ff9a3c", 6, 50);
+        this.fx.burst(s.x, s.y, s.arrow ? "#ff3b3b" : "#ff9a3c", 6, 50);
         return false;
       });
       if (this.shots.length < before) this.score += 5 * (before - this.shots.length);
@@ -859,14 +859,14 @@ export class Game {
     this.renderSlash(c);
     for (const s of this.shots) {
       if (s.arrow) {
-        // o'q: yog'och tayoq, temir uchi va pat
+        // qora suyak o'qi: qora tayoq, qizil uchi, kulrang pat
         const l = Math.hypot(s.vx, s.vy) || 1;
         const ux = s.vx / l,
           uy = s.vy / l;
-        for (let k = -4; k <= 1; k++) px(c, "#a8743a", s.x + ux * k, s.y + uy * k, 1, 1);
-        px(c, "#e6e6e6", s.x + ux * 2 - 0.5, s.y + uy * 2 - 0.5, 2, 2);
-        px(c, "#cfd8b0", s.x - ux * 5 - uy, s.y - uy * 5 + ux, 1, 1);
-        px(c, "#cfd8b0", s.x - ux * 5 + uy, s.y - uy * 5 - ux, 1, 1);
+        for (let k = -4; k <= 1; k++) px(c, "#0b0a10", s.x + ux * k, s.y + uy * k, 1, 1);
+        px(c, "#ff3b3b", s.x + ux * 2 - 0.5, s.y + uy * 2 - 0.5, 2, 2);
+        px(c, "#8a88a3", s.x - ux * 5 - uy, s.y - uy * 5 + ux, 1, 1);
+        px(c, "#8a88a3", s.x - ux * 5 + uy, s.y - uy * 5 - ux, 1, 1);
         continue;
       }
       c.fillStyle = "rgba(255,120,40,0.35)";

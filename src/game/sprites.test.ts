@@ -62,9 +62,27 @@ describe("Kamonchi skelet sprite", () => {
 
   it("shows the arrow only while drawing, not after release", () => {
     const [nock, drawn, released] = [0, 1, 2].map((f) => spritePixels("archer", "attack", f));
-    // 5 — och yog'och: o'q tayoqchasi; qo'yib yuborilganda o'q yo'q
+    // 5 — qizil: ko'zlar (hamma kadrda bir xil) + o'q uchi; qo'yib yuborilganda o'q yo'q
     expect(count(drawn!, 5)).toBeGreaterThan(count(released!, 5));
     expect(count(nock!, 5)).toBeGreaterThan(count(released!, 5));
+  });
+
+  it("has red eye sockets while the plain skeleton keeps black ones", () => {
+    // idle 0 pozasida bosh suyagi siljimagan: ko'z teshiklari (12..14, 8..10) va (17..19, 8..10)
+    const archer = spritePixels("archer", "idle", 0);
+    const skeleton = spritePixels("skeleton", "idle", 0);
+    for (const ex of [12, 17])
+      for (let y = 8; y < 11; y++)
+        for (let x = ex; x < ex + 3; x++) {
+          expect(archer[y * 32 + x]).toBe(5);
+          expect(skeleton[y * 32 + x]).toBe(1);
+        }
+  });
+
+  it("uses a red arrowhead on the drawn arrow", () => {
+    const eyes = 18;
+    expect(count(spritePixels("archer", "attack", 1), 5)).toBeGreaterThan(eyes);
+    expect(count(spritePixels("archer", "attack", 2), 5)).toBe(eyes);
   });
 
   it("keeps the wooden bow visible while it falls in every death frame", () => {
