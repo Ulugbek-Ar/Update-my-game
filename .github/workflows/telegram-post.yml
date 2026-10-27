@@ -5,6 +5,14 @@ on:
     branches: [main]
     paths: [src/game/version.ts]
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Faqat skrinshot (kanalga yubormaslik)"
+        type: boolean
+        default: false
+      wave:
+        description: "Skrinshot to'lqini (0 = 1-to'lqin, 5 = Boss). Bo'sh = tasodifiy"
+        required: false
 
 jobs:
   post:
@@ -37,9 +45,19 @@ jobs:
           exit 1
 
       - name: Skrinshot
+        env:
+          SHOT_WAVE: ${{ inputs.wave }}
         run: PW_DIR="$RUNNER_TEMP/pw" node scripts/screenshot.mjs
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skrinshotlar
+          path: |
+            menu.png
+            play.png
+
       - name: Kanalga yuborish
+        if: ${{ !inputs.test }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
