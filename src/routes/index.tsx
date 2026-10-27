@@ -4,12 +4,14 @@ import { Game } from "@/game/game";
 import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
 import { Button } from "@/components/ui/button";
 import { getCombatTip } from "@/lib/coach.functions";
-import { GAME_VERSION, CHANGELOG } from "@/game/version";
+import { GAME_VERSION, CHANGELOG, SEEN_VERSION_KEY } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
 import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
 import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
+import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
+import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,14 +47,27 @@ function Index() {
   const [touch, setTouch] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const [hero, setHero] = useState<Hero>("knight");
+  const [daily, setDaily] = useState<DailyResult | null>(null);
+  const [achOpen, setAchOpen] = useState(false);
+  const [achCount, setAchCount] = useState(0);
+  const [newsOpen, setNewsOpen] = useState(false);
+  /** Kunlik sinov sanasi (oddiy o'yinda null) */
+  const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
   startedRef.current = started;
   useEffect(() => {
     setReady(true);
     setMuted(sfx.loadMute());
     setHero(loadHero());
+    setDaily(loadDaily());
+    setAchCount(loadAchievements().size);
     try {
       setGold(loadGold());
+      // yangi versiyaga birinchi kirishda — oxirgi yangiliklar bir marta
+      if (localStorage.getItem(SEEN_VERSION_KEY) !== GAME_VERSION) {
+        localStorage.setItem(SEEN_VERSION_KEY, GAME_VERSION);
+        setNewsOpen(true);
+      }
     } catch {
       /* saqlash imkonsiz */
     }
@@ -95,12 +110,18 @@ function Index() {
 
   useEffect(() => {
     if (!started || !canvasRef.current) return;
-    const g = new Game(canvasRef.current, hero);
+    const g = new Game(
+      canvasRef.current,
+      hero,
+      dailyRef.current ? { daily: dailyRef.current } : {},
+    );
     g.touch = touch;
     g.onExit = () => {
       setBest(g.best);
       setEndlessBest(g.endlessBest);
       setGold(loadGold());
+      setDaily(loadDaily());
+      setAchCount(loadAchievements().size);
       setGame(null);
       setStarted(false);
     };
@@ -190,6 +211,7 @@ function Index() {
             <Button
               onClick={() => {
                 sfx.unlock();
+                dailyRef.current = null;
                 setStarted(true);
               }}
               disabled={!ready}
@@ -197,34 +219,63 @@ function Index() {
             >
               {ready ? "BOSHLASH" : "YUKLANMOQDA..."}
             </Button>
-            <Button
-              onClick={() => setShopOpen(true)}
-              disabled={!ready}
-              className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5"
-            >
-              DO'KON
-            </Button>
-            <Button
-              variant="link"
-              onClick={() => setSettingsOpen(true)}
-              className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
-            >
-              SOZLAMALAR
-            </Button>
-            <Button
-              variant="link"
-              onClick={() => setChangelogOpen(true)}
-              className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
-            >
-              Yangilanishlar
-            </Button>
-            <Button
-              variant="link"
-              onClick={() => setCoachOpen(true)}
-              className="text-[9px] sm:text-[10px] text-muted-foreground"
-            >
-              Jang maslahatchisi (AI)
-            </Button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button
+                onClick={() => setShopOpen(true)}
+                disabled={!ready}
+                className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5"
+              >
+                DO'KON
+              </Button>
+              <Button
+                onClick={() => {
+                  sfx.unlock();
+                  dailyRef.current = todayKey();
+                  setStarted(true);
+                }}
+                disabled={!ready || !!daily}
+                title={daily ? "Bugungi urinish ishlatilgan — ertaga yangi sinov" : undefined}
+                className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5 disabled:border-border disabled:text-muted-foreground disabled:opacity-100"
+              >
+                {daily ? `KUNLIK: ${daily.score}` : "KUNLIK SINOV"}
+              </Button>
+            </div>
+            {daily && (
+              <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
+                Bugungi sinov: {daily.score} ochko ·{" "}
+                {daily.won ? "yutildi" : `${daily.wave}-to'lqin`} · ertaga yana
+              </p>
+            )}
+            <div className="flex flex-wrap justify-center gap-x-4">
+              <Button
+                variant="link"
+                onClick={() => setSettingsOpen(true)}
+                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+              >
+                SOZLAMALAR
+              </Button>
+              <Button
+                variant="link"
+                onClick={() => setAchOpen(true)}
+                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+              >
+                YUTUQLAR {achCount}/{ACHIEVEMENTS.length}
+              </Button>
+              <Button
+                variant="link"
+                onClick={() => setChangelogOpen(true)}
+                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+              >
+                Yangilanishlar
+              </Button>
+              <Button
+                variant="link"
+                onClick={() => setCoachOpen(true)}
+                className="text-[9px] sm:text-[10px] text-muted-foreground"
+              >
+                Jang maslahatchisi (AI)
+              </Button>
+            </div>
             <button
               onClick={() => {
                 sfx.unlock();
@@ -267,6 +318,8 @@ function Index() {
         </div>
       </div>
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
+      {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
+      {newsOpen && !started && <NewsWindow onClose={() => setNewsOpen(false)} />}
       {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
       {shopOpen && (
         <ShopWindow
@@ -563,6 +616,91 @@ function SettingsWindow({ onClose }: { onClose: () => void }) {
           className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
         >
           YOPISH
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AchievementsWindow({ onClose }: { onClose: () => void }) {
+  const [got] = useState(loadAchievements);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Yutuqlar"
+        className="flex w-[min(94vw,520px)] max-h-[90dvh] flex-col gap-3 overflow-y-auto border-4 border-border bg-card p-4 text-[9px] sm:text-[10px] leading-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-primary text-xs sm:text-sm">
+          YUTUQLAR {got.size}/{ACHIEVEMENTS.length}
+        </h2>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {ACHIEVEMENTS.map((a) => {
+            const on = got.has(a.id);
+            return (
+              <li
+                key={a.id}
+                className={`flex items-center gap-2 border-2 p-2 ${on ? "border-primary" : "border-border opacity-60"}`}
+              >
+                <PixelIcon id="trophy" color={on ? "#ffcc33" : "#5c4a6e"} size={24} />
+                <span className="flex flex-col gap-1">
+                  <span className={on ? "text-primary" : "text-foreground"}>{a.name}</span>
+                  <span className="text-muted-foreground">{a.desc}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <button
+          onClick={onClose}
+          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+        >
+          YOPISH
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Yangi versiyaga birinchi kirishda: CHANGELOG'dagi oxirgi yozuv, har gap alohida qatorda. */
+function NewsWindow({ onClose }: { onClose: () => void }) {
+  const entry = CHANGELOG[0];
+  if (!entry) return null;
+  const lines = entry.notes
+    .split(/(?<=\.)\s+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Yangiliklar"
+        className="flex w-[min(92vw,480px)] max-h-[85dvh] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-4 text-[10px] sm:text-xs leading-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-primary">YANGILIKLAR · v{entry.version}</h2>
+        <ul className="flex flex-col gap-2 text-foreground">
+          {lines.map((l) => (
+            <li key={l} className="flex gap-2">
+              <span className="text-primary">▸</span>
+              <span>{l}</span>
+            </li>
+          ))}
+        </ul>
+        <button
+          onClick={onClose}
+          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+        >
+          O'YNASH
         </button>
       </div>
     </div>

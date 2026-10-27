@@ -1,5 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.5.1";
+/** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
+export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
+export const GAME_VERSION = "1.6.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.6.0",
+    date: "2026-10-27",
+    notes:
+      "Yutuqlar: 10 ta yutuq, masalan Benuqson to'lqin, Iblisni yeng, 50 kombo va Sehrgar bilan yut. Yutuq ochilganda o'yin ichida xabar chiqadi, bosh menyuda YUTUQLAR ro'yxati bor. Kunlik sinov: har kuni hamma uchun bir xil to'lqinlar va kuch kartalari. Kunlik sinovga kuniga bitta urinish beriladi va natijasi menyuda ko'rinadi. Yangi versiyaga birinchi kirishda Yangiliklar oynasi chiqadi.",
+  },
   {
     version: "1.5.1",
     date: "2026-10-27",
