@@ -1260,6 +1260,21 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "...XXXXXX...",
     "............",
   ],
+  // Yutuq kubogi
+  trophy: [
+    "............",
+    ".XXXXXXXXXX.",
+    "XXoXXXXXXXXX",
+    "X.XoXXXXXX.X",
+    "X.XoXXXXXX.X",
+    ".XXXXXXXXXX.",
+    "..XXXXXXXX..",
+    "....XXXX....",
+    ".....XX.....",
+    "....XXXX....",
+    "...dddddd...",
+    "...dddddd...",
+  ],
   // Oltin tanga
   coin: [
     "....XXXX....",

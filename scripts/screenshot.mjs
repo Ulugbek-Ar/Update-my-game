@@ -46,7 +46,12 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
     ...(video ? { recordVideo: { dir: `${OUT}/raw`, size: { width: 1280, height: 720 } } } : {}),
   });
   const born = Date.now();
-  const storage = Object.assign({}, ...scene.steps.filter((s) => s.storage).map((s) => s.storage));
+  // "Yangiliklar" oynasi sahnani to'smasin (sahna o'zi storage bilan ochishi mumkin)
+  const gameVersion = versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
+  const storage = Object.assign(
+    { "pixel-rpg-seen-version": gameVersion },
+    ...scene.steps.filter((s) => s.storage).map((s) => s.storage),
+  );
   await ctx.addInitScript((s) => {
     for (const [k, v] of Object.entries(s))
       localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));

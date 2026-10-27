@@ -22,6 +22,8 @@ import {
 } from "./waves";
 import { CHARGE_TIME, SPIN_CD, SPIN_TIME, type Bolt } from "./player";
 import { bestKeys, loadHero, type Hero } from "./hero";
+import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
+import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
@@ -172,6 +174,13 @@ export class Game {
   time = 0;
   /** Sozlamalar: ekran silkinishi */
   shakeOn = true;
+  /** Kunlik sinov sanasi (oddiy o'yinda null): seed shu sanadan */
+  daily: string | null = null;
+  /** Yangi ochilgan yutuqlar xabari */
+  toasts: { a: Achievement; timer: number }[] = [];
+  /** Dushman joylari va kuch kartalari uchun tasodif (kunlik sinovda seed bilan) */
+  private spawnRand: () => number = Math.random;
+  private cardRand: () => number = Math.random;
   /** Birinchi o'yinda 1-to'lqindagi hali bajarilmagan harakat ko'rsatmalari */
   hints: Hint[] = [];
   private freeze = 0;
@@ -185,7 +194,9 @@ export class Game {
   constructor(
     canvas: HTMLCanvasElement,
     public hero: Hero = loadHero(),
+    opts: { daily?: string } = {},
   ) {
+    this.daily = opts.daily ?? null;
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
@@ -223,12 +234,43 @@ export class Game {
     this.phase = "play";
     this.endless = false;
     this.input.clearQueued();
+    if (this.daily) {
+      // kunlik sinov: har safar bir xil seed — bir xil to'lqinlar va kartalar
+      const r = dailyRandoms(this.daily);
+      this.spawnRand = r.spawn;
+      this.cardRand = r.cards;
+      this.hints = [];
+      // urinish boshlanishi bilan sarflanadi (chiqib ketib qayta boshlab bo'lmaydi)
+      this.saveDailyResult(false);
+    }
     this.startWave(0);
+  }
+
+  /** Kunlik sinov natijasi: shu kunning yagona urinishi. */
+  private saveDailyResult(won: boolean) {
+    if (!this.daily) return;
+    saveDaily({
+      date: this.daily,
+      hero: this.hero,
+      score: this.score,
+      wave: Math.min(this.wave + 1, TOTAL_WAVES),
+      won,
+    });
+  }
+
+  /** Yutuqni ochadi va yangi bo'lsa o'yin ichida xabar chiqaradi. */
+  private achieve(id: AchievementId) {
+    const a = unlockAchievement(id);
+    if (!a) return;
+    this.toasts.push({ a, timer: 3 });
+    sfx.upgrade();
   }
 
   private startWave(i: number) {
     this.wave = i;
     this.stage = "fight";
+    if (endlessNumber(i) >= 10) this.achieve("endless10");
+    if (this.daily && i >= 2) this.achieve("daily");
     this.waveHurt = false;
     this.boss = null;
     this.player.charge = 0;
@@ -243,11 +285,13 @@ export class Game {
         : {
             title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
             sub:
-              i === 0 && !this.hints.length
-                ? this.player.mage
-                  ? "Shift — teleport"
-                  : "Shift — dash"
-                : "",
+              i === 0 && this.daily
+                ? `KUNLIK SINOV · ${this.daily}`
+                : i === 0 && !this.hints.length
+                  ? this.player.mage
+                    ? "Shift — teleport"
+                    : "Shift — dash"
+                  : "",
             timer: 1.6,
           };
     waveEnemies(i).forEach((kind, n) => {
@@ -289,8 +333,8 @@ export class Game {
     let best: [number, number] = [m, m];
     let bestD = -1;
     for (let k = 0; k < 20; k++) {
-      const x = m + Math.random() * (ROOM.w - m * 2);
-      const y = m + Math.random() * (ROOM.h - m * 2);
+      const x = m + this.spawnRand() * (ROOM.w - m * 2);
+      const y = m + this.spawnRand() * (ROOM.h - m * 2);
       const d = Math.hypot(x - this.player.x, y - this.player.y);
       if (d > 90) return [x, y];
       if (d > bestD) {
@@ -316,6 +360,7 @@ export class Game {
 
   /** O'yinni to'xtatib, React bosh menyusiga qaytish. */
   exitToMenu() {
+    if (this.daily && this.phase === "play") this.saveDailyResult(false);
     this.bankGold();
     this.setPaused(false);
     this.onExit?.();
@@ -360,12 +405,14 @@ export class Game {
       x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
     if (this.paused) {
       if (hit(this.resumeBtn)) this.setPaused(false);
-      else if (hit(this.restartBtn)) this.restart();
+      else if (hit(this.restartBtn) && !this.daily) this.restart();
       else if (hit(this.menuBtn)) this.exitToMenu();
       return;
     }
     if (this.phase === "victory") {
-      if (hit(this.endlessBtn)) this.startEndless();
+      if (this.daily) {
+        if (hit(this.endlessBtn)) this.exitToMenu();
+      } else if (hit(this.endlessBtn)) this.startEndless();
       else if (hit(this.newRunBtn)) this.newRun();
       return;
     }
@@ -432,6 +479,7 @@ export class Game {
 
   private pickCoin(c: Coin) {
     this.runGold += c.value;
+    if (this.runGold >= 50) this.achieve("rich");
     this.fx.text(c.x, c.y - 8, `+${c.value}`, "#ffcc33");
   }
 
@@ -443,6 +491,8 @@ export class Game {
   }
 
   private commitBest() {
+    // kunlik sinov oddiy rekordlarga kirmaydi
+    if (this.daily) return;
     if (this.endless) {
       if (this.score > this.endlessBest) {
         this.endlessBest = this.score;
@@ -502,6 +552,9 @@ export class Game {
 
   private onKill(e: Enemy) {
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
+    this.achieve("first");
+    if (this.combo >= 10) this.achieve("combo10");
+    if (this.combo >= 50) this.achieve("combo50");
     this.comboTimer = COMBO_TIME;
     const mult = Math.min(5, 1 + Math.floor((this.combo - 1) / 2));
     const pts = KILL_POINTS[e.kind] * mult;
@@ -572,6 +625,7 @@ export class Game {
     if (t instanceof Enemy) this.onKill(t);
     else {
       this.score += BOSS_POINTS;
+      this.achieve("boss");
       this.fx.text(t.x, t.y - 24, `+${BOSS_POINTS}`, "#ffcc33");
       this.fx.burst(t.x, t.y, "#f4cb45", 40, 120, 3);
       this.fx.addShake(0.6);
@@ -592,16 +646,25 @@ export class Game {
   update(dt: number) {
     this.time += dt;
     this.fx.update(dt);
+    if (this.toasts.length) {
+      this.toasts[0]!.timer -= dt;
+      if (this.toasts[0]!.timer <= 0) this.toasts.shift();
+    }
     if (this.phase === "attempt") {
       this.msgTimer -= dt;
       if (this.msgTimer <= 0) {
-        if (this.endless) this.newRun();
+        if (this.daily) this.exitToMenu();
+        else if (this.endless) this.newRun();
         else this.reset();
       }
       return;
     }
     if (this.phase === "victory") {
       this.boss?.update(dt, this.player);
+      if (this.daily) {
+        if (this.input.consumeEnter()) this.exitToMenu();
+        return;
+      }
       if (this.input.consumeEnter()) this.startEndless();
       else if (this.input.consumeKey("KeyR")) this.newRun();
       return;
@@ -780,8 +843,9 @@ export class Game {
       if (p.anim.done) {
         this.commitBest();
         this.bankGold();
-        // cheksiz rejimda o'yin allaqachon yutilgan — urinish oshmaydi
-        if (!this.endless) {
+        this.saveDailyResult(false);
+        // cheksiz rejimda o'yin allaqachon yutilgan, kunlik sinov alohida — urinish oshmaydi
+        if (!this.endless && !this.daily) {
           this.attempt++;
           save(STORAGE_KEY, this.attempt);
         }
@@ -801,6 +865,8 @@ export class Game {
             this.commitBest();
             this.collectCoins();
             this.bankGold();
+            this.saveDailyResult(true);
+            this.achieve(this.hero === "mage" ? "winMage" : "winKnight");
             this.phase = "victory";
             sfx.stopMusic();
             sfx.victory();
@@ -819,13 +885,14 @@ export class Game {
     let bonus = 50 * (this.wave + 1);
     if (!this.waveHurt) {
       bonus += 100;
+      this.achieve("clean");
       this.fx.text(ROOM.w / 2, 60, "BENUQSON! +100", "#a6f08e");
     }
     this.score += bonus;
     this.shots = [];
     this.bolts = [];
     this.collectCoins();
-    this.choices = pickUpgrades(this.player);
+    this.choices = pickUpgrades(this.player, 3, this.cardRand);
     this.choiceIndex = 0;
     this.upgradeLock = 0.6;
     this.input.clearQueued();
@@ -1120,6 +1187,7 @@ export class Game {
 
     this.renderHud();
     this.renderOverlays();
+    this.renderToast();
     c.restore();
   }
 
@@ -1206,7 +1274,14 @@ export class Game {
     );
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
-    this.text(`URINISH ${this.attempt}`, 4, ROOM.h - 5, 5, "rgba(224,214,238,0.7)", "left");
+    this.text(
+      this.daily ? `KUNLIK ${this.daily}` : `URINISH ${this.attempt}`,
+      4,
+      ROOM.h - 5,
+      5,
+      "rgba(224,214,238,0.7)",
+      "left",
+    );
     // terilgan oltin — o'ng pastki burchakda (yakun ekranlarida alohida ko'rsatiladi)
     if (this.phase === "play") {
       this.coin(c, ROOM.w - 10, ROOM.h - 11);
@@ -1233,7 +1308,8 @@ export class Game {
 
     if (this.hintsVisible()) this.renderHints();
 
-    if (this.banner.timer > 0 && this.phase === "play" && this.stage === "fight") {
+    // pauzada banner pauza oynasi ustidan ko'rinmasin
+    if (this.banner.timer > 0 && this.phase === "play" && this.stage === "fight" && !this.paused) {
       const a = Math.min(1, this.banner.timer * 2);
       c.globalAlpha = a;
       px(c, "rgba(0,0,0,0.55)", 0, 92, ROOM.w, this.banner.sub ? 40 : 28);
@@ -1325,8 +1401,9 @@ export class Game {
       );
       for (const [b, label] of [
         [this.resumeBtn, this.touch ? "Davom etish" : "Davom etish: Esc"],
-        [this.restartBtn, "Qaytadan boshlash"],
-        [this.menuBtn, "Bosh menyuga qaytish"],
+        // kunlik sinovda qayta boshlash yo'q — bitta urinish
+        ...(this.daily ? [] : ([[this.restartBtn, "Qaytadan boshlash"]] as const)),
+        [this.menuBtn, this.daily ? "Menyuga (urinish tugaydi)" : "Bosh menyuga qaytish"],
       ] as const) {
         px(c, "#ffcc33", b.x, b.y, b.w, b.h);
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
@@ -1350,16 +1427,22 @@ export class Game {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
       this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30, 10, "#ff4d6d");
       this.text(
-        this.endless ? `CHEKSIZ: ${endlessNumber(this.wave)}-TO'LQIN` : `Urinish №${this.attempt}`,
+        this.daily
+          ? "KUNLIK SINOV TUGADI"
+          : this.endless
+            ? `CHEKSIZ: ${endlessNumber(this.wave)}-TO'LQIN`
+            : `Urinish №${this.attempt}`,
         ROOM.w / 2,
         ROOM.h / 2,
-        this.endless ? 10 : 14,
+        this.endless || this.daily ? 10 : 14,
         "#ffcc33",
       );
       this.text(
-        this.endless
-          ? `Ochko: ${this.score}   Cheksiz rekord: ${this.endlessBest}`
-          : `Ochko: ${this.score}   Rekord: ${this.best}`,
+        this.daily
+          ? `Ochko: ${this.score}   ${this.wave + 1}-to'lqin · ertaga yana`
+          : this.endless
+            ? `Ochko: ${this.score}   Cheksiz rekord: ${this.endlessBest}`
+            : `Ochko: ${this.score}   Rekord: ${this.best}`,
         ROOM.w / 2,
         ROOM.h / 2 + 22,
         6,
@@ -1371,19 +1454,27 @@ export class Game {
     if (this.phase === "victory") {
       px(c, "rgba(10,5,20,0.8)", 0, 0, ROOM.w, ROOM.h);
       this.text("G'ALABA!", ROOM.w / 2, 80, 20, "#ffcc33");
-      this.text(`${this.attempt}-urinishda yutdingiz`, ROOM.w / 2, 112, 8, "#ffffff");
+      this.text(
+        this.daily ? "Kunlik sinovni yutdingiz" : `${this.attempt}-urinishda yutdingiz`,
+        ROOM.w / 2,
+        112,
+        8,
+        "#ffffff",
+      );
       this.text(`Ochko: ${this.score}`, ROOM.w / 2, 134, 8, "#ffcc33");
       this.text(
-        this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`,
+        this.daily ? "Ertaga yangi sinov" : this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`,
         ROOM.w / 2,
         150,
         6,
         this.newBest ? "#a6f08e" : "#b8a8cc",
       );
-      for (const [b, label] of [
-        [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
-        [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
-      ] as const) {
+      for (const [b, label] of this.daily
+        ? ([[this.endlessBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Enter"]] as const)
+        : ([
+            [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
+            [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
+          ] as const)) {
         px(c, "#ffcc33", b.x, b.y, b.w, b.h);
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
@@ -1391,6 +1482,24 @@ export class Game {
       this.renderGoldResult(218);
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
+  }
+
+  /** Yutuq ochildi: yuqorida navbat bilan bitta xabar. */
+  private renderToast() {
+    const t = this.toasts[0];
+    if (!t) return;
+    const c = this.ctx;
+    const a = Math.min(1, t.timer * 3, (3 - t.timer) * 6);
+    c.globalAlpha = Math.max(0, a);
+    const w = 184,
+      x = (ROOM.w - w) / 2,
+      y = 26;
+    px(c, "#ffcc33", x, y, w, 26);
+    px(c, "#2a1f38", x + 1, y + 1, w - 2, 24);
+    renderUpgradeIcon(c, "trophy", "#ffcc33", x + 6, y + 5, 16);
+    this.text("YUTUQ OCHILDI!", x + 28, y + 11, 5, "#ffcc33", "left");
+    this.text(t.a.name, x + 28, y + 21, 6, "#e0d6ee", "left");
+    c.globalAlpha = 1;
   }
 
   /** Yakun ekrani: "+N OLTIN (jami M)". */

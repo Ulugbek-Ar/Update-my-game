@@ -1,0 +1,90 @@
+[
+  {
+    "title": "Yangiliklar oynasi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-seen-version": "1.5.1"
+        }
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Yutuq ochilganda o'yin ichida xabar",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "dx": 60,
+          "count": 2
+        }
+      },
+      {
+        "eval": "localStorage.removeItem('pixel-rpg-achievements'); g.toasts = []; g.damageTarget(g.enemies[0], 99);"
+      },
+      {
+        "wait": 700
+      }
+    ]
+  },
+  {
+    "title": "Bosh menyuda YUTUQLAR ro'yxati",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-achievements": "[\"first\",\"clean\",\"combo10\",\"boss\",\"winKnight\",\"rich\"]"
+        }
+      },
+      {
+        "click": "YUTUQLAR 6/10"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Kunlik sinov",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "click": "KUNLIK SINOV"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Kunlik sinov natijasi menyuda",
+    "target": "screen",
+    "steps": [
+      {
+        "eval": "const p = (n) => String(n).padStart(2, '0'); const d = new Date(); localStorage.setItem('pixel-rpg-daily', JSON.stringify({ date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, hero: 'mage', score: 1240, wave: 4, won: false })); location.reload();"
+      },
+      {
+        "wait": 3000
+      }
+    ]
+  }
+]
