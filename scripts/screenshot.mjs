@@ -52,8 +52,16 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
     await page.keyboard.up(key);
   };
 
+  let focus = null;
   try {
     for (const step of scene.steps) {
+      if (step.spawn) {
+        const px = step.spawn.px ?? 120;
+        const py = step.spawn.py ?? 120;
+        const n = (step.spawn.count ?? 1) - 1;
+        focus = { x: px + ((step.spawn.dx ?? 110) + n * 24) / 2, y: py + ((step.spawn.dy ?? 0) + n * 18) / 2,
+                  w: Math.max(160, Math.abs(step.spawn.dx ?? 110) + n * 24 + 90) };
+      }
       if (step.click) await page.getByRole("button", { name: step.click, exact: true }).first().click();
       if (step.start) {
         await page.getByRole("button", { name: "BOSHLASH" }).click();
@@ -77,6 +85,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
           g.boss = null;
           g.coins = [];
           g.shots = [];
+          g.hints = [];
+          g.banner.timer = 0;
           p.takeHit = () => false;
           p.x = sp.px ?? 120;
           p.y = sp.py ?? 120;
@@ -112,10 +122,21 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       await page.close();
       await ctx.close();
       const even = (n) => Math.floor(n / 2) * 2;
+      let crop = { x: box.x, y: box.y, w: box.width, h: box.height };
+      if (focus && scene.zoom !== false) {
+        const sc = Math.min(box.width / 320, box.height / 240);
+        const ox = box.x + (box.width - 320 * sc) / 2;
+        const oy = box.y + (box.height - 240 * sc) / 2;
+        const lw = Math.min(320, focus.w);
+        const lh = Math.min(240, (lw * 9) / 16);
+        const lx = Math.max(0, Math.min(320 - lw, focus.x - lw / 2));
+        const ly = Math.max(0, Math.min(240 - lh, focus.y - lh / 2));
+        crop = { x: ox + lx * sc, y: oy + ly * sc, w: lw * sc, h: lh * sc };
+      }
       const file = `${base}.mp4`;
       execFileSync("ffmpeg", [
         "-y", "-loglevel", "error", "-ss", String(from), "-i", raw, "-t", String(video),
-        "-vf", `crop=${even(box.width)}:${even(box.height)}:${even(box.x)}:${even(box.y)},fps=30`,
+        "-vf", `crop=${even(crop.w)}:${even(crop.h)}:${even(crop.x)}:${even(crop.y)},scale=1280:-2:flags=neighbor,fps=30`,
         "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file,
       ]);
       list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob });
