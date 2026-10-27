@@ -229,6 +229,27 @@ describe("Kuch kartalari ikkala qahramonda", () => {
     expect(g.bolts).toHaveLength(0);
   });
 
+  it("a bolt hits enemies pressed against every wall", () => {
+    for (const [ex, ey, vx, vy] of [
+      [297, 120, 170, 0],
+      [23, 120, -170, 0],
+      [160, 23, 0, -170],
+      [160, 217, 0, 170],
+    ] as const) {
+      const g = makeGame("mage");
+      const p = g.player;
+      p.x = 160;
+      p.y = 120;
+      const e = new Enemy("rammer", ex, ey);
+      e.spawn = 0;
+      e.aiTimer = 99;
+      g.enemies = [e, new Enemy("rammer", 60, 60)];
+      g.bolts = [{ x: p.x, y: p.y, vx, vy, size: 6, left: 1, hit: [] }];
+      for (let i = 0; i < 60; i++) g.update(0.02);
+      expect(e.hp, `${ex},${ey}`).toBe(e.maxHp - 1);
+    }
+  });
+
   it("without pierce a bolt stops at the first enemy", () => {
     const g = makeGame("mage");
     const p = g.player;
