@@ -11,7 +11,7 @@
       { "wave": 1 },
       { "wait": 1800 },
       {
-        "eval": "const p = g.player; for (let i = 0; i < 7; i++) g.coins.push({ x: p.x + 22 + (i % 4) * 12, y: p.y - 10 + Math.floor(i / 4) * 14, life: 12, value: 1 }); g.runGold = 37;"
+        "eval": "const p = g.player; for (let i = 0; i < 7; i++) g.coins.push({ x: p.x + 22 + (i % 4) * 13, y: p.y - 10 + Math.floor(i / 4) * 15, life: 12, value: 1 }); g.runGold = 37;"
       },
       { "wait": 400 }
     ]
