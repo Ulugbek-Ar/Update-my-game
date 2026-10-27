@@ -6,6 +6,10 @@ import path from "node:path";
 const require = createRequire(path.join(process.env.PW_DIR ?? process.cwd(), "x.js"));
 const { chromium } = require("playwright");
 
+let FFMPEG = "ffmpeg";
+try {
+  FFMPEG = require("ffmpeg-static") || "ffmpeg";
+} catch {}
 const URL = process.env.GAME_URL ?? "http://127.0.0.1:5173";
 const OUT = "shots";
 
@@ -207,7 +211,7 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
         crop = { x: ox + lx * sc, y: oy + ly * sc, w: lw * sc, h: lh * sc };
       }
       const file = `${base}.mp4`;
-      execFileSync("ffmpeg", [
+      execFileSync(FFMPEG, [
         "-y",
         "-loglevel",
         "error",
