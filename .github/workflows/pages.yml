@@ -1,7 +1,7 @@
 name: GitHub Pages
 
 # Har bir main'ga push'da o'yinning statik versiyasi yig'iladi va
-# https://ulugbek-ar.github.io/update-my-game/ manziliga chiqariladi.
+# https://ulugbek-ar.github.io/Update-my-game/ manziliga chiqariladi.
 on:
   push:
     branches: [main]
