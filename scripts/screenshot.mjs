@@ -14,7 +14,9 @@ await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
 const start = page.getByRole("button", { name: "BOSHLASH" });
 await start.waitFor({ timeout: 60_000 });
 await page.waitForFunction(() => {
-  const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.trim() === "BOSHLASH");
+  const b = [...document.querySelectorAll("button")].find(
+    (x) => x.textContent?.trim() === "BOSHLASH",
+  );
   return b && !b.disabled;
 });
 await start.click();

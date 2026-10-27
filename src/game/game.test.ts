@@ -4,7 +4,8 @@ import { Enemy } from "./enemy";
 import { BOSS_WAVE, UPGRADES } from "./waves";
 import { sfx } from "./audio";
 import { saveSettings } from "./settings";
-import { CHARGE_TIME } from "./player";
+import { CHARGE_TIME, PLAYER_MAX_HP } from "./player";
+import { GOLD_KEY, SHOP_KEY, addGold, loadGold } from "./shop";
 
 /** Game ning test uchun kerakli ichki a'zolari. */
 type GameInternals = {
@@ -207,5 +208,116 @@ describe("Birinchi o'yin ko'rsatmalari", () => {
   it("does not show hints once the tutorial is done", () => {
     localStorage.setItem(TUTORIAL_KEY, "1");
     expect(makeGame().g.hints).toEqual([]);
+  });
+});
+
+describe("Oltin tangalar", () => {
+  /** Uzoqdagi, hali paydo bo'layotgan dushman — to'lqin tugamasin. */
+  function holdWave() {
+    const idle = new Enemy("blob", 30, 30);
+    idle.spawn = 99;
+    return idle;
+  }
+
+  it("each enemy kind drops its gold value as a coin", () => {
+    const { g, gi } = makeGame();
+    const kills = { blob: 1, wisp: 1, rammer: 2, archer: 2 } as const;
+    for (const [kind, value] of Object.entries(kills)) {
+      const e = new Enemy(kind as keyof typeof kills, 200, 60);
+      g.enemies = [e, holdWave()];
+      g.coins = [];
+      gi.damageTarget(e, 99);
+      expect(g.coins.map((c) => c.value)).toEqual([value]);
+    }
+  });
+
+  it("the boss drops 25 gold", () => {
+    const { g, gi } = makeGame();
+    gi.startWave(BOSS_WAVE);
+    g.boss!.spawn = 0;
+    gi.damageTarget(g.boss, 999);
+    expect(g.coins.reduce((n, c) => n + c.value, 0)).toBe(25);
+  });
+
+  it("walking over a coin adds it to the run gold shown in the HUD", () => {
+    const { g } = makeGame();
+    g.enemies = [holdWave()];
+    g.coins = [{ x: g.player.x + 3, y: g.player.y, life: 12, value: 2 }];
+    tick(g, 0.04);
+    expect(g.coins).toEqual([]);
+    expect(g.runGold).toBe(2);
+  });
+
+  it("coins left on the floor are collected when the wave is cleared", () => {
+    const { g } = makeGame();
+    g.enemies = [];
+    g.coins = [{ x: 40, y: 40, life: 12, value: 1 }];
+    tick(g, 0.02);
+    expect(g.stage).toBe("upgrade");
+    expect(g.runGold).toBe(1);
+  });
+
+  it("dying adds the run gold to the saved total", () => {
+    addGold(10);
+    const { g } = makeGame();
+    g.enemies = [holdWave()];
+    g.runGold = 7;
+    g.player.hp = 1;
+    g.player.takeHit(1, g.player.x + 5, g.player.y, 0);
+    tick(g, 1.5);
+    expect(g.phase).toBe("attempt");
+    expect(loadGold()).toBe(17);
+    expect(g.lastGold).toBe(7);
+    expect(g.totalGold).toBe(17);
+    tick(g, 3);
+    expect(g.runGold).toBe(0);
+  });
+
+  it("victory and leaving to the menu also save the gold", () => {
+    const { g, gi } = makeGame();
+    gi.startWave(BOSS_WAVE);
+    g.enemies = [];
+    g.boss!.spawn = 0;
+    g.runGold = 20;
+    gi.damageTarget(g.boss, 999);
+    tick(g, 2);
+    expect(g.phase).toBe("victory");
+    expect(Number(localStorage.getItem(GOLD_KEY))).toBe(45);
+
+    gi.startEndless();
+    g.runGold = 4;
+    g.exitToMenu();
+    expect(loadGold()).toBe(49);
+  });
+});
+
+describe("Do'kon o'yinda", () => {
+  it("a new game starts with the bought upgrades", () => {
+    localStorage.setItem(SHOP_KEY, JSON.stringify({ heart: 2, dash: 1, blade: 1, luck: 0 }));
+    const { g } = makeGame();
+    expect(g.player.maxHp).toBe(PLAYER_MAX_HP + 2);
+    expect(g.player.hp).toBe(PLAYER_MAX_HP + 2);
+    expect(g.player.damage).toBe(2);
+    expect(g.player.dashCd).toBeCloseTo(0.72);
+  });
+
+  it("the luck charm raises the heart drop chance", () => {
+    const rnd = Math.random;
+    // 0.25: odatiy 15% dan yuqori, 3 bosqichli tumor bilan (30%) tushadi
+    Math.random = () => 0.25;
+    try {
+      const kill = () => {
+        const { g, gi } = makeGame();
+        const e = new Enemy("blob", 200, 60);
+        g.enemies = [e];
+        gi.damageTarget(e, 99);
+        return g.drops.length;
+      };
+      expect(kill()).toBe(0);
+      localStorage.setItem(SHOP_KEY, JSON.stringify({ heart: 0, dash: 0, blade: 0, luck: 3 }));
+      expect(kill()).toBe(1);
+    } finally {
+      Math.random = rnd;
+    }
   });
 });

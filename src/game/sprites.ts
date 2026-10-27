@@ -833,7 +833,13 @@ export function renderSprite(
 }
 
 // Kuch kartalari ikonkalari (12x12): X — kuch rangi, qolganlari ICON_COLORS dan.
-const ICON_COLORS: Record<string, string> = { o: "#ffffff", g: "#5bc85b", k: "#8a6a3a" };
+const ICON_COLORS: Record<string, string> = {
+  o: "#ffffff",
+  g: "#5bc85b",
+  k: "#8a6a3a",
+  r: "#ff4d6d",
+  d: "#a8741a",
+};
 export const UPGRADE_ICONS: Record<string, readonly string[]> = {
   heart: [
     "............",
@@ -960,6 +966,36 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "XggggggggggX",
     ".XggggggggX.",
     "..XXXXXXXX..",
+  ],
+  // Do'kon: omad tumori — taqa ichida yurak
+  luck: [
+    "............",
+    ".XX......XX.",
+    "XoX......XXX",
+    "XoX......XXX",
+    "XXX.r..r.XXX",
+    "XXX.rrrr.XXX",
+    "XXX..rr..XXX",
+    ".XXX....XXX.",
+    ".XXXX..XXXX.",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+    "............",
+  ],
+  // Oltin tanga
+  coin: [
+    "....XXXX....",
+    "..XXXXXXXX..",
+    ".XXoodddXXX.",
+    ".XoXXXXXXdX.",
+    "XXoXXddXXXdX",
+    "XXXXdXXXXXdX",
+    "XXXXXddXXXdX",
+    "XXXXXXXdXXdX",
+    ".XXXddXXXdX.",
+    ".XXXXXXXddX.",
+    "..XXdddddX..",
+    "....XXXX....",
   ],
 };
 

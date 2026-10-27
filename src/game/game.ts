@@ -20,6 +20,7 @@ import {
   type Upgrade,
 } from "./waves";
 import { CHARGE_TIME, SPIN_CD, SPIN_TIME } from "./player";
+import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 export const BEST_KEY = "pixel-rpg-best";
@@ -45,6 +46,10 @@ interface Drop {
   x: number;
   y: number;
   life: number;
+}
+/** Oltin tanga: terilganda shuncha oltin beradi */
+interface Coin extends Drop {
+  value: number;
 }
 
 const KILL_POINTS: Record<EnemyKind, number> = { blob: 10, wisp: 15, rammer: 20, archer: 20 };
@@ -97,6 +102,7 @@ const BOSS_FLOOR: FloorTheme = {
 const BOSS_POINTS = 300;
 const COMBO_TIME = 2.5;
 const DROP_CHANCE = 0.15;
+const COIN_LIFE = 12;
 const TOTAL_WAVES = WAVES.length;
 
 function load(key: string) {
@@ -122,6 +128,14 @@ export class Game {
   boss: Boss | null = null;
   shots: Shot[] = [];
   drops: Drop[] = [];
+  coins: Coin[] = [];
+  /** Shu o'yinda terilgan oltin (o'yin tugaganda umumiy hisobga qo'shiladi) */
+  runGold = 0;
+  /** Oxirgi marta hisobga qo'shilgan oltin va umumiy hisob — yakun ekranida */
+  lastGold = 0;
+  totalGold = 0;
+  /** Do'kondan: yurak tushish ehtimoliga qo'shimcha */
+  private dropBonus = 0;
   fx = new Effects();
   attempt = 1;
   phase: Phase = "play";
@@ -168,6 +182,7 @@ export class Game {
     this.attempt = saved > 0 ? saved : 1;
     this.best = load(BEST_KEY);
     this.endlessBest = load(ENDLESS_BEST_KEY);
+    this.totalGold = loadGold();
     const settings = loadSettings();
     this.shakeOn = settings.shake;
     sfx.setVolumes(settings.music, settings.sfx);
@@ -178,10 +193,15 @@ export class Game {
   /** Boshlang'ich holat: 1-to'lqin, HP to'liq. */
   reset() {
     this.player = new Player();
+    const shop = loadShop();
+    applyShop(this.player, shop);
+    this.dropBonus = dropBonus(shop);
     this.enemies = [];
     this.boss = null;
     this.shots = [];
     this.drops = [];
+    this.coins = [];
+    this.runGold = 0;
     this.fx = new Effects();
     this.score = 0;
     this.newBest = false;
@@ -279,12 +299,14 @@ export class Game {
 
   /** O'yinni to'xtatib, React bosh menyusiga qaytish. */
   exitToMenu() {
+    this.bankGold();
     this.setPaused(false);
     this.onExit?.();
   }
 
   /** Urinish sonini o'zgartirmasdan boshidan boshlash. */
   restart() {
+    this.bankGold();
     this.reset();
     this.setPaused(false);
   }
@@ -384,6 +406,25 @@ export class Game {
     this.reset();
   }
 
+  /** Terilgan oltinni umumiy hisobga (localStorage) o'tkazadi. */
+  private bankGold() {
+    this.lastGold = this.runGold;
+    this.totalGold = addGold(this.runGold);
+    this.runGold = 0;
+  }
+
+  private pickCoin(c: Coin) {
+    this.runGold += c.value;
+    this.fx.text(c.x, c.y - 8, `+${c.value}`, "#ffcc33");
+  }
+
+  /** To'lqin yakunida yerda qolgan tangalar o'zi teriladi. */
+  private collectCoins() {
+    for (const c of this.coins) this.pickCoin(c);
+    if (this.coins.length) sfx.pickup();
+    this.coins = [];
+  }
+
   private commitBest() {
     if (this.endless) {
       if (this.score > this.endlessBest) {
@@ -409,6 +450,7 @@ export class Game {
     this.player.hp = this.player.maxHp;
     this.shots = [];
     this.drops = [];
+    this.coins = [];
     this.input.clearQueued();
     this.startWave(BOSS_WAVE + 1);
   }
@@ -454,7 +496,8 @@ export class Game {
     );
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
     sfx.kill();
-    if (Math.random() < DROP_CHANCE) this.drops.push({ x: e.x, y: e.y, life: 9 });
+    if (Math.random() < DROP_CHANCE + this.dropBonus) this.drops.push({ x: e.x, y: e.y, life: 9 });
+    this.coins.push({ x: e.x + 5, y: e.y + 3, life: COIN_LIFE, value: KILL_GOLD[e.kind] });
     const p = this.player;
     if (p.lifesteal) {
       this.killsForHeal++;
@@ -504,6 +547,16 @@ export class Game {
       this.fx.burst(t.x, t.y, "#f4cb45", 40, 120, 3);
       this.fx.addShake(0.6);
       this.shots = [];
+      // Boss xazinasi: 5 ta tanga atrofga sochiladi
+      for (let k = 0; k < 5; k++) {
+        const a = (k / 5) * Math.PI * 2;
+        this.coins.push({
+          x: t.x + Math.cos(a) * 18,
+          y: t.y + Math.sin(a) * 14,
+          life: COIN_LIFE,
+          value: BOSS_GOLD / 5,
+        });
+      }
     }
   }
 
@@ -635,11 +688,22 @@ export class Game {
       this.fx.burst(d.x, d.y, "#ff4d6d", 8, 40);
       return false;
     });
+    // tanga terish
+    for (const co of this.coins) co.life -= dt;
+    this.coins = this.coins.filter((co) => {
+      if (co.life <= 0) return false;
+      if (Math.hypot(co.x - p.x, co.y - p.y) > 11 || p.dead) return true;
+      this.pickCoin(co);
+      sfx.pickup();
+      this.fx.burst(co.x, co.y, "#ffcc33", 6, 40);
+      return false;
+    });
 
     // o'lim -> urinish
     if (p.dead) {
       if (p.anim.done) {
         this.commitBest();
+        this.bankGold();
         // cheksiz rejimda o'yin allaqachon yutilgan — urinish oshmaydi
         if (!this.endless) {
           this.attempt++;
@@ -659,6 +723,8 @@ export class Game {
           if (this.endless) this.clearWave();
           else {
             this.commitBest();
+            this.collectCoins();
+            this.bankGold();
             this.phase = "victory";
             sfx.stopMusic();
             sfx.victory();
@@ -681,6 +747,7 @@ export class Game {
     }
     this.score += bonus;
     this.shots = [];
+    this.collectCoins();
     this.choices = pickUpgrades(this.player);
     this.choiceIndex = 0;
     this.upgradeLock = 0.6;
@@ -871,6 +938,13 @@ export class Game {
       this.shadow(c, d.x, d.y + 6, 7);
       this.heart(c, d.x - 4, y - 4, "#ff4d6d");
     }
+    // oltin tangalar
+    for (const co of this.coins) {
+      if (co.life < 2 && Math.floor(co.life * 8) % 2) continue;
+      const y = co.y + Math.round(Math.sin(this.time * 5 + co.x) * 1.5);
+      this.shadow(c, co.x, co.y + 5, 6);
+      this.coin(c, co.x - 3, y - 3, Math.floor(this.time * 6 + co.x) % 4);
+    }
 
     // chuqurlik bo'yicha tartib
     const p = this.player;
@@ -954,6 +1028,20 @@ export class Game {
     px(c, color, x + 3, y + 6, 2, 1);
   }
 
+  /** 6x6 piksel tanga; frame — aylanish kadri (0 va 2 — to'liq, 1 va 3 — yonidan). */
+  private coin(c: CanvasRenderingContext2D, x: number, y: number, frame = 0) {
+    if (frame % 2) {
+      px(c, "#a8741a", x + 2, y, 2, 6);
+      px(c, "#ffcc33", x + 2, y + 1, 1, 4);
+      return;
+    }
+    px(c, "#a8741a", x + 1, y, 4, 6);
+    px(c, "#a8741a", x, y + 1, 6, 4);
+    px(c, "#ffcc33", x + 1, y + 1, 4, 4);
+    px(c, "#fff2a8", x + 1, y + 1, 1, 2);
+    px(c, "#a8741a", x + 3, y + 2, 1, 2);
+  }
+
   private renderHud() {
     const c = this.ctx;
     const p = this.player;
@@ -995,6 +1083,11 @@ export class Game {
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
     this.text(`URINISH ${this.attempt}`, 4, ROOM.h - 5, 5, "rgba(224,214,238,0.7)", "left");
+    // terilgan oltin — o'ng pastki burchakda (yakun ekranlarida alohida ko'rsatiladi)
+    if (this.phase === "play") {
+      this.coin(c, ROOM.w - 10, ROOM.h - 11);
+      this.text(String(this.runGold), ROOM.w - 13, ROOM.h - 5, 5, "#ffcc33", "right");
+    }
 
     const boss = this.boss;
     if (boss && isBossWave(this.wave) && !(boss.dead && boss.anim.done)) {
@@ -1144,6 +1237,7 @@ export class Game {
         "#e0d6ee",
       );
       if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, ROOM.h / 2 + 36, 6, "#a6f08e");
+      this.renderGoldResult(ROOM.h / 2 + 54);
     }
     if (this.phase === "victory") {
       px(c, "rgba(10,5,20,0.8)", 0, 0, ROOM.w, ROOM.h);
@@ -1165,8 +1259,19 @@ export class Game {
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
       }
+      this.renderGoldResult(218);
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
+  }
+
+  /** Yakun ekrani: "+N OLTIN (jami M)". */
+  private renderGoldResult(y: number) {
+    const s = `+${this.lastGold} OLTIN  (jami ${this.totalGold})`;
+    const c = this.ctx;
+    c.font = `6px "Press Start 2P", monospace`;
+    const w = c.measureText(s).width;
+    this.coin(c, ROOM.w / 2 - w / 2 - 9, y - 6);
+    this.text(s, ROOM.w / 2 + 2, y, 6, "#ffcc33");
   }
 
   private text(

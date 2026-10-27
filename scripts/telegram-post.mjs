@@ -35,7 +35,10 @@ form.append("caption", caption);
 form.append("parse_mode", "HTML");
 form.append("photo", new Blob([await readFile("shot.png")], { type: "image/png" }), "shot.png");
 
-const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: "POST", body: form });
+const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+  method: "POST",
+  body: form,
+});
 const body = await res.json();
 if (!body.ok) throw new Error(`Telegram xatosi: ${body.description}`);
 console.log("Post joylandi ✅");

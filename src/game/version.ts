@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.3.0";
+export const GAME_VERSION = "1.4.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.4.0",
+    date: "2026-10-27",
+    notes:
+      "Dushmanlardan oltin tanga tushadi: slime va ko'rshapalak 1, skelet jangchi va kamonchi 2, Boss 25. Terilgan oltin HUD'ning o'ng pastki burchagida ko'rinadi. To'lqin tozalanganda yerda qolgan tangalar o'zi teriladi. O'yin tugaganda oltin umumiy hisobga qo'shiladi. Bosh menyuda DO'KON: boshlang'ich yurak +1, dash tezroq qaytishi, boshlang'ich zarar +1 va yurak tushish ehtimoli +5% kabi doimiy kuchaytirishlar. Kuchaytirishlar 3 bosqichli, narxi har bosqichda oshadi. Do'konsiz ham o'yin avvalgidek yutiladi, do'kon faqat yengillashtiradi.",
+  },
   {
     version: "1.3.0",
     date: "2026-10-27",

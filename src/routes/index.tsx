@@ -7,6 +7,8 @@ import { GAME_VERSION, CHANGELOG } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
+import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
+import { renderUpgradeIcon } from "@/game/sprites";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,6 +34,8 @@ function Index() {
   const [ready, setReady] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [gold, setGold] = useState(0);
   const [coachOpen, setCoachOpen] = useState(false);
   const [newVersion, setNewVersion] = useState<string | null>(null);
   const [muted, setMuted] = useState(sfx.muted);
@@ -47,6 +51,7 @@ function Index() {
     try {
       setBest(Number(localStorage.getItem(BEST_KEY)) || 0);
       setEndlessBest(Number(localStorage.getItem(ENDLESS_BEST_KEY)) || 0);
+      setGold(loadGold());
     } catch {
       /* saqlash imkonsiz */
     }
@@ -83,6 +88,7 @@ function Index() {
     g.onExit = () => {
       setBest(g.best);
       setEndlessBest(g.endlessBest);
+      setGold(loadGold());
       setGame(null);
       setStarted(false);
     };
@@ -137,6 +143,11 @@ function Index() {
                   <span className="text-primary">Cheksiz rekord: {endlessBest}</span>
                 </>
               )}
+              <br />
+              <span className="inline-flex items-center gap-1 text-primary">
+                <PixelIcon id="coin" color="#ffcc33" size={12} />
+                Oltin: {gold}
+              </span>
             </p>
             <Button
               onClick={() => {
@@ -147,6 +158,13 @@ function Index() {
               className="bg-primary text-primary-foreground px-6 py-3 text-xs sm:text-sm hover:brightness-110 active:translate-y-0.5 disabled:opacity-60 disabled:cursor-wait"
             >
               {ready ? "BOSHLASH" : "YUKLANMOQDA..."}
+            </Button>
+            <Button
+              onClick={() => setShopOpen(true)}
+              disabled={!ready}
+              className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5"
+            >
+              DO'KON
             </Button>
             <Button
               variant="link"
@@ -212,6 +230,14 @@ function Index() {
       </div>
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
       {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
+      {shopOpen && (
+        <ShopWindow
+          onClose={() => {
+            setShopOpen(false);
+            setGold(loadGold());
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -299,6 +325,112 @@ function TouchControls({ game }: { game: Game }) {
       >
         II
       </button>
+    </div>
+  );
+}
+
+/** Kuch kartalaridagi 12x12 piksel ikonka — kod bilan chiziladi. */
+function PixelIcon({ id, color, size }: { id: string; color: string; size: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (!c) return;
+    c.clearRect(0, 0, 12, 12);
+    renderUpgradeIcon(c, id, color, 0, 0, 12);
+  }, [id, color]);
+  return (
+    <canvas
+      ref={ref}
+      width={12}
+      height={12}
+      aria-hidden="true"
+      style={{ width: size, height: size, imageRendering: "pixelated" }}
+    />
+  );
+}
+
+function ShopWindow({ onClose }: { onClose: () => void }) {
+  const [gold, setGold] = useState(loadGold);
+  const [levels, setLevels] = useState(loadShop);
+  const purchase = (item: ShopItem) => {
+    sfx.unlock();
+    if (!buy(item.id)) return;
+    sfx.upgrade();
+    setGold(loadGold());
+    setLevels(loadShop());
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Do'kon"
+        className="flex w-[min(94vw,640px)] max-h-[90dvh] flex-col gap-3 overflow-y-auto border-4 border-border bg-card p-4 text-[9px] sm:text-[10px] leading-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-primary text-xs sm:text-sm">DO'KON</h2>
+          <span className="inline-flex items-center gap-2 text-primary">
+            <PixelIcon id="coin" color="#ffcc33" size={16} />
+            {gold}
+          </span>
+        </div>
+        <p className="text-muted-foreground">
+          Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
+        </p>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {SHOP_ITEMS.map((item) => {
+            const lvl = levels[item.id];
+            const cost = nextCost(item, levels);
+            const canBuy = cost !== null && gold >= cost;
+            return (
+              <li
+                key={item.id}
+                className="flex flex-col items-center gap-2 p-[2px]"
+                style={{ background: canBuy ? item.color : "#5c4a6e" }}
+              >
+                <div className="flex w-full flex-1 flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
+                  <PixelIcon id={item.icon} color={item.color} size={36} />
+                  <span style={{ color: item.color }}>{item.name}</span>
+                  <span className="flex-1 text-foreground">{item.desc}</span>
+                  <span className="flex gap-1" aria-label={`Bosqich ${lvl}/${item.costs.length}`}>
+                    {item.costs.map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-2 w-2"
+                        style={{ background: i < lvl ? item.color : "#3b2a3a" }}
+                      />
+                    ))}
+                  </span>
+                  <button
+                    onClick={() => purchase(item)}
+                    disabled={!canBuy}
+                    className="inline-flex w-full items-center justify-center gap-1 border-2 border-primary bg-primary px-2 py-1 text-primary-foreground hover:brightness-110 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+                  >
+                    {cost === null ? (
+                      "TO'LIQ"
+                    ) : (
+                      <>
+                        <PixelIcon id="coin" color="#ffcc33" size={10} />
+                        {cost}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <button
+          onClick={onClose}
+          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+        >
+          YOPISH
+        </button>
+      </div>
     </div>
   );
 }
