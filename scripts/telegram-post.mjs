@@ -31,13 +31,17 @@ const manual = await readdir(`screenshots/v${entry.version}`).then(
   () => [],
 );
 const auto = JSON.parse(await readFile("shots/list.json", "utf8").catch(() => "[]"));
-const mobs = auto.filter((s) => s.mob || s.file.endsWith(".mp4"));
-const shots = [...manual, ...auto.filter((s) => !mobs.includes(s))].slice(0, 10);
+const heroes = auto.filter((s) => s.hero);
+const mobs = auto.filter((s) => !s.hero && (s.mob || s.file.endsWith(".mp4")));
+const shots = [...manual, ...auto.filter((s) => !mobs.includes(s) && !heroes.includes(s))].slice(0, 10);
 const titled = shots.map((s, i) => (s.title ? `${i + 1}. ${esc(s.title)}` : "")).filter(Boolean);
 
 const head = [`🏰 <b>Piksel Qal'a — v${esc(entry.version)}</b>`, `📅 ${d}.${m}.${y}`, "", "🆕 <b>Yangilanishlar:</b>"];
 const pics = titled.length ? ["", "📸 <b>Rasmlarda:</b>", ...titled] : [];
-const newMobs = mobs.length ? ["", `👾 <b>Yangi dushman:</b> ${mobs.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`] : [];
+const newMobs = [
+  ...(heroes.length ? ["", `🧙 <b>Yangi qahramon:</b> ${heroes.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`] : []),
+  ...(mobs.length ? ["", `👾 <b>Yangi dushman:</b> ${mobs.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`] : []),
+];
 const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
 const build = () => [...head, ...bullets, ...newMobs, ...pics, ...tail].join("\n");
 while (pics.length > 2 && build().length > 1024) pics.pop();
@@ -78,22 +82,25 @@ else
   });
 console.log("Post joylandi ✅", shots.map((s) => s.file).join(", "));
 
-for (const mob of mobs) {
+for (const item of [...heroes, ...mobs]) {
+  const hero = heroes.includes(item);
   const text = [
-    `👾 <b>Yangi dushman: ${esc(mob.title)}</b>`,
+    hero ? `🧙 <b>Yangi qahramon: ${esc(item.title)}</b>` : `👾 <b>Yangi dushman: ${esc(item.title)}</b>`,
     "",
-    ...(mob.text ? [esc(mob.text), ""] : []),
-    `🏰 Piksel Qal'a v${esc(entry.version)} da paydo bo'ladi`,
+    ...(item.text ? [esc(item.text), ""] : []),
+    hero
+      ? `🏰 Piksel Qal'a v${esc(entry.version)} dan boshlab o'ynash mumkin`
+      : `🏰 Piksel Qal'a v${esc(entry.version)} da paydo bo'ladi`,
     "",
-    "#yangi_dushman",
+    hero ? "#yangi_qahramon" : "#yangi_dushman",
   ]
     .join("\n")
     .slice(0, 1024);
-  const isVideo = mob.file.endsWith(".mp4");
+  const isVideo = item.file.endsWith(".mp4");
   await send(isVideo ? "sendAnimation" : "sendPhoto", async (f) => {
-    f.append(isVideo ? "animation" : "photo", await blob(mob.file), mob.file.split("/").pop());
+    f.append(isVideo ? "animation" : "photo", await blob(item.file), item.file.split("/").pop());
     f.append("caption", text);
     f.append("parse_mode", "HTML");
   });
-  console.log("Mob posti joylandi ✅", mob.title);
+  console.log(hero ? "Qahramon posti joylandi ✅" : "Mob posti joylandi ✅", item.title);
 }

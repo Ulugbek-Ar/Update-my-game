@@ -15,7 +15,9 @@ const scenarioFile = `screenshots/v${version}.json`;
 const hasScenario = await access(scenarioFile).then(() => true, () => false);
 
 const randomWave = process.env.SHOT_WAVE || String(Math.floor(Math.random() * 5));
-const scenes = hasScenario
+const scenes = process.env.SHOT_SCENARIO
+  ? JSON.parse(process.env.SHOT_SCENARIO)
+  : hasScenario
   ? JSON.parse(await readFile(scenarioFile, "utf8"))
   : [
       { title: "O'yin jarayoni", steps: [{ start: true }, { wave: Number(randomWave) }, { play: true }] },
@@ -117,7 +119,41 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
     if (video) {
       const box = await page.locator(target).first().boundingBox();
       const from = (Date.now() - born) / 1000;
-      await page.waitForTimeout(video * 1000 + 300);
+      const until = Date.now() + video * 1000 + 300;
+      if (scene.autoplay || scene.hero) {
+        const held = new Set();
+        const setKeys = async (want) => {
+          for (const k of held) if (!want.has(k)) await page.keyboard.up(k);
+          for (const k of want) if (!held.has(k)) await page.keyboard.down(k);
+          held.clear();
+          want.forEach((k) => held.add(k));
+        };
+        while (Date.now() < until) {
+          const t = await page.evaluate(() => {
+            const g = window.__game;
+            const p = g.player;
+            const foes = g.enemies.filter((e) => !e.dead);
+            if (g.boss?.active) foes.push(g.boss);
+            let best = null;
+            for (const e of foes) {
+              const dd = Math.hypot(e.x - p.x, e.y - p.y);
+              if (!best || dd < best.d) best = { dx: e.x - p.x, dy: e.y - p.y, d: dd };
+            }
+            return best;
+          });
+          const want = new Set();
+          if (t && t.d > 28) {
+            if (t.dx > 8) want.add("d");
+            if (t.dx < -8) want.add("a");
+            if (t.dy > 8) want.add("s");
+            if (t.dy < -8) want.add("w");
+          }
+          await setKeys(want);
+          if (t) await page.keyboard.press("Space");
+          await page.waitForTimeout(180);
+        }
+        await setKeys(new Set());
+      } else await page.waitForTimeout(until - Date.now());
       const raw = await page.video().path();
       await page.close();
       await ctx.close();
@@ -127,7 +163,7 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
         const sc = Math.min(box.width / 320, box.height / 240);
         const ox = box.x + (box.width - 320 * sc) / 2;
         const oy = box.y + (box.height - 240 * sc) / 2;
-        const lw = Math.min(320, focus.w);
+        const lw = Math.min(320, scene.hero ? Math.max(240, focus.w) : focus.w);
         const lh = Math.min(240, (lw * 9) / 16);
         const lx = Math.max(0, Math.min(320 - lw, focus.x - lw / 2));
         const ly = Math.max(0, Math.min(240 - lh, focus.y - lh / 2));
@@ -139,12 +175,12 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
         "-vf", `crop=${even(crop.w)}:${even(crop.h)}:${even(crop.x)}:${even(crop.y)},scale=1280:-2:flags=neighbor,fps=30`,
         "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file,
       ]);
-      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob });
+      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob, hero: !!scene.hero });
     } else {
       const file = `${base}.png`;
       await page.waitForTimeout(300);
       await page.locator(target).first().screenshot({ path: file });
-      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob });
+      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob, hero: !!scene.hero });
     }
     console.log(`::notice title=Skrinshot::✓ ${scene.title}`);
   } catch (e) {

@@ -13,6 +13,9 @@ on:
       version:
         description: "Qaysi versiya ssenariysi (bo'sh = joriy)"
         required: false
+      scenario:
+        description: "Sinov uchun ssenariy JSON (bo'sh = fayldan)"
+        required: false
       wave:
         description: "Skrinshot to'lqini (0 = 1-to'lqin, 4 = Boss). Bo'sh = tasodifiy"
         required: false
@@ -54,6 +57,7 @@ jobs:
         env:
           SHOT_WAVE: ${{ inputs.wave }}
           SHOT_VERSION: ${{ inputs.version }}
+          SHOT_SCENARIO: ${{ inputs.scenario }}
         run: |
           PW_DIR="$RUNNER_TEMP/pw" node scripts/screenshot.mjs
           rm -rf shots/raw
