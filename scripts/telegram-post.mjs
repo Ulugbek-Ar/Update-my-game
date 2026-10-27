@@ -22,7 +22,6 @@ let caption = [
   "🆕 <b>Yangilanishlar:</b>",
   ...bullets,
   "",
-  playUrl ? `🎮 <a href="${esc(playUrl)}">O'ynash</a>` : "",
   "#yangilanish",
 ]
   .filter((l, i, a) => l !== "" || a[i - 1] !== "")
@@ -33,6 +32,13 @@ const form = new FormData();
 form.append("chat_id", chat);
 form.append("caption", caption);
 form.append("parse_mode", "HTML");
+
+const repo = process.env.GITHUB_REPOSITORY;
+const sha = process.env.GITHUB_SHA;
+const buttons = [];
+if (playUrl) buttons.push({ text: "🎮 O'ynash", url: playUrl });
+if (repo && sha) buttons.push({ text: "📜 Nima o'zgardi", url: `https://github.com/${repo}/commit/${sha}` });
+if (buttons.length) form.append("reply_markup", JSON.stringify({ inline_keyboard: [buttons] }));
 form.append("photo", new Blob([await readFile("shot.png")], { type: "image/png" }), "shot.png");
 
 const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
