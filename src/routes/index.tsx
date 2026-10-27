@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { Game } from "@/game/game";
 import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG, SEEN_VERSION_KEY } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
@@ -150,10 +152,10 @@ function Index() {
                     setHero(h);
                     saveHero(h);
                   }}
-                  className={`flex flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${
+                  className={`flex flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
                     hero === h
                       ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground hover:text-foreground"
+                      : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                   }`}
                 >
                   <HeroPreview hero={h} active={hero === h} />
@@ -215,7 +217,8 @@ function Index() {
                 setStarted(true);
               }}
               disabled={!ready}
-              className="bg-primary text-primary-foreground px-6 py-3 text-xs sm:text-sm hover:brightness-110 active:translate-y-0.5 disabled:opacity-60 disabled:cursor-wait"
+              variant="pixel"
+              className="px-6 py-3 text-xs sm:text-sm disabled:opacity-60 disabled:cursor-wait"
             >
               {ready ? "BOSHLASH" : "YUKLANMOQDA..."}
             </Button>
@@ -223,7 +226,8 @@ function Index() {
               <Button
                 onClick={() => setShopOpen(true)}
                 disabled={!ready}
-                className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5"
+                variant="pixelOutline"
+                className="px-5 py-2 text-[10px] sm:text-xs"
               >
                 DO'KON
               </Button>
@@ -235,7 +239,8 @@ function Index() {
                 }}
                 disabled={!ready || !!daily}
                 title={daily ? "Bugungi urinish ishlatilgan — ertaga yangi sinov" : undefined}
-                className="border-2 border-primary bg-card text-primary px-5 py-2 text-[10px] sm:text-xs hover:brightness-125 active:translate-y-0.5 disabled:border-border disabled:text-muted-foreground disabled:opacity-100"
+                variant="pixelOutline"
+                className="px-5 py-2 text-[10px] sm:text-xs"
               >
                 {daily ? `KUNLIK: ${daily.score}` : "KUNLIK SINOV"}
               </Button>
@@ -248,30 +253,30 @@ function Index() {
             )}
             <div className="flex flex-wrap justify-center gap-x-4">
               <Button
-                variant="link"
+                variant="pixelLink"
                 onClick={() => setSettingsOpen(true)}
-                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+                className="text-[9px] sm:text-[10px]"
               >
                 SOZLAMALAR
               </Button>
               <Button
-                variant="link"
+                variant="pixelLink"
                 onClick={() => setAchOpen(true)}
-                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+                className="text-[9px] sm:text-[10px]"
               >
                 YUTUQLAR {achCount}/{ACHIEVEMENTS.length}
               </Button>
               <Button
-                variant="link"
+                variant="pixelLink"
                 onClick={() => setChangelogOpen(true)}
-                className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+                className="text-[9px] sm:text-[10px]"
               >
                 Yangilanishlar
               </Button>
               <Button
-                variant="link"
+                variant="pixelLink"
                 onClick={() => setCoachOpen(true)}
-                className="text-[9px] sm:text-[10px] text-muted-foreground"
+                className="text-[9px] sm:text-[10px]"
               >
                 Jang maslahatchisi (AI)
               </Button>
@@ -282,7 +287,7 @@ function Index() {
                 setMuted(sfx.toggleMute());
               }}
               aria-label={muted ? "Ovozni yoqish" : "Ovozni o'chirish"}
-              className="absolute bottom-2 left-2 text-sm sm:text-base"
+              className={`absolute bottom-2 left-2 text-sm sm:text-base ${pixelFocus}`}
             >
               {muted ? "🔇" : "🔊"}
             </button>
@@ -298,7 +303,7 @@ function Index() {
           Yangi versiya v{newVersion} tayyor
           <button
             onClick={() => window.location.reload()}
-            className="bg-primary text-primary-foreground px-3 py-1 hover:brightness-110"
+            className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-3 py-1")}
           >
             YANGILASH
           </button>
@@ -311,7 +316,12 @@ function Index() {
           aria-label="Jang maslahatchisi"
           className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4"
         >
-          <Button variant="ghost" onClick={() => setCoachOpen(false)} className="mb-3 text-[10px]">
+          <Button
+            variant="pixel"
+            size="none"
+            onClick={() => setCoachOpen(false)}
+            className="mb-3 px-4 py-2 text-[10px]"
+          >
             YOPISH
           </Button>
           <CoachPanel hero={hero} />
@@ -525,7 +535,10 @@ function ShopWindow({ onClose }: { onClose: () => void }) {
                   <button
                     onClick={() => purchase(item)}
                     disabled={!canBuy}
-                    className="inline-flex w-full items-center justify-center gap-1 border-2 border-primary bg-primary px-2 py-1 text-primary-foreground hover:brightness-110 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+                    className={cn(
+                      buttonVariants({ variant: "pixel", size: "none" }),
+                      "w-full gap-1 px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
+                    )}
                   >
                     {cost === null ? (
                       "TO'LIQ"
@@ -543,7 +556,7 @@ function ShopWindow({ onClose }: { onClose: () => void }) {
         </ul>
         <button
           onClick={onClose}
-          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
         >
           YOPISH
         </button>
@@ -602,10 +615,10 @@ function SettingsWindow({ onClose }: { onClose: () => void }) {
             role="switch"
             aria-checked={s.shake}
             onClick={() => update({ shake: !s.shake })}
-            className={`min-w-20 border-2 px-3 py-1 ${
+            className={`min-w-20 border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
               s.shake
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
+                ? "border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover"
+                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
             }`}
           >
             {s.shake ? "YOQIQ" : "O'CHIQ"}
@@ -613,7 +626,7 @@ function SettingsWindow({ onClose }: { onClose: () => void }) {
         </div>
         <button
           onClick={onClose}
-          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
         >
           YOPISH
         </button>
@@ -658,7 +671,7 @@ function AchievementsWindow({ onClose }: { onClose: () => void }) {
         </ul>
         <button
           onClick={onClose}
-          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
         >
           YOPISH
         </button>
@@ -698,7 +711,7 @@ function NewsWindow({ onClose }: { onClose: () => void }) {
         </ul>
         <button
           onClick={onClose}
-          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
         >
           O'YNASH
         </button>
@@ -730,7 +743,7 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
         </ul>
         <button
           onClick={onClose}
-          className="mt-4 bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "mt-4 px-4 py-2")}
         >
           YOPISH
         </button>
@@ -791,7 +804,10 @@ function CoachPanel({ hero }: { hero: Hero }) {
       <button
         onClick={ask}
         disabled={loading}
-        className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110 disabled:opacity-60 disabled:cursor-wait"
+        className={cn(
+          buttonVariants({ variant: "pixel", size: "none" }),
+          "self-start px-4 py-2 disabled:opacity-60 disabled:cursor-wait",
+        )}
       >
         {loading ? "O'YLAYAPTI..." : "MASLAHAT OLISH"}
       </button>

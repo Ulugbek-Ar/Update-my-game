@@ -36,7 +36,9 @@ const scenes = process.env.SHOT_SCENARIO
 console.log(hasScenario ? `Ssenariy: ${scenarioFile}` : "Ssenariy yo'q — umumiy skrinshotlar");
 
 await mkdir(OUT, { recursive: true });
-const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
+const browser = await chromium.launch(
+  process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {},
+);
 const list = [];
 
 for (const [i, scene] of scenes.slice(0, 9).entries()) {
@@ -91,6 +93,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       }
       if (step.click)
         await page.getByRole("button", { name: step.click, exact: true }).first().click();
+      if (step.hover)
+        await page.getByRole("button", { name: step.hover, exact: true }).first().hover();
       if (step.start) {
         await page.getByRole("button", { name: "BOSHLASH" }).click();
         await page.waitForFunction(() => !!window.__game);

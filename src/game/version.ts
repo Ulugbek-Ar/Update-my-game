@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.6.0";
+export const GAME_VERSION = "1.6.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,11 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.6.1",
+    date: "2026-10-27",
+    notes: "Menyu tugmalari sichqoncha ustiga borganda ham aniq o'qiladi.",
+  },
   {
     version: "1.6.0",
     date: "2026-10-27",

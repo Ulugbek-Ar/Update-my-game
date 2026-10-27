@@ -11,6 +11,7 @@ Sahna maydonlari:
 - `steps` — ketma-ket qadamlar:
   - `{ "storage": { "kalit": "qiymat" } }` — sahifa ochilishidan oldin localStorage
   - `{ "click": "TUGMA MATNI" }` — menyudagi tugmani bosish
+  - `{ "hover": "TUGMA MATNI" }` — sichqonchani tugma ustiga olib borish (hover holatini ko'rsatish)
   - `{ "start": true }` — BOSHLASH
   - `{ "wave": 5 }` — kerakli to'lqinga o'tish (0 = 1-to'lqin, 4 = Boss)
   - `{ "spawn": { "kind": "archer", "dx": 120, "dy": 0, "count": 1 } }` — xonani tozalab, faqat shu dushmanni

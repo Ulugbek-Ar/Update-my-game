@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Menyu tugmasi ustiga borganda ham aniq o'qiladi",
+    "target": "screen",
+    "steps": [
+      {
+        "hover": "DO'KON"
+      },
+      {
+        "wait": 400
+      }
+    ]
+  }
+]
