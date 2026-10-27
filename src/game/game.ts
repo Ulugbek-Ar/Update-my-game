@@ -17,7 +17,7 @@ import {
   endlessNumber,
   waveEnemies,
   waveSpeed,
-  upgradeText,
+  upgradeIcon,
   type Upgrade,
 } from "./waves";
 import { CHARGE_TIME, SPIN_CD, SPIN_TIME, type Bolt } from "./player";
@@ -103,6 +103,9 @@ const BOSS_FLOOR: FloorTheme = {
   red: true,
 };
 const BOSS_POINTS = 300;
+/** Muz qalqoni ta'siri */
+const FROST_RADIUS = 56;
+const FROST_TIME = 1.5;
 const COMBO_TIME = 2.5;
 const DROP_CHANCE = 0.15;
 const COIN_LIFE = 12;
@@ -475,7 +478,7 @@ export class Game {
     if (!u) return;
     u.apply(this.player);
     sfx.upgrade();
-    this.fx.text(this.player.x, this.player.y - 16, upgradeText(u, this.player).name, u.color);
+    this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
     this.fx.burst(this.player.x, this.player.y, u.color, 18, 70);
     this.input.clearQueued();
     this.startWave(this.wave + 1);
@@ -530,6 +533,17 @@ export class Game {
     this.comboTimer = 0;
     this.fx.addShake(0.25);
     this.fx.burst(p.x, p.y, "#ff4d6d", 10, 70);
+    if (p.frost) {
+      // muz qalqoni: atrofdagi dushmanlar 1.5s sekinlashadi
+      const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+      if (this.boss?.active) targets.push(this.boss);
+      for (const t of targets)
+        if (Math.hypot(t.x - p.x, t.y - p.y) - t.size / 2 < FROST_RADIUS) {
+          t.slow = FROST_TIME;
+          this.fx.burst(t.x, t.y, "#9be7ff", 5, 40);
+        }
+      this.fx.burst(p.x, p.y, "#c9f3ff", 14, 90);
+    }
     if (p.thorns) {
       // tikanli zirh: eng yaqin dushmanga 1 zarar
       const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
@@ -671,14 +685,16 @@ export class Game {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         if (Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(143,107,255,0.7)");
-        const body = { x: b.x, y: b.y, size: 6 } as Body;
-        const t = targets.find((t) => !t.dead && overlap(body, t));
+        const body = { x: b.x, y: b.y, size: b.size } as Body;
+        const t = targets.find((t) => !t.dead && !b.hit.includes(t) && overlap(body, t));
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
           this.fx.burst(b.x, b.y, "#5fb8ff", 6, 60, 1);
           this.damageTarget(t, p.damage);
-          return false;
+          // teshuvchi shar keyingi dushmangacha uchishda davom etadi
+          b.hit.push(t);
+          if (--b.left <= 0) return false;
         }
         const n = this.shots.length;
         this.shots = this.shots.filter((s) => !overlap(body, s as unknown as Body));
@@ -702,7 +718,14 @@ export class Game {
           sfx.hit();
           this.freeze = 0.045;
           this.fx.addShake(p.spinning ? 0.14 : 0.08);
-          this.fx.burst(t.x, t.y, p.spinning ? "#ffcc33" : "#ffffff", 5, 60, 1);
+          this.fx.burst(
+            t.x,
+            t.y,
+            p.mage ? "#8f6bff" : p.spinning ? "#ffcc33" : "#ffffff",
+            5,
+            60,
+            1,
+          );
           this.damageTarget(t, p.hitDamage);
         }
       }
@@ -1023,6 +1046,7 @@ export class Game {
       r: () => {
         if (!e.dead) this.shadow(c, e.x, e.y + (e.kind === "wisp" ? 11 : e.size / 2 + 1), e.size);
         e.render(c);
+        if (e.slow > 0 && !e.dead) this.frost(c, e.x, e.y, e.size);
       },
     }));
     const boss = this.boss;
@@ -1032,6 +1056,7 @@ export class Game {
         r: () => {
           if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
           boss.render(c);
+          if (boss.slow > 0 && !boss.dead) this.frost(c, boss.x, boss.y, boss.size);
         },
       });
     if (this.phase !== "attempt" || !p.dead)
@@ -1067,9 +1092,10 @@ export class Game {
     for (const b of this.bolts) {
       c.fillStyle = "rgba(143,107,255,0.35)";
       c.beginPath();
-      c.arc(b.x, b.y, 5, 0, Math.PI * 2);
+      c.arc(b.x, b.y, b.size - 1, 0, Math.PI * 2);
       c.fill();
-      px(c, "#6a4fd8", b.x - 2, b.y - 2, 4, 4);
+      const h = Math.round(b.size / 3);
+      px(c, "#6a4fd8", b.x - h, b.y - h, h * 2, h * 2);
       px(c, "#5fb8ff", b.x - 1, b.y - 1, 2, 2);
     }
     this.fx.renderParticles(c);
@@ -1095,6 +1121,22 @@ export class Game {
     this.renderHud();
     this.renderOverlays();
     c.restore();
+  }
+
+  /** Muz qalqonidan sekinlashgan dushman atrofida muz uchqunlari. */
+  private frost(c: CanvasRenderingContext2D, x: number, y: number, size: number) {
+    const r = size / 2 + 3;
+    c.fillStyle = "rgba(155,231,255,0.3)";
+    c.beginPath();
+    c.ellipse(Math.round(x), Math.round(y), r, r * 0.8, 0, 0, Math.PI * 2);
+    c.fill();
+    for (let i = 0; i < 4; i++) {
+      const a = this.time * 2 + (i * Math.PI) / 2;
+      const fx = x + Math.cos(a) * r,
+        fy = y + Math.sin(a) * r * 0.7;
+      px(c, "#c9f3ff", fx - 1, fy, 3, 1);
+      px(c, "#c9f3ff", fx, fy - 1, 1, 3);
+    }
   }
 
   private heart(c: CanvasRenderingContext2D, x: number, y: number, color: string) {
@@ -1131,10 +1173,14 @@ export class Game {
     // dash tayyorligi
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
-    px(c, k >= 1 ? "#68cde4" : "#287faf", 5, 14, 30 * k, 1);
+    // Sehrgarda teleport chizig'i binafsha
+    const [on, off, empty] = p.mage
+      ? ["#b18cff", "#5a3fa8", "#2a1f4a"]
+      : ["#68cde4", "#287faf", "#1d3a4a"];
+    px(c, k >= 1 ? on : off, 5, 14, 30 * k, 1);
     if (p.dashMax > 1)
       for (let i = 0; i < p.dashMax; i++)
-        px(c, i < p.dashCharges ? "#68cde4" : "#1d3a4a", 38 + i * 4, 13, 3, 3);
+        px(c, i < p.dashCharges ? on : empty, 38 + i * 4, 13, 3, 3);
     // kuchli zarba tayyorligi
     const sk = Math.max(0, Math.min(1, 1 - p.spinCooldown / SPIN_CD));
     px(c, "#000", 4, 17, 32, 3);
@@ -1203,9 +1249,9 @@ export class Game {
     const mage = this.player.mage;
     const label: Record<Hint, string> = this.touch
       ? {
-          attack: mage ? "ZARBA — sehrli shar" : "ZARBA — zarba",
-          spin: mage ? "ZARBA ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
-          dash: mage ? "DASH — teleport" : "DASH — sirpanish",
+          attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
+          spin: mage ? "SHAR ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
+          dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
         }
       : {
           attack: mage ? "Space — sehrli shar" : "Space — zarba",
@@ -1250,17 +1296,16 @@ export class Game {
       this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
-        const t = upgradeText(u, this.player);
         const sel = i === this.choiceIndex;
         const lift = sel ? -3 : 0;
         px(c, sel ? u.color : "#5c4a6e", r.x, r.y + lift, r.w, r.h);
         px(c, "#1f1730", r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
-        renderUpgradeIcon(c, u.id, u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
+        renderUpgradeIcon(c, upgradeIcon(u), u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
         this.text(String(i + 1), r.x + 8, r.y + 12 + lift, 6, u.color);
-        this.wrap(t.name, 12).forEach((l, j) =>
+        this.wrap(u.name, 12).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color),
         );
-        this.wrap(t.desc, 15).forEach((l, j) =>
+        this.wrap(u.desc, 15).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),
         );
       });
@@ -1290,7 +1335,7 @@ export class Game {
       this.text(
         this.touch
           ? this.player.mage
-            ? "Chap doira yurish · ZARBA shar · DASH teleport"
+            ? "Chap doira yurish · SHAR otish · TELEPORT"
             : "Chap doira yurish · ZARBA hujum · DASH sirpanish"
           : this.player.mage
             ? "WASD yurish · Space shar · Shift teleport"

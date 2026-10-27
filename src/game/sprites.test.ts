@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spritePixels, UPGRADE_ICONS, type SpriteKind } from "./sprites";
-import { UPGRADES } from "./waves";
+import { UPGRADES, cardFor, upgradeIcon } from "./waves";
 import { Player } from "./player";
 import { Enemy } from "./enemy";
 import { Boss } from "./boss";
@@ -124,11 +124,12 @@ describe("Kamonchi skelet sprite", () => {
 
 describe("Upgrade card icons", () => {
   it("draws a 12x12 icon for every upgrade", () => {
-    for (const u of UPGRADES) {
-      const rows = UPGRADE_ICONS[u.id];
-      expect(rows, u.id).toBeDefined();
-      expect(rows!.length).toBe(12);
-      for (const row of rows!) expect(row).toMatch(/^[.Xogk]{12}$/);
-    }
+    for (const hero of ["knight", "mage"] as const)
+      for (const u of UPGRADES.map((u) => cardFor(u, new Player(hero)))) {
+        const rows = UPGRADE_ICONS[upgradeIcon(u)];
+        expect(rows, u.id).toBeDefined();
+        expect(rows!.length).toBe(12);
+        for (const row of rows!) expect(row).toMatch(/^[.Xogkbpycn]{12}$/);
+      }
   });
 });

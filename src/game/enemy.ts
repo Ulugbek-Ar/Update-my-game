@@ -48,6 +48,8 @@ export class Enemy implements Body {
   spawnMax = SPAWN_TIME;
   /** To'lqin oshgani sari biroz tezlashadi */
   speedMul = 1;
+  /** Muz qalqoni: shuncha soniya yarim tezlikda yuradi */
+  slow = 0;
   /** O'yin olib ketadigan o'qlar (kamonchi) */
   shots: Arrow[] = [];
   /** Sprite chapga aks ettiriladi (o'yinchiga qarab) */
@@ -93,6 +95,7 @@ export class Enemy implements Body {
     }
     this.anim.update(dt);
     updatePhysics(this, dt);
+    if (this.slow > 0) this.slow -= dt;
     if (this.dead) {
       if (this.anim.done) this.removed = true;
       return;
@@ -106,7 +109,7 @@ export class Enemy implements Body {
       dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     if (dx !== 0) this.facingLeft = dx < 0;
-    const m = this.speedMul;
+    const m = this.speedMul * (this.slow > 0 ? 0.5 : 1);
 
     if (this.kind === "blob") {
       // sakrash: harakat faqat sinus musbat bo'lganda

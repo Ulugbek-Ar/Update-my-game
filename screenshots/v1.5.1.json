@@ -1,0 +1,139 @@
+[
+  {
+    "title": "Sehrgarning yangi kuchlari: Uch shar, Teshuvchi shar, Muz qalqoni",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "eval": "const score = g.score; const all = new Map(); for (let k = 0; k < 80 && all.size < 11; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = [\"triple\", \"pierce\", \"thorns\"].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0; g.score = score;"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Sehrgar kartalari o'z ikonkalari bilan",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "eval": "const score = g.score; const all = new Map(); for (let k = 0; k < 80 && all.size < 11; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = [\"heart\", \"reach\", \"dash2\"].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0; g.score = score;"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Uch shar — yelpig'ich bo'lib uchadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "dx": 120,
+          "count": 2
+        }
+      },
+      {
+        "eval": "const p = g.player; p.multishot = 3; p.fx = 1; p.fy = 0; p.cooldown = 0; g.input.pressAttack(); for (let i = 0; i < 14; i++) g.update(0.016); g.update = () => {};"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Teshuvchi shar — bir dushmandan o'tib, keyingisiga tegadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "dx": 50,
+          "count": 2
+        }
+      },
+      {
+        "eval": "const p = g.player; const [a, b] = g.enemies; a.x = p.x + 45; b.x = p.x + 95; a.y = b.y = p.y; a.aiTimer = b.aiTimer = 99; p.pierce = 1; p.fx = 1; p.fy = 0; p.cooldown = 0; g.input.pressAttack(); for (let i = 0; i < 90 && a.hp === a.maxHp; i++) g.update(0.016); for (let i = 0; i < 8; i++) g.update(0.016); g.update = () => {};"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Muz qalqoni — atrofdagi dushmanlar sekinlashadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "dx": 26,
+          "dy": -12,
+          "count": 3
+        }
+      },
+      {
+        "eval": "const p = g.player; p.frost = true; p.flash = 0.4; g.onPlayerHurt(); for (let i = 0; i < 6; i++) g.update(0.016); g.update = () => {};"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  }
+]

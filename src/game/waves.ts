@@ -1,5 +1,6 @@
 import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
+import type { Hero } from "./hero";
 
 /** Har to'lqindagi dushmanlar. Oxirgi to'lqinda Boss ham chiqadi. */
 export const WAVES: EnemyKind[][] = [
@@ -49,20 +50,41 @@ export function waveEnemies(i: number, rand = Math.random): EnemyKind[] {
   );
 }
 
+/** Qahramonga xos karta: nom, tavsif, rang, ikonka va kerak bo'lsa alohida ta'sir. */
+export interface HeroCard {
+  name: string;
+  desc: string;
+  color: string;
+  /** Ikonka (sprites.ts dagi UPGRADE_ICONS kaliti) */
+  icon: string;
+  apply?: (p: Player) => void;
+  ok?: (p: Player) => boolean;
+}
+
 export interface Upgrade {
   id: string;
   name: string;
   desc: string;
   color: string;
+  /** Ikonka kaliti; berilmasa id ishlatiladi */
+  icon?: string;
   apply: (p: Player) => void;
   ok: (p: Player) => boolean;
-  /** Sehrgar uchun boshqacha matn (kuch o'sha, lekin sehrga moslangan) */
-  mage?: { name?: string; desc: string };
+  /** Sehrgar uchun alohida karta */
+  mage?: HeroCard;
+  /** Faqat shu qahramonga chiqadi */
+  hero?: Hero;
 }
 
-/** Kartadagi nom va tavsif tanlangan qahramonga mos. */
-export function upgradeText(u: Upgrade, p: Player) {
-  return p.mage && u.mage ? { name: u.mage.name ?? u.name, desc: u.mage.desc } : u;
+/** Tanlangan qahramonga mos karta (Sehrgarda uning alohida nomi, ikonka va ta'siri). */
+export function cardFor(u: Upgrade, p: Player): Upgrade {
+  if (!p.mage || !u.mage) return u;
+  const { mage, ...base } = u;
+  return { ...base, ...mage };
+}
+
+export function upgradeIcon(u: Upgrade) {
+  return u.icon ?? u.id;
 }
 
 export const UPGRADES: Upgrade[] = [
@@ -76,6 +98,12 @@ export const UPGRADES: Upgrade[] = [
       p.hp = p.maxHp;
     },
     ok: (p) => p.maxHp < 10,
+    mage: {
+      name: "SEHRLI YURAK",
+      desc: "+1 yurak va to'liq davolanish",
+      color: "#c77dff",
+      icon: "mheart",
+    },
   },
   {
     id: "blade",
@@ -84,19 +112,30 @@ export const UPGRADES: Upgrade[] = [
     color: "#68cde4",
     apply: (p) => p.damage++,
     ok: (p) => p.damage < 3,
-    mage: { name: "KUCHLI SEHR", desc: "Shar va halqa zarari +1" },
+    mage: {
+      name: "KUCHLI SEHR",
+      desc: "Shar va halqa zarari +1",
+      color: "#ff9a3c",
+      icon: "fireball",
+    },
   },
   {
     id: "reach",
     name: "UZUN TIG'",
     desc: "Zarba maydoni kattaroq",
     color: "#c5e4ec",
-    apply: (p) => {
-      p.reach += 5;
-      p.boltSpeed += 45;
-    },
+    apply: (p) => (p.reach += 5),
     ok: (p) => p.reach < 31,
-    mage: { desc: "Shar tezroq uchadi, halqa kattaroq" },
+    mage: {
+      name: "KENG HALQA",
+      desc: "Halqa kattaroq, shar biroz kattaroq",
+      color: "#8f6bff",
+      icon: "ring",
+      apply: (p) => {
+        p.reach += 5;
+        p.boltSize += 2;
+      },
+    },
   },
   {
     id: "haste",
@@ -105,7 +144,7 @@ export const UPGRADES: Upgrade[] = [
     color: "#ffcc33",
     apply: (p) => (p.attackCd *= 0.75),
     ok: (p) => p.attackCd > 0.2,
-    mage: { desc: "Sharlar orasi 25% qisqa" },
+    mage: { name: "TEZ AFSUN", desc: "Sharlar orasi 25% qisqa", color: "#ffd166", icon: "book" },
   },
   {
     id: "wind",
@@ -117,7 +156,12 @@ export const UPGRADES: Upgrade[] = [
       p.dashCd *= 0.75;
     },
     ok: (p) => p.speed < 130,
-    mage: { desc: "Tezlik +15%, teleport tezroq qaytadi" },
+    mage: {
+      name: "EFIR QADAMI",
+      desc: "Tezlik +15%, teleport tezroq qaytadi",
+      color: "#b8f2e6",
+      icon: "wstar",
+    },
   },
   {
     id: "vamp",
@@ -126,6 +170,12 @@ export const UPGRADES: Upgrade[] = [
     color: "#b23238",
     apply: (p) => (p.lifesteal = p.lifesteal ? Math.max(3, p.lifesteal - 2) : 6),
     ok: (p) => p.lifesteal !== 3,
+    mage: {
+      name: "RUH SO'RISH",
+      desc: "Har bir necha o'ldirishda +1 yurak",
+      color: "#5fb8ff",
+      icon: "spirit",
+    },
   },
   {
     id: "thorns",
@@ -134,6 +184,14 @@ export const UPGRADES: Upgrade[] = [
     color: "#c9a26b",
     apply: (p) => (p.thorns = true),
     ok: (p) => !p.thorns,
+    mage: {
+      name: "MUZ QALQONI",
+      desc: "Jon yo'qotsang, atrofdagilar 1.5s sekinlashadi",
+      color: "#9be7ff",
+      icon: "ice",
+      apply: (p) => (p.frost = true),
+      ok: (p) => !p.frost,
+    },
   },
   {
     id: "dash2",
@@ -142,7 +200,12 @@ export const UPGRADES: Upgrade[] = [
     color: "#7fd8ff",
     apply: (p) => (p.dashMax = 2),
     ok: (p) => p.dashMax < 2,
-    mage: { name: "IKKI KARRA TELEPORT", desc: "Ketma-ket 2 ta teleport" },
+    mage: {
+      name: "IKKI KARRA TELEPORT",
+      desc: "Ketma-ket 2 ta teleport",
+      color: "#b18cff",
+      icon: "portal",
+    },
   },
   {
     id: "mend",
@@ -151,12 +214,41 @@ export const UPGRADES: Upgrade[] = [
     color: "#f2fbe4",
     apply: (p) => (p.hp = p.maxHp),
     ok: (p) => p.hp < p.maxHp,
+    mage: {
+      name: "SHIFOBAXSH IKSIR",
+      desc: "Barcha yuraklarni tiklash",
+      color: "#7ae7c7",
+      icon: "elixir",
+    },
+  },
+  // ---- Faqat Sehrgar ----
+  {
+    id: "triple",
+    name: "UCH SHAR",
+    desc: "Bir otishda yelpig'ich bo'lib 3 ta shar",
+    color: "#ffb347",
+    icon: "orbs",
+    hero: "mage",
+    apply: (p) => (p.multishot = 3),
+    ok: (p) => p.multishot < 3,
+  },
+  {
+    id: "pierce",
+    name: "TESHUVCHI SHAR",
+    desc: "Shar 1 dushmandan o'tib, keyingisiga ham tegadi",
+    color: "#e0c3ff",
+    icon: "crystal",
+    hero: "mage",
+    apply: (p) => (p.pierce = 1),
+    ok: (p) => p.pierce < 1,
   },
 ];
 
 /** n ta turli, hozir foydali bo'lgan kuchaytirishni tanlaydi. */
 export function pickUpgrades(p: Player, n = 3, rand = Math.random): Upgrade[] {
-  const pool = UPGRADES.filter((u) => u.ok(p));
+  const pool = UPGRADES.filter((u) => !u.hero || u.hero === p.hero)
+    .map((u) => cardFor(u, p))
+    .filter((u) => u.ok(p));
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];

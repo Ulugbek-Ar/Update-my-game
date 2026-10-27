@@ -146,10 +146,12 @@ function Index() {
                   Chap doira — yurish
                   <br />
                   {hero === "mage"
-                    ? "ZARBA — sehrli shar, DASH — teleport"
+                    ? "SHAR — sehrli shar, TELEPORT — sakrash"
                     : "ZARBA — hujum, DASH — sirpanish"}
                   <br />
-                  ZARBA ni bosib turing — {hero === "mage" ? "sehrli halqa" : "aylana zarba"}
+                  {hero === "mage"
+                    ? "SHAR ni bosib turing — sehrli halqa"
+                    : "ZARBA ni bosib turing — aylana zarba"}
                 </>
               ) : (
                 <>
@@ -261,7 +263,7 @@ function Index() {
           <Button variant="ghost" onClick={() => setCoachOpen(false)} className="mb-3 text-[10px]">
             YOPISH
           </Button>
-          <CoachPanel />
+          <CoachPanel hero={hero} />
         </div>
       </div>
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
@@ -328,7 +330,7 @@ function TouchControls({ game }: { game: Game }) {
         />
       </div>
       <button
-        aria-label="Hujum"
+        aria-label={game.player.mage ? "Sehrli shar" : "Hujum"}
         className={`${btn} pointer-events-auto absolute bottom-8 right-6 h-20 w-20 text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -339,17 +341,17 @@ function TouchControls({ game }: { game: Game }) {
         onPointerUp={() => game.input.setTouchAttack(false)}
         onPointerCancel={() => game.input.setTouchAttack(false)}
       >
-        ZARBA
+        {game.player.mage ? "SHAR" : "ZARBA"}
       </button>
       <button
-        aria-label="Dash"
-        className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 text-[8px]`}
+        aria-label={game.player.mage ? "Teleport" : "Dash"}
+        className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 ${game.player.mage ? "text-[6px]" : "text-[8px]"}`}
         onPointerDown={(e) => {
           e.preventDefault();
           game.input.pressDash();
         }}
       >
-        DASH
+        {game.player.mage ? "TELEPORT" : "DASH"}
       </button>
       <button
         aria-label="Pauza"
@@ -599,7 +601,7 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
-function CoachPanel() {
+function CoachPanel({ hero }: { hero: Hero }) {
   const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "archer" | "boss">("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
@@ -611,7 +613,7 @@ function CoachPanel() {
     setError("");
     setTip("");
     try {
-      const r = await getCombatTip({ data: { enemy, problem } });
+      const r = await getCombatTip({ data: { enemy, problem, hero } });
       if (r.ok) setTip(r.text);
       else setError(r.error);
     } catch {

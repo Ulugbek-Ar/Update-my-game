@@ -149,7 +149,7 @@
         "wave": 0
       },
       {
-        "eval": "const all = new Map(); for (let k = 0; k < 60 && all.size < 9; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = ['reach', 'blade', 'dash2'].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0;"
+        "eval": "const score = g.score; const all = new Map(); for (let k = 0; k < 60 && all.size < 9; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = ['reach', 'blade', 'dash2'].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0; g.score = score;"
       },
       {
         "wait": 900

@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.5.0";
+export const GAME_VERSION = "1.5.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.5.1",
+    date: "2026-10-27",
+    notes:
+      "Sehrgar uchun alohida kuchlar va ikonkalar, ochko xatosi tuzatildi. Sehrgar kartalarida o'z nomlari, ranglari va kod bilan chizilgan ikonkalari bor: sehrli yurak, olovli shar, keng halqa, afsun kitobi, qanotli yulduz, ruh alangasi, muz kristali, portal va iksir. Yangi Sehrgar kuchlari: Uch shar va Teshuvchi shar. Muz qalqoni: jon yo'qotsang, atrofdagi dushmanlar 1.5 soniya sekinlashadi. Sehrgarda teleport chizig'i, sensor tugmalari va AI maslahatchi matni shar, halqa va teleportga moslashdi.",
+  },
   {
     version: "1.5.0",
     date: "2026-10-27",

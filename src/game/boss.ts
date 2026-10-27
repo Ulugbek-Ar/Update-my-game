@@ -27,6 +27,8 @@ export class Boss implements Body {
   windup = 0;
   /** Zarba to'lqini vizual effekti */
   shock = 0;
+  /** Muz qalqoni: shuncha soniya sekinroq yuradi */
+  slow = 0;
   /** Paydo bo'lish vaqti */
   spawn = 0;
   spawnMax = 1;
@@ -75,6 +77,7 @@ export class Boss implements Body {
     this.vy *= 0.9;
     updatePhysics(this, dt);
     if (this.shock > 0) this.shock -= dt;
+    if (this.slow > 0) this.slow -= dt;
     if (this.dead) return;
 
     if (this.enraged && !this.wasEnraged) {
@@ -114,7 +117,7 @@ export class Boss implements Body {
       dy = p.y - this.y;
     const d = Math.hypot(dx, dy) || 1;
     if (dx !== 0) this.facingLeft = dx < 0;
-    const speed = this.enraged ? 42 : 30;
+    const speed = (this.enraged ? 42 : 30) * (this.slow > 0 ? 0.5 : 1);
     this.x += (dx / d) * speed * dt;
     this.y += (dy / d) * speed * dt;
     this.anim.set("walk");

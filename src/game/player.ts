@@ -25,6 +25,11 @@ export interface Bolt {
   y: number;
   vx: number;
   vy: number;
+  size: number;
+  /** Yana nechta dushmanga tega oladi */
+  left: number;
+  /** Allaqachon tekkanlar (teshuvchi shar bir dushmanga ikki marta tegmaydi) */
+  hit: object[];
 }
 
 export class Player implements Body {
@@ -65,6 +70,13 @@ export class Player implements Body {
   thorns = false;
   /** Sehrli shar tezligi (Sehrgar) */
   boltSpeed = 170;
+  boltSize = 6;
+  /** Bir zarbadagi sharlar soni (Uch shar) */
+  multishot = 1;
+  /** Shar nechta dushmandan o'tib keta oladi (Teshuvchi shar) */
+  pierce = 0;
+  /** Muz qalqoni: zarba yeganda atrofdagi dushmanlar sekinlashadi */
+  frost = false;
   /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
   bolts: Bolt[] = [];
   /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
@@ -230,13 +242,22 @@ export class Player implements Body {
       this.hitSet.clear();
       sfx.attack();
       this.anim.set("attack", true);
-      if (this.mage)
-        this.bolts.push({
-          x: this.x + this.fx * 8,
-          y: this.y + this.fy * 8 - 2,
-          vx: this.fx * this.boltSpeed,
-          vy: this.fy * this.boltSpeed,
-        });
+      if (this.mage) {
+        // Uch shar: yelpig'ich bo'lib uchadi
+        const base = Math.atan2(this.fy, this.fx);
+        for (let i = 0; i < this.multishot; i++) {
+          const a = base + (i - (this.multishot - 1) / 2) * 0.28;
+          this.bolts.push({
+            x: this.x + this.fx * 8,
+            y: this.y + this.fy * 8 - 2,
+            vx: Math.cos(a) * this.boltSpeed,
+            vy: Math.sin(a) * this.boltSpeed,
+            size: this.boltSize,
+            left: 1 + this.pierce,
+            hit: [],
+          });
+        }
+      }
     }
 
     const busy = this.attackTimer > 0 || this.hurtTimer > 0 || this.spinning;
