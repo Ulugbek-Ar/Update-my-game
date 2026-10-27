@@ -1,0 +1,44 @@
+name: GitHub Pages
+
+# Har bir main'ga push'da o'yinning statik versiyasi yig'iladi va
+# https://ulugbek-ar.github.io/Update-my-game/ manziliga chiqariladi.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile || bun install
+      - name: Statik build
+        run: bun run build
+        env:
+          GH_PAGES: "1"
+      - name: SPA uchun 404 sahifa
+        run: cp dist/client/index.html dist/client/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/client
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
