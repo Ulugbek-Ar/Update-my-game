@@ -18,6 +18,8 @@ jobs:
   post:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +55,15 @@ jobs:
         with:
           name: skrinshotlar
           path: shots/
+
+      - name: Test rasmlarini preview branchga saqlash
+        if: ${{ inputs.test }}
+        run: |
+          cd shots
+          git init -q -b skrinshot-preview
+          git add .
+          git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm preview
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" skrinshot-preview
 
       - name: Kanalga yuborish
         if: ${{ !inputs.test }}

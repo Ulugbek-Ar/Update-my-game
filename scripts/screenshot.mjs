@@ -81,9 +81,9 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
     await page.waitForTimeout(300);
     await page.locator(target).first().screenshot({ path: file });
     list.push({ file, title: scene.title ?? "" });
-    console.log("✓", scene.title);
+    console.log(`::notice title=Skrinshot::✓ ${scene.title}`);
   } catch (e) {
-    console.log("✗", scene.title, "—", e.message.split("\n")[0]);
+    console.log(`::warning title=Skrinshot::✗ ${scene.title} — ${e.message.split("\n")[0]}`);
   }
   await ctx.close();
 }
