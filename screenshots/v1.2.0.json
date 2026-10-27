@@ -1,0 +1,9 @@
+[
+  {
+    "title": "Kamonchi skelet",
+    "text": "Masofani saqlab turadi va har 1.5 soniyada kamondan o'q otadi. Unga yaqinlashib uring yoki dash bilan o'qlardan qoching. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [{ "start": true }, { "wave": 0 }, { "spawn": { "kind": "archer", "dx": 120 } }, { "wait": 200 }]
+  }
+]

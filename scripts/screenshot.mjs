@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { execFileSync } from "node:child_process";
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,7 +10,7 @@ const URL = process.env.GAME_URL ?? "http://127.0.0.1:5173";
 const OUT = "shots";
 
 const versionSrc = await readFile("src/game/version.ts", "utf8");
-const version = versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
+const version = process.env.SHOT_VERSION || versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const scenarioFile = `screenshots/v${version}.json`;
 const hasScenario = await access(scenarioFile).then(() => true, () => false);
 
@@ -27,7 +28,12 @@ const browser = await chromium.launch();
 const list = [];
 
 for (const [i, scene] of scenes.slice(0, 9).entries()) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const video = Number(scene.video) || 0;
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+    ...(video ? { recordVideo: { dir: `${OUT}/raw`, size: { width: 1280, height: 720 } } } : {}),
+  });
+  const born = Date.now();
   const storage = Object.assign({}, ...scene.steps.filter((s) => s.storage).map((s) => s.storage));
   await ctx.addInitScript((s) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
@@ -61,6 +67,26 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
           g.hints = [];
           g.startWave(w);
         }, step.wave);
+      if (step.spawn)
+        await page.evaluate((sp) => {
+          const g = window.__game;
+          const p = g.player;
+          const E = (g.enemies[0] ?? g.lastEnemy)?.constructor;
+          g.lastEnemy = g.enemies[0] ?? g.lastEnemy;
+          g.enemies = [];
+          g.boss = null;
+          g.coins = [];
+          g.shots = [];
+          p.takeHit = () => false;
+          p.x = sp.px ?? 120;
+          p.y = sp.py ?? 120;
+          for (let n = 0; n < (sp.count ?? 1); n++) {
+            const e = new E(sp.kind, p.x + (sp.dx ?? 110) + n * 24, p.y + (sp.dy ?? 0) + n * 18);
+            e.spawn = 0;
+            e.speedMul = sp.speed ?? 1;
+            g.enemies.push(e);
+          }
+        }, step.spawn);
       if (step.eval) await page.evaluate((code) => new Function("g", code)(window.__game), step.eval);
       if (step.keys)
         for (const k of step.keys) Array.isArray(k) ? await hold(k[0], k[1]) : await page.keyboard.press(k);
@@ -76,16 +102,34 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       }
       if (step.wait) await page.waitForTimeout(step.wait);
     }
-    const file = `${OUT}/${String(i + 1).padStart(2, "0")}.png`;
     const target = scene.target === "screen" ? ".game-screen" : "canvas";
-    await page.waitForTimeout(300);
-    await page.locator(target).first().screenshot({ path: file });
-    list.push({ file, title: scene.title ?? "" });
+    const base = `${OUT}/${String(i + 1).padStart(2, "0")}`;
+    if (video) {
+      const box = await page.locator(target).first().boundingBox();
+      const from = (Date.now() - born) / 1000;
+      await page.waitForTimeout(video * 1000 + 300);
+      const raw = await page.video().path();
+      await page.close();
+      await ctx.close();
+      const even = (n) => Math.floor(n / 2) * 2;
+      const file = `${base}.mp4`;
+      execFileSync("ffmpeg", [
+        "-y", "-loglevel", "error", "-ss", String(from), "-i", raw, "-t", String(video),
+        "-vf", `crop=${even(box.width)}:${even(box.height)}:${even(box.x)}:${even(box.y)},fps=30`,
+        "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file,
+      ]);
+      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob });
+    } else {
+      const file = `${base}.png`;
+      await page.waitForTimeout(300);
+      await page.locator(target).first().screenshot({ path: file });
+      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob });
+    }
     console.log(`::notice title=Skrinshot::✓ ${scene.title}`);
   } catch (e) {
     console.log(`::warning title=Skrinshot::✗ ${scene.title} — ${e.message.split("\n")[0]}`);
   }
-  await ctx.close();
+  await ctx.close().catch(() => {});
 }
 
 await browser.close();

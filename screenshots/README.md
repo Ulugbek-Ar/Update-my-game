@@ -12,9 +12,31 @@ Sahna maydonlari:
   - `{ "click": "TUGMA MATNI" }` — menyudagi tugmani bosish
   - `{ "start": true }` — BOSHLASH
   - `{ "wave": 5 }` — kerakli to'lqinga o'tish (0 = 1-to'lqin, 4 = Boss)
+  - `{ "spawn": { "kind": "archer", "dx": 120, "dy": 0, "count": 1 } }` — xonani tozalab, faqat shu dushmanni
+    o'yinchi yonida chiqaradi (o'yinchi jon yo'qotmaydi). Avval `start` va `wave` bo'lishi kerak.
   - `{ "eval": "JS kod" }` — `g` (Game obyekti) bilan sahnani sozlash
   - `{ "keys": [["d", 600], "Space"] }` — tugma bosib turish / bosish
   - `{ "play": true }` — biroz o'ynash (yurish + zarba)
   - `{ "wait": 500 }` — kutish (ms)
+
+## Yangi dushman (mob)
+
+Yangi mob qo'shilsa, unga alohida sahna yozing — u **alohida post** bo'lib, animatsiyali video bilan chiqadi:
+
+```json
+{
+  "title": "Kamonchi skelet",
+  "text": "Nima qiladi, qanday kurashish kerak, joni nechta.",
+  "mob": true,
+  "video": 5,
+  "steps": [{ "start": true }, { "wave": 0 }, { "spawn": { "kind": "archer", "dx": 120 } }]
+}
+```
+
+- `mob: true` — alohida post ("👾 Yangi dushman: ...")
+- `video: 5` — rasm o'rniga 5 soniyalik video (yurishi, hujumi ko'rinadi)
+- `text` — mob haqida tavsif (o'zbekcha)
+
+Namuna: `v1.2.0.json`.
 
 Qo'lda olingan rasmlarni `v<VERSIYA>/` papkasiga qo'ysangiz, ular albom boshida chiqadi.
