@@ -53,7 +53,7 @@ jobs:
 
       - name: Video yozuvchi (brauzer o'rnatilmaydi — serverdagi Chrome ishlatiladi)
         timeout-minutes: 3
-        run: "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install ffmpeg
+        run: $RUNNER_TEMP/pw/node_modules/.bin/playwright install ffmpeg
 
       - name: O'yin tayyorligini kutish
         run: |
