@@ -36,7 +36,7 @@ const scenes = process.env.SHOT_SCENARIO
 console.log(hasScenario ? `Ssenariy: ${scenarioFile}` : "Ssenariy yo'q — umumiy skrinshotlar");
 
 await mkdir(OUT, { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
 const list = [];
 
 for (const [i, scene] of scenes.slice(0, 9).entries()) {
