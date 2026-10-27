@@ -1,23 +1,21 @@
 name: GitHub Pages
 
-# Har bir main'ga push'da o'yinning statik versiyasi yig'iladi va
-# https://ulugbek-ar.github.io/Update-my-game/ manziliga chiqariladi.
+# Har bir main'ga push'da o'yinning statik versiyasi yig'iladi va gh-pages
+# branchiga joylanadi: https://ulugbek-ar.github.io/Update-my-game/
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,17 +26,12 @@ jobs:
         env:
           GH_PAGES: "1"
       - name: SPA uchun 404 sahifa
-        run: cp dist/client/index.html dist/client/404.html
-      - uses: actions/upload-pages-artifact@v3
+        run: |
+          cp dist/client/index.html dist/client/404.html
+          touch dist/client/.nojekyll
+      - uses: peaceiris/actions-gh-pages@v4
         with:
-          path: dist/client
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist/client
+          publish_branch: gh-pages
+          force_orphan: true
