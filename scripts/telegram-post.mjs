@@ -1,4 +1,4 @@
-import { readFile, access } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { GAME_VERSION, CHANGELOG } from "../src/game/version.ts";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -21,22 +21,23 @@ const links = [];
 if (playUrl) links.push(`🎮 <a href="${esc(playUrl)}">O'ynash</a>`);
 if (repo && sha) links.push(`📜 <a href="https://github.com/${repo}/commit/${sha}">Nima o'zgardi</a>`);
 
-const head = [`🏰 <b>Piksel Qal'a — v${esc(entry.version)}</b>`, `📅 ${d}.${m}.${y}`, "", "🆕 <b>Yangilanishlar:</b>"];
-const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
-while (bullets.length > 1 && [...head, ...bullets, ...tail].join("\n").length > 1024) bullets.pop();
-const caption = [...head, ...bullets, ...tail].join("\n").slice(0, 1024);
+const manual = await readdir(`screenshots/v${entry.version}`).then(
+  (f) => f.filter((x) => /\.(png|jpe?g)$/i.test(x)).sort().map((x) => ({ file: `screenshots/v${entry.version}/${x}`, title: "" })),
+  () => [],
+);
+const auto = JSON.parse(await readFile("shots/list.json", "utf8").catch(() => "[]"));
+const shots = [...manual, ...auto].slice(0, 10);
+if (!shots.length) throw new Error("Skrinshot topilmadi");
+const files = shots.map((s) => s.file);
+const titled = shots.map((s, i) => (s.title ? `${i + 1}. ${esc(s.title)}` : "")).filter(Boolean);
 
-const exists = (f) => access(f).then(() => true, () => false);
-const files = [];
-for (const ext of ["png", "jpg", "jpeg"]) {
-  const f = `screenshots/v${entry.version}.${ext}`;
-  if (await exists(f)) {
-    files.push(f);
-    break;
-  }
-}
-for (const f of ["play.png", "menu.png"]) if (await exists(f)) files.push(f);
-if (!files.length) throw new Error("Skrinshot topilmadi");
+const head = [`🏰 <b>Piksel Qal'a — v${esc(entry.version)}</b>`, `📅 ${d}.${m}.${y}`, "", "🆕 <b>Yangilanishlar:</b>"];
+const pics = titled.length ? ["", "📸 <b>Rasmlarda:</b>", ...titled] : [];
+const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
+const build = () => [...head, ...bullets, ...pics, ...tail].join("\n");
+while (pics.length > 2 && build().length > 1024) pics.pop();
+while (bullets.length > 1 && build().length > 1024) bullets.pop();
+const caption = build().slice(0, 1024);
 
 const blob = async (f) =>
   new Blob([await readFile(f)], { type: f.endsWith(".png") ? "image/png" : "image/jpeg" });

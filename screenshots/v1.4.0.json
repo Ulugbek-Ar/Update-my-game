@@ -1,0 +1,23 @@
+[
+  {
+    "title": "Bosh menyuda yangi DO'KON",
+    "target": "screen",
+    "steps": [{ "storage": { "pixel-rpg-gold": "120" } }, { "click": "DO'KON" }, { "wait": 500 }]
+  },
+  {
+    "title": "Dushmanlardan oltin tangalar tushadi",
+    "steps": [
+      { "start": true },
+      { "wave": 1 },
+      { "wait": 1800 },
+      {
+        "eval": "const p = g.player; for (let i = 0; i < 7; i++) g.coins.push({ x: p.x + 22 + (i % 4) * 12, y: p.y - 10 + Math.floor(i / 4) * 14, life: 12, value: 1 }); g.runGold = 37;"
+      },
+      { "wait": 400 }
+    ]
+  },
+  {
+    "title": "Boss jangi",
+    "steps": [{ "start": true }, { "wave": 4 }, { "play": true }]
+  }
+]

@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
       wave:
-        description: "Skrinshot to'lqini (0 = 1-to'lqin, 5 = Boss). Bo'sh = tasodifiy"
+        description: "Skrinshot to'lqini (0 = 1-to'lqin, 4 = Boss). Bo'sh = tasodifiy"
         required: false
 
 jobs:
@@ -52,9 +52,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: skrinshotlar
-          path: |
-            menu.png
-            play.png
+          path: shots/
 
       - name: Kanalga yuborish
         if: ${{ !inputs.test }}
