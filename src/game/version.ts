@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.2.1";
+export const GAME_VERSION = "1.3.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.3.0",
+    date: "2026-10-27",
+    notes:
+      "Fon musiqasi: oddiy to'lqinlarda sarguzasht kuyi, Boss to'lqinida tezroq va qo'rqinchliroq kuy, pauzada to'xtaydi. Bosh menyuda SOZLAMALAR: musiqa va effektlar ovozi, ekran silkinishini o'chirish. Birinchi o'yinda 1-to'lqinda qisqa ko'rsatmalar",
+  },
   {
     version: "1.2.1",
     date: "2026-10-26",

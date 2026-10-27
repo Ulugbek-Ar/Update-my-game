@@ -5,6 +5,7 @@ import { Enemy, type EnemyKind } from "./enemy";
 import { Boss } from "./boss";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
+import { loadSettings } from "./settings";
 import { Effects } from "./effects";
 import { renderUpgradeIcon } from "./sprites";
 import {
@@ -24,6 +25,10 @@ const STORAGE_KEY = "pixel-rpg-attempt";
 export const BEST_KEY = "pixel-rpg-best";
 /** Cheksiz rejim rekordi alohida saqlanadi */
 export const ENDLESS_BEST_KEY = "pixel-rpg-endless-best";
+/** Birinchi o'yindagi ko'rsatmalar ko'rsatib bo'lingan */
+export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
+export type Hint = "attack" | "spin" | "dash";
+const HINTS: Hint[] = ["attack", "spin", "dash"];
 type Phase = "play" | "attempt" | "victory";
 type Stage = "fight" | "upgrade";
 
@@ -143,6 +148,10 @@ export class Game {
   onExit: (() => void) | null = null;
   msgTimer = 0;
   time = 0;
+  /** Sozlamalar: ekran silkinishi */
+  shakeOn = true;
+  /** Birinchi o'yinda 1-to'lqindagi hali bajarilmagan harakat ko'rsatmalari */
+  hints: Hint[] = [];
   private freeze = 0;
   private raf = 0;
   private last = 0;
@@ -159,6 +168,10 @@ export class Game {
     this.attempt = saved > 0 ? saved : 1;
     this.best = load(BEST_KEY);
     this.endlessBest = load(ENDLESS_BEST_KEY);
+    const settings = loadSettings();
+    this.shakeOn = settings.shake;
+    sfx.setVolumes(settings.music, settings.sfx);
+    if (!load(TUTORIAL_KEY)) this.hints = [...HINTS];
     this.reset();
   }
 
@@ -197,7 +210,7 @@ export class Game {
         ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
         : {
             title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
-            sub: i === 0 ? "Shift — dash" : "",
+            sub: i === 0 && !this.hints.length ? "Shift — dash" : "",
             timer: 1.6,
           };
     waveEnemies(i).forEach((kind, n) => {
@@ -213,6 +226,24 @@ export class Game {
       sfx.roar();
       this.fx.addShake(0.4);
     } else sfx.wave();
+    sfx.playMusic(boss ? "boss" : "normal");
+  }
+
+  /** Bajarilgan harakat ko'rsatmasini yashiradi; hammasi bajarilsa qayta chiqmaydi. */
+  private doneHint(h: Hint) {
+    if (!this.hints.includes(h)) return;
+    this.hints = this.hints.filter((x) => x !== h);
+    if (!this.hints.length) save(TUTORIAL_KEY, 1);
+  }
+
+  private hintsVisible() {
+    return (
+      this.hints.length > 0 &&
+      this.wave === 0 &&
+      !this.endless &&
+      this.phase === "play" &&
+      this.stage === "fight"
+    );
   }
 
   /** O'yinchidan uzoqroq tasodifiy nuqta. */
@@ -343,6 +374,7 @@ export class Game {
     this.canvas.removeEventListener("click", this.onClick);
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("blur", this.onBlur);
+    sfx.stopMusic();
     sfx.resume();
   }
 
@@ -504,6 +536,11 @@ export class Game {
     const p = this.player;
     const hpBefore = p.hp;
     p.update(dt, this.input);
+    if (this.hints.length) {
+      if (p.attackTimer > 0) this.doneHint("attack");
+      if (p.spinning) this.doneHint("spin");
+      if (p.dashing) this.doneHint("dash");
+    }
     if (p.dashing) this.fx.trail(p.x, p.y + 2, "rgba(104,205,228,0.8)");
     for (const e of this.enemies) {
       e.update(dt, p);
@@ -610,6 +647,7 @@ export class Game {
         }
         this.phase = "attempt";
         this.msgTimer = 2.6;
+        sfx.stopMusic();
       }
       return;
     }
@@ -622,6 +660,7 @@ export class Game {
           else {
             this.commitBest();
             this.phase = "victory";
+            sfx.stopMusic();
             sfx.victory();
           }
         }
@@ -630,6 +669,11 @@ export class Game {
   }
 
   private clearWave() {
+    // birinchi to'lqin o'tildi — ko'rsatmalar keyingi o'yinlarda chiqmaydi
+    if (this.hints.length && !this.endless) {
+      this.hints = [];
+      save(TUTORIAL_KEY, 1);
+    }
     let bonus = 50 * (this.wave + 1);
     if (!this.waveHurt) {
       bonus += 100;
@@ -814,7 +858,7 @@ export class Game {
     c.beginPath();
     c.rect(0, 0, ROOM.w, ROOM.h);
     c.clip();
-    if (this.fx.shake > 0 && !this.paused) {
+    if (this.fx.shake > 0 && !this.paused && this.shakeOn) {
       const s = Math.min(1, this.fx.shake * 6) * 3;
       c.translate(Math.round((Math.random() - 0.5) * s), Math.round((Math.random() - 0.5) * s));
     }
@@ -970,6 +1014,8 @@ export class Game {
       px(c, "rgba(255,255,255,0.25)", bx, by + 1, (bw * Math.max(0, boss.hp)) / boss.maxHp, 1);
     }
 
+    if (this.hintsVisible()) this.renderHints();
+
     if (this.banner.timer > 0 && this.phase === "play" && this.stage === "fight") {
       const a = Math.min(1, this.banner.timer * 2);
       c.globalAlpha = a;
@@ -978,6 +1024,29 @@ export class Game {
       if (this.banner.sub) this.text(this.banner.sub, ROOM.w / 2, 126, 6, "#e0d6ee");
       c.globalAlpha = 1;
     }
+  }
+
+  /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
+  private renderHints() {
+    const c = this.ctx;
+    const label: Record<Hint, string> = this.touch
+      ? {
+          attack: "ZARBA — zarba",
+          spin: "ZARBA ni bosib turing — aylana zarba",
+          dash: "DASH — sirpanish",
+        }
+      : {
+          attack: "Space — zarba",
+          spin: "Bosib turing — aylana zarba",
+          dash: "Shift — dash",
+        };
+    const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
+    px(c, "rgba(8,4,16,0.6)", 4, 24, w, this.hints.length * 10 + 4);
+    const blink = Math.floor(this.time * 3) % 2 ? "#ffcc33" : "#8a6a1a";
+    this.hints.forEach((h, i) => {
+      px(c, blink, 7, 29 + i * 10, 3, 3);
+      this.text(label[h], 13, 33 + i * 10, 5, "#e0d6ee", "left");
+    });
   }
 
   private wrap(s: string, max: number) {

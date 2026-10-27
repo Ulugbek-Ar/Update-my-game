@@ -1,9 +1,68 @@
 const MUTE_KEY = "pixel-rpg-muted";
 
-/** Retro chiptune ovoz effektlari — Web Audio API, tashqi fayl kerak emas. */
+export type MusicTrack = "normal" | "boss";
+
+/** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
+export interface Track {
+  /** Bitta qadam davomiyligi, soniya */
+  step: number;
+  lead: (number | null)[];
+  bass: (number | null)[];
+  leadWave: OscillatorType;
+  bassWave: OscillatorType;
+  /** Har shuncha qadamda baraban zarbasi (0 — yo'q) */
+  kick: number;
+}
+
+// prettier-ignore
+export const TRACKS: Record<MusicTrack, Track> = {
+  // la minor, sarguzasht kuyi
+  normal: {
+    step: 60 / 112 / 2,
+    lead: [
+      69, null, 72, 76, 74, null, 72, 69, 67, null, 71, 74, 72, null, 71, 67,
+      65, null, 69, 72, 71, null, 69, 65, 64, 67, 71, 74, 72, 71, 69, null,
+    ],
+    bass: [
+      45, null, 57, null, 45, null, 57, null, 43, null, 55, null, 43, null, 55, null,
+      41, null, 53, null, 41, null, 53, null, 40, null, 52, null, 40, null, 52, null,
+    ],
+    leadWave: "square",
+    bassWave: "triangle",
+    kick: 0,
+  },
+  // Boss: tezroq, past registr, xromatik va tritonli qo'rqinchli kuy
+  boss: {
+    step: 60 / 152 / 2,
+    lead: [
+      64, 65, 64, null, 70, null, 71, 70, 64, 65, 64, null, 67, null, 66, null,
+      64, 65, 64, null, 70, null, 71, 74, 75, null, 74, 70, 71, null, 65, null,
+    ],
+    bass: [
+      40, 40, 52, 40, 40, 40, 52, 40, 41, 41, 53, 41, 41, 41, 53, 41,
+      40, 40, 52, 40, 40, 40, 52, 40, 46, 46, 58, 46, 45, 45, 57, 45,
+    ],
+    leadWave: "sawtooth",
+    bassWave: "square",
+    kick: 2,
+  },
+};
+
+const midi = (n: number) => 440 * 2 ** ((n - 69) / 12);
+
+/** Retro chiptune ovoz effektlari va fon musiqasi — Web Audio API, tashqi fayl kerak emas. */
 class SoundFX {
   private ctx: AudioContext | null = null;
+  private sfxGain: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+  private sfxVol = 0.8;
+  private musicVol = 0.6;
   muted = false;
+  /** Hozir chalinayotgan trek (null — musiqa yo'q) */
+  music: MusicTrack | null = null;
+  private musicStep = 0;
+  private musicNext = 0;
+  private musicTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Brauzer ruxsati uchun: birinchi foydalanuvchi bosishida chaqiriladi. */
   unlock() {
@@ -13,8 +72,67 @@ class SoundFX {
       } catch {
         return;
       }
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.connect(this.ctx.destination);
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.connect(this.ctx.destination);
+      this.applyVolumes();
+      if (this.music) this.startMusicTimer();
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
+  }
+
+  /** Sozlamalardagi ovoz balandligi (0–100). */
+  setVolumes(music: number, effects: number) {
+    this.musicVol = Math.max(0, Math.min(100, music)) / 100;
+    this.sfxVol = Math.max(0, Math.min(100, effects)) / 100;
+    this.applyVolumes();
+  }
+
+  private applyVolumes() {
+    if (this.sfxGain) this.sfxGain.gain.value = this.sfxVol;
+    if (this.musicGain) this.musicGain.gain.value = this.musicVol;
+  }
+
+  /** Fon musiqasini boshlash yoki trekni almashtirish. */
+  playMusic(track: MusicTrack) {
+    if (this.music === track) return;
+    this.music = track;
+    this.musicStep = 0;
+    this.musicNext = 0;
+    if (this.ctx) this.startMusicTimer();
+  }
+
+  stopMusic() {
+    this.music = null;
+    if (this.musicTimer !== null) clearInterval(this.musicTimer);
+    this.musicTimer = null;
+  }
+
+  private startMusicTimer() {
+    if (this.musicTimer === null) this.musicTimer = setInterval(() => this.scheduleMusic(), 50);
+  }
+
+  /** Oldindan ~0.2s notalarni rejalashtiradi; pauzada (ctx suspend) hech narsa chalinmaydi. */
+  private scheduleMusic() {
+    const ctx = this.ctx;
+    const t = this.music && TRACKS[this.music];
+    if (!ctx || !t || !this.musicGain || ctx.state !== "running") return;
+    const now = ctx.currentTime;
+    if (this.musicNext < now) this.musicNext = now + 0.05;
+    while (this.musicNext < now + 0.2) {
+      const i = this.musicStep % t.lead.length;
+      const at = this.musicNext;
+      if (!this.muted) {
+        const l = t.lead[i];
+        if (l != null) this.voice(midi(l), t.step * 0.85, t.leadWave, 0.05, at, this.musicGain);
+        const b = t.bass[i];
+        if (b != null) this.voice(midi(b), t.step * 0.9, t.bassWave, 0.07, at, this.musicGain);
+        if (t.kick && i % t.kick === 0) this.voice(150, 0.09, "sine", 0.12, at, this.musicGain, 40);
+      }
+      this.musicNext += t.step;
+      this.musicStep++;
+    }
   }
 
   /** Pauza: barcha ovozni to'xtatadi. */
@@ -54,17 +172,29 @@ class SoundFX {
     slideTo?: number,
     delay = 0,
   ) {
-    if (this.muted || !this.ctx || this.ctx.state !== "running") return;
-    const t0 = this.ctx.currentTime + delay;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+    if (this.muted || !this.ctx || !this.sfxGain || this.ctx.state !== "running") return;
+    this.voice(freq, dur, type, vol, this.ctx.currentTime + delay, this.sfxGain, slideTo);
+  }
+
+  private voice(
+    freq: number,
+    dur: number,
+    type: OscillatorType,
+    vol: number,
+    t0: number,
+    out: AudioNode,
+    slideTo?: number,
+  ) {
+    const ctx = this.ctx!;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, t0);
     if (slideTo !== undefined)
       osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
     gain.gain.setValueAtTime(vol, t0);
     gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(gain).connect(this.ctx.destination);
+    osc.connect(gain).connect(out);
     osc.start(t0);
     osc.stop(t0 + dur);
   }

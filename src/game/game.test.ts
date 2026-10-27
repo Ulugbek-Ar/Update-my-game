@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { Game, BEST_KEY, ENDLESS_BEST_KEY } from "./game";
+import { Game, BEST_KEY, ENDLESS_BEST_KEY, TUTORIAL_KEY } from "./game";
 import { Enemy } from "./enemy";
 import { BOSS_WAVE, UPGRADES } from "./waves";
+import { sfx } from "./audio";
+import { saveSettings } from "./settings";
+import { CHARGE_TIME } from "./player";
 
 /** Game ning test uchun kerakli ichki a'zolari. */
 type GameInternals = {
@@ -131,5 +134,78 @@ describe("Kamonchi o'qlari o'yinda", () => {
     g.input.pressAttack();
     tick(g, 0.04);
     expect(g.shots.length).toBe(0);
+  });
+});
+
+describe("Fon musiqasi o'yinda", () => {
+  it("plays the normal track on regular waves and the boss track on the boss wave", () => {
+    const { g, gi } = makeGame();
+    expect(sfx.music).toBe("normal");
+    gi.startWave(BOSS_WAVE);
+    expect(sfx.music).toBe("boss");
+    gi.startWave(BOSS_WAVE + 1);
+    expect(sfx.music).toBe("normal");
+    // o'lim yozuvida musiqa to'xtaydi, qayta boshlanganda yana chalinadi
+    g.enemies = [];
+    g.player.hp = 1;
+    g.player.takeHit(1, g.player.x + 5, g.player.y, 0);
+    tick(g, 1.5);
+    expect(g.phase).toBe("attempt");
+    expect(sfx.music).toBeNull();
+    tick(g, 3);
+    expect(sfx.music).toBe("normal");
+  });
+});
+
+describe("Sozlamalar o'yinda", () => {
+  it("reads the screen-shake setting from localStorage", () => {
+    expect(makeGame().g.shakeOn).toBe(true);
+    saveSettings({ music: 50, sfx: 50, shake: false });
+    expect(makeGame().g.shakeOn).toBe(false);
+  });
+});
+
+describe("Birinchi o'yin ko'rsatmalari", () => {
+  function freshPlayer(g: Game) {
+    // to'lqin tugamasligi uchun uzoqda hali paydo bo'layotgan dushman
+    const idle = new Enemy("blob", 30, 30);
+    idle.spawn = 99;
+    g.enemies = [idle];
+  }
+
+  it("shows all three hints on the first game and hides each after its action", () => {
+    const { g } = makeGame();
+    freshPlayer(g);
+    expect(g.hints).toEqual(["attack", "spin", "dash"]);
+
+    g.input.pressAttack();
+    tick(g, 0.04);
+    expect(g.hints).toEqual(["spin", "dash"]);
+
+    g.input.pressDash();
+    tick(g, 0.3);
+    expect(g.hints).toEqual(["spin"]);
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
+
+    g.player.spinCooldown = 0;
+    g.player.charge = CHARGE_TIME;
+    tick(g, 0.02);
+    expect(g.hints).toEqual([]);
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBe("1");
+    expect(makeGame().g.hints).toEqual([]);
+  });
+
+  it("clearing the first wave ends the tutorial even if not every action was tried", () => {
+    const { g } = makeGame();
+    g.enemies = [];
+    tick(g, 0.02);
+    expect(g.stage).toBe("upgrade");
+    expect(g.hints).toEqual([]);
+    expect(makeGame().g.hints).toEqual([]);
+  });
+
+  it("does not show hints once the tutorial is done", () => {
+    localStorage.setItem(TUTORIAL_KEY, "1");
+    expect(makeGame().g.hints).toEqual([]);
   });
 });

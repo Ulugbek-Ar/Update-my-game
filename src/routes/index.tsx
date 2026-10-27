@@ -6,6 +6,7 @@ import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
 import { sfx } from "@/game/audio";
+import { loadSettings, saveSettings, type Settings } from "@/game/settings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,6 +31,7 @@ function Index() {
   const [started, setStarted] = useState(false);
   const [ready, setReady] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [newVersion, setNewVersion] = useState<string | null>(null);
   const [muted, setMuted] = useState(sfx.muted);
@@ -148,6 +150,13 @@ function Index() {
             </Button>
             <Button
               variant="link"
+              onClick={() => setSettingsOpen(true)}
+              className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
+            >
+              SOZLAMALAR
+            </Button>
+            <Button
+              variant="link"
               onClick={() => setChangelogOpen(true)}
               className="text-[9px] sm:text-[10px] text-muted-foreground hover:text-foreground underline"
             >
@@ -202,6 +211,7 @@ function Index() {
         </div>
       </div>
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
+      {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
     </main>
   );
 }
@@ -289,6 +299,76 @@ function TouchControls({ game }: { game: Game }) {
       >
         II
       </button>
+    </div>
+  );
+}
+
+function SettingsWindow({ onClose }: { onClose: () => void }) {
+  const [s, setS] = useState<Settings>(loadSettings);
+  const update = (patch: Partial<Settings>) => {
+    const next = { ...s, ...patch };
+    setS(next);
+    saveSettings(next);
+    sfx.setVolumes(next.music, next.sfx);
+  };
+  const slider = (key: "music" | "sfx", label: string, preview: () => void) => (
+    <label className="flex flex-col gap-2 text-foreground">
+      <span>
+        {label}: <span className="text-primary">{s[key]}</span>
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={s[key]}
+        aria-label={label}
+        onChange={(e) => update({ [key]: Number(e.target.value) })}
+        onPointerUp={() => {
+          sfx.unlock();
+          preview();
+        }}
+        className="w-full accent-primary"
+      />
+    </label>
+  );
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sozlamalar"
+        className="flex w-[min(92vw,420px)] flex-col gap-4 border-4 border-border bg-card p-4 text-[10px] sm:text-xs leading-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-primary">SOZLAMALAR</h2>
+        {slider("music", "Musiqa ovozi", () => sfx.wave())}
+        {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
+        <div className="flex items-center justify-between gap-3 text-foreground">
+          Ekran silkinishi
+          <button
+            role="switch"
+            aria-checked={s.shake}
+            onClick={() => update({ shake: !s.shake })}
+            className={`min-w-20 border-2 px-3 py-1 ${
+              s.shake
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            {s.shake ? "YOQIQ" : "O'CHIQ"}
+          </button>
+        </div>
+        <button
+          onClick={onClose}
+          className="self-start bg-primary text-primary-foreground px-4 py-2 hover:brightness-110"
+        >
+          YOPISH
+        </button>
+      </div>
     </div>
   );
 }
