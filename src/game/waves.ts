@@ -56,6 +56,13 @@ export interface Upgrade {
   color: string;
   apply: (p: Player) => void;
   ok: (p: Player) => boolean;
+  /** Sehrgar uchun boshqacha matn (kuch o'sha, lekin sehrga moslangan) */
+  mage?: { name?: string; desc: string };
+}
+
+/** Kartadagi nom va tavsif tanlangan qahramonga mos. */
+export function upgradeText(u: Upgrade, p: Player) {
+  return p.mage && u.mage ? { name: u.mage.name ?? u.name, desc: u.mage.desc } : u;
 }
 
 export const UPGRADES: Upgrade[] = [
@@ -77,14 +84,19 @@ export const UPGRADES: Upgrade[] = [
     color: "#68cde4",
     apply: (p) => p.damage++,
     ok: (p) => p.damage < 3,
+    mage: { name: "KUCHLI SEHR", desc: "Shar va halqa zarari +1" },
   },
   {
     id: "reach",
     name: "UZUN TIG'",
     desc: "Zarba maydoni kattaroq",
     color: "#c5e4ec",
-    apply: (p) => (p.reach += 5),
+    apply: (p) => {
+      p.reach += 5;
+      p.boltSpeed += 45;
+    },
     ok: (p) => p.reach < 31,
+    mage: { desc: "Shar tezroq uchadi, halqa kattaroq" },
   },
   {
     id: "haste",
@@ -93,6 +105,7 @@ export const UPGRADES: Upgrade[] = [
     color: "#ffcc33",
     apply: (p) => (p.attackCd *= 0.75),
     ok: (p) => p.attackCd > 0.2,
+    mage: { desc: "Sharlar orasi 25% qisqa" },
   },
   {
     id: "wind",
@@ -104,6 +117,7 @@ export const UPGRADES: Upgrade[] = [
       p.dashCd *= 0.75;
     },
     ok: (p) => p.speed < 130,
+    mage: { desc: "Tezlik +15%, teleport tezroq qaytadi" },
   },
   {
     id: "vamp",
@@ -128,6 +142,7 @@ export const UPGRADES: Upgrade[] = [
     color: "#7fd8ff",
     apply: (p) => (p.dashMax = 2),
     ok: (p) => p.dashMax < 2,
+    mage: { name: "IKKI KARRA TELEPORT", desc: "Ketma-ket 2 ta teleport" },
   },
   {
     id: "mend",

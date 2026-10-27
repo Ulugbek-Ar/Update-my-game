@@ -1,6 +1,6 @@
 import type { AnimState } from "./animation";
 
-export type SpriteKind = "knight" | "skeleton" | "archer" | "demon" | "slime" | "bat";
+export type SpriteKind = "knight" | "mage" | "skeleton" | "archer" | "demon" | "slime" | "bat";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -117,6 +117,8 @@ const poses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]> = {
 // Five colors each, including the ink outline. White is only a damage effect.
 const palettes: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
+  // Sehrgar: to'q siyoh, binafsha to'n soyasi, binafsha-ko'k to'n, moviy sehr, oqish yuz
+  mage: ["#0b0818", "#352272", "#6a4fd8", "#5fb8ff", "#f0d8b0"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -253,6 +255,82 @@ function knight(p: Pixels, pose: Pose, back: boolean) {
     p.rect(2, 18 + l, 11 + b, 1, 2);
   }
   sword(p, pose, false);
+}
+
+/** Sehrgar tayog'ining uchi (sehrli tosh) qo'lga nisbatan: har kadr alohida. */
+const staffTops: Record<"idle" | "walk" | "attack" | "hurt", readonly Point[]> = {
+  idle: [
+    [1, -11],
+    [1, -10],
+  ],
+  walk: [
+    [2, -11],
+    [1, -11],
+    [0, -11],
+    [1, -10],
+  ],
+  attack: [
+    [-1, -9],
+    [6, -4],
+    [3, -10],
+  ],
+  hurt: [[4, -9]],
+};
+
+function mage(p: Pixels, pose: Pose, back: boolean, top: Point, glow = false) {
+  const { bob: b, lean: l } = pose;
+  // oyoqlar to'n ostidan ko'rinadi
+  p.rect(2, pose.leftFoot[0] - 2, pose.leftFoot[1] - 1, 4, 2);
+  p.rect(2, pose.rightFoot[0] - 1, pose.rightFoot[1] - 1, 4, 2);
+  // to'n: yelkadan pastga kengayadi
+  p.polygon(3, [
+    [11 + l, 13 + b],
+    [21 + l, 13 + b],
+    [23, 26],
+    [9, 26],
+  ]);
+  p.polygon(2, [
+    [11 + l, 13 + b],
+    [13 + l, 13 + b],
+    [12, 26],
+    [9, 26],
+  ]);
+  p.rect(4, 11 + l, 19 + b, 10, 1);
+  p.rect(4, 9, 25, 14, 1);
+  // qo'llar
+  p.line(3, [12 + l, 15 + b], pose.otherHand, 3);
+  p.rect(5, pose.otherHand[0] - 1, pose.otherHand[1] - 1, 2, 2);
+  // tayoq
+  const [hx, hy] = pose.hand;
+  const tx = hx + top[0],
+    ty = hy + top[1];
+  p.line(2, [hx - (top[0] >> 2), hy + 7], [tx, ty], 2);
+  p.line(3, [20 + l, 15 + b], pose.hand, 3);
+  p.rect(5, hx - 1, hy - 1, 2, 2);
+  if (glow) p.rect(4, tx - 2, ty - 2, 5, 5);
+  p.rect(4, tx - 1, ty - 1, 3, 3);
+  p.rect(5, tx, ty - 1, 1, 1);
+  // bosh va soqol
+  if (back) p.ellipse(2, 16 + l, 11 + b, 3.5, 3);
+  else {
+    p.ellipse(5, 16 + l, 11 + b, 3.5, 3);
+    p.rect(1, 14 + l, 10 + b, 1, 1);
+    p.rect(1, 17 + l, 10 + b, 1, 1);
+    p.polygon(5, [
+      [13 + l, 12 + b],
+      [19 + l, 12 + b],
+      [16 + l, 17 + b],
+    ]);
+  }
+  // uchli qalpoq: keng hoshiya, tasma va orqaga egilgan uch
+  p.rect(2, 9 + l, 8 + b, 14, 2);
+  p.polygon(3, [
+    [11 + l, 8 + b],
+    [21 + l, 8 + b],
+    [19 + l - b, 1 + b],
+  ]);
+  p.rect(4, 12 + l, 7 + b, 8, 1);
+  p.rect(5, 15 + l, 4 + b, 1, 1);
 }
 
 /** Skelet tanasi (qurolsiz) — skelet jangchi va kamonchi uchun umumiy. */
@@ -571,7 +649,7 @@ function demon(p: Pixels, pose: Pose, attackFrame: number | null) {
 
 function fallen(p: Pixels, kind: SpriteKind, frame: number) {
   const skeletonBody = kind === "skeleton" || kind === "archer";
-  const light = skeletonBody ? 3 : kind === "knight" ? 4 : 3;
+  const light = skeletonBody ? 3 : kind === "knight" || kind === "mage" ? 4 : 3;
   // Separate buckling, side-fall, and fully prone silhouettes.
   if (frame === 0) {
     const pose: Pose = {
@@ -584,6 +662,7 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       otherHand: [7, 23],
     };
     if (kind === "knight") knight(p, pose, false);
+    else if (kind === "mage") mage(p, pose, false, [5, -8]);
     else if (kind === "archer") {
       quiver(p, pose.bob);
       boneBody(p, pose);
@@ -615,6 +694,16 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       p.line(5, [10, 14], [11, 10], 2);
       p.rect(5, 26, 25, 4, 4);
     }
+    if (kind === "mage") {
+      // qalpoq boshdan tushmoqda, tayoq yerga
+      p.polygon(3, [
+        [2, 13],
+        [9, 11],
+        [3, 6],
+      ]);
+      p.line(2, [20, 18], [29, 23], 1);
+      p.rect(4, 28, 22, 2, 2);
+    }
     if (kind === "archer") {
       // ko'z so'nmoqda (oxirgi kadrda o'chadi), kamon yerga qulamoqda
       p.rect(5, 7, 15, 1, 1);
@@ -635,6 +724,16 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
     p.line(5, [4, 24], [2, 20], 2);
     p.line(5, [8, 24], [10, 21], 2);
     p.rect(5, 26, 27, 4, 3);
+  }
+  if (kind === "mage") {
+    // qalpoq va tayoq yerda yotibdi
+    p.polygon(3, [
+      [1, 29],
+      [8, 29],
+      [2, 23],
+    ]);
+    p.line(2, [17, 30], [29, 30], 1);
+    p.rect(4, 28, 29, 2, 2);
   }
   // kamon yerda yotibdi
   if (kind === "archer") bow(p, [18, 29], [30, 29], 1, null, false);
@@ -783,6 +882,14 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     const pose = poses[state][frame] ?? poses[state][0];
     if (pose) {
       if (kind === "knight") knight(p, pose, back);
+      else if (kind === "mage")
+        mage(
+          p,
+          pose,
+          back,
+          staffTops[state][frame] ?? staffTops[state][0]!,
+          state === "attack" && frame === 1,
+        );
       else if (kind === "skeleton") skeleton(p, pose);
       else demon(p, pose, state === "attack" ? frame : null);
     }

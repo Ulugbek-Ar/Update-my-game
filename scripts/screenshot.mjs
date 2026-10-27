@@ -12,17 +12,23 @@ const OUT = "shots";
 const versionSrc = await readFile("src/game/version.ts", "utf8");
 const version = process.env.SHOT_VERSION || versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const scenarioFile = `screenshots/v${version}.json`;
-const hasScenario = await access(scenarioFile).then(() => true, () => false);
+const hasScenario = await access(scenarioFile).then(
+  () => true,
+  () => false,
+);
 
 const randomWave = process.env.SHOT_WAVE || String(Math.floor(Math.random() * 5));
 const scenes = process.env.SHOT_SCENARIO
   ? JSON.parse(process.env.SHOT_SCENARIO)
   : hasScenario
-  ? JSON.parse(await readFile(scenarioFile, "utf8"))
-  : [
-      { title: "O'yin jarayoni", steps: [{ start: true }, { wave: Number(randomWave) }, { play: true }] },
-      { title: "Bosh menyu", target: "screen", steps: [] },
-    ];
+    ? JSON.parse(await readFile(scenarioFile, "utf8"))
+    : [
+        {
+          title: "O'yin jarayoni",
+          steps: [{ start: true }, { wave: Number(randomWave) }, { play: true }],
+        },
+        { title: "Bosh menyu", target: "screen", steps: [] },
+      ];
 console.log(hasScenario ? `Ssenariy: ${scenarioFile}` : "Ssenariy yo'q — umumiy skrinshotlar");
 
 await mkdir(OUT, { recursive: true });
@@ -38,14 +44,21 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   const born = Date.now();
   const storage = Object.assign({}, ...scene.steps.filter((s) => s.storage).map((s) => s.storage));
   await ctx.addInitScript((s) => {
-    for (const [k, v] of Object.entries(s)) localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+    for (const [k, v] of Object.entries(s))
+      localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
   }, storage);
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
-  await page.waitForFunction(() => {
-    const b = [...document.querySelectorAll("button")].find((x) => x.textContent?.trim() === "BOSHLASH");
-    return b && !b.disabled;
-  }, null, { timeout: 60_000 });
+  await page.waitForFunction(
+    () => {
+      const b = [...document.querySelectorAll("button")].find(
+        (x) => x.textContent?.trim() === "BOSHLASH",
+      );
+      return b && !b.disabled;
+    },
+    null,
+    { timeout: 60_000 },
+  );
   await page.waitForTimeout(500);
 
   const hold = async (key, ms) => {
@@ -61,10 +74,14 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
         const px = step.spawn.px ?? 120;
         const py = step.spawn.py ?? 120;
         const n = (step.spawn.count ?? 1) - 1;
-        focus = { x: px + ((step.spawn.dx ?? 110) + n * 24) / 2, y: py + ((step.spawn.dy ?? 0) + n * 18) / 2,
-                  w: Math.max(160, Math.abs(step.spawn.dx ?? 110) + n * 24 + 90) };
+        focus = {
+          x: px + ((step.spawn.dx ?? 110) + n * 24) / 2,
+          y: py + ((step.spawn.dy ?? 0) + n * 18) / 2,
+          w: Math.max(160, Math.abs(step.spawn.dx ?? 110) + n * 24 + 90),
+        };
       }
-      if (step.click) await page.getByRole("button", { name: step.click, exact: true }).first().click();
+      if (step.click)
+        await page.getByRole("button", { name: step.click, exact: true }).first().click();
       if (step.start) {
         await page.getByRole("button", { name: "BOSHLASH" }).click();
         await page.waitForFunction(() => !!window.__game);
@@ -99,9 +116,11 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
             g.enemies.push(e);
           }
         }, step.spawn);
-      if (step.eval) await page.evaluate((code) => new Function("g", code)(window.__game), step.eval);
+      if (step.eval)
+        await page.evaluate((code) => new Function("g", code)(window.__game), step.eval);
       if (step.keys)
-        for (const k of step.keys) Array.isArray(k) ? await hold(k[0], k[1]) : await page.keyboard.press(k);
+        for (const k of step.keys)
+          Array.isArray(k) ? await hold(k[0], k[1]) : await page.keyboard.press(k);
       if (step.play) {
         await page.waitForTimeout(2200);
         await hold("d", 600);
@@ -142,14 +161,32 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
             return best;
           });
           const want = new Set();
-          if (t && t.d > 28) {
+          // range: masofali qahramon shu masofani saqlaydi va nishonga qarab otadi
+          const range = scene.range ?? 28;
+          if (t && t.d > range) {
             if (t.dx > 8) want.add("d");
             if (t.dx < -8) want.add("a");
             if (t.dy > 8) want.add("s");
             if (t.dy < -8) want.add("w");
+          } else if (t && scene.range) {
+            // nishon bilan bitta chiziqqa tushadi (shar 4 yo'nalishda uchadi)
+            if (Math.abs(t.dx) > Math.abs(t.dy)) {
+              if (t.dy > 5) want.add("s");
+              if (t.dy < -5) want.add("w");
+            } else {
+              if (t.dx > 5) want.add("d");
+              if (t.dx < -5) want.add("a");
+            }
           }
           await setKeys(want);
-          if (t) await page.keyboard.press("Space");
+          if (t && scene.range && !want.size) {
+            const aim =
+              Math.abs(t.dx) > Math.abs(t.dy) ? (t.dx > 0 ? "d" : "a") : t.dy > 0 ? "s" : "w";
+            await page.keyboard.down(aim);
+            await page.waitForTimeout(20);
+            await page.keyboard.up(aim);
+          }
+          if (t && (!scene.range || !want.size)) await page.keyboard.press("Space");
           await page.waitForTimeout(180);
         }
         await setKeys(new Set());
@@ -171,16 +208,44 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       }
       const file = `${base}.mp4`;
       execFileSync("ffmpeg", [
-        "-y", "-loglevel", "error", "-ss", String(from), "-i", raw, "-t", String(video),
-        "-vf", `crop=${even(crop.w)}:${even(crop.h)}:${even(crop.x)}:${even(crop.y)},scale=1280:-2:flags=neighbor,fps=30`,
-        "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file,
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        String(from),
+        "-i",
+        raw,
+        "-t",
+        String(video),
+        "-vf",
+        `crop=${even(crop.w)}:${even(crop.h)}:${even(crop.x)}:${even(crop.y)},scale=1280:-2:flags=neighbor,fps=30`,
+        "-an",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        file,
       ]);
-      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob, hero: !!scene.hero });
+      list.push({
+        file,
+        title: scene.title ?? "",
+        text: scene.text ?? "",
+        mob: !!scene.mob,
+        hero: !!scene.hero,
+      });
     } else {
       const file = `${base}.png`;
       await page.waitForTimeout(300);
       await page.locator(target).first().screenshot({ path: file });
-      list.push({ file, title: scene.title ?? "", text: scene.text ?? "", mob: !!scene.mob, hero: !!scene.hero });
+      list.push({
+        file,
+        title: scene.title ?? "",
+        text: scene.text ?? "",
+        mob: !!scene.mob,
+        hero: !!scene.hero,
+      });
     }
     console.log(`::notice title=Skrinshot::✓ ${scene.title}`);
   } catch (e) {

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Game, BEST_KEY, ENDLESS_BEST_KEY } from "@/game/game";
+import { Game } from "@/game/game";
+import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
 import { Button } from "@/components/ui/button";
 import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG } from "@/game/version";
@@ -8,7 +9,7 @@ import { getLatestVersion } from "@/lib/version.functions";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
 import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
-import { renderUpgradeIcon } from "@/game/sprites";
+import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,20 +44,31 @@ function Index() {
   const [endlessBest, setEndlessBest] = useState(0);
   const [touch, setTouch] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
+  const [hero, setHero] = useState<Hero>("knight");
   const startedRef = useRef(false);
   startedRef.current = started;
   useEffect(() => {
     setReady(true);
     setMuted(sfx.loadMute());
+    setHero(loadHero());
     try {
-      setBest(Number(localStorage.getItem(BEST_KEY)) || 0);
-      setEndlessBest(Number(localStorage.getItem(ENDLESS_BEST_KEY)) || 0);
       setGold(loadGold());
     } catch {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
   }, []);
+
+  // Rekordlar tanlangan qahramonniki
+  useEffect(() => {
+    try {
+      const keys = bestKeys(hero);
+      setBest(Number(localStorage.getItem(keys.best)) || 0);
+      setEndlessBest(Number(localStorage.getItem(keys.endless)) || 0);
+    } catch {
+      /* saqlash imkonsiz */
+    }
+  }, [hero]);
 
   // Avtomatik yangilanish: yangi versiya chiqsa menyuda darhol, o'yinda esa so'rab yangilanadi.
   useEffect(() => {
@@ -83,7 +95,7 @@ function Index() {
 
   useEffect(() => {
     if (!started || !canvasRef.current) return;
-    const g = new Game(canvasRef.current);
+    const g = new Game(canvasRef.current, hero);
     g.touch = touch;
     g.onExit = () => {
       setBest(g.best);
@@ -97,6 +109,8 @@ function Index() {
     if (import.meta.env.DEV) (window as unknown as { __game?: Game }).__game = g;
     g.start();
     return () => g.stop();
+    // qahramon faqat menyuda o'zgaradi — o'yin davomida qayta yaratilmaydi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, touch]);
 
   return (
@@ -106,24 +120,46 @@ function Index() {
         {!started && (
           <div className="game-menu absolute inset-0 flex flex-col items-center justify-center gap-6 bg-card/95 text-center px-4">
             <h1 className="text-primary text-lg sm:text-2xl">PIKSEL QAL'A</h1>
+            <div aria-label="Qahramon tanlash" className="flex gap-3">
+              {HEROES.map((h) => (
+                <button
+                  key={h}
+                  aria-pressed={hero === h}
+                  onClick={() => {
+                    setHero(h);
+                    saveHero(h);
+                  }}
+                  className={`flex flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${
+                    hero === h
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <HeroPreview hero={h} active={hero === h} />
+                  {HERO_NAMES[h]}
+                </button>
+              ))}
+            </div>
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
                 <>
                   Chap doira — yurish
                   <br />
-                  ZARBA — hujum, DASH — sirpanish
+                  {hero === "mage"
+                    ? "ZARBA — sehrli shar, DASH — teleport"
+                    : "ZARBA — hujum, DASH — sirpanish"}
                   <br />
-                  ZARBA ni bosib turing — aylana zarba
+                  ZARBA ni bosib turing — {hero === "mage" ? "sehrli halqa" : "aylana zarba"}
                 </>
               ) : (
                 <>
                   WASD / strelkalar — yurish
                   <br />
-                  Space / J — hujum
+                  Space / J — {hero === "mage" ? "sehrli shar" : "hujum"}
                   <br />
-                  Space ni bosib turish — aylana zarba
+                  Space ni bosib turish — {hero === "mage" ? "sehrli halqa" : "aylana zarba"}
                   <br />
-                  Shift / K — dash
+                  Shift / K — {hero === "mage" ? "teleport" : "dash"}
                   <br />
                   Esc — pauza, M — ovoz
                 </>
@@ -326,6 +362,32 @@ function TouchControls({ game }: { game: Game }) {
         II
       </button>
     </div>
+  );
+}
+
+/** Menyudagi qahramon rasmi: kod bilan chizilgan sprite, tanlanganda "nafas oladi". */
+function HeroPreview({ hero, active }: { hero: Hero; active: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    if (!active) return setFrame(0);
+    const id = window.setInterval(() => setFrame((f) => (f + 1) % 2), 500);
+    return () => window.clearInterval(id);
+  }, [active]);
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (!c) return;
+    c.clearRect(0, 0, 32, 32);
+    renderSprite(c, hero, "idle", frame, 16, 16, false);
+  }, [hero, frame]);
+  return (
+    <canvas
+      ref={ref}
+      width={32}
+      height={32}
+      aria-hidden="true"
+      style={{ width: 48, height: 48, imageRendering: "pixelated" }}
+    />
   );
 }
 

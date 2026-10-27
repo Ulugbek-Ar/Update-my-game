@@ -20,7 +20,8 @@ const bullets = entry.notes
 
 const links = [];
 if (playUrl) links.push(`🎮 <a href="${esc(playUrl)}">O'ynash</a>`);
-if (repo && sha) links.push(`📜 <a href="https://github.com/${repo}/commit/${sha}">Nima o'zgardi</a>`);
+if (repo && sha)
+  links.push(`📜 <a href="https://github.com/${repo}/commit/${sha}">Nima o'zgardi</a>`);
 
 const manual = await readdir(`screenshots/v${entry.version}`).then(
   (f) =>
@@ -33,14 +34,32 @@ const manual = await readdir(`screenshots/v${entry.version}`).then(
 const auto = JSON.parse(await readFile("shots/list.json", "utf8").catch(() => "[]"));
 const heroes = auto.filter((s) => s.hero);
 const mobs = auto.filter((s) => !s.hero && (s.mob || s.file.endsWith(".mp4")));
-const shots = [...manual, ...auto.filter((s) => !mobs.includes(s) && !heroes.includes(s))].slice(0, 10);
+const shots = [...manual, ...auto.filter((s) => !mobs.includes(s) && !heroes.includes(s))].slice(
+  0,
+  10,
+);
 const titled = shots.map((s, i) => (s.title ? `${i + 1}. ${esc(s.title)}` : "")).filter(Boolean);
 
-const head = [`🏰 <b>Piksel Qal'a — v${esc(entry.version)}</b>`, `📅 ${d}.${m}.${y}`, "", "🆕 <b>Yangilanishlar:</b>"];
+const head = [
+  `🏰 <b>Piksel Qal'a — v${esc(entry.version)}</b>`,
+  `📅 ${d}.${m}.${y}`,
+  "",
+  "🆕 <b>Yangilanishlar:</b>",
+];
 const pics = titled.length ? ["", "📸 <b>Rasmlarda:</b>", ...titled] : [];
 const newMobs = [
-  ...(heroes.length ? ["", `🧙 <b>Yangi qahramon:</b> ${heroes.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`] : []),
-  ...(mobs.length ? ["", `👾 <b>Yangi dushman:</b> ${mobs.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`] : []),
+  ...(heroes.length
+    ? [
+        "",
+        `🧙 <b>Yangi qahramon:</b> ${heroes.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`,
+      ]
+    : []),
+  ...(mobs.length
+    ? [
+        "",
+        `👾 <b>Yangi dushman:</b> ${mobs.map((s) => esc(s.title)).join(", ")} — pastdagi videoda`,
+      ]
+    : []),
 ];
 const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
 const build = () => [...head, ...bullets, ...newMobs, ...pics, ...tail].join("\n");
@@ -48,14 +67,18 @@ while (pics.length > 2 && build().length > 1024) pics.pop();
 while (bullets.length > 1 && build().length > 1024) bullets.pop();
 const caption = build().slice(0, shots.length ? 1024 : 4096);
 
-const mime = (f) => (f.endsWith(".png") ? "image/png" : f.endsWith(".mp4") ? "video/mp4" : "image/jpeg");
+const mime = (f) =>
+  f.endsWith(".png") ? "image/png" : f.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
 const blob = async (f) => new Blob([await readFile(f)], { type: mime(f) });
 
 async function send(method, fill) {
   const form = new FormData();
   form.append("chat_id", chat);
   await fill(form);
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: "POST", body: form });
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: "POST",
+    body: form,
+  });
   const body = await res.json();
   if (!body.ok) throw new Error(`Telegram xatosi (${method}): ${body.description}`);
 }
@@ -76,7 +99,11 @@ else
     const media = [];
     for (const [i, s] of shots.entries()) {
       f.append(`img${i}`, await blob(s.file), s.file.split("/").pop());
-      media.push({ type: "photo", media: `attach://img${i}`, ...(i === 0 ? { caption, parse_mode: "HTML" } : {}) });
+      media.push({
+        type: "photo",
+        media: `attach://img${i}`,
+        ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
+      });
     }
     f.append("media", JSON.stringify(media));
   });
@@ -85,7 +112,9 @@ console.log("Post joylandi ✅", shots.map((s) => s.file).join(", "));
 for (const item of [...heroes, ...mobs]) {
   const hero = heroes.includes(item);
   const text = [
-    hero ? `🧙 <b>Yangi qahramon: ${esc(item.title)}</b>` : `👾 <b>Yangi dushman: ${esc(item.title)}</b>`,
+    hero
+      ? `🧙 <b>Yangi qahramon: ${esc(item.title)}</b>`
+      : `👾 <b>Yangi dushman: ${esc(item.title)}</b>`,
     "",
     ...(item.text ? [esc(item.text), ""] : []),
     hero

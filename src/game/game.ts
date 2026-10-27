@@ -17,15 +17,18 @@ import {
   endlessNumber,
   waveEnemies,
   waveSpeed,
+  upgradeText,
   type Upgrade,
 } from "./waves";
-import { CHARGE_TIME, SPIN_CD, SPIN_TIME } from "./player";
+import { CHARGE_TIME, SPIN_CD, SPIN_TIME, type Bolt } from "./player";
+import { bestKeys, loadHero, type Hero } from "./hero";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
-export const BEST_KEY = "pixel-rpg-best";
+/** Ritsar rekordlari (Sehrgarniki — hero.ts dagi bestKeys) */
+export const BEST_KEY = bestKeys("knight").best;
 /** Cheksiz rejim rekordi alohida saqlanadi */
-export const ENDLESS_BEST_KEY = "pixel-rpg-endless-best";
+export const ENDLESS_BEST_KEY = bestKeys("knight").endless;
 /** Birinchi o'yindagi ko'rsatmalar ko'rsatib bo'lingan */
 export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
 export type Hint = "attack" | "spin" | "dash";
@@ -127,6 +130,8 @@ export class Game {
   enemies: Enemy[] = [];
   boss: Boss | null = null;
   shots: Shot[] = [];
+  /** Sehrgarning uchib ketayotgan sharlari */
+  bolts: Bolt[] = [];
   drops: Drop[] = [];
   coins: Coin[] = [];
   /** Shu o'yinda terilgan oltin (o'yin tugaganda umumiy hisobga qo'shiladi) */
@@ -174,14 +179,17 @@ export class Game {
   private floor: HTMLCanvasElement | null = null;
   private floorKey = NaN;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    public hero: Hero = loadHero(),
+  ) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
     const saved = load(STORAGE_KEY);
     this.attempt = saved > 0 ? saved : 1;
-    this.best = load(BEST_KEY);
-    this.endlessBest = load(ENDLESS_BEST_KEY);
+    this.best = load(bestKeys(hero).best);
+    this.endlessBest = load(bestKeys(hero).endless);
     this.totalGold = loadGold();
     const settings = loadSettings();
     this.shakeOn = settings.shake;
@@ -192,13 +200,14 @@ export class Game {
 
   /** Boshlang'ich holat: 1-to'lqin, HP to'liq. */
   reset() {
-    this.player = new Player();
+    this.player = new Player(this.hero);
     const shop = loadShop();
     applyShop(this.player, shop);
     this.dropBonus = dropBonus(shop);
     this.enemies = [];
     this.boss = null;
     this.shots = [];
+    this.bolts = [];
     this.drops = [];
     this.coins = [];
     this.runGold = 0;
@@ -230,7 +239,12 @@ export class Game {
         ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
         : {
             title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
-            sub: i === 0 && !this.hints.length ? "Shift — dash" : "",
+            sub:
+              i === 0 && !this.hints.length
+                ? this.player.mage
+                  ? "Shift — teleport"
+                  : "Shift — dash"
+                : "",
             timer: 1.6,
           };
     waveEnemies(i).forEach((kind, n) => {
@@ -430,12 +444,12 @@ export class Game {
       if (this.score > this.endlessBest) {
         this.endlessBest = this.score;
         this.newBest = true;
-        save(ENDLESS_BEST_KEY, this.endlessBest);
+        save(bestKeys(this.hero).endless, this.endlessBest);
       }
     } else if (this.score > this.best) {
       this.best = this.score;
       this.newBest = true;
-      save(BEST_KEY, this.best);
+      save(bestKeys(this.hero).best, this.best);
     }
   }
 
@@ -449,6 +463,7 @@ export class Game {
     this.comboTimer = 0;
     this.player.hp = this.player.maxHp;
     this.shots = [];
+    this.bolts = [];
     this.drops = [];
     this.coins = [];
     this.input.clearQueued();
@@ -460,7 +475,7 @@ export class Game {
     if (!u) return;
     u.apply(this.player);
     sfx.upgrade();
-    this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
+    this.fx.text(this.player.x, this.player.y - 16, upgradeText(u, this.player).name, u.color);
     this.fx.burst(this.player.x, this.player.y, u.color, 18, 70);
     this.input.clearQueued();
     this.startWave(this.wave + 1);
@@ -594,7 +609,17 @@ export class Game {
       if (p.spinning) this.doneHint("spin");
       if (p.dashing) this.doneHint("dash");
     }
-    if (p.dashing) this.fx.trail(p.x, p.y + 2, "rgba(104,205,228,0.8)");
+    if (p.teleportFrom) {
+      // teleport: chiqqan va tushgan joyda sehrli uchqunlar
+      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#8f6bff", 10, 50);
+      this.fx.burst(p.x, p.y, "#5fb8ff", 10, 50);
+      p.teleportFrom = null;
+    }
+    if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, "rgba(104,205,228,0.8)");
+    if (p.bolts.length) {
+      this.bolts.push(...p.bolts);
+      p.bolts = [];
+    }
     for (const e of this.enemies) {
       e.update(dt, p);
       if (e.shots.length) {
@@ -637,6 +662,34 @@ export class Game {
     const inRoom = (s: Shot) =>
       s.x > ROOM.wall && s.x < ROOM.w - ROOM.wall && s.y > ROOM.wall && s.y < ROOM.h - ROOM.wall;
     this.shots = this.shots.filter(inRoom);
+
+    // sehrli sharlar: birinchi tekkan dushmanga zarar, dushman o'q/olovini ham yo'q qiladi
+    if (this.bolts.length) {
+      const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+      if (boss?.active) targets.push(boss);
+      this.bolts = this.bolts.filter((b) => {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(143,107,255,0.7)");
+        const body = { x: b.x, y: b.y, size: 6 } as Body;
+        const t = targets.find((t) => !t.dead && overlap(body, t));
+        if (t) {
+          sfx.hit();
+          this.fx.addShake(0.06);
+          this.fx.burst(b.x, b.y, "#5fb8ff", 6, 60, 1);
+          this.damageTarget(t, p.damage);
+          return false;
+        }
+        const n = this.shots.length;
+        this.shots = this.shots.filter((s) => !overlap(body, s as unknown as Body));
+        if (this.shots.length < n) {
+          this.score += 5 * (n - this.shots.length);
+          this.fx.burst(b.x, b.y, "#8f6bff", 6, 50);
+          return false;
+        }
+        return inRoom(b as Shot);
+      });
+    }
 
     // o'yinchi hujumi
     const box = p.attackBox();
@@ -747,6 +800,7 @@ export class Game {
     }
     this.score += bonus;
     this.shots = [];
+    this.bolts = [];
     this.collectCoins();
     this.choices = pickUpgrades(this.player);
     this.choiceIndex = 0;
@@ -881,6 +935,22 @@ export class Game {
       c.arc(p.x, p.y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
       c.stroke();
     }
+    if (p.spinning && p.mage) {
+      // sehrli halqa: kengayib boruvchi binafsha-ko'k aylana
+      const k = p.spinTimer / SPIN_TIME;
+      const r = p.reach * 1.2 * (1.15 - k * 0.5);
+      c.strokeStyle = `rgba(143,107,255,${0.35 + 0.6 * k})`;
+      c.lineWidth = 3;
+      c.beginPath();
+      c.arc(p.x, p.y, r, 0, Math.PI * 2);
+      c.stroke();
+      c.strokeStyle = `rgba(95,184,255,${0.25 + 0.5 * k})`;
+      c.lineWidth = 1;
+      c.beginPath();
+      c.arc(p.x, p.y, r * 0.7, 0, Math.PI * 2);
+      c.stroke();
+      return;
+    }
     if (p.spinning) {
       const k = p.spinTimer / SPIN_TIME;
       const r = p.reach * 1.2;
@@ -897,7 +967,7 @@ export class Game {
       c.stroke();
       return;
     }
-    if (p.attackTimer <= 0) return;
+    if (p.attackTimer <= 0 || p.mage) return;
     const k = p.attackTimer / 0.24;
     const ang = Math.atan2(p.fy, p.fx);
     c.strokeStyle = `rgba(255,255,255,${0.75 * k})`;
@@ -993,6 +1063,14 @@ export class Game {
       c.fill();
       px(c, "#ff6a2a", s.x - 2, s.y - 2, 4, 4);
       px(c, "#ffe14d", s.x - 1, s.y - 1, 2, 2);
+    }
+    for (const b of this.bolts) {
+      c.fillStyle = "rgba(143,107,255,0.35)";
+      c.beginPath();
+      c.arc(b.x, b.y, 5, 0, Math.PI * 2);
+      c.fill();
+      px(c, "#6a4fd8", b.x - 2, b.y - 2, 4, 4);
+      px(c, "#5fb8ff", b.x - 1, b.y - 1, 2, 2);
     }
     this.fx.renderParticles(c);
     this.fx.renderTexts((s, x, y, color, a) => {
@@ -1122,16 +1200,17 @@ export class Game {
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
+    const mage = this.player.mage;
     const label: Record<Hint, string> = this.touch
       ? {
-          attack: "ZARBA — zarba",
-          spin: "ZARBA ni bosib turing — aylana zarba",
-          dash: "DASH — sirpanish",
+          attack: mage ? "ZARBA — sehrli shar" : "ZARBA — zarba",
+          spin: mage ? "ZARBA ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
+          dash: mage ? "DASH — teleport" : "DASH — sirpanish",
         }
       : {
-          attack: "Space — zarba",
-          spin: "Bosib turing — aylana zarba",
-          dash: "Shift — dash",
+          attack: mage ? "Space — sehrli shar" : "Space — zarba",
+          spin: mage ? "Bosib turing — sehrli halqa" : "Bosib turing — aylana zarba",
+          dash: mage ? "Shift — teleport" : "Shift — dash",
         };
     const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
     px(c, "rgba(8,4,16,0.6)", 4, 24, w, this.hints.length * 10 + 4);
@@ -1171,16 +1250,17 @@ export class Game {
       this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
+        const t = upgradeText(u, this.player);
         const sel = i === this.choiceIndex;
         const lift = sel ? -3 : 0;
         px(c, sel ? u.color : "#5c4a6e", r.x, r.y + lift, r.w, r.h);
         px(c, "#1f1730", r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
         renderUpgradeIcon(c, u.id, u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
         this.text(String(i + 1), r.x + 8, r.y + 12 + lift, 6, u.color);
-        this.wrap(u.name, 12).forEach((l, j) =>
+        this.wrap(t.name, 12).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color),
         );
-        this.wrap(u.desc, 15).forEach((l, j) =>
+        this.wrap(t.desc, 15).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),
         );
       });
@@ -1209,8 +1289,12 @@ export class Game {
       }
       this.text(
         this.touch
-          ? "Chap doira yurish · ZARBA hujum · DASH sirpanish"
-          : "WASD yurish · Space zarba · Shift dash",
+          ? this.player.mage
+            ? "Chap doira yurish · ZARBA shar · DASH teleport"
+            : "Chap doira yurish · ZARBA hujum · DASH sirpanish"
+          : this.player.mage
+            ? "WASD yurish · Space shar · Shift teleport"
+            : "WASD yurish · Space zarba · Shift dash",
         ROOM.w / 2,
         ROOM.h - 22,
         5,

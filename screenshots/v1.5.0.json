@@ -1,0 +1,159 @@
+[
+  {
+    "title": "Bosh menyuda qahramon tanlash",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Sehrgar",
+    "text": "Yangi qahramon — Sehrgar. 5 yurak, Ritsardan biroz tezroq yuradi. Space — qarab turgan tomonga sehrli shar otadi, dushmanni uzoqdan uradi va o'q hamda olov sharlarini ham yo'q qiladi. Space'ni bosib tursa — atrofga 2x zararli sehrli halqa. Shift — dash o'rniga qisqa teleport. Masofani saqlab jang qilishni yoqtiradiganlar uchun.",
+    "hero": true,
+    "video": 6,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "click": "SEHRGAR"
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 90
+        }
+      }
+    ],
+    "range": 70
+  },
+  {
+    "title": "Sehrgar sehrli shar otadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "dx": 120,
+          "count": 2
+        }
+      },
+      {
+        "eval": "const p = g.player; p.fx = 1; p.fy = 0; p.cooldown = 0; g.bolts = [{ x: p.x + 30, y: p.y - 2, vx: 170, vy: 0 }, { x: p.x + 70, y: p.y - 2, vx: 170, vy: 0 }]; p.anim.set('attack', true); p.anim.frame = 1;"
+      },
+      {
+        "wait": 60
+      }
+    ]
+  },
+  {
+    "title": "Sehrli halqa: 2x zarar",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "dx": 24,
+          "dy": -10,
+          "count": 3
+        }
+      },
+      {
+        "eval": "const p = g.player; p.spinTimer = 0.12; p.spinCooldown = 3; p.anim.set('attack', true); g.update(0.016); g.update = () => {};"
+      },
+      {
+        "wait": 40
+      }
+    ]
+  },
+  {
+    "title": "Teleport",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "dx": 110
+        }
+      },
+      {
+        "eval": "const p = g.player; p.fx = 1; p.fy = 0; g.input.pressDash(); for (let i = 0; i < 9; i++) g.update(0.016); g.update = () => {};"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Kuch kartalari Sehrgarga moslashadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "eval": "const all = new Map(); for (let k = 0; k < 60 && all.size < 9; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = ['reach', 'blade', 'dash2'].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0;"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  }
+]

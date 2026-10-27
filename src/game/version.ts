@@ -1,5 +1,5 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
-export const GAME_VERSION = "1.4.0";
+export const GAME_VERSION = "1.5.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -8,6 +8,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.5.0",
+    date: "2026-10-27",
+    notes:
+      "Bosh menyuda qahramon tanlash: Ritsar yoki yangi Sehrgar, tanlov saqlanadi. Sehrgar: 5 yurak va biroz tezroq yuradi. Sehrgar zarbasi — qarab turgan tomonga uchadigan sehrli shar. Hujumni bosib tursa — atrofga 2x zararli sehrli halqa. Dash o'rniga qisqa teleport. Sehrgar uchun binafsha-ko'k to'n, uchli qalpoq va tayoqli yangi sprite. Kuch kartalari ikkala qahramonga mos: Uzun tig' Sehrgarda sharni tezlashtiradi. Rekordlar har qahramon uchun alohida saqlanadi.",
+  },
   {
     version: "1.4.0",
     date: "2026-10-27",

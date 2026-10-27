@@ -5,6 +5,7 @@ GitHub Actions o'yinni shu ssenariy bo'yicha ochib, har bir sahnani alohida sura
 va kanalga albom qilib joylaydi. Har bir yangilik — alohida sahna.
 
 Sahna maydonlari:
+
 - `title` — rasm nomi (postda "📸 Rasmlarda" ro'yxatida chiqadi)
 - `target` — `"canvas"` (standart, faqat o'yin maydoni) yoki `"screen"` (menyu/oynalar bilan)
 - `steps` — ketma-ket qadamlar:
@@ -61,5 +62,6 @@ Yangi qahramon qo'shilsa (masalan, Sehrgar) — `"hero": true` sahna yozing. U h
 
 Qahramonni tanlash qadami (`click` yoki `eval`) o'yinda qanday tanlanishiga qarab yoziladi.
 Videoda bot dushmanlarga qarab yuradi va Space bilan hujum qiladi.
+Masofali qahramon uchun `"range": 70` qo'shing — bot shu masofani saqlaydi va nishonga burilib otadi.
 
 Qo'lda olingan rasmlarni `v<VERSIYA>/` papkasiga qo'ysangiz, ular albom boshida chiqadi.

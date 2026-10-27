@@ -2,6 +2,7 @@ import { Animator, Body, updatePhysics, isFlashing, clampToRoom } from "./animat
 import type { Input } from "./input";
 import { renderSprite } from "./sprites";
 import { sfx } from "./audio";
+import type { Hero } from "./hero";
 
 export const PLAYER_MAX_HP = 6;
 const ATTACK_TIME = 0.24;
@@ -13,6 +14,18 @@ const DASH_SPEED = 270;
 export const CHARGE_TIME = 0.6;
 export const SPIN_CD = 3;
 export const SPIN_TIME = 0.3;
+/** Sehrgar */
+export const MAGE_MAX_HP = 5;
+export const TELEPORT_DIST = 50;
+const TELEPORT_TIME = 0.12;
+
+/** Sehrgarning sehrli shari */
+export interface Bolt {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
 
 export class Player implements Body {
   x = 160;
@@ -50,6 +63,12 @@ export class Player implements Body {
   dashMax = 1;
   /** Zarba yeganda yaqin dushmanga 1 zarar */
   thorns = false;
+  /** Sehrli shar tezligi (Sehrgar) */
+  boltSpeed = 170;
+  /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
+  bolts: Bolt[] = [];
+  /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
+  teleportFrom: { x: number; y: number } | null = null;
   /** Joriy hujumda allaqachon urilganlar */
   hitSet = new Set<object>();
   anim = new Animator({
@@ -59,6 +78,19 @@ export class Player implements Body {
     hurt: { frames: 1, frameTime: HURT_TIME, loop: false },
     death: { frames: 3, frameTime: 1 / 3, loop: false },
   });
+
+  constructor(public hero: Hero = "knight") {
+    if (hero === "mage") {
+      this.hp = this.maxHp = MAGE_MAX_HP;
+      this.speed = 95;
+      this.attackCd = 0.45;
+      this.dashCd = 0.9;
+    }
+  }
+
+  get mage() {
+    return this.hero === "mage";
+  }
 
   get dead() {
     return this.anim.state === "death";
@@ -115,7 +147,8 @@ export class Player implements Body {
   attackBox(): Body | null {
     // aylana zarba — o'yinchi atrofidagi katta maydon
     if (this.spinning) return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
-    if (this.attackTimer <= 0) return null;
+    // Sehrgarning oddiy zarbasi — shar, u alohida uchadi
+    if (this.attackTimer <= 0 || this.mage) return null;
     const off = this.reach * 0.75;
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
   }
@@ -139,6 +172,7 @@ export class Player implements Body {
 
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
+      if (this.mage) return;
       this.x += this.dashX * DASH_SPEED * dt;
       this.y += this.dashY * DASH_SPEED * dt;
       clampToRoom(this);
@@ -161,6 +195,16 @@ export class Player implements Body {
       this.attackTimer = 0;
       this.charge = 0;
       sfx.dash();
+      if (this.mage) {
+        // teleport: bir zumda sakrab o'tadi, qisqa vaqt ko'rinmaydi va daxlsiz
+        this.teleportFrom = { x: this.x, y: this.y };
+        this.x += this.dashX * TELEPORT_DIST;
+        this.y += this.dashY * TELEPORT_DIST;
+        this.dashTimer = TELEPORT_TIME;
+        clampToRoom(this);
+        this.anim.set("idle");
+        return;
+      }
       this.anim.set("walk");
       return;
     }
@@ -186,6 +230,13 @@ export class Player implements Body {
       this.hitSet.clear();
       sfx.attack();
       this.anim.set("attack", true);
+      if (this.mage)
+        this.bolts.push({
+          x: this.x + this.fx * 8,
+          y: this.y + this.fy * 8 - 2,
+          vx: this.fx * this.boltSpeed,
+          vy: this.fy * this.boltSpeed,
+        });
     }
 
     const busy = this.attackTimer > 0 || this.hurtTimer > 0 || this.spinning;
@@ -208,10 +259,12 @@ export class Player implements Body {
   }
 
   render(ctx: CanvasRenderingContext2D) {
+    // teleport paytida sehrgar ko'rinmaydi
+    if (this.dashing && this.mage) return;
     if (this.dashing) ctx.globalAlpha = 0.7;
     renderSprite(
       ctx,
-      "knight",
+      this.hero,
       this.anim.state,
       this.anim.frame,
       this.x,
