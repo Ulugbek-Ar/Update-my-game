@@ -3,7 +3,7 @@ import { GAME_VERSION, CHANGELOG } from "../src/game/version.ts";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chat = process.env.TELEGRAM_CHANNEL;
-const playUrl = process.env.GAME_URL_PUBLIC;
+const playUrl = process.env.GAME_URL_PUBLIC || "https://ulugbek-ar.github.io/Update-my-game/";
 const repo = process.env.GITHUB_REPOSITORY;
 const sha = process.env.GITHUB_SHA;
 const version = process.env.SHOT_VERSION || GAME_VERSION;
@@ -120,6 +120,7 @@ for (const item of [...heroes, ...mobs]) {
     hero
       ? `🏰 Piksel Qal'a v${esc(entry.version)} dan boshlab o'ynash mumkin`
       : `🏰 Piksel Qal'a v${esc(entry.version)} da paydo bo'ladi`,
+    `🎮 <a href="${esc(playUrl)}">O'ynash</a>`,
     "",
     hero ? "#yangi_qahramon" : "#yangi_dushman",
   ]
