@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Sehrgar kuch kartalari qizil-qora uslubda: Sehrli yurak, Muz qalqoni, Ikki karra teleport",
+    "steps": [
+      { "storage": { "pixel-rpg-hero": "mage", "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "wave": 0 },
+      {
+        "eval": "const score = g.score; const all = new Map(); for (let k = 0; k < 80 && all.size < 11; k++) { g.stage = 'fight'; g.enemies = []; g.update(0.016); for (const u of g.choices) all.set(u.id, u); } g.choices = [\"heart\", \"thorns\", \"dash2\"].map((id) => all.get(id)).filter(Boolean); g.choiceIndex = 0; g.upgradeLock = 0; g.score = score; g.toasts = [];"
+      },
+      { "wait": 900 }
+    ]
+  }
+]

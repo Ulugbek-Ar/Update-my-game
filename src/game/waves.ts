@@ -62,6 +62,8 @@ export interface HeroCard {
   name: string;
   desc: string;
   color: string;
+  /** Yozuv rangi — to'q rangli kartada nom o'qilishi uchun; berilmasa color */
+  text?: string;
   /** Ikonka (sprites.ts dagi UPGRADE_ICONS kaliti) */
   icon: string;
   apply?: (p: Player) => void;
@@ -73,6 +75,8 @@ export interface Upgrade {
   name: string;
   desc: string;
   color: string;
+  /** Yozuv rangi — to'q rangli kartada nom o'qilishi uchun; berilmasa color */
+  text?: string;
   /** Ikonka kaliti; berilmasa id ishlatiladi */
   icon?: string;
   apply: (p: Player) => void;
@@ -108,7 +112,8 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "SEHRLI YURAK",
       desc: "+1 yurak va to'liq davolanish",
-      color: "#c77dff",
+      color: "#c1121f",
+      text: "#ff4d4d",
       icon: "mheart",
     },
   },
@@ -136,7 +141,7 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "KENG HALQA",
       desc: "Halqa kattaroq, shar biroz kattaroq",
-      color: "#8f6bff",
+      color: "#ff4d4d",
       icon: "ring",
       apply: (p) => {
         p.reach += 5;
@@ -166,7 +171,7 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "EFIR QADAMI",
       desc: "Tezlik +15%, teleport tezroq qaytadi",
-      color: "#b8f2e6",
+      color: "#d9d4e0",
       icon: "wstar",
     },
   },
@@ -180,7 +185,8 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "RUH SO'RISH",
       desc: "Har bir necha o'ldirishda +1 yurak",
-      color: "#5fb8ff",
+      color: "#c1121f",
+      text: "#ff4d4d",
       icon: "spirit",
     },
   },
@@ -194,7 +200,7 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "MUZ QALQONI",
       desc: "Jon yo'qotsang, atrofdagilar 1.5s sekinlashadi",
-      color: "#9be7ff",
+      color: "#d9d4e0",
       icon: "ice",
       apply: (p) => (p.frost = true),
       ok: (p) => !p.frost,
@@ -210,7 +216,7 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "IKKI KARRA TELEPORT",
       desc: "Ketma-ket 2 ta teleport",
-      color: "#b18cff",
+      color: "#ff4d4d",
       icon: "portal",
     },
   },
@@ -224,7 +230,8 @@ export const UPGRADES: Upgrade[] = [
     mage: {
       name: "SHIFOBAXSH IKSIR",
       desc: "Barcha yuraklarni tiklash",
-      color: "#7ae7c7",
+      color: "#c1121f",
+      text: "#ff4d4d",
       icon: "elixir",
     },
   },
@@ -233,7 +240,7 @@ export const UPGRADES: Upgrade[] = [
     id: "triple",
     name: "UCH SHAR",
     desc: "Bir otishda yelpig'ich bo'lib 3 ta shar",
-    color: "#ffb347",
+    color: "#ff4d4d",
     icon: "orbs",
     hero: "mage",
     apply: (p) => (p.multishot = 3),
@@ -243,7 +250,7 @@ export const UPGRADES: Upgrade[] = [
     id: "pierce",
     name: "TESHUVCHI SHAR",
     desc: "Shar 1 dushmandan o'tib, keyingisiga ham tegadi",
-    color: "#e0c3ff",
+    color: "#ff4d4d",
     icon: "crystal",
     hero: "mage",
     apply: (p) => (p.pierce = 1),

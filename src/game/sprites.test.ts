@@ -228,7 +228,7 @@ describe("Upgrade card icons", () => {
         const rows = UPGRADE_ICONS[upgradeIcon(u)];
         expect(rows, u.id).toBeDefined();
         expect(rows!.length).toBe(12);
-        for (const row of rows!) expect(row).toMatch(/^[.Xogkbpycn]{12}$/);
+        for (const row of rows!) expect(row).toMatch(/^[.XogkRLFSK]{12}$/);
       }
   });
 });

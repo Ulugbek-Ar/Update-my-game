@@ -1464,9 +1464,9 @@ export class Game {
     // dash tayyorligi
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
-    // Sehrgarda teleport chizig'i binafsha
+    // Sehrgarda teleport chizig'i qizil
     const [on, off, empty] = p.mage
-      ? ["#b18cff", "#5a3fa8", "#2a1f4a"]
+      ? ["#ff4d4d", "#c1121f", "#3a1418"]
       : ["#68cde4", "#287faf", "#1d3a4a"];
     px(c, k >= 1 ? on : off, 5, 14, 30 * k, 1);
     if (p.dashMax > 1)
@@ -1595,16 +1595,19 @@ export class Game {
         "#a6f08e",
       );
       this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
+      // Sehrgar kartalari qizil-qora: ramka va fon binafsha emas
+      const [frame, inner] = this.player.mage ? ["#5a2a30", "#1f1520"] : ["#5c4a6e", "#1f1730"];
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
         const sel = i === this.choiceIndex;
         const lift = sel ? -3 : 0;
-        px(c, sel ? u.color : "#5c4a6e", r.x, r.y + lift, r.w, r.h);
-        px(c, "#1f1730", r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
+        const ink = u.text ?? u.color;
+        px(c, sel ? u.color : frame, r.x, r.y + lift, r.w, r.h);
+        px(c, inner, r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
         renderUpgradeIcon(c, upgradeIcon(u), u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
-        this.text(String(i + 1), r.x + 8, r.y + 12 + lift, 6, u.color);
+        this.text(String(i + 1), r.x + 8, r.y + 12 + lift, 6, ink);
         this.wrap(u.name, 12).forEach((l, j) =>
-          this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, u.color),
+          this.text(l, r.x + r.w / 2, r.y + 38 + j * 9 + lift, 6, ink),
         );
         this.wrap(u.desc, 15).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),

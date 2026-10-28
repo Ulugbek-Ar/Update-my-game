@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.7.0";
+export const GAME_VERSION = "1.7.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,11 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.1",
+    date: "2026-10-28",
+    notes: "Sehrgar kuch kartalari va ikonkalari yangi qizil-qora uslubga moslashdi.",
+  },
   {
     version: "1.7.0",
     date: "2026-10-28",
