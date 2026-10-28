@@ -321,3 +321,26 @@ describe("Do'kon o'yinda", () => {
     }
   });
 });
+
+describe("O'yin oxiridagi statistika", () => {
+  it("counts kills, combo and picked gold; reset() clears them", () => {
+    const { g, gi } = makeGame();
+    const idle = new Enemy("blob", 30, 30);
+    idle.spawn = 99;
+    const a = new Enemy("blob", 200, 60);
+    const b = new Enemy("rammer", 220, 60);
+    g.enemies = [a, b, idle];
+    gi.damageTarget(a, 99);
+    gi.damageTarget(b, 99);
+    expect(g.stats.kills).toBe(2);
+    expect(g.stats.maxCombo).toBe(2);
+
+    g.coins = [{ x: g.player.x + 3, y: g.player.y, life: 12, value: 2 }];
+    tick(g, 0.04);
+    expect(g.stats.gold).toBe(2);
+    expect(g.stats.time).toBeGreaterThan(0);
+
+    g.reset();
+    expect(g.stats).toEqual({ waves: 0, kills: 0, maxCombo: 0, gold: 0, chests: 0, time: 0 });
+  });
+});

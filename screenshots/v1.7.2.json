@@ -1,0 +1,16 @@
+[
+  {
+    "title": "G'alaba ekranida o'yin statistikasi",
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "wave": 4 },
+      {
+        "eval": "g.enemies = []; g.boss.spawn = 0; g.stats = { waves: 4, kills: 31, maxCombo: 9, gold: 34, chests: 2, time: 287 }; g.damageTarget(g.boss, 999);"
+      },
+      { "wait": 2600 },
+      { "eval": "g.toasts = [];" },
+      { "wait": 200 }
+    ]
+  }
+]

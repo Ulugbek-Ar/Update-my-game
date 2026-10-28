@@ -153,6 +153,20 @@ function save(key: string, v: number) {
   }
 }
 
+/** O'yin oxiridagi statistika hisoblagichlari */
+export interface RunStats {
+  waves: number;
+  kills: number;
+  maxCombo: number;
+  gold: number;
+  chests: number;
+  /** soniya, pauzasiz */
+  time: number;
+}
+function newStats(): RunStats {
+  return { waves: 0, kills: 0, maxCombo: 0, gold: 0, chests: 0, time: 0 };
+}
+
 /** Butun o'yin holati shu obyektda — React state'da emas. */
 export class Game {
   input = new Input();
@@ -171,6 +185,8 @@ export class Game {
   bonusPick = false;
   /** Shu o'yinda terilgan oltin (o'yin tugaganda umumiy hisobga qo'shiladi) */
   runGold = 0;
+  /** Yakun ekranidagi statistika; reset() da nollanadi, pauza vaqti kirmaydi */
+  stats = newStats();
   /** Oxirgi marta hisobga qo'shilgan oltin va umumiy hisob — yakun ekranida */
   lastGold = 0;
   totalGold = 0;
@@ -258,6 +274,7 @@ export class Game {
     this.chestsOpened = 0;
     this.bonusPick = false;
     this.runGold = 0;
+    this.stats = newStats();
     this.fx = new Effects();
     this.score = 0;
     this.newBest = false;
@@ -373,6 +390,7 @@ export class Game {
     if (!ch) return null;
     ch.openT = 0;
     this.chestsOpened++;
+    this.stats.chests++;
     if (this.chestsOpened >= 3) this.achieve("chests");
     sfx.chestOpen();
     this.fx.addShake(0.12);
@@ -574,6 +592,7 @@ export class Game {
 
   private pickCoin(c: Coin) {
     this.runGold += c.value;
+    this.stats.gold += c.value;
     if (this.runGold >= 50) this.achieve("rich");
     this.fx.text(c.x, c.y - 8, `+${c.value}`, "#ffcc33");
   }
@@ -654,6 +673,8 @@ export class Game {
 
   private onKill(e: Enemy) {
     this.combo = this.comboTimer > 0 ? this.combo + 1 : 1;
+    this.stats.kills++;
+    this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo);
     this.achieve("first");
     if (this.combo >= 10) this.achieve("combo10");
     if (this.combo >= 50) this.achieve("combo50");
@@ -788,6 +809,8 @@ export class Game {
       else if (this.input.consumeKey("KeyR")) this.newRun();
       return;
     }
+    // o'yin vaqti: update() pauzada chaqirilmaydi
+    this.stats.time += dt;
     if (this.stage === "upgrade") return this.updateUpgrade(dt);
     if (this.freeze > 0) {
       this.freeze -= dt;
@@ -1028,6 +1051,7 @@ export class Game {
             this.bankGold();
             this.saveDailyResult(true);
             this.achieve(this.hero === "mage" ? "winMage" : "winKnight");
+            this.stats.waves++;
             this.phase = "victory";
             sfx.stopMusic();
             sfx.victory();
@@ -1038,6 +1062,7 @@ export class Game {
   }
 
   private clearWave() {
+    this.stats.waves++;
     // birinchi to'lqin o'tildi — ko'rsatmalar keyingi o'yinlarda chiqmaydi
     if (this.hints.length && !this.endless) {
       this.hints = [];
@@ -1678,25 +1703,28 @@ export class Game {
       );
       if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, ROOM.h / 2 + 36, 6, "#a6f08e");
       this.renderGoldResult(ROOM.h / 2 + 54);
+      this.renderStats(ROOM.h / 2 + 70);
     }
     if (this.phase === "victory") {
       px(c, "rgba(10,5,20,0.8)", 0, 0, ROOM.w, ROOM.h);
-      this.text("G'ALABA!", ROOM.w / 2, 80, 20, "#ffcc33");
+      // statistika sig'ishi uchun yozuvlar yuqoriroqda (tugmalar joyida qoladi)
+      this.text("G'ALABA!", ROOM.w / 2, 56, 20, "#ffcc33");
       this.text(
         this.daily ? "Kunlik sinovni yutdingiz" : `${this.attempt}-urinishda yutdingiz`,
         ROOM.w / 2,
-        112,
+        78,
         8,
         "#ffffff",
       );
-      this.text(`Ochko: ${this.score}`, ROOM.w / 2, 134, 8, "#ffcc33");
+      this.text(`Ochko: ${this.score}`, ROOM.w / 2, 96, 8, "#ffcc33");
       this.text(
         this.daily ? "Ertaga yangi sinov" : this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`,
         ROOM.w / 2,
-        150,
+        110,
         6,
         this.newBest ? "#a6f08e" : "#b8a8cc",
       );
+      this.renderStats(126);
       for (const [b, label] of this.daily
         ? ([[this.endlessBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Enter"]] as const)
         : ([
@@ -1728,6 +1756,19 @@ export class Game {
     this.text("YUTUQ OCHILDI!", x + 28, y + 11, 5, "#ffcc33", "left");
     this.text(t.a.name, x + 28, y + 21, 6, "#e0d6ee", "left");
     c.globalAlpha = 1;
+  }
+
+  /** Yakun ekrani statistikasi: 2 ustun, 3 qator, 5px. */
+  private renderStats(y: number) {
+    const st = this.stats;
+    const t = Math.floor(st.time);
+    const time = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    const left = [`To'lqin: ${st.waves}`, `Dushman: ${st.kills}`, `Sandiq: ${st.chests}`];
+    const right = [`Eng uzun kombo: ${st.maxCombo}`, `Oltin: ${st.gold}`, `Vaqt: ${time}`];
+    for (let i = 0; i < 3; i++) {
+      this.text(left[i]!, 78, y + i * 9, 5, "#b8a8cc", "left");
+      this.text(right[i]!, 166, y + i * 9, 5, "#b8a8cc", "left");
+    }
   }
 
   /** Yakun ekrani: "+N OLTIN (jami M)". */

@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.7.1";
+export const GAME_VERSION = "1.7.2";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.2",
+    date: "2026-10-28",
+    notes:
+      "O'yin oxirida statistika: to'lqinlar, o'ldirilgan dushmanlar, eng uzun kombo, oltin, sandiqlar va vaqt.",
+  },
   {
     version: "1.7.1",
     date: "2026-10-28",
