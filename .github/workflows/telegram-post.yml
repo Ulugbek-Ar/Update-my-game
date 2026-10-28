@@ -16,9 +16,17 @@ on:
       scenario:
         description: "Sinov uchun ssenariy JSON (bo'sh = fayldan)"
         required: false
+      seed:
+        description: "Bir martalik: avval chiqqan barcha versiyalarni belgilash (post yuborilmaydi)"
+        type: boolean
+        default: false
       wave:
         description: "Skrinshot to'lqini (0 = 1-to'lqin, 4 = Boss). Bo'sh = tasodifiy"
         required: false
+
+concurrency:
+  group: telegram-post
+  cancel-in-progress: false
 
 jobs:
   post:
@@ -27,35 +35,74 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ inputs.seed && '0' || '1' }}
+
+      - name: Avvalgi versiyalarni belgilash
+        if: ${{ inputs.seed }}
+        run: |
+          for V in $(grep -oP 'version: "\K[^"]+' src/game/version.ts); do
+            git ls-remote --exit-code --tags origin "refs/tags/tg-v$V" > /dev/null && continue
+            C=$(git log --format=%H -S "GAME_VERSION = \"$V\"" --reverse -- src/game/version.ts | head -1)
+            [ -z "$C" ] && continue
+            git tag -f "tg-v$V" "$C" > /dev/null
+            git push -qf origin "refs/tags/tg-v$V" 2> /dev/null || { git tag -f "tg-v$V" HEAD > /dev/null; git push -qf origin "refs/tags/tg-v$V"; }
+            echo "tg-v$V"
+          done
+
+      - name: Bu versiya avval chiqqanmi?
+        id: check
+        run: |
+          V="${{ inputs.version }}"
+          [ -z "$V" ] && V=$(grep -oP 'GAME_VERSION\s*=\s*"\K[^"]+' src/game/version.ts)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          TAGS=$(git ls-remote --tags --refs origin 'tg-v*' | sed 's#.*refs/tags/##')
+          PREV=$( (echo "$TAGS" | sed 's/^tg-v//'; echo "$V") | grep -v '^$' | sort -uV | grep -B1 -x "$V" | head -1)
+          [ "$PREV" = "$V" ] && PREV="" || PREV="tg-v$PREV"
+          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.seed }}" = "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] && echo "$TAGS" | grep -qx "tg-v$V"; then
+            echo "::notice title=Telegram::v$V avval kanalga chiqqan — qayta yuborilmaydi"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.check.outputs.skip != 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
+        if: steps.check.outputs.skip != 'true'
         with:
           node-version: 22
 
       - run: bun install --frozen-lockfile || bun install
+        if: steps.check.outputs.skip != 'true'
 
       - name: O'yinni fonda ishga tushirish
+        if: steps.check.outputs.skip != 'true'
         run: bun run dev -- --port 5173 --host 127.0.0.1 > dev.log 2>&1 &
 
       - name: Playwright paketi
+        if: steps.check.outputs.skip != 'true'
         id: pw
         run: |
           npm i --prefix "$RUNNER_TEMP/pw" playwright@1 ffmpeg-static@5
           echo "version=$(node -p "require('$RUNNER_TEMP/pw/node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache@v4
+        if: steps.check.outputs.skip != 'true'
         with:
           path: ~/.cache/ms-playwright
           key: pw-ffmpeg-${{ runner.os }}-${{ steps.pw.outputs.version }}
 
       - name: Video yozuvchi (brauzer o'rnatilmaydi — serverdagi Chrome ishlatiladi)
+        if: steps.check.outputs.skip != 'true'
         timeout-minutes: 3
         run: $RUNNER_TEMP/pw/node_modules/.bin/playwright install ffmpeg
 
       - name: O'yin tayyorligini kutish
+        if: steps.check.outputs.skip != 'true'
         run: |
           for i in $(seq 1 60); do
             curl -sf http://127.0.0.1:5173 > /dev/null && exit 0
@@ -65,6 +112,7 @@ jobs:
           exit 1
 
       - name: Skrinshot
+        if: steps.check.outputs.skip != 'true'
         env:
           SHOT_WAVE: ${{ inputs.wave }}
           SHOT_VERSION: ${{ inputs.version }}
@@ -73,13 +121,14 @@ jobs:
           PW_DIR="$RUNNER_TEMP/pw" PW_CHANNEL=chrome node scripts/screenshot.mjs
           rm -rf shots/raw
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
+        if: steps.check.outputs.skip != 'true'
         with:
           name: skrinshotlar
           path: shots/
 
       - name: Test rasmlarini preview branchga saqlash
-        if: ${{ inputs.test }}
+        if: ${{ steps.check.outputs.skip != 'true' && inputs.test }}
         run: |
           cd shots
           git init -q -b skrinshot-preview
@@ -88,10 +137,18 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" skrinshot-preview
 
       - name: Kanalga yuborish
-        if: ${{ !inputs.test }}
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
           GAME_URL_PUBLIC: ${{ vars.GAME_URL }}
           SHOT_VERSION: ${{ inputs.version }}
+          PREV_TAG: ${{ steps.check.outputs.prev }}
         run: node --experimental-strip-types scripts/telegram-post.mjs
+
+      - name: Versiyani "chiqdi" deb belgilash
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
+        run: |
+          T="tg-v${{ steps.check.outputs.version }}"
+          git tag -f "$T"
+          git push -qf origin "refs/tags/$T"
