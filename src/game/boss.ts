@@ -30,6 +30,9 @@ export class Boss implements Body {
   shock = 0;
   /** Muz qalqoni: shuncha soniya sekinroq yuradi */
   slow = 0;
+  /** Zaharli uch (Ovchi): zahar qolgan vaqti va keyingi zarargacha hisob */
+  poison = 0;
+  poisonTick = 0;
   /** Paydo bo'lish vaqti */
   spawn = 0;
   spawnMax = 1;

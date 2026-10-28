@@ -40,8 +40,8 @@ function winCampaign(hero: "knight" | "mage") {
 }
 
 describe("Yutuqlar ro'yxati", () => {
-  it("has 14 achievements with unique ids and Uzbek names", () => {
-    expect(ACHIEVEMENTS.length).toBe(14);
+  it("has 15 achievements with unique ids and Uzbek names", () => {
+    expect(ACHIEVEMENTS.length).toBe(15);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
     const names = ACHIEVEMENTS.map((a) => a.name);
     for (const n of [

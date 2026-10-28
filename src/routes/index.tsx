@@ -193,21 +193,36 @@ function Index() {
                   <br />
                   {hero === "mage"
                     ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                    : "ZARBA — hujum, DASH — sirpanish"}
+                    : hero === "hunter"
+                      ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
+                      : "ZARBA — hujum, DASH — sirpanish"}
                   <br />
                   {hero === "mage"
                     ? "SHAR ni bosib turing — sehrli halqa"
-                    : "ZARBA ni bosib turing — aylana zarba"}
+                    : hero === "hunter"
+                      ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
+                      : "ZARBA ni bosib turing — aylana zarba"}
                 </>
               ) : (
                 <>
                   WASD / strelkalar — yurish
                   <br />
-                  Space / J — {hero === "mage" ? "sehrli shar" : "hujum"}
+                  Space / J —{" "}
+                  {hero === "mage" ? "sehrli shar" : hero === "hunter" ? "o'q" : "hujum"}
                   <br />
-                  Space ni bosib turish — {hero === "mage" ? "sehrli halqa" : "aylana zarba"}
+                  Space ni bosib turish —{" "}
+                  {hero === "mage"
+                    ? "sehrli halqa"
+                    : hero === "hunter"
+                      ? "teshuvchi o'q"
+                      : "aylana zarba"}
                   <br />
-                  Shift / K — {hero === "mage" ? "teleport" : "dash"}
+                  Shift / K —{" "}
+                  {hero === "mage"
+                    ? "teleport"
+                    : hero === "hunter"
+                      ? "orqaga sakrash, bosib turish — tuzoq"
+                      : "dash"}
                   <br />
                   Esc — pauza, M — ovoz
                 </>
@@ -423,7 +438,7 @@ function TouchControls({ game }: { game: Game }) {
         />
       </div>
       <button
-        aria-label={game.player.mage ? "Sehrli shar" : "Hujum"}
+        aria-label={game.player.mage ? "Sehrli shar" : game.player.hunter ? "O'q" : "Hujum"}
         className={`${btn} pointer-events-auto absolute bottom-8 right-6 h-20 w-20 text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -434,17 +449,31 @@ function TouchControls({ game }: { game: Game }) {
         onPointerUp={() => game.input.setTouchAttack(false)}
         onPointerCancel={() => game.input.setTouchAttack(false)}
       >
-        {game.player.mage ? "SHAR" : "ZARBA"}
+        {game.player.mage ? "SHAR" : game.player.hunter ? "O'Q" : "ZARBA"}
       </button>
       <button
-        aria-label={game.player.mage ? "Teleport" : "Dash"}
-        className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 ${game.player.mage ? "text-[6px]" : "text-[8px]"}`}
+        aria-label={game.player.mage ? "Teleport" : game.player.hunter ? "Sakrash" : "Dash"}
+        className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 ${game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
         onPointerDown={(e) => {
           e.preventDefault();
+          // Ovchi: bosib turilsa tuzoq qo'yadi
+          e.currentTarget.setPointerCapture(e.pointerId);
           game.input.pressDash();
+          game.input.setTouchDash(true);
         }}
+        onPointerUp={() => game.input.setTouchDash(false)}
+        onPointerCancel={() => game.input.setTouchDash(false)}
       >
-        {game.player.mage ? "TELEPORT" : "DASH"}
+        {game.player.mage ? (
+          "TELEPORT"
+        ) : game.player.hunter ? (
+          <span className="flex flex-col items-center leading-[9px]">
+            SAKRASH
+            <span className="text-[5px] opacity-80">tursa: tuzoq</span>
+          </span>
+        ) : (
+          "DASH"
+        )}
       </button>
       <button
         aria-label="Pauza"

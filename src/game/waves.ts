@@ -120,15 +120,18 @@ export interface Upgrade {
   ok: (p: Player) => boolean;
   /** Sehrgar uchun alohida karta */
   mage?: HeroCard;
+  /** Ovchi uchun alohida karta */
+  hunter?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
 }
 
-/** Tanlangan qahramonga mos karta (Sehrgarda uning alohida nomi, ikonka va ta'siri). */
+/** Tanlangan qahramonga mos karta (Sehrgar va Ovchida alohida nom, ikonka va ta'sir). */
 export function cardFor(u: Upgrade, p: Player): Upgrade {
-  if (!p.mage || !u.mage) return u;
-  const { mage, ...base } = u;
-  return { ...base, ...mage };
+  const alt = p.hero === "mage" ? u.mage : p.hero === "hunter" ? u.hunter : undefined;
+  if (!alt) return u;
+  const { mage: _m, hunter: _h, ...base } = u;
+  return { ...base, ...alt };
 }
 
 export function upgradeIcon(u: Upgrade) {
@@ -153,6 +156,12 @@ export const UPGRADES: Upgrade[] = [
       text: "#ff4d4d",
       icon: "mheart",
     },
+    hunter: {
+      name: "OVCHI YURAGI",
+      desc: "+1 yurak va to'liq davolanish",
+      color: "#7bd14f",
+      icon: "hheart",
+    },
   },
   {
     id: "blade",
@@ -167,6 +176,7 @@ export const UPGRADES: Upgrade[] = [
       color: "#ff9a3c",
       icon: "fireball",
     },
+    hunter: { name: "O'TKIR UCH", desc: "O'q zarari +1", color: "#c9a26b", icon: "arrowhead" },
   },
   {
     id: "reach",
@@ -185,6 +195,17 @@ export const UPGRADES: Upgrade[] = [
         p.boltSize += 2;
       },
     },
+    hunter: {
+      name: "UZOQ NISHON",
+      desc: "O'qlar tezroq va kattaroq uchadi",
+      color: "#a6f08e",
+      icon: "scope",
+      apply: (p) => {
+        p.boltSpeed += 40;
+        p.boltSize += 1;
+      },
+      ok: (p) => p.boltSpeed < 330,
+    },
   },
   {
     id: "haste",
@@ -194,6 +215,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.attackCd *= 0.75),
     ok: (p) => p.attackCd > 0.2,
     mage: { name: "TEZ AFSUN", desc: "Sharlar orasi 25% qisqa", color: "#ffd166", icon: "book" },
+    hunter: { name: "TEZ KAMON", desc: "O'qlar orasi 25% qisqa", color: "#e8c37a", icon: "bow" },
   },
   {
     id: "wind",
@@ -211,6 +233,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#d9d4e0",
       icon: "wstar",
     },
+    hunter: {
+      name: "O'RMON QADAMI",
+      desc: "Tezlik +15%, sakrash tezroq qaytadi",
+      color: "#7bd14f",
+      icon: "leaf",
+    },
   },
   {
     id: "vamp",
@@ -225,6 +253,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#c1121f",
       text: "#ff4d4d",
       icon: "spirit",
+    },
+    hunter: {
+      name: "OV O'LJASI",
+      desc: "Har bir necha o'ldirishda +1 yurak",
+      color: "#c9a26b",
+      icon: "fang",
     },
   },
   {
@@ -242,6 +276,12 @@ export const UPGRADES: Upgrade[] = [
       apply: (p) => (p.frost = true),
       ok: (p) => !p.frost,
     },
+    hunter: {
+      name: "TIKANLI PLASH",
+      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      color: "#a6f08e",
+      icon: "thorn",
+    },
   },
   {
     id: "dash2",
@@ -255,6 +295,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Ketma-ket 2 ta teleport",
       color: "#ff4d4d",
       icon: "portal",
+    },
+    hunter: {
+      name: "IKKI KARRA SAKRASH",
+      desc: "Ketma-ket 2 ta orqaga sakrash",
+      color: "#e8c37a",
+      icon: "boots",
     },
   },
   {
@@ -270,6 +316,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#c1121f",
       text: "#ff4d4d",
       icon: "elixir",
+    },
+    hunter: {
+      name: "SHIFOBAXSH O'T",
+      desc: "Barcha yuraklarni tiklash",
+      color: "#7bd14f",
+      icon: "herb",
     },
   },
   // ---- Faqat Sehrgar ----
@@ -292,6 +344,27 @@ export const UPGRADES: Upgrade[] = [
     hero: "mage",
     apply: (p) => (p.pierce = 1),
     ok: (p) => p.pierce < 1,
+  },
+  // ---- Faqat Ovchi ----
+  {
+    id: "htriple",
+    name: "UCH O'Q",
+    desc: "Bir otishda yelpig'ich bo'lib 3 ta o'q",
+    color: "#e8c37a",
+    icon: "arrows3",
+    hero: "hunter",
+    apply: (p) => (p.multishot = 3),
+    ok: (p) => p.multishot < 3,
+  },
+  {
+    id: "venom",
+    name: "ZAHARLI UCH",
+    desc: "O'q tekkan dushman 3s zaharlanadi: har soniya 1 zarar",
+    color: "#a6f08e",
+    icon: "venom",
+    hero: "hunter",
+    apply: (p) => (p.poisonTip = true),
+    ok: (p) => !p.poisonTip,
   },
 ];
 

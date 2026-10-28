@@ -10,6 +10,7 @@ export type AchievementId =
   | "boss"
   | "winKnight"
   | "winMage"
+  | "winHunter"
   | "endless10"
   | "daily"
   | "chests"
@@ -32,6 +33,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "boss", name: "IBLISNI YENG", desc: "Bossni mag'lub et" },
   { id: "winKnight", name: "RITSAR BILAN YUT", desc: "Ritsar bilan o'yinni yut" },
   { id: "winMage", name: "SEHRGAR BILAN YUT", desc: "Sehrgar bilan o'yinni yut" },
+  { id: "winHunter", name: "OVCHI BILAN YUT", desc: "Ovchi bilan o'yinni yut" },
   { id: "endless10", name: "CHEKSIZDA 10-TO'LQIN", desc: "Cheksiz rejimda 10-to'lqinga yet" },
   { id: "daily", name: "KUNLIK SINOVCHI", desc: "Kunlik sinovda 3-to'lqinga yet" },
   { id: "chests", name: "XAZINACHI", desc: "Bitta o'yinda 3 ta sandiq och" },

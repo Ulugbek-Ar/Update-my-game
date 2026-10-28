@@ -15,6 +15,7 @@ describe("Code-drawn character frames", () => {
   for (const kind of [
     "knight",
     "mage",
+    "hunter",
     "skeleton",
     "archer",
     "shield",
@@ -26,6 +27,11 @@ describe("Code-drawn character frames", () => {
     "iceblob",
     "wolf",
     "queen",
+    "spider",
+    "shroom",
+    "treant",
+    "owl",
+    "king",
   ] as SpriteKind[]) {
     for (const [state, count] of Object.entries(counts) as [AnimState, number][]) {
       it(`${kind} has ${count} distinct ${state} frames within five colors`, () => {
@@ -228,12 +234,13 @@ describe("Qalqonli skelet sprite", () => {
 
 describe("Upgrade card icons", () => {
   it("draws a 12x12 icon for every upgrade", () => {
-    for (const hero of ["knight", "mage"] as const)
+    for (const hero of ["knight", "mage", "hunter"] as const)
       for (const u of UPGRADES.map((u) => cardFor(u, new Player(hero)))) {
         const rows = UPGRADE_ICONS[upgradeIcon(u)];
         expect(rows, u.id).toBeDefined();
         expect(rows!.length).toBe(12);
-        for (const row of rows!) expect(row).toMatch(/^[.XogkRLFSK]{12}$/);
+        // Ovchi ikonkalari yashil-jigarrang palitra harflari bilan (G, D, B, T, W)
+        for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTW]{12}$/);
       }
   });
 });

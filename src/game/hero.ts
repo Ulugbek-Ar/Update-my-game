@@ -1,13 +1,18 @@
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage";
+export type Hero = "knight" | "mage" | "hunter";
 
 export const HERO_KEY = "pixel-rpg-hero";
-export const HEROES: readonly Hero[] = ["knight", "mage"];
-export const HERO_NAMES: Record<Hero, string> = { knight: "RITSAR", mage: "SEHRGAR" };
+export const HEROES: readonly Hero[] = ["knight", "mage", "hunter"];
+export const HERO_NAMES: Record<Hero, string> = {
+  knight: "RITSAR",
+  mage: "SEHRGAR",
+  hunter: "OVCHI",
+};
 
 export function loadHero(): Hero {
   try {
-    return localStorage.getItem(HERO_KEY) === "mage" ? "mage" : "knight";
+    const h = localStorage.getItem(HERO_KEY);
+    return HEROES.find((x) => x === h) ?? "knight";
   } catch {
     return "knight";
   }

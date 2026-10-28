@@ -3,6 +3,7 @@ import type { AnimState } from "./animation";
 export type SpriteKind =
   | "knight"
   | "mage"
+  | "hunter"
   | "skeleton"
   | "archer"
   | "shield"
@@ -137,6 +138,8 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
   // Sehrgar: siyoh, qora to'n, to'q qizil (astar, kamar, tasma, kristall), kumushrang soqol, teri
   mage: ["#050307", "#2b1c2e", "#a3192a", "#d9d4e0", "#e8c39e"],
+  // Ovchi: siyoh, to'q yashil (shim, kapyushon ichi), yashil plash, jigarrang charm (kamon, o'qdon, etik), teri
+  hunter: ["#0a0f08", "#1f4a24", "#4f8a3a", "#7a4a24", "#e8c39e"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -1544,6 +1547,159 @@ function queenFallen(p: Pixels, frame: number) {
   p.line(4, [4, 29], [12, 29], 1);
 }
 
+// ---------------- Ovchi ----------------
+
+/** Ovchi kamoni: hand — ushlagan qo'l, draw — ip tortilgan nuqta (null — tortilmagan). */
+function huntBow(p: Pixels, hand: Point, draw: Point | null, arrow: boolean) {
+  const [hx, hy] = hand;
+  const top: Point = [hx - 2, hy - 7],
+    bot: Point = [hx - 2, hy + 7];
+  // egilgan yog'och yelkalar
+  p.line(4, top, [hx, hy - 4], 1);
+  p.line(4, [hx, hy - 4], [hx + 1, hy], 1);
+  p.line(4, [hx + 1, hy], [hx, hy + 4], 1);
+  p.line(4, [hx, hy + 4], bot, 1);
+  // ip
+  if (draw) {
+    p.line(5, top, draw, 1);
+    p.line(5, draw, bot, 1);
+  } else p.line(5, top, bot, 1);
+  if (arrow) {
+    // o'q: dastasi, uchi va pati
+    const from = draw ?? ([hx - 3, hy] as Point);
+    p.line(4, from, [hx + 5, hy], 1);
+    p.rect(1, hx + 5, hy - 1, 2, 3);
+    p.rect(5, from[0] - 1, from[1] - 1, 2, 1);
+    p.rect(5, from[0] - 1, from[1] + 1, 2, 1);
+  }
+  // dasta (qo'l ushlagan joy)
+  p.rect(4, hx - 1, hy - 1, 3, 3);
+}
+
+/** Ovchining hujum kadrlari: 0 — o'qni qo'ydi, 1 — to'liq tortdi, 2 — qo'yib yubordi. */
+const hunterShots: readonly { hand: Point; draw: Point | null; arrow: boolean; other: Point }[] = [
+  { hand: [25, 15], draw: [20, 15], arrow: true, other: [20, 15] },
+  { hand: [26, 14], draw: [16, 14], arrow: true, other: [16, 14] },
+  { hand: [26, 15], draw: null, arrow: false, other: [14, 18] },
+];
+
+/**
+ * Ovchi: 2 — to'q yashil shim va kapyushon ichi, 3 — yashil plash va kapyushon,
+ * 4 — jigarrang charm (kamon, o'qdon, kamar, etik), 5 — teri va o'q patlari.
+ */
+function hunter(
+  p: Pixels,
+  pose: Pose,
+  back: boolean,
+  shot: { hand: Point; draw: Point | null; arrow: boolean; other: Point } | null,
+) {
+  const { bob: b, lean: l } = pose;
+  const hand = shot ? shot.hand : pose.hand;
+  const other = shot ? shot.other : pose.otherHand;
+  // orqadagi o'qdon (chap yelka orqasida), patlari yelkadan chiqib turadi
+  p.line(4, [10 + l, 9 + b], [13 + l, 19 + b], 3);
+  p.rect(5, 8 + l, 7 + b, 2, 2);
+  p.rect(5, 11 + l, 6 + b, 1, 2);
+  // oyoqlar va etiklar
+  p.line(2, [13, 20 + b], pose.leftFoot, 3);
+  p.line(2, [19, 20 + b], pose.rightFoot, 3);
+  p.rect(4, pose.leftFoot[0] - 2, pose.leftFoot[1] - 1, 5, 2);
+  p.rect(4, pose.rightFoot[0] - 2, pose.rightFoot[1] - 1, 5, 2);
+  // orqa qo'l (ipni tortadi)
+  p.line(3, [12 + l, 14 + b], other, 2);
+  // plash: yelkadan tizzagacha, etagi tishli
+  p.polygon(3, [
+    [11 + l, 12 + b],
+    [21 + l, 12 + b],
+    [23, 23 + b],
+    [9, 23 + b],
+  ]);
+  for (let x = 10; x < 23; x += 3) p.rect(2, x, 23 + b, 2, 1);
+  if (!back) {
+    // old tomonda to'q yashil kamzul va kamar
+    p.polygon(2, [
+      [14 + l, 13 + b],
+      [18 + l, 13 + b],
+      [19, 22 + b],
+      [13, 22 + b],
+    ]);
+    p.rect(4, 12 + l, 18 + b, 9, 1);
+    p.rect(5, 16 + l, 18 + b, 1, 1);
+  } else {
+    // orqadan: o'qdon tasmasi plash ustida
+    p.line(4, [12 + l, 13 + b], [20 + l, 20 + b], 1);
+  }
+  // orqa qo'l kafti
+  p.rect(5, other[0] - 1, other[1] - 1, 2, 2);
+  // kapyushon: uchli, yelkaga tushadi
+  p.polygon(3, [
+    [10 + l, 13 + b],
+    [11 + l, 6 + b],
+    [14 + l, 3 + b],
+    [18 + l, 2 + b],
+    [21 + l, 5 + b],
+    [22 + l, 13 + b],
+  ]);
+  if (!back) {
+    // kapyushon ichidagi soya va yuz
+    p.rect(2, 13 + l, 6 + b, 7, 6);
+    p.rect(5, 14 + l, 8 + b, 5, 4);
+    p.rect(1, 15 + l, 9 + b, 1, 1);
+    p.rect(1, 18 + l, 9 + b, 1, 1);
+    p.rect(2, 14 + l, 8 + b, 5, 1);
+  } else {
+    p.rect(2, 15 + l, 5 + b, 2, 7);
+  }
+  // old qo'l va kamon
+  p.line(3, [20 + l, 14 + b], hand, 2);
+  huntBow(p, hand, shot ? shot.draw : null, shot ? shot.arrow : false);
+  p.rect(5, hand[0], hand[1], 1, 1);
+}
+
+/** Ovchining yiqilishi: tiz cho'kadi, yonboshlaydi, kamoni yerda qoladi. */
+function hunterFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    hunter(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, false, null);
+    return;
+  }
+  if (frame === 1) {
+    p.line(2, [15, 24], [24, 28], 3);
+    p.polygon(3, [
+      [8, 16],
+      [16, 17],
+      [21, 25],
+      [16, 28],
+      [8, 24],
+    ]);
+    p.polygon(3, [
+      [4, 15],
+      [6, 10],
+      [11, 11],
+      [12, 17],
+    ]);
+    p.rect(5, 7, 13, 3, 2);
+    p.rect(1, 8, 13, 1, 1);
+    p.line(4, [20, 16], [28, 22], 1);
+    p.line(5, [21, 15], [27, 23], 1);
+    return;
+  }
+  // yerda yotibdi: plash yoyilgan, yonida kamon
+  p.rect(3, 9, 24, 14, 5);
+  p.rect(2, 9, 28, 14, 1);
+  p.polygon(3, [
+    [3, 23],
+    [6, 21],
+    [10, 23],
+    [9, 28],
+    [3, 28],
+  ]);
+  p.rect(5, 5, 24, 3, 2);
+  p.rect(1, 6, 24, 1, 1);
+  p.line(2, [22, 27], [28, 28], 2);
+  p.line(4, [11, 19], [27, 21], 1);
+  p.line(5, [12, 20], [26, 22], 1);
+}
+
 // ---------------- 3-dunyo: Zulmat o'rmoni ----------------
 
 interface SpiderFrame {
@@ -2096,6 +2252,17 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     archer(p, state, frame);
     return p.outlined();
   }
+  if (kind === "hunter") {
+    if (state === "death") hunterFallen(p, Math.min(2, Math.max(0, frame)));
+    else
+      hunter(
+        p,
+        poses[state][frame] ?? poses[state][0]!,
+        back,
+        state === "attack" ? (hunterShots[frame] ?? hunterShots[0]!) : null,
+      );
+    return p.outlined();
+  }
   if (state === "death") fallen(p, kind, Math.min(2, Math.max(0, frame)));
   else {
     const pose = poses[state][frame] ?? poses[state][0];
@@ -2187,6 +2354,12 @@ const ICON_COLORS: Record<string, string> = {
   F: "#ff9a3c",
   S: "#d9d4e0",
   K: "#1f1520",
+  // Ovchi palitrasi: yashil, to'q yashil, jigarrang, och charm, oqish pat
+  G: "#4f8a3a",
+  D: "#1f3a1c",
+  B: "#7a4a24",
+  T: "#c9a26b",
+  W: "#e8dcc0",
 };
 export const UPGRADE_ICONS: Record<string, readonly string[]> = {
   heart: [
@@ -2480,6 +2653,172 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     ".....SS.....",
     "............",
     "............",
+  ],
+  // ---- Ovchi kartalari: yashil-jigarrang uslub ----
+  // Ovchi yuragi — barg o'ralgan yurak
+  hheart: [
+    "......GG....",
+    "..XX.GGDXX..",
+    ".XXXXGDXXXX.",
+    "XXoXXXXXXXXX",
+    "XoXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    ".XXXXXXXXXX.",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+    "....XXXX....",
+    ".....XX.....",
+    "............",
+  ],
+  // O'tkir uch — o'q uchi va dastasi
+  arrowhead: [
+    "..........XX",
+    ".........XoX",
+    "........XXX.",
+    ".......BXX..",
+    "......BB....",
+    ".....BB.....",
+    "....BB......",
+    "...BB.......",
+    "..BB........",
+    ".WBW........",
+    "W..W........",
+    "..W.........",
+  ],
+  // Uzoq nishon — nishon doirasi
+  scope: [
+    "....XXXX....",
+    "..XX....XX..",
+    ".X...BB...X.",
+    ".X..B..B..X.",
+    "X..B.XX.B..X",
+    "X..B.XX.B..X",
+    "X...B..B...X",
+    ".X...BB...X.",
+    ".X........X.",
+    "..XX....XX..",
+    "....XXXX....",
+    "............",
+  ],
+  // Tez kamon — kamon va o'q
+  bow: [
+    "....BBW.....",
+    "...B..W.....",
+    "..B...W.....",
+    ".B....W.....",
+    ".B....W.....",
+    "WWXXXXXXXXoX",
+    ".B....W.....",
+    ".B....W.....",
+    "..B...W.....",
+    "...B..W.....",
+    "....BBW.....",
+    "............",
+  ],
+  // O'rmon qadami — barg
+  leaf: [
+    "..........X.",
+    "........XXX.",
+    "......XXXXX.",
+    "....XXXGXXX.",
+    "...XXXGXXXX.",
+    "..XXXGXXXX..",
+    "..XXGXXXX...",
+    ".XXGXXXX....",
+    ".XGXXX......",
+    ".G..........",
+    "G...........",
+    "............",
+  ],
+  // Ov o'ljasi — tish va qon tomchisi
+  fang: [
+    "............",
+    ".WWWWWWWWWW.",
+    ".WTWWWWWWTW.",
+    "..WWW..WWW..",
+    "..WWW..WWW..",
+    "...WW..WW...",
+    "...W....W...",
+    "............",
+    "....r.......",
+    "...rrr......",
+    "...ror......",
+    "....r.......",
+  ],
+  // Tikanli plash — tikanli shox
+  thorn: [
+    "............",
+    "....X...X...",
+    "....XX.XX...",
+    "BBBBBBBBBBBB",
+    "TBBBBBBBBBBT",
+    "...XX.XX....",
+    "...X...X....",
+    "............",
+    "..X....X....",
+    "..XX..XX....",
+    "BBBBBBBBBBBB",
+    "...XX..XX...",
+  ],
+  // Ikki karra sakrash — charm etiklar
+  boots: [
+    "............",
+    "..BBB.......",
+    "..BBB.......",
+    "..BBB...BBB.",
+    "..BTB...BBB.",
+    "..BBB...BTB.",
+    ".XBBB...BBB.",
+    "XXBBBB.XBBB.",
+    "XBBBBBBXBBBB",
+    "XTTTTTTXBBBB",
+    "........TTTT",
+    "............",
+  ],
+  // Shifobaxsh o't — dorivor o't
+  herb: [
+    ".....X......",
+    "....XXX..X..",
+    "...XXXXXXXX.",
+    "..XXGXXXGX..",
+    "...XXGXGXX..",
+    "..X..GGG..X.",
+    ".XXX..G.XXX.",
+    ".XXXX.GXXXX.",
+    "..XX..G..XX.",
+    "......G.....",
+    ".....BBB....",
+    "....BBBBB...",
+  ],
+  // Uch o'q — yelpig'ich
+  arrows3: [
+    "o....o....o.",
+    "XX...X...XX.",
+    ".XX..X..XX..",
+    "..B..B..B...",
+    "...B.B.B....",
+    "...B.B.B....",
+    "....BBB.....",
+    "....BBB.....",
+    ".....B......",
+    "....WWW.....",
+    "...W.W.W....",
+    "............",
+  ],
+  // Zaharli uch — zahar tomgan o'q uchi
+  venom: [
+    "..........XX",
+    ".........XoX",
+    "........XXX.",
+    ".......BBX..",
+    "......BB....",
+    ".....BB.....",
+    "...BBB......",
+    "..BB........",
+    ".XX.........",
+    "XoX.........",
+    "XXX.........",
+    ".X..........",
   ],
   // Do'kon: omad tumori — taqa ichida yurak
   luck: [

@@ -10,6 +10,7 @@ export class Input {
   private pauseQueued = false;
   private touch = { x: 0, y: 0 };
   private touchAttack = false;
+  private touchDash = false;
 
   private down = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
@@ -30,6 +31,7 @@ export class Input {
     this.keys.clear();
     this.touch = { x: 0, y: 0 };
     this.touchAttack = false;
+    this.touchDash = false;
   };
 
   attach() {
@@ -70,6 +72,18 @@ export class Input {
   }
   pressDash() {
     this.dashQueued = true;
+  }
+  /** Sakrash tugmasi bosib turilganmi (Ovchi tuzog'i uchun). */
+  setTouchDash(on: boolean) {
+    this.touchDash = on;
+  }
+  dashHeld() {
+    return (
+      this.keys.has("ShiftLeft") ||
+      this.keys.has("ShiftRight") ||
+      this.keys.has("KeyK") ||
+      this.touchDash
+    );
   }
   pressPause() {
     this.pauseQueued = true;

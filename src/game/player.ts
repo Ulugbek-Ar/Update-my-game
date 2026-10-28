@@ -20,6 +20,19 @@ export const TELEPORT_DIST = 50;
 const TELEPORT_TIME = 0.12;
 /** Muz ruhining sovuq nafasi: shuncha sekin yuradi */
 export const CHILL_SPEED = 0.5;
+/** Ovchi: 5 yurak, eng tez yuradigan qahramon */
+export const HUNTER_MAX_HP = 5;
+export const HUNTER_SPEED = 108;
+/** Kuchaytirilgan o'q: teshib o'tadi, 2x zarar, shuncha qayta tiklanadi */
+export const POWER_SHOT_CD = 2;
+/** Orqaga sakrash */
+export const JUMP_TIME = 0.2;
+export const JUMP_SPEED = 220;
+/** Dushman shu masofada bo'lsa, sakrash undan uzoqqa */
+export const JUMP_THREAT = 110;
+/** Shift'ni shuncha bosib tursa — sakrash o'rniga tuzoq */
+export const TRAP_HOLD = 0.35;
+export const TRAP_CD = 6;
 
 /** Sehrgarning sehrli shari */
 export interface Bolt {
@@ -32,6 +45,12 @@ export interface Bolt {
   left: number;
   /** Allaqachon tekkanlar (teshuvchi shar bir dushmanga ikki marta tegmaydi) */
   hit: object[];
+  /** Ovchi o'qi (aks holda Sehrgar shari) */
+  arrow?: boolean;
+  /** Zarar ko'paytuvchisi: kuchaytirilgan o'q 2x */
+  power?: number;
+  /** Zaharli uch: tekkan dushman zaharlanadi */
+  poison?: boolean;
 }
 
 export class Player implements Body {
@@ -89,6 +108,19 @@ export class Player implements Body {
   poison = 0;
   /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
   bolts: Bolt[] = [];
+  /** Kuchli zarba (aylana/halqa/kuchli o'q) qayta tiklanishi */
+  spinCd = SPIN_CD;
+  /** Ovchi: tuzoq qayta tiklanishi, shu kadrda qo'yilgan tuzoqlar, zaharli uch */
+  trapCd = TRAP_CD;
+  trapCooldown = 0;
+  traps: { x: number; y: number }[] = [];
+  /** Tuzoq hali tayyor emas (Game xabar chiqaradi) */
+  trapDenied = false;
+  poisonTip = false;
+  /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
+  private shiftHold = -1;
+  /** Eng yaqin dushman (Game belgilaydi) — orqaga sakrash undan uzoqlashadi */
+  threat: { x: number; y: number } | null = null;
   /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
   teleportFrom: { x: number; y: number } | null = null;
   /** Joriy hujumda allaqachon urilganlar */
@@ -108,10 +140,28 @@ export class Player implements Body {
       this.attackCd = 0.45;
       this.dashCd = 0.9;
     }
+    if (hero === "hunter") {
+      this.hp = this.maxHp = HUNTER_MAX_HP;
+      this.speed = HUNTER_SPEED;
+      this.attackCd = 0.38;
+      this.dashCd = 0.9;
+      this.spinCd = POWER_SHOT_CD;
+      this.boltSpeed = 210;
+      this.boltSize = 5;
+    }
   }
 
   get mage() {
     return this.hero === "mage";
+  }
+
+  get hunter() {
+    return this.hero === "hunter";
+  }
+
+  /** Masofadan uradigan qahramon (Sehrgar shari yoki Ovchi o'qi) */
+  get ranged() {
+    return this.hero !== "knight";
   }
 
   get dead() {
@@ -167,10 +217,11 @@ export class Player implements Body {
 
   /** Hujum zonasi (faqat hujum vaqtida). */
   attackBox(): Body | null {
-    // aylana zarba — o'yinchi atrofidagi katta maydon
-    if (this.spinning) return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
-    // Sehrgarning oddiy zarbasi — shar, u alohida uchadi
-    if (this.attackTimer <= 0 || this.mage) return null;
+    // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q uchadi, maydon yo'q)
+    if (this.spinning && !this.hunter)
+      return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
+    // Sehrgar va Ovchining oddiy zarbasi — shar/o'q, u alohida uchadi
+    if (this.attackTimer <= 0 || this.ranged) return null;
     const off = this.reach * 0.75;
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
   }
@@ -184,6 +235,7 @@ export class Player implements Body {
     this.hurtTimer -= dt;
     this.dashCooldown -= dt;
     this.spinCooldown -= dt;
+    this.trapCooldown -= dt;
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
@@ -202,13 +254,23 @@ export class Player implements Body {
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
       if (this.mage) return;
-      this.x += this.dashX * DASH_SPEED * dt;
-      this.y += this.dashY * DASH_SPEED * dt;
+      const sp = this.hunter ? JUMP_SPEED : DASH_SPEED;
+      this.x += this.dashX * sp * dt;
+      this.y += this.dashY * sp * dt;
       clampToRoom(this);
       return;
     }
 
-    if (wantDash && this.dashCharges > 0 && this.hurtTimer <= 0 && this.snare <= 0) {
+    // Ovchi: Shift'ni qisqa bosish — orqaga sakrash, bosib turish — tuzoq
+    if (this.hunter && this.updateShift(dt, wantDash, input)) return;
+
+    if (
+      wantDash &&
+      !this.hunter &&
+      this.dashCharges > 0 &&
+      this.hurtTimer <= 0 &&
+      this.snare <= 0
+    ) {
       let dx = x,
         dy = y;
       if (!dx && !dy) {
@@ -244,11 +306,13 @@ export class Player implements Body {
     } else {
       if (this.charged && this.spinCooldown <= 0) {
         this.spinTimer = SPIN_TIME;
-        this.spinCooldown = SPIN_CD;
+        this.spinCooldown = this.spinCd;
         this.attackTimer = 0;
         this.hitSet.clear();
         sfx.spin();
         this.anim.set("attack", true);
+        // Ovchi: kuchaytirilgan o'q — hamma dushmanni teshib o'tadi, 2x zarar
+        if (this.hunter) this.shoot(true);
       }
       this.charge = 0;
     }
@@ -259,25 +323,11 @@ export class Player implements Body {
       this.hitSet.clear();
       sfx.attack();
       this.anim.set("attack", true);
-      if (this.mage) {
-        // Uch shar: yelpig'ich bo'lib uchadi
-        const base = Math.atan2(this.fy, this.fx);
-        for (let i = 0; i < this.multishot; i++) {
-          const a = base + (i - (this.multishot - 1) / 2) * 0.28;
-          this.bolts.push({
-            x: this.x + this.fx * 8,
-            y: this.y + this.fy * 8 - 2,
-            vx: Math.cos(a) * this.boltSpeed,
-            vy: Math.sin(a) * this.boltSpeed,
-            size: this.boltSize,
-            left: 1 + this.pierce,
-            hit: [],
-          });
-        }
-      }
+      if (this.ranged) this.shoot(false);
     }
 
-    const busy = this.attackTimer > 0 || this.hurtTimer > 0 || this.spinning;
+    // Ovchi kuchli o'qdan keyin joyida turmaydi — o'q uchib ketadi
+    const busy = this.attackTimer > 0 || this.hurtTimer > 0 || (this.spinning && !this.hunter);
     if (!busy) {
       if ((x || y) && this.snare <= 0) {
         const l = Math.max(1, Math.hypot(x, y));
@@ -295,6 +345,83 @@ export class Player implements Body {
       } else this.anim.set("idle");
     }
     clampToRoom(this);
+  }
+
+  /** Sehrgar shari yoki Ovchi o'qi; Uch shar/Uch o'q bilan yelpig'ich bo'lib uchadi. */
+  private shoot(power: boolean) {
+    const base = Math.atan2(this.fy, this.fx);
+    const spread = this.hunter ? 0.22 : 0.28;
+    for (let i = 0; i < this.multishot; i++) {
+      const a = base + (i - (this.multishot - 1) / 2) * spread;
+      const speed = this.boltSpeed * (power ? 1.25 : 1);
+      this.bolts.push({
+        x: this.x + this.fx * 8,
+        y: this.y + this.fy * 8 - 2,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        size: this.boltSize + (power ? 2 : 0),
+        // kuchaytirilgan o'q hamma dushmandan o'tadi
+        left: power ? 99 : 1 + this.pierce,
+        hit: [],
+        ...(this.hunter ? { arrow: true, power: power ? 2 : 1, poison: this.poisonTip } : {}),
+      });
+    }
+  }
+
+  /**
+   * Ovchining Shift tugmasi: qisqa bosilsa (qo'yib yuborilganda) orqaga sakraydi,
+   * TRAP_HOLD dan ko'p bosib turilsa oyog'i ostiga tuzoq qo'yadi (6s qayta tiklanadi).
+   * true — shu kadrda harakat tugadi (sakrash boshlandi).
+   */
+  private updateShift(dt: number, pressed: boolean, input: Input) {
+    const held = input.dashHeld?.() ?? false;
+    if (pressed && this.shiftHold === -1) this.shiftHold = 0;
+    if (this.shiftHold === -2) {
+      if (!held) this.shiftHold = -1;
+      return false;
+    }
+    if (this.shiftHold < 0) return false;
+    if (held) {
+      this.shiftHold += dt;
+      if (this.shiftHold >= TRAP_HOLD) {
+        this.shiftHold = -2;
+        if (this.trapCooldown <= 0) {
+          this.traps.push({ x: this.x, y: this.y + 4 });
+          this.trapCooldown = this.trapCd;
+          sfx.chestHit();
+        } else this.trapDenied = true;
+      }
+      return false;
+    }
+    // qo'yib yuborildi — orqaga sakrash
+    this.shiftHold = -1;
+    return this.backJump();
+  }
+
+  private backJump() {
+    if (this.dashCharges <= 0 || this.hurtTimer > 0 || this.snare > 0) return false;
+    let dx = -this.fx,
+      dy = -this.fy;
+    const t = this.threat;
+    if (t) {
+      const d = Math.hypot(this.x - t.x, this.y - t.y);
+      if (d > 0 && d < JUMP_THREAT) {
+        dx = (this.x - t.x) / d;
+        dy = (this.y - t.y) / d;
+      }
+    }
+    const l = Math.hypot(dx, dy) || 1;
+    this.dashX = dx / l;
+    this.dashY = dy / l;
+    this.dashTimer = JUMP_TIME;
+    this.dashCharges--;
+    this.dashCooldown = this.dashCd;
+    this.attackTimer = 0;
+    this.charge = 0;
+    sfx.dash();
+    // sakrayotganda ham nishonga qarab turadi (yuz burilmaydi)
+    this.anim.set("walk");
+    return true;
   }
 
   render(ctx: CanvasRenderingContext2D) {

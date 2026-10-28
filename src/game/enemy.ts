@@ -228,6 +228,11 @@ export class Enemy implements Body {
   speedMul = 1;
   /** Muz qalqoni: shuncha soniya yarim tezlikda yuradi */
   slow = 0;
+  /** Ovchi tuzog'i: shuncha soniya qotib turadi (yurmaydi, hujum qilmaydi) */
+  stun = 0;
+  /** Zaharli uch: zahar qolgan vaqti va keyingi zarargacha hisob (Game boshqaradi) */
+  poison = 0;
+  poisonTick = 0;
   /** O'yin olib ketadigan o'qlar (kamonchi) */
   shots: Arrow[] = [];
   /** Sprite chapga aks ettiriladi (o'yinchiga qarab) */
@@ -370,6 +375,12 @@ export class Enemy implements Body {
     if (this.slow > 0) this.slow -= dt;
     if (this.dead) {
       if (this.anim.done) this.removed = true;
+      return;
+    }
+    if (this.stun > 0) {
+      // tuzoqqa tushgan: qotib turadi
+      this.stun -= dt;
+      if (this.anim.state !== "hurt") this.anim.set("idle");
       return;
     }
     if (this.stompShock > 0) this.stompShock -= dt;
