@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.9.0";
+export const GAME_VERSION = "2.0.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0.0",
+    date: "2026-10-28",
+    notes:
+      "Piksel Qal'a 2.0: Sarguzasht xaritasi. Yangi 3-dunyo: Zulmat o'rmoni — o'z moblari va O'rmon Shohi bossi bilan. Yangi moblar: O'rmon o'rgimchagi, Zaharli qo'ziqorin, Daraxt odam va Tungi boyo'g'li. Yangi qahramon: Ovchi — o'q, teshuvchi o'q va tuzoq. Yangi bosh menyu sahnasi.",
+  },
   {
     version: "1.9.0",
     date: "2026-10-28",

@@ -1,0 +1,130 @@
+[
+  {
+    "title": "Sarguzasht xaritasi: 3 dunyo, rekordlar va yutgan qahramonlar",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-world-wins": {
+            "1": ["knight", "mage", "hunter"],
+            "2": ["knight", "hunter"],
+            "3": []
+          },
+          "pixel-rpg-best": "4210",
+          "pixel-rpg-best-ch2": "6100",
+          "pixel-rpg-map-world": "3",
+          "pixel-rpg-hero": "hunter"
+        }
+      },
+      { "click": "BOSHLASH" },
+      { "wait": 600 }
+    ]
+  },
+  {
+    "title": "3-dunyo: Zulmat o'rmoni — ildizlar, qo'ziqorinlar va svetlyachoklar",
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3(); g.player.takeHit = () => false;" },
+      { "wave": 1 },
+      { "wait": 2600 }
+    ]
+  },
+  {
+    "title": "O'rmon o'rgimchagi",
+    "text": "Qora-binafsha, qizil ko'zli o'rgimchak. Tez yuradi: avval devorga chiqadi va devor bo'ylab sizga eng yaqin joyga yuguradi. To'xtab, yo'lingizga to'r otadi — to'rga kirsangiz 1 soniya yurolmaysiz, lekin zarba bilan darhol uzish mumkin. Devor yoniga borib uring. Joni: 2.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3();" },
+      { "wave": 0 },
+      { "spawn": { "kind": "spider", "px": 64, "py": 120, "dx": 40 } },
+      { "eval": "g.enemies[0].aiTimer = 1; g.player.fx = 1; g.player.fy = 0; g.chest = null;" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Zaharli qo'ziqorin",
+    "text": "Binafsha qalpoqli, yashil dog'li qo'ziqorin. Joyidan qimirlamaydi, lekin yaqinlashsangiz shishib, zaharli yashil bulut chiqaradi: bulut ichida har soniyada 1 zarar. Uzoqdan uring yoki tez urib, bulutdan chiqib keting. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3();" },
+      { "wave": 0 },
+      { "spawn": { "kind": "shroom", "dx": 30 } },
+      { "eval": "g.enemies[0].aiTimer = 0.8; g.chest = null;" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Daraxt odam",
+    "text": "Shox qo'lli, sariq ko'zli tirik daraxt. Juda sekin, zarbadan itarilmaydi. Uzoqdan shoxlarini yerga sanchadi: sizgacha yoriq chizig'i o'sib boradi, so'ng yerdan ildizlar chiqib 1 zarar beradi va ushlab qoladi. Yoriqni ko'rsangiz joyingizdan chiqing. Joni: 8.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3();" },
+      { "wave": 1 },
+      { "spawn": { "kind": "treant", "dx": 90 } },
+      { "eval": "g.enemies[0].aiTimer = 0.4; g.chest = null;" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Tungi boyo'g'li",
+    "text": "Katta sariq ko'zli boyo'g'li. Tepada uchganda uni urib bo'lmaydi. So'ng ostingizda soya paydo bo'ladi va 0.8 soniyadan keyin shu joyga sho'ng'iydi — soyadan chiqing! Qo'ngach biroz yerda turadi — shu payt uring. Joni: 2.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3();" },
+      { "wave": 1 },
+      { "spawn": { "kind": "owl", "dx": 50, "dy": -20 } },
+      { "eval": "g.enemies[0].aiTimer = 0.7; g.chest = null;" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "O'rmon Shohi",
+    "text": "3-dunyo bossi: shox tojli, mox soqolli ulkan daraxt podshoh. Yerdan sizga qarab ildizlar qatorini chiqaradi, o'rgimchaklarni chaqiradi (xonada ko'pi bilan 3 ta). Joni yarmidan kamaysa butun xona qorong'i bo'ladi — faqat atrofingiz yorug'. Ildiz chizig'idan yon tomonga qoching. Joni: 50.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter3();" },
+      { "wave": 4 },
+      {
+        "eval": "g.enemies = []; g.boss.spawn = 0; g.boss.hp = 24; g.player.takeHit = () => false; g.player.x = 160; g.player.y = 180; g.boss.x = 160; g.boss.y = 90; g.banner.timer = 0; g.chest = null;"
+      },
+      { "wait": 1200 }
+    ]
+  },
+  {
+    "title": "Ovchi",
+    "text": "Yangi qahramon — Ovchi: yashil plashli, kapyushonli kamonchi. 5 yurak, eng tez yuradi. Space — o'q, bosib tursa yo'lidagi hamma dushmanni teshib o'tadigan 2x zararli kuchli o'q. Shift — orqaga sakrash (dushmandan uzoqqa), bosib tursa oyog'i ostiga tuzoq: tushgan dushman 2 soniya qotadi. O'z kuchlari: Uch o'q va Zaharli uch.",
+    "hero": true,
+    "video": 6,
+    "range": 70,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "click": "OVCHI" },
+      { "start": true },
+      { "wave": 0 },
+      { "spawn": { "kind": "blob", "count": 3, "dx": 90 } }
+    ]
+  },
+  {
+    "title": "Yangi bosh menyu: qasr, oy va yulduzlar fonida qahramonlar va moblar",
+    "target": "screen",
+    "steps": [{ "wait": 1500 }]
+  }
+]
