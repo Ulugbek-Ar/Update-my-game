@@ -1,8 +1,8 @@
-import { ROOM, applyHit, overlap, px, separate, type Body } from "./animation";
+import { ROOM, applyHit, clampToRoom, overlap, px, separate, type Body } from "./animation";
 import { Input } from "./input";
 import { Player } from "./player";
-import { Enemy, type EnemyKind } from "./enemy";
-import { Boss } from "./boss";
+import { Enemy, GOLEM_SHARDS, type EnemyKind } from "./enemy";
+import { Boss, Queen, QUEEN_HP, WIND_PUSH, summonCount } from "./boss";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings } from "./settings";
@@ -17,6 +17,8 @@ import {
   endlessNumber,
   waveEnemies,
   waveSpeed,
+  WAVES2,
+  waveSpeed2,
   upgradeIcon,
   isChestWave,
   type Upgrade,
@@ -81,6 +83,9 @@ const KILL_POINTS: Record<EnemyKind, number> = {
   rammer: 20,
   archer: 20,
   shield: 25,
+  frost: 20,
+  golem: 35,
+  shard: 5,
 };
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
@@ -88,6 +93,9 @@ const KILL_COLOR: Record<EnemyKind, string> = {
   rammer: "#d6d9cf",
   archer: "#8a88a3",
   shield: "#7a4a24",
+  frost: "#9fd0ef",
+  golem: "#6e93b3",
+  shard: "#8fc3e6",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -102,6 +110,8 @@ interface FloorTheme {
   moss: number;
   /** Qizil (lavali) yoriqlar — Boss xonasi */
   red: boolean;
+  /** 2-bob: muz plitalar, qorli yoriqlar, sumalaklar, sovuq kristallar */
+  ice?: boolean;
 }
 const STONE_WALLS = { wall: "#5c4a6e", wallDark: "#4a3b59", brick: "#6e5a82" };
 const FLOORS: FloorTheme[] = [
@@ -129,7 +139,24 @@ const BOSS_FLOOR: FloorTheme = {
   moss: 0,
   red: true,
 };
+const ICE_WALLS = { wall: "#5d7590", wallDark: "#465b73", brick: "#7a93ad" };
+const ICE_FLOOR: FloorTheme = {
+  a: "#9fb1c0",
+  b: "#97a9b8",
+  grout: "#7c90a2",
+  ...ICE_WALLS,
+  moss: 0,
+  red: false,
+  ice: true,
+};
+/** Qor Malikasi xonasi: biroz to'qroq muz, polda ko'k yoriqlar */
+const ICE_BOSS_FLOOR: FloorTheme = { ...ICE_FLOOR, a: "#8ea2b4", b: "#879bad", grout: "#6f8499" };
+/** Pol variantlari: -1 Iblis xonasi, -2 muz, -3 Malika xonasi */
+const FLOOR_ICE = -2;
+const FLOOR_ICE_BOSS = -3;
 const BOSS_POINTS = 300;
+const QUEEN_POINTS = 500;
+const QUEEN_GOLD = 40;
 /** Muz qalqoni ta'siri */
 const FROST_RADIUS = 56;
 const FROST_TIME = 1.5;
@@ -165,6 +192,29 @@ export interface RunStats {
 }
 function newStats(): RunStats {
   return { waves: 0, kills: 0, maxCombo: 0, gold: 0, chests: 0, time: 0 };
+}
+
+/** 2-bob boshidagi kuchlar: o'lganda 2-bob shu holatdan qayta boshlanadi. */
+const POWER_KEYS = [
+  "hp",
+  "maxHp",
+  "speed",
+  "damage",
+  "reach",
+  "attackCd",
+  "dashCd",
+  "lifesteal",
+  "dashMax",
+  "thorns",
+  "boltSpeed",
+  "boltSize",
+  "multishot",
+  "pierce",
+  "frost",
+] as const;
+type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
+function savePowers(p: Player): Powers {
+  return Object.fromEntries(POWER_KEYS.map((k) => [k, p[k]])) as Powers;
 }
 
 /** Butun o'yin holati shu obyektda — React state'da emas. */
@@ -210,6 +260,18 @@ export class Game {
   /** Boss yengilgandan keyingi cheksiz rejim */
   endless = false;
   endlessBest = 0;
+  /** 1-bob: Olovli zindon, 2-bob: Muz sardobasi (faqat 1-bobni yutib o'tiladi) */
+  chapter: 1 | 2 = 1;
+  /** 2-bobni yutgan o'yinlar rekordi (alohida) */
+  ch2Best = 0;
+  newCh2Best = false;
+  /** 2-bob boshidagi kuchlar va ochko — 2-bobda o'lganda shu holatdan qayta boshlanadi */
+  private ch2Start: { powers: Powers; score: number } | null = null;
+  /** 1-bob yutilgan va 2-bobda hali o'lmagan ("Ikki bob" yutug'i) */
+  private noDeathRun = false;
+  /** Shu to'lqinda sovuq nafas tegdimi / to'lqinda Muz ruhi bormidi ("Sovuqqa chidam") */
+  private waveChilled = false;
+  private waveHasFrost = false;
   banner = { title: "", sub: "", timer: 0 };
   paused = false;
   /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
@@ -250,6 +312,7 @@ export class Game {
     this.attempt = saved > 0 ? saved : 1;
     this.best = load(bestKeys(hero).best);
     this.endlessBest = load(bestKeys(hero).endless);
+    this.ch2Best = load(bestKeys(hero).ch2);
     this.totalGold = loadGold();
     const settings = loadSettings();
     this.shakeOn = settings.shake;
@@ -283,6 +346,10 @@ export class Game {
     this.killsForHeal = 0;
     this.phase = "play";
     this.endless = false;
+    this.chapter = 1;
+    this.ch2Start = null;
+    this.noDeathRun = false;
+    this.newCh2Best = false;
     this.input.clearQueued();
     if (this.daily) {
       // kunlik sinov: har safar bir xil seed — bir xil to'lqinlar va kartalar
@@ -326,40 +393,128 @@ export class Game {
     this.player.charge = 0;
     const boss = isBossWave(i);
     const endless = endlessNumber(i);
-    this.banner = boss
-      ? endless
-        ? { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
-        : { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
-      : endless
-        ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
-        : {
-            title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
-            sub:
-              i === 0 && this.daily
-                ? `KUNLIK SINOV · ${this.daily}`
-                : i === 0 && !this.hints.length
-                  ? this.player.mage
-                    ? "Shift — teleport"
-                    : "Shift — dash"
-                  : "",
-            timer: 1.6,
-          };
-    waveEnemies(i).forEach((kind, n) => {
+    const ch2 = this.ch2;
+    this.banner = ch2
+      ? boss
+        ? { title: "BOSS: QOR MALIKASI", sub: "Ko'k doiradan qoch!", timer: 2.2 }
+        : i === 0
+          ? { title: "2-BOB: MUZ SARDOBASI", sub: `TO'LQIN 1/${TOTAL_WAVES}`, timer: 2.6 }
+          : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: "2-BOB", timer: 1.6 }
+      : boss
+        ? endless
+          ? { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
+          : { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
+        : endless
+          ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
+          : {
+              title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
+              sub:
+                i === 0 && this.daily
+                  ? `KUNLIK SINOV · ${this.daily}`
+                  : i === 0 && !this.hints.length
+                    ? this.player.mage
+                      ? "Shift — teleport"
+                      : "Shift — dash"
+                    : "",
+              timer: 1.6,
+            };
+    const kinds = ch2 ? WAVES2[i]! : waveEnemies(i);
+    this.waveChilled = false;
+    this.waveHasFrost = ch2 && (boss || kinds.includes("frost"));
+    kinds.forEach((kind, n) => {
       const [x, y] = this.spawnPoint();
       const e = new Enemy(kind, x, y);
       e.spawn = e.spawnMax = 1 + n * 0.18 + (boss ? 1.2 : 0);
-      e.speedMul = waveSpeed(i);
+      e.speedMul = ch2 ? waveSpeed2(i) : waveSpeed(i);
       this.enemies.push(e);
     });
+    this.fx.snowOn = ch2;
+    this.fx.wind = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
     if (boss) {
-      this.boss = new Boss(bossHp(i));
+      this.boss = ch2 ? new Queen(QUEEN_HP) : new Boss(bossHp(i));
       this.boss.spawn = this.boss.spawnMax = 1.6;
       sfx.roar();
       this.fx.addShake(0.4);
     } else sfx.wave();
-    sfx.playMusic(boss ? "boss" : "normal");
+    sfx.playMusic(boss ? "boss" : ch2 ? "ice" : "normal");
+  }
+
+  /** Qor Malikasi: nayza ovozi, bo'ron o'yinchini suradi, yarim jondan pastda ruh chaqiradi. */
+  private updateQueen(q: Queen, dt: number) {
+    const p = this.player;
+    if (q.justSpiked) {
+      q.justSpiked = false;
+      sfx.iceSpike();
+      this.fx.addShake(0.08);
+    }
+    const blowing = q.wind.t > 0 && !q.dead;
+    if (blowing && !p.dead) {
+      p.x += q.wind.dir * WIND_PUSH * dt;
+      clampToRoom(p);
+    }
+    this.fx.wind = blowing ? q.wind.dir : 0;
+    if (q.wantSummon) {
+      q.wantSummon = false;
+      const alive = this.enemies.filter((e) => e.kind === "frost" && !e.dead).length;
+      const n = summonCount(alive);
+      for (let k = 0; k < n; k++) {
+        const e = new Enemy("frost", q.x + (k ? 22 : -22), q.y + 10);
+        e.spawn = e.spawnMax = 0.8;
+        e.speedMul = waveSpeed2(BOSS_WAVE);
+        this.enemies.push(e);
+      }
+      if (n) this.fx.burst(q.x, q.y, "#9fd0ef", 16, 70, 2);
+    }
+  }
+
+  /** 2-bob davom etmoqda (cheksiz rejimda emas). */
+  get ch2() {
+    return this.chapter === 2 && !this.endless;
+  }
+
+  /** Iblis yengildi: kuchlar, yuraklar va ochko saqlanadi, 1 yurak tiklanadi. */
+  startChapter2() {
+    this.chapter = 2;
+    this.noDeathRun = true;
+    const p = this.player;
+    p.heal(1);
+    this.ch2Start = { powers: savePowers(p), score: this.score };
+    this.enterChapter2();
+  }
+
+  /** 2-bobda o'lgandan keyin: 2-bob boshidagi kuchlar va ochko bilan qayta boshlash. */
+  retryChapter2() {
+    const s = this.ch2Start;
+    if (!s) return this.reset();
+    this.player = new Player(this.hero);
+    Object.assign(this.player, s.powers);
+    this.score = s.score;
+    this.enterChapter2();
+  }
+
+  private enterChapter2() {
+    const p = this.player;
+    p.x = 160;
+    p.y = 190;
+    p.vx = p.vy = 0;
+    p.chill = 0;
+    this.phase = "play";
+    this.newBest = false;
+    this.newCh2Best = false;
+    this.combo = 0;
+    this.comboTimer = 0;
+    this.killsForHeal = 0;
+    this.enemies = [];
+    this.shots = [];
+    this.bolts = [];
+    this.drops = [];
+    this.coins = [];
+    this.chest = null;
+    this.bonusPick = false;
+    this.input.clearQueued();
+    this.startWave(0);
   }
 
   /** Sandiqning to'qnashuv tanasi (ref — hitSet uchun sandiqning o'zi). */
@@ -490,8 +645,12 @@ export class Game {
   private resumeBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 4, w: 160, h: 18 };
   private restartBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 28, w: 160, h: 18 };
   private menuBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 52, w: 160, h: 18 };
-  private endlessBtn = { x: ROOM.w / 2 - 80, y: 162, w: 160, h: 18 };
-  private newRunBtn = { x: ROOM.w / 2 - 80, y: 186, w: 160, h: 18 };
+  private chapterBtn = { x: ROOM.w / 2 - 80, y: 150, w: 160, h: 18 };
+  private endlessBtn = { x: ROOM.w / 2 - 80, y: 172, w: 160, h: 18 };
+  private newRunBtn = { x: ROOM.w / 2 - 80, y: 194, w: 160, h: 18 };
+  /** 2-bobda o'lganda: qayta boshlash yoki bosh menyu */
+  private retryBtn = { x: ROOM.w / 2 - 80, y: 154, w: 160, h: 18 };
+  private quitBtn = { x: ROOM.w / 2 - 80, y: 178, w: 160, h: 18 };
   private cardRect(i: number) {
     const w = 92,
       gap = 8,
@@ -525,8 +684,14 @@ export class Game {
     if (this.phase === "victory") {
       if (this.daily) {
         if (hit(this.endlessBtn)) this.exitToMenu();
-      } else if (hit(this.endlessBtn)) this.startEndless();
+      } else if (this.chapter === 1 && hit(this.chapterBtn)) this.startChapter2();
+      else if (hit(this.endlessBtn)) this.startEndless();
       else if (hit(this.newRunBtn)) this.newRun();
+      return;
+    }
+    if (this.phase === "attempt" && this.ch2) {
+      if (hit(this.retryBtn)) this.retryChapter2();
+      else if (hit(this.quitBtn)) this.exitToMenu();
       return;
     }
     if (this.phase === "play" && this.stage === "upgrade") {
@@ -690,6 +855,16 @@ export class Game {
     );
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
     sfx.kill();
+    if (e.kind === "golem") {
+      // golem 2 ta kichik muz bo'lagiga bo'linadi
+      for (let k = 0; k < GOLEM_SHARDS; k++) {
+        const s = new Enemy("shard", e.x + (k ? 8 : -8), e.y + 2);
+        s.spawn = s.spawnMax = 0.3;
+        s.speedMul = e.speedMul;
+        this.enemies.push(s);
+      }
+      this.fx.burst(e.x, e.y, "#d8ecf7", 16, 90, 2);
+    }
     if (Math.random() < DROP_CHANCE + this.dropBonus) this.drops.push({ x: e.x, y: e.y, life: 9 });
     this.coins.push({ x: e.x + 5, y: e.y + 3, life: COIN_LIFE, value: KILL_GOLD[e.kind] });
     const p = this.player;
@@ -764,20 +939,23 @@ export class Game {
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
     else {
-      this.score += BOSS_POINTS;
-      this.achieve("boss");
-      this.fx.text(t.x, t.y - 24, `+${BOSS_POINTS}`, "#ffcc33");
-      this.fx.burst(t.x, t.y, "#f4cb45", 40, 120, 3);
+      const queen = t instanceof Queen;
+      const pts = queen ? QUEEN_POINTS : BOSS_POINTS;
+      this.score += pts;
+      this.achieve(queen ? "queen" : "boss");
+      this.fx.text(t.x, t.y - 24, `+${pts}`, "#ffcc33");
+      this.fx.burst(t.x, t.y, queen ? "#7fe9ff" : "#f4cb45", 40, 120, 3);
       this.fx.addShake(0.6);
       this.shots = [];
       // Boss xazinasi: 5 ta tanga atrofga sochiladi
+      const gold = queen ? QUEEN_GOLD : BOSS_GOLD;
       for (let k = 0; k < 5; k++) {
         const a = (k / 5) * Math.PI * 2;
         this.coins.push({
           x: t.x + Math.cos(a) * 18,
           y: t.y + Math.sin(a) * 14,
           life: COIN_LIFE,
-          value: BOSS_GOLD / 5,
+          value: gold / 5,
         });
       }
     }
@@ -789,6 +967,12 @@ export class Game {
     if (this.toasts.length) {
       this.toasts[0]!.timer -= dt;
       if (this.toasts[0]!.timer <= 0) this.toasts.shift();
+    }
+    if (this.phase === "attempt" && this.ch2) {
+      // 2-bobda o'lim: o'yinchi o'zi tanlaydi
+      if (this.input.consumeEnter() || this.input.consumeKey("KeyR")) this.retryChapter2();
+      else if (this.input.consumeKey("KeyQ")) this.exitToMenu();
+      return;
     }
     if (this.phase === "attempt") {
       this.msgTimer -= dt;
@@ -805,7 +989,9 @@ export class Game {
         if (this.input.consumeEnter()) this.exitToMenu();
         return;
       }
-      if (this.input.consumeEnter()) this.startEndless();
+      if (this.chapter === 1 && this.input.consumeEnter()) this.startChapter2();
+      else if (this.chapter === 1 ? this.input.consumeKey("KeyE") : this.input.consumeEnter())
+        this.startEndless();
       else if (this.input.consumeKey("KeyR")) this.newRun();
       return;
     }
@@ -828,6 +1014,7 @@ export class Game {
       if (p.spinning) this.doneHint("spin");
       if (p.dashing) this.doneHint("dash");
     }
+    if (p.chill > 0) this.waveChilled = true;
     if (p.teleportFrom) {
       // teleport: chiqqan joyda qora tutun, ikkala joyda qizil uchqunlar
       this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#1a1118", 14, 30, 3);
@@ -860,6 +1047,12 @@ export class Game {
     }
     for (const e of this.enemies) {
       e.update(dt, p);
+      if (e.justStomped) {
+        e.justStomped = false;
+        sfx.stomp();
+        this.fx.addShake(0.15);
+        this.fx.burst(e.x, e.y + 8, "#d8ecf7", 10, 70, 1);
+      }
       if (e.shots.length) {
         for (const s of e.shots) this.shots.push({ ...s, size: 4, arrow: true });
         e.shots = [];
@@ -871,11 +1064,19 @@ export class Game {
       boss.update(dt, p);
       if (boss.justEnraged) {
         boss.justEnraged = false;
-        this.banner = { title: "G'AZAB!", sub: "Iblis olov sochadi", timer: 1.6 };
+        this.banner = {
+          title: "G'AZAB!",
+          sub: boss instanceof Queen ? "Malika ruhlarni chaqiradi" : "Iblis olov sochadi",
+          timer: 1.6,
+        };
         sfx.roar();
         this.fx.addShake(0.4);
       }
-      if (boss.justSlammed) this.fx.addShake(0.2);
+      if (boss.justSlammed) {
+        this.fx.addShake(0.2);
+        if (boss instanceof Queen) sfx.blizzard();
+      }
+      if (boss instanceof Queen) this.updateQueen(boss, dt);
       if (boss.shots.length) {
         for (const s of boss.shots) this.shots.push({ ...s, size: 6 });
         boss.shots = [];
@@ -1026,6 +1227,7 @@ export class Game {
         this.commitBest();
         this.bankGold();
         this.saveDailyResult(false);
+        this.noDeathRun = false;
         // cheksiz rejimda o'yin allaqachon yutilgan, kunlik sinov alohida — urinish oshmaydi
         if (!this.endless && !this.daily) {
           this.attempt++;
@@ -1051,6 +1253,14 @@ export class Game {
             this.bankGold();
             this.saveDailyResult(true);
             this.achieve(this.hero === "mage" ? "winMage" : "winKnight");
+            if (this.chapter === 2) {
+              if (this.noDeathRun) this.achieve("twoChapters");
+              if (this.score > this.ch2Best) {
+                this.ch2Best = this.score;
+                this.newCh2Best = true;
+                save(bestKeys(this.hero).ch2, this.ch2Best);
+              }
+            }
             this.stats.waves++;
             this.phase = "victory";
             sfx.stopMusic();
@@ -1068,7 +1278,8 @@ export class Game {
       this.hints = [];
       save(TUTORIAL_KEY, 1);
     }
-    let bonus = 50 * (this.wave + 1);
+    if (this.ch2 && this.waveHasFrost && !this.waveChilled) this.achieve("noChill");
+    let bonus = 50 * (this.wave + 1 + (this.ch2 ? TOTAL_WAVES : 0));
     if (!this.waveHurt) {
       bonus += 100;
       this.achieve("clean");
@@ -1093,13 +1304,21 @@ export class Game {
 
   /** Joriy to'lqin uchun pol varianti: -1 — Boss xonasi. */
   private floorIndex() {
+    if (this.ch2) return isBossWave(this.wave) ? FLOOR_ICE_BOSS : FLOOR_ICE;
     if (isBossWave(this.wave)) return -1;
     const n = endlessNumber(this.wave);
     return n > 0 ? n % FLOORS.length : Math.min(this.wave, FLOORS.length - 1);
   }
 
   private buildFloor(index: number) {
-    const t = index < 0 ? BOSS_FLOOR : FLOORS[index]!;
+    const t =
+      index === FLOOR_ICE
+        ? ICE_FLOOR
+        : index === FLOOR_ICE_BOSS
+          ? ICE_BOSS_FLOOR
+          : index < 0
+            ? BOSS_FLOOR
+            : FLOORS[index]!;
     const cv = document.createElement("canvas");
     cv.width = ROOM.w;
     cv.height = ROOM.h;
@@ -1116,6 +1335,24 @@ export class Game {
         px(c, t.grout, x, y + 15, 16, 1);
         px(c, t.grout, x + 15, y, 1, 16);
         const r = rnd();
+        if (t.ice) {
+          if (r < 0.14) {
+            // yoriq, ichida qor
+            px(c, "#6a8095", x + 3, y + 6, 6, 1);
+            px(c, "#6a8095", x + 8, y + 7, 1, 3);
+            px(c, "#f2f8fc", x + 4, y + 5, 3, 1);
+            px(c, "#f2f8fc", x + 9, y + 8, 1, 2);
+          } else if (r < 0.24) {
+            // muz yaltirog'i
+            px(c, "#dfeaf3", x + 3, y + 3, 4, 1);
+            px(c, "#dfeaf3", x + 3, y + 4, 1, 2);
+          } else if (r < 0.3) {
+            // qor uyumchasi
+            px(c, "#e8f1f8", x + 6, y + 10, 6, 2);
+            px(c, "#ffffff", x + 7, y + 9, 3, 1);
+          }
+          continue;
+        }
         if (r < 0.12) {
           // yoriq
           px(c, "#251d31", x + 4, y + 6, 5, 1);
@@ -1140,6 +1377,21 @@ export class Game {
           px(c, "#3f6b3a", x + ox + 6, y + oy + 6, 3, 2);
         }
       }
+    if (t === ICE_BOSS_FLOOR) {
+      // Malika xonasi: polda muzlagan ko'k yoriqlar
+      for (let k = 0; k < 8; k++) {
+        let cx = ROOM.wall + 8 + rnd2() * (ROOM.w - ROOM.wall * 2 - 16);
+        let cy = ROOM.wall + 8 + rnd2() * (ROOM.h - ROOM.wall * 2 - 16);
+        const dir = rnd2() * Math.PI * 2;
+        for (let st = 0; st < 12 + rnd2() * 10; st++) {
+          const a = dir + (rnd2() - 0.5) * 1.4;
+          cx += Math.cos(a) * 2;
+          cy += Math.sin(a) * 2;
+          px(c, "#5d7590", cx - 1, cy, 3, 1);
+          px(c, st % 4 === 0 ? "#bff4ff" : "#7fc4e8", cx, cy, 2, 1);
+        }
+      }
+    }
     if (t.red) {
       // Boss xonasi: polda qizil cho'g'li yoriqlar
       for (let k = 0; k < 9; k++) {
@@ -1168,8 +1420,20 @@ export class Game {
     px(c, "rgba(0,0,0,0.35)", ROOM.wall, ROOM.wall, ROOM.w - ROOM.wall * 2, 4);
     px(c, "rgba(0,0,0,0.2)", ROOM.wall, ROOM.wall, 3, ROOM.h - ROOM.wall * 2);
     px(c, "rgba(0,0,0,0.2)", ROOM.w - ROOM.wall - 3, ROOM.wall, 3, ROOM.h - ROOM.wall * 2);
+    if (t.ice) {
+      // devorda qor va muz sumalaklari
+      px(c, "#e8f1f8", 0, 0, ROOM.w, 2);
+      for (let x = 2; x < ROOM.w; x += 7 + Math.floor(rnd2() * 6)) {
+        const h = 3 + Math.floor(rnd2() * 6);
+        px(c, "#cfe6f5", x, ROOM.wall, 2, h);
+        px(c, "#ffffff", x, ROOM.wall, 1, Math.max(1, h - 2));
+        px(c, "#cfe6f5", x, ROOM.wall + h, 1, 1);
+      }
+      // kristall tagliklari
+      for (const tx of [64, 160, 256]) px(c, "#3b4d63", tx - 3, 10, 6, 4);
+    }
     // mash'ala tutqichlari
-    for (const tx of [64, 160, 256]) px(c, "#2a1f38", tx - 2, 8, 4, 6);
+    else for (const tx of [64, 160, 256]) px(c, "#2a1f38", tx - 2, 8, 4, 6);
     this.floor = cv;
     this.floorKey = index;
   }
@@ -1178,6 +1442,21 @@ export class Game {
     const fi = this.floorIndex();
     if (!this.floor || this.floorKey !== fi) this.buildFloor(fi);
     c.drawImage(this.floor!, 0, 0);
+    if (this.ch2) {
+      // mash'alalar o'rniga sovuq ko'k kristallar
+      for (const [i, tx] of [64, 160, 256].entries()) {
+        const fl = Math.sin(this.time * 2.5 + i * 2);
+        const g = c.createRadialGradient(tx, 10, 2, tx, 10, 44 + fl * 3);
+        g.addColorStop(0, "rgba(120,210,255,0.24)");
+        g.addColorStop(1, "rgba(120,210,255,0)");
+        c.fillStyle = g;
+        c.fillRect(tx - 50, 0, 100, 64);
+        px(c, "#4a8fd0", tx - 2, 3, 4, 7);
+        px(c, "#7fe9ff", tx - 1, 2, 2, 7);
+        px(c, fl > 0.6 ? "#ffffff" : "#c9f6ff", tx - 1, 3, 1, 2);
+      }
+      return;
+    }
     // mash'alalar
     for (const [i, tx] of [64, 160, 256].entries()) {
       const fl = Math.sin(this.time * 9 + i * 2) + Math.sin(this.time * 13 + i);
@@ -1305,12 +1584,21 @@ export class Game {
       this.coin(c, co.x - 3, y - 3, Math.floor(this.time * 6 + co.x) % 4);
     }
 
+    // Malikaning poldagi ogohlantirish doiralari va nayzalari
+    if (this.boss instanceof Queen) this.boss.renderFloor(c);
+
     // chuqurlik bo'yicha tartib
     const p = this.player;
     const all: { y: number; r: () => void }[] = this.enemies.map((e) => ({
       y: e.y,
       r: () => {
-        if (!e.dead) this.shadow(c, e.x, e.y + (e.kind === "wisp" ? 11 : e.size / 2 + 1), e.size);
+        if (!e.dead)
+          this.shadow(
+            c,
+            e.x,
+            e.y + (e.kind === "wisp" || e.kind === "frost" ? 11 : e.size / 2 + 1),
+            e.size,
+          );
         e.render(c);
         if (e.slow > 0 && !e.dead) this.frost(c, e.x, e.y, e.size);
       },
@@ -1333,6 +1621,8 @@ export class Game {
         r: () => {
           if (!p.dead) this.shadow(c, p.x, p.y + 12, 12);
           p.render(c);
+          // sovuq nafasdan sekinlashgan
+          if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);
         },
       });
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
@@ -1370,6 +1660,7 @@ export class Game {
       px(c, "#ffb36b", b.x - h, b.y - h, 1, 1);
     }
     this.fx.renderParticles(c);
+    this.fx.renderSnow(c);
     this.fx.renderTexts((s, x, y, color, a) => {
       c.globalAlpha = a;
       this.text(s, x, y, 6, color);
@@ -1520,6 +1811,7 @@ export class Game {
       7,
       "#e0d6ee",
     );
+    if (this.ch2) this.text("2-BOB", ROOM.w / 2, 20, 5, "#9fd0ef");
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
     this.text(
@@ -1541,11 +1833,18 @@ export class Game {
       const bw = 140,
         bx = (ROOM.w - bw) / 2,
         by = ROOM.h - 10;
-      this.text("IBLIS", ROOM.w / 2, by - 2, 5, boss.enraged ? "#ff6a6a" : "#e0d6ee");
+      const queen = boss instanceof Queen;
+      this.text(
+        queen ? "QOR MALIKASI" : "IBLIS",
+        ROOM.w / 2,
+        by - 2,
+        5,
+        boss.enraged ? (queen ? "#a8eeff" : "#ff6a6a") : "#e0d6ee",
+      );
       px(c, "#000", bx - 1, by, bw + 2, 6);
       px(
         c,
-        boss.enraged ? "#b23238" : "#8e44ad",
+        queen ? (boss.enraged ? "#7fe9ff" : "#4a8fd0") : boss.enraged ? "#b23238" : "#8e44ad",
         bx,
         by + 1,
         (bw * Math.max(0, boss.hp)) / boss.maxHp,
@@ -1676,7 +1975,24 @@ export class Game {
         "#b8a8cc",
       );
     }
-    if (this.phase === "attempt") {
+    if (this.phase === "attempt" && this.ch2) {
+      // 2-bobda o'lim: qayta boshlash yoki bosh menyu
+      px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
+      this.text("YIQILDINGIZ", ROOM.w / 2, 46, 10, "#ff4d6d");
+      this.text(`2-BOB · Urinish №${this.attempt}`, ROOM.w / 2, 66, 8, "#9fd0ef");
+      this.text(`Ochko: ${this.score}   Rekord: ${this.best}`, ROOM.w / 2, 82, 6, "#e0d6ee");
+      if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, 94, 6, "#a6f08e");
+      this.renderGoldResult(108);
+      this.renderStats(122);
+      for (const [b, label] of [
+        [this.retryBtn, this.touch ? "2-BOBNI QAYTA BOSHLASH" : "2-BOBNI QAYTA: Enter"],
+        [this.quitBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Q"],
+      ] as const) {
+        px(c, "#9fd0ef", b.x, b.y, b.w, b.h);
+        px(c, "#1d2a3a", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
+        this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
+      }
+    } else if (this.phase === "attempt") {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
       this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30, 10, "#ff4d6d");
       this.text(
@@ -1708,7 +2024,9 @@ export class Game {
     if (this.phase === "victory") {
       px(c, "rgba(10,5,20,0.8)", 0, 0, ROOM.w, ROOM.h);
       // statistika sig'ishi uchun yozuvlar yuqoriroqda (tugmalar joyida qoladi)
-      this.text("G'ALABA!", ROOM.w / 2, 56, 20, "#ffcc33");
+      const ch2 = this.chapter === 2;
+      if (ch2) this.text("2-BOB TUGADI", ROOM.w / 2, 54, 16, "#9fd0ef");
+      else this.text("G'ALABA!", ROOM.w / 2, 56, 20, "#ffcc33");
       this.text(
         this.daily ? "Kunlik sinovni yutdingiz" : `${this.attempt}-urinishda yutdingiz`,
         ROOM.w / 2,
@@ -1717,25 +2035,41 @@ export class Game {
         "#ffffff",
       );
       this.text(`Ochko: ${this.score}`, ROOM.w / 2, 96, 8, "#ffcc33");
+      const record = ch2 ? this.newCh2Best : this.newBest;
       this.text(
-        this.daily ? "Ertaga yangi sinov" : this.newBest ? "YANGI REKORD!" : `Rekord: ${this.best}`,
+        this.daily
+          ? "Ertaga yangi sinov"
+          : ch2
+            ? record
+              ? "YANGI 2-BOB REKORDI!"
+              : `2-bob rekordi: ${this.ch2Best}`
+            : record
+              ? "YANGI REKORD!"
+              : `Rekord: ${this.best}`,
         ROOM.w / 2,
         110,
         6,
-        this.newBest ? "#a6f08e" : "#b8a8cc",
+        record ? "#a6f08e" : "#b8a8cc",
       );
       this.renderStats(126);
-      for (const [b, label] of this.daily
-        ? ([[this.endlessBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Enter"]] as const)
-        : ([
-            [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
-            [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
-          ] as const)) {
+      const buttons: (readonly [typeof this.endlessBtn, string])[] = this.daily
+        ? [[this.endlessBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Enter"]]
+        : ch2
+          ? [
+              [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
+              [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
+            ]
+          : [
+              [this.chapterBtn, this.touch ? "2-BOBGA O'TISH" : "2-BOBGA O'TISH: Enter"],
+              [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: E"],
+              [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
+            ];
+      for (const [b, label] of buttons) {
         px(c, "#ffcc33", b.x, b.y, b.w, b.h);
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
       }
-      this.renderGoldResult(218);
+      this.renderGoldResult(226);
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
   }

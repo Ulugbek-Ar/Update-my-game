@@ -13,6 +13,20 @@ export const WAVES: EnemyKind[][] = [
 
 export const BOSS_WAVE = WAVES.length - 1;
 
+/** 2-bob: Muz sardobasi. 1-bob dushmanlari kamroq, yangi muz dushmanlari aralash; 5-to'lqinda Qor Malikasi. */
+export const WAVES2: EnemyKind[][] = [
+  ["frost", "frost", "blob", "wisp"],
+  ["golem", "frost", "blob", "blob", "wisp"],
+  ["golem", "frost", "frost", "rammer", "archer", "wisp"],
+  ["golem", "golem", "frost", "frost", "shield", "rammer", "archer"],
+  ["blob", "wisp"],
+];
+
+/** 2-bobda dushmanlar 1-bob oxiridan biroz tezroq boshlanadi va har to'lqinda tezlashadi. */
+export function waveSpeed2(i: number) {
+  return 1.15 + i * 0.05;
+}
+
 // ---- Cheksiz rejim: Boss mag'lub bo'lgach to'lqinlar indeksi BOSS_WAVE+1 dan davom etadi ----
 /** Har nechanchi cheksiz to'lqinda Boss qaytadi */
 export const ENDLESS_BOSS_EVERY = 5;

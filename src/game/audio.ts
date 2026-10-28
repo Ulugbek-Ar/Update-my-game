@@ -1,6 +1,6 @@
 const MUTE_KEY = "pixel-rpg-muted";
 
-export type MusicTrack = "normal" | "boss";
+export type MusicTrack = "normal" | "boss" | "ice";
 
 /** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
 export interface Track {
@@ -45,6 +45,21 @@ export const TRACKS: Record<MusicTrack, Track> = {
     leadWave: "sawtooth",
     bassWave: "square",
     kick: 2,
+  },
+  // 2-bob: sekin, sovuq — mi minor, baland "qo'ng'iroqcha" notalar va cho'ziq bas
+  ice: {
+    step: 60 / 84 / 2,
+    lead: [
+      76, null, 79, null, 83, null, 81, 79, 76, null, null, 74, 76, null, null, null,
+      72, null, 76, null, 79, null, 78, 76, 71, null, 74, null, 76, null, null, null,
+    ],
+    bass: [
+      40, null, null, null, 47, null, null, null, 40, null, null, null, 47, null, null, null,
+      36, null, null, null, 43, null, null, null, 35, null, null, null, 42, null, null, null,
+    ],
+    leadWave: "triangle",
+    bassWave: "sine",
+    kick: 0,
   },
 };
 
@@ -286,6 +301,23 @@ class SoundFX {
   roar() {
     this.tone(140, 0.7, "sawtooth", 0.09, 45);
     this.tone(90, 0.7, "square", 0.05, 40, 0.05);
+  }
+
+  /** Muz nayzasi yerdan chiqdi */
+  iceSpike() {
+    this.tone(1400, 0.12, "triangle", 0.05, 2600);
+    this.tone(700, 0.1, "square", 0.03, 300, 0.03);
+  }
+
+  /** Bo'ron boshlandi — shamol guvillashi */
+  blizzard() {
+    this.tone(180, 0.9, "sawtooth", 0.03, 420);
+    this.tone(260, 0.8, "triangle", 0.03, 120, 0.2);
+  }
+
+  /** Muz golemi yerga urdi */
+  stomp() {
+    this.tone(110, 0.25, "square", 0.08, 40);
   }
 
   /** Boss olov sharlari */

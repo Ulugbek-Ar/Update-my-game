@@ -24,6 +24,11 @@ export function saveHero(h: Hero) {
 /** Rekord kalitlari har qahramon uchun alohida; Ritsar eski kalitlarni saqlab qoladi. */
 export function bestKeys(h: Hero) {
   return h === "knight"
-    ? { best: "pixel-rpg-best", endless: "pixel-rpg-endless-best" }
-    : { best: "pixel-rpg-best-mage", endless: "pixel-rpg-endless-best-mage" };
+    ? { best: "pixel-rpg-best", endless: "pixel-rpg-endless-best", ch2: "pixel-rpg-best-ch2" }
+    : {
+        best: "pixel-rpg-best-mage",
+        endless: "pixel-rpg-endless-best-mage",
+        // 2-bobni yutgan o'yinlar rekordi alohida
+        ch2: "pixel-rpg-best-ch2-mage",
+      };
 }

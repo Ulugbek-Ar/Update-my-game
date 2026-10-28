@@ -1,7 +1,18 @@
 import type { AnimState } from "./animation";
 
 export type SpriteKind =
-  "knight" | "mage" | "skeleton" | "archer" | "shield" | "demon" | "slime" | "bat";
+  | "knight"
+  | "mage"
+  | "skeleton"
+  | "archer"
+  | "shield"
+  | "demon"
+  | "slime"
+  | "bat"
+  | "frost"
+  | "golem"
+  | "shard"
+  | "queen";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -128,6 +139,14 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   demon: ["#170b11", "#681e2b", "#b23238", "#f4cb45", "#a7a3a0"],
   slime: ["#0b1a10", "#2c7a3c", "#5bc85b", "#a6f08e", "#f2fbe4"],
   bat: ["#120a1a", "#4a2470", "#8a4fc0", "#c99ae8", "#ffe14d"],
+  // 2-bob. Muz ruhi: ko'k-oq arvoh, ko'zlarida sovuq yorug'lik
+  frost: ["#0d1b2a", "#5d8fb8", "#9fd0ef", "#e6f6ff", "#7fe9ff"],
+  // Muz golemi: to'q ko'k tosh-muz, och ko'k plitalar, qor qalpoq, yonib turgan yadro
+  golem: ["#101a24", "#3d5a75", "#6e93b3", "#d8ecf7", "#7fe9ff"],
+  // Muz bo'lagi: golemdan uzilgan kichik muz
+  shard: ["#101a24", "#4f7aa0", "#8fc3e6", "#d8f0ff", "#ffffff"],
+  // Qor Malikasi: siyoh, to'q ko'k soch va burmalar, oqish-ko'k ko'ylak, oq teri va mo'yna, muz toj
+  queen: ["#0e1626", "#4a6fa5", "#a9cdee", "#eef7ff", "#7fe9ff"],
 };
 
 /** Integer-only rasterizer: no paths, antialiasing, images, or sprite sheets. */
@@ -1054,8 +1073,276 @@ function bat(p: Pixels, state: AnimState, frame: number) {
   p.rect(2, cx + 1, cy + 6, 1, 2);
 }
 
+// ---------------- 2-bob: muz mavjudotlari ----------------
+
+/** Muz ruhi: suzuvchi arvoh, dumi to'lqinlanadi. */
+const frostFrames: Record<
+  AnimState,
+  readonly { bob: number; tail: number; mouth: number; tilt: number }[]
+> = {
+  idle: [
+    { bob: 0, tail: 0, mouth: 0, tilt: 0 },
+    { bob: 1, tail: 2, mouth: 0, tilt: 0 },
+  ],
+  walk: [
+    { bob: 0, tail: -3, mouth: 0, tilt: 0 },
+    { bob: -1, tail: -1, mouth: 0, tilt: 0 },
+    { bob: 0, tail: 3, mouth: 0, tilt: 0 },
+    { bob: 1, tail: 1, mouth: 0, tilt: 0 },
+  ],
+  attack: [
+    { bob: -1, tail: -2, mouth: 1, tilt: -1 },
+    { bob: -2, tail: 2, mouth: 2, tilt: -2 },
+    { bob: 1, tail: 0, mouth: 3, tilt: 2 },
+  ],
+  hurt: [{ bob: 1, tail: 4, mouth: 1, tilt: -3 }],
+  death: [
+    { bob: 2, tail: 4, mouth: 1, tilt: 0 },
+    { bob: 4, tail: 0, mouth: 0, tilt: 0 },
+    { bob: 7, tail: 0, mouth: 0, tilt: 0 },
+  ],
+};
+
+function frostGhost(p: Pixels, state: AnimState, frame: number) {
+  const f = frostFrames[state][frame] ?? frostFrames[state][0];
+  if (!f) return;
+  const b = f.bob,
+    t = f.tail,
+    l = f.tilt;
+  if (state === "death" && frame > 0) {
+    // tarqalib ketayotgan qor bulutchalari
+    const n = frame === 1 ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const x = 7 + i * (frame === 1 ? 4 : 7),
+        y = 10 + b + ((i * 5) % 7);
+      p.ellipse(frame === 1 ? 3 : 4, x, y, frame === 1 ? 2.5 : 1.5, frame === 1 ? 2 : 1.5);
+    }
+    if (frame === 1) p.rect(5, 15, 13 + b, 2, 1);
+    return;
+  }
+  // tana: boshdan to'lqinsimon dumgacha
+  p.polygon(3, [
+    [9 + l, 11 + b],
+    [23 + l, 11 + b],
+    [23, 17 + b],
+    [20 + t, 23 + b],
+    [17 + Math.round(t * 1.5), 28 + b],
+    [14 + t, 24 + b],
+    [9, 18 + b],
+  ]);
+  p.ellipse(3, 16 + l, 11 + b, 7.5, 6.5);
+  // ichki oqish yorug'lik va pastki soyalar
+  p.ellipse(4, 14 + l, 9 + b, 3, 2.5);
+  p.line(2, [12, 19 + b], [15 + t, 24 + b], 1);
+  p.line(2, [20, 19 + b], [18 + t, 25 + b], 1);
+  // qo'lchalar
+  p.line(2, [9, 15 + b], [6 + l, 18 + b + (state === "attack" ? -3 : 0)], 2);
+  p.line(2, [23, 15 + b], [26 + l, 18 + b + (state === "attack" ? -3 : 0)], 2);
+  // ko'zlar: bo'shliq, ichida sovuq nur
+  const closed = state === "hurt" || state === "death";
+  p.rect(1, 12 + l, 10 + b, 3, closed ? 1 : 3);
+  p.rect(1, 18 + l, 10 + b, 3, closed ? 1 : 3);
+  if (!closed) {
+    p.rect(5, 13 + l, 11 + b, 1, 1);
+    p.rect(5, 19 + l, 11 + b, 1, 1);
+  }
+  // og'iz: nafas tayyorgarligida kattalashadi
+  if (f.mouth) p.ellipse(1, 16.5 + l, 15.5 + b, f.mouth, f.mouth === 3 ? 2 : 1);
+  if (f.mouth === 3) {
+    // sovuq nafas puflanmoqda
+    p.ellipse(5, 16.5 + l, 20 + b, 3, 2);
+    p.rect(4, 15 + l, 20 + b, 3, 1);
+  }
+}
+
+/** Muz golemi: muz-tosh bloklar, qor qalpoq, ko'kragida yonib turgan yadro. */
+const golemSlam: readonly { hand: Point; other: Point; lift: number }[] = [
+  { hand: [24, 3], other: [8, 3], lift: -1 },
+  { hand: [26, 9], other: [6, 9], lift: 0 },
+  { hand: [26, 26], other: [6, 26], lift: 2 },
+];
+
+function golem(p: Pixels, pose: Pose, slam: number | null) {
+  const { bob: b, lean: l } = pose;
+  const s = slam === null ? null : golemSlam[slam];
+  const dy = s ? s.lift : b;
+  // og'ir oyoqlar
+  p.line(2, [12, 22 + dy], [pose.leftFoot[0], 28], 5);
+  p.line(2, [20, 22 + dy], [pose.rightFoot[0], 28], 5);
+  p.rect(3, pose.leftFoot[0] - 3, 27, 6, 2);
+  p.rect(3, pose.rightFoot[0] - 2, 27, 6, 2);
+  // gavda: katta blok, ustida och muz plitalar
+  p.rect(2, 8 + l, 10 + dy, 16, 13);
+  p.rect(3, 9 + l, 11 + dy, 6, 4);
+  p.rect(3, 17 + l, 11 + dy, 6, 4);
+  p.rect(3, 10 + l, 17 + dy, 12, 3);
+  // ko'krakdagi yadro
+  p.rect(5, 14 + l, 13 + dy, 4, 3);
+  p.rect(4, 15 + l, 13 + dy, 1, 1);
+  // qo'llar: yelkadan mushtgacha qalin
+  const hand = s ? s.hand : pose.hand,
+    other = s ? s.other : pose.otherHand;
+  p.line(2, [8 + l, 12 + dy], [other[0] - 1, other[1]], 4);
+  p.line(2, [24 + l, 12 + dy], [hand[0] + 1, hand[1]], 4);
+  p.rect(3, other[0] - 3, other[1] - 1, 4, 4);
+  p.rect(3, hand[0] - 1, hand[1] - 1, 4, 4);
+  // bosh: kichik blok, qor qalpoq, sovuq ko'zlar
+  p.rect(2, 12 + l, 4 + dy, 8, 6);
+  p.rect(4, 11 + l, 3 + dy, 10, 2);
+  p.rect(5, 13 + l, 6 + dy, 2, 1);
+  p.rect(5, 17 + l, 6 + dy, 2, 1);
+  if (slam === 2) {
+    // yerga urilganda muz parchalari otiladi
+    p.rect(4, 3, 24, 2, 2);
+    p.rect(4, 27, 23, 2, 2);
+    p.rect(5, 2, 28, 1, 1);
+    p.rect(5, 29, 27, 1, 1);
+  }
+}
+
+function golemFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    // tiz cho'kmoqda
+    golem(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, null);
+    return;
+  }
+  if (frame === 1) {
+    // bloklar ajralmoqda
+    p.rect(2, 6, 18, 9, 8);
+    p.rect(3, 7, 19, 4, 3);
+    p.rect(2, 17, 16, 9, 9);
+    p.rect(3, 18, 17, 5, 3);
+    p.rect(5, 15, 21, 3, 2);
+    p.rect(2, 12, 9, 7, 5);
+    p.rect(4, 11, 8, 9, 2);
+    p.rect(2, 4, 26, 24, 3);
+    return;
+  }
+  // muz uyumi
+  p.rect(2, 4, 24, 24, 5);
+  p.rect(3, 6, 23, 6, 3);
+  p.rect(3, 15, 22, 7, 3);
+  p.rect(4, 9, 21, 9, 2);
+  p.rect(5, 16, 26, 2, 1);
+}
+
+/** Muz bo'lagi: slime shakli, ustida muz qirralari. */
+function shard(p: Pixels, state: AnimState, frame: number) {
+  slime(p, state, frame);
+  if (state === "death" && frame > 0) return;
+  const f = slimeFrames[state][frame] ?? slimeFrames[state][0]!;
+  const top = 27 - f.lift - f.h * 2;
+  p.line(4, [16 + f.lean - 3, top + 3], [16 + f.lean - 5, top - 1], 1);
+  p.line(4, [16 + f.lean + 2, top + 2], [16 + f.lean + 4, top - 2], 1);
+}
+
+/** Qor Malikasi: oqish-ko'k ko'ylak, muz toj, qo'lida muz tayoq (uchi qo'lga nisbatan). */
+function queen(p: Pixels, pose: Pose, staffTop: Point, glow: boolean) {
+  const { bob: b, lean: l } = pose;
+  const fl = pose.leftFoot[0] - 12,
+    fr = pose.rightFoot[0] - 20;
+  // muz tayoq (gavda orqasida)
+  const [hx, hy] = pose.hand;
+  const top: Point = [hx + staffTop[0], hy + staffTop[1]];
+  p.line(4, [hx, hy + 4], top, 1);
+  // keng ko'ylak, etagi oyoq bilan chayqaladi
+  p.polygon(3, [
+    [12 + l, 12 + b],
+    [20 + l, 12 + b],
+    [25 + fr, 28],
+    [7 + fl, 28],
+  ]);
+  p.line(2, [14 + l, 16 + b], [11 + fl, 27], 1);
+  p.line(2, [18 + l, 16 + b], [21 + fr, 27], 1);
+  p.rect(4, 8 + fl, 27, 17 + fr - fl, 2);
+  // ko'ylak yuqorisi va kamar
+  p.rect(2, 13 + l, 12 + b, 6, 4);
+  p.rect(5, 13 + l, 16 + b, 6, 1);
+  // qo'llar
+  p.line(3, [13 + l, 13 + b], pose.otherHand, 2);
+  p.line(3, [19 + l, 13 + b], pose.hand, 2);
+  p.rect(4, pose.otherHand[0] - 1, pose.otherHand[1] - 1, 2, 2);
+  p.rect(4, hx - 1, hy - 1, 3, 3);
+  // tayoq uchidagi muz kristall
+  const [tx, ty] = top;
+  p.polygon(5, [
+    [tx, ty - 3],
+    [tx + 2, ty],
+    [tx, ty + 3],
+    [tx - 2, ty],
+  ]);
+  if (glow) p.rect(4, tx - 1, ty - 1, 2, 2);
+  else p.rect(4, tx, ty, 1, 1);
+  // bosh: oq yuz, to'q ko'k soch, muz toj
+  p.rect(2, 12 + l, 6 + b, 8, 7);
+  p.ellipse(4, 16 + l, 9.5 + b, 3, 3.5);
+  p.rect(1, 14 + l, 9 + b, 1, 1);
+  p.rect(1, 17 + l, 9 + b, 1, 1);
+  p.rect(5, 13 + l, 4 + b, 7, 2);
+  p.rect(5, 13 + l, 2 + b, 1, 2);
+  p.rect(5, 16 + l, 1 + b, 1, 3);
+  p.rect(5, 19 + l, 2 + b, 1, 2);
+}
+
+function queenFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    // tiz cho'kdi, tayoq qo'ldan tushmoqda
+    queen(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, [6, 1], false);
+    return;
+  }
+  if (frame === 1) {
+    // muzga aylanib cho'kmoqda
+    p.polygon(3, [
+      [10, 18],
+      [20, 18],
+      [27, 28],
+      [4, 28],
+    ]);
+    p.rect(4, 5, 27, 22, 2);
+    p.ellipse(4, 14, 16, 3, 3);
+    p.rect(2, 11, 13, 7, 3);
+    p.rect(5, 12, 11, 6, 2);
+    p.line(4, [20, 24], [29, 27], 1);
+    return;
+  }
+  // muz ko'lmak, ustida toj qolgan
+  p.ellipse(3, 16, 27, 13, 3);
+  p.ellipse(4, 13, 27, 5, 1.5);
+  p.rect(5, 18, 23, 7, 2);
+  p.rect(5, 18, 21, 1, 2);
+  p.rect(5, 21, 20, 1, 3);
+  p.rect(5, 24, 21, 1, 2);
+  p.line(4, [4, 29], [12, 29], 1);
+}
+
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   const p = new Pixels();
+  if (kind === "frost") {
+    frostGhost(p, state, frame);
+    return p.outlined();
+  }
+  if (kind === "shard") {
+    shard(p, state, frame);
+    return p.outlined();
+  }
+  if (kind === "golem" || kind === "queen") {
+    const f = Math.min(2, Math.max(0, frame));
+    if (state === "death") {
+      if (kind === "golem") golemFallen(p, f);
+      else queenFallen(p, f);
+      return p.outlined();
+    }
+    const pose = poses[state][frame] ?? poses[state][0]!;
+    if (kind === "golem") golem(p, pose, state === "attack" ? f : null);
+    else
+      queen(
+        p,
+        pose,
+        staffTops[state][frame] ?? staffTops[state][0]!,
+        state === "attack" && frame === 1,
+      );
+    return p.outlined();
+  }
   if (kind === "slime") {
     slime(p, state, frame);
     return p.outlined();
@@ -1122,7 +1409,16 @@ export function renderSprite(
       }
     cache.set(key, canvas);
   }
-  const size = kind === "demon" ? 64 : kind === "slime" || kind === "bat" ? 26 : 32;
+  const size =
+    kind === "demon" || kind === "queen"
+      ? 64
+      : kind === "golem"
+        ? 40
+        : kind === "slime" || kind === "bat" || kind === "frost"
+          ? 26
+          : kind === "shard"
+            ? 20
+            : 32;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;

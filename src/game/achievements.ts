@@ -12,7 +12,10 @@ export type AchievementId =
   | "winMage"
   | "endless10"
   | "daily"
-  | "chests";
+  | "chests"
+  | "queen"
+  | "noChill"
+  | "twoChapters";
 
 export interface Achievement {
   id: AchievementId;
@@ -32,6 +35,9 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "endless10", name: "CHEKSIZDA 10-TO'LQIN", desc: "Cheksiz rejimda 10-to'lqinga yet" },
   { id: "daily", name: "KUNLIK SINOVCHI", desc: "Kunlik sinovda 3-to'lqinga yet" },
   { id: "chests", name: "XAZINACHI", desc: "Bitta o'yinda 3 ta sandiq och" },
+  { id: "queen", name: "MUZNI ERITDI", desc: "Qor Malikasini yeng" },
+  { id: "noChill", name: "SOVUQQA CHIDAM", desc: "2-bobda sekinlashmasdan bitta to'lqin o't" },
+  { id: "twoChapters", name: "IKKI BOB", desc: "Bitta o'yinda o'lmasdan ikkala bobni yut" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

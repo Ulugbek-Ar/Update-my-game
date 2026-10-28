@@ -10,6 +10,21 @@ interface Particle {
   size: number;
 }
 
+interface Flake {
+  x: number;
+  y: number;
+  vy: number;
+  phase: number;
+  size: number;
+}
+
+/** Xona o'lchami (animation.ts dagi ROOM bilan bir xil) */
+const W = 320,
+  H = 240;
+/** Odatda shuncha qor parchasi, bo'ronda ko'proq */
+export const SNOW_CALM = 34;
+export const SNOW_STORM = 90;
+
 interface FloatText {
   x: number;
   y: number;
@@ -22,6 +37,58 @@ export class Effects {
   particles: Particle[] = [];
   texts: FloatText[] = [];
   shake = 0;
+  /** 2-bob: xonada sekin qor yog'adi */
+  snowOn = false;
+  /** Bo'ron yo'nalishi (-1, 0, 1): qor ko'payadi va yon tomonga uchadi */
+  wind = 0;
+  snow: Flake[] = [];
+
+  private flake(top: boolean): Flake {
+    return {
+      x: Math.random() * W,
+      y: top ? -2 : Math.random() * H,
+      vy: 10 + Math.random() * 10,
+      phase: Math.random() * 6,
+      size: Math.random() < 0.25 ? 2 : 1,
+    };
+  }
+
+  private updateSnow(dt: number) {
+    if (!this.snowOn) {
+      this.snow.length = 0;
+      return;
+    }
+    const target = this.wind ? SNOW_STORM : SNOW_CALM;
+    while (this.snow.length < target) this.snow.push(this.flake(false));
+    if (this.snow.length > target) this.snow.length = target;
+    for (const f of this.snow) {
+      f.phase += dt;
+      f.y += f.vy * (this.wind ? 1.6 : 1) * dt;
+      f.x += (Math.sin(f.phase * 1.3) * 6 + this.wind * 120) * dt;
+      if (f.y > H + 2 || f.x < -4 || f.x > W + 4) {
+        Object.assign(f, this.flake(true));
+        // bo'ronda shamol tomondagi chetdan ham kiradi
+        if (this.wind) {
+          f.x = this.wind > 0 ? -2 : W + 2;
+          f.y = Math.random() * H;
+        }
+      }
+    }
+  }
+
+  renderSnow(c: CanvasRenderingContext2D) {
+    if (!this.snow.length) return;
+    c.fillStyle = "rgba(240,248,255,0.85)";
+    // bo'ronda qor shamol yo'nalishida chiziqcha bo'lib uchadi
+    const streak = this.wind ? 3 : 0;
+    for (const f of this.snow)
+      c.fillRect(
+        Math.round(f.x) - (this.wind < 0 ? 0 : streak),
+        Math.round(f.y),
+        f.size + streak,
+        f.size,
+      );
+  }
 
   burst(x: number, y: number, color: string, n: number, speed = 60, size = 2) {
     for (let i = 0; i < n; i++) {
@@ -77,6 +144,7 @@ export class Effects {
     }
     this.texts = this.texts.filter((t) => t.life > 0);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt);
+    this.updateSnow(dt);
   }
 
   renderParticles(c: CanvasRenderingContext2D) {

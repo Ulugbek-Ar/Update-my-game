@@ -52,6 +52,10 @@ export interface Body {
   maxHp: number;
   flash: number;
   anim: Animator;
+  /** Og'ir tana (Muz golemi): zarbadan itarilmaydi */
+  heavy?: boolean;
+  /** Arvoh (Muz ruhi): devorlar ustidan ham uchadi, faqat xona chegarasi bilan cheklanadi */
+  ghost?: boolean;
 }
 
 export const ROOM = { w: 320, h: 240, wall: 16 };
@@ -60,12 +64,13 @@ export function applyHit(b: Body, dmg: number, fromX: number, fromY: number, for
   if (b.anim.state === "death") return;
   b.hp -= dmg;
   b.flash = 0.3;
+  b.anim.set(b.hp <= 0 ? "death" : "hurt", true);
+  if (b.heavy) return;
   const dx = b.x - fromX;
   const dy = b.y - fromY;
   const l = Math.hypot(dx, dy) || 1;
   b.vx = (dx / l) * force;
   b.vy = (dy / l) * force;
-  b.anim.set(b.hp <= 0 ? "death" : "hurt", true);
 }
 
 export function updatePhysics(b: Body, dt: number) {
@@ -79,9 +84,10 @@ export function updatePhysics(b: Body, dt: number) {
 }
 
 export function clampToRoom(b: Body) {
-  const h = b.size / 2;
-  b.x = Math.max(ROOM.wall + h, Math.min(ROOM.w - ROOM.wall - h, b.x));
-  b.y = Math.max(ROOM.wall + h, Math.min(ROOM.h - ROOM.wall - h, b.y));
+  const h = b.size / 2,
+    m = b.ghost ? 0 : ROOM.wall;
+  b.x = Math.max(m + h, Math.min(ROOM.w - m - h, b.x));
+  b.y = Math.max(m + h, Math.min(ROOM.h - m - h, b.y));
 }
 
 export function overlap(a: Body, b: Body) {

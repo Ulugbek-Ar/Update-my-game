@@ -46,6 +46,7 @@ function Index() {
   const [muted, setMuted] = useState(sfx.muted);
   const [best, setBest] = useState(0);
   const [endlessBest, setEndlessBest] = useState(0);
+  const [ch2Best, setCh2Best] = useState(0);
   const [touch, setTouch] = useState(false);
   const [game, setGame] = useState<Game | null>(null);
   const [hero, setHero] = useState<Hero>("knight");
@@ -82,6 +83,7 @@ function Index() {
       const keys = bestKeys(hero);
       setBest(Number(localStorage.getItem(keys.best)) || 0);
       setEndlessBest(Number(localStorage.getItem(keys.endless)) || 0);
+      setCh2Best(Number(localStorage.getItem(keys.ch2)) || 0);
     } catch {
       /* saqlash imkonsiz */
     }
@@ -121,6 +123,7 @@ function Index() {
     g.onExit = () => {
       setBest(g.best);
       setEndlessBest(g.endlessBest);
+      setCh2Best(g.ch2Best);
       setGold(loadGold());
       setDaily(loadDaily());
       setAchCount(loadAchievements().size);
@@ -192,10 +195,18 @@ function Index() {
             </p>
             <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
               5 to'lqin · har to'lqindan so'ng kuch tanlang · oxirida Boss
+              <br />
+              Iblisni yengsangiz — 2-bob: Muz sardobasi
               {best > 0 && (
                 <>
                   <br />
                   <span className="text-primary">Rekord: {best}</span>
+                </>
+              )}
+              {ch2Best > 0 && (
+                <>
+                  <br />
+                  <span className="text-[#9fd0ef]">❄ 2-bob yutilgan rekord: {ch2Best}</span>
                 </>
               )}
               {endlessBest > 0 && (
@@ -753,9 +764,9 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
 }
 
 function CoachPanel({ hero }: { hero: Hero }) {
-  const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "archer" | "shield" | "boss">(
-    "boss",
-  );
+  const [enemy, setEnemy] = useState<
+    "slime" | "bat" | "skeleton" | "archer" | "shield" | "boss" | "frost" | "golem" | "queen"
+  >("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
   const [error, setError] = useState("");
@@ -792,6 +803,9 @@ function CoachPanel({ hero }: { hero: Hero }) {
           <option value="archer">Kamonchi skelet</option>
           <option value="shield">Qalqonli skelet</option>
           <option value="boss">Boss (iblis)</option>
+          <option value="frost">Muz ruhi (2-bob)</option>
+          <option value="golem">Muz golemi (2-bob)</option>
+          <option value="queen">Qor Malikasi (2-bob Bossi)</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-foreground">

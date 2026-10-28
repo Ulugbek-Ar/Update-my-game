@@ -18,6 +18,8 @@ export const SPIN_TIME = 0.3;
 export const MAGE_MAX_HP = 5;
 export const TELEPORT_DIST = 50;
 const TELEPORT_TIME = 0.12;
+/** Muz ruhining sovuq nafasi: shuncha sekin yuradi */
+export const CHILL_SPEED = 0.5;
 
 /** Sehrgarning sehrli shari */
 export interface Bolt {
@@ -77,6 +79,8 @@ export class Player implements Body {
   pierce = 0;
   /** Muz qalqoni: zarba yeganda atrofdagi dushmanlar sekinlashadi */
   frost = false;
+  /** Sovuq nafasdan sekinlashish qolgan vaqti (Muz ruhi) */
+  chill = 0;
   /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
   bolts: Bolt[] = [];
   /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
@@ -174,6 +178,7 @@ export class Player implements Body {
     this.hurtTimer -= dt;
     this.dashCooldown -= dt;
     this.spinCooldown -= dt;
+    if (this.chill > 0) this.chill -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.spinTimer > 0) this.spinTimer -= dt;
@@ -264,8 +269,9 @@ export class Player implements Body {
     if (!busy) {
       if (x || y) {
         const l = Math.max(1, Math.hypot(x, y));
-        this.x += (x / l) * this.speed * dt;
-        this.y += (y / l) * this.speed * dt;
+        const speed = this.speed * (this.chill > 0 ? CHILL_SPEED : 1);
+        this.x += (x / l) * speed * dt;
+        this.y += (y / l) * speed * dt;
         if (Math.abs(x) >= Math.abs(y)) {
           this.fx = Math.sign(x);
           this.fy = 0;

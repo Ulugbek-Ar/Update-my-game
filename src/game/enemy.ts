@@ -1,8 +1,9 @@
 import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
 import type { Player } from "./player";
-import { renderSprite } from "./sprites";
+import { renderSprite, type SpriteKind } from "./sprites";
 
-export type EnemyKind = "blob" | "wisp" | "rammer" | "archer" | "shield";
+export type EnemyKind =
+  "blob" | "wisp" | "rammer" | "archer" | "shield" | "frost" | "golem" | "shard";
 
 const SPAWN_TIME = 1;
 export const ARCHER_RELOAD = 1.5;
@@ -26,6 +27,49 @@ export const BASH_RANGE = 24;
 export const BASH_CD = 1.6;
 /** Sekin yuradi (skelet jangchi 160 bilan yuguradi) */
 const SHIELD_SPEED = 26;
+/** Muz ruhi: shu masofaga yaqinlashib 1s tayyorlanadi, so'ng oldinga konus shaklida sovuq nafas */
+export const FROST_NEAR = 34;
+export const FROST_WINDUP = 1;
+export const FROST_RANGE = 46;
+/** Konusning yarim burchagi (±35°) */
+export const FROST_ARC = 0.6;
+export const FROST_CD = 2.2;
+/** Nafas tekkan o'yinchi shuncha soniya sekin yuradi */
+export const FROST_CHILL = 1.5;
+const FROST_SPEED = 42;
+/** Nafas ko'rinib turadigan vaqt */
+const BREATH_SHOW = 0.35;
+/** Muz golemi: har 3s da yerga uradi (0.8s qizil doira ogohlantiradi) */
+export const STOMP_EVERY = 3;
+export const STOMP_WINDUP = 0.8;
+export const STOMP_RADIUS = 26;
+const GOLEM_SPEED = 16;
+/** Golem o'lganda shuncha muz bo'lagiga bo'linadi */
+export const GOLEM_SHARDS = 2;
+
+/** Har dushman turining joni */
+export const ENEMY_HP: Record<EnemyKind, number> = {
+  blob: 3,
+  wisp: 2,
+  rammer: 4,
+  archer: 3,
+  shield: 5,
+  frost: 3,
+  golem: 7,
+  shard: 2,
+};
+
+/** Dushman turi -> sprite turi */
+const SPRITE: Record<EnemyKind, SpriteKind> = {
+  blob: "slime",
+  wisp: "bat",
+  rammer: "skeleton",
+  archer: "archer",
+  shield: "shield",
+  frost: "frost",
+  golem: "golem",
+  shard: "shard",
+};
 
 export interface Arrow {
   x: number;
@@ -74,6 +118,17 @@ export class Enemy implements Body {
   bashCd = 0;
   /** Qalqon to'sganda qisqa yaltirash */
   blockFlash = 0;
+  /** Muz ruhi: nafas tayyorgarligi, yo'nalishi va ko'rinish vaqti */
+  breathWindup = 0;
+  breathAngle = 0;
+  breathShow = 0;
+  /** Muz golemi: yerga urish tayyorgarligi va zarba to'lqini */
+  stompWindup = 0;
+  stompShock = 0;
+  /** Shu kadrda golem yerga urdi (Game ovoz va silkinish beradi) */
+  justStomped = false;
+  heavy = false;
+  ghost = false;
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.4, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -87,10 +142,24 @@ export class Enemy implements Body {
     public x: number,
     public y: number,
   ) {
-    this.hp = this.maxHp =
-      kind === "blob" ? 3 : kind === "wisp" ? 2 : kind === "archer" ? 3 : kind === "shield" ? 5 : 4;
-    this.size = kind === "rammer" || kind === "archer" || kind === "shield" ? 14 : 11;
+    this.hp = this.maxHp = ENEMY_HP[kind];
+    this.size =
+      kind === "golem"
+        ? 20
+        : kind === "shard"
+          ? 9
+          : kind === "rammer" || kind === "archer" || kind === "shield"
+            ? 14
+            : 11;
     if (kind === "archer") this.aiTimer = ARCHER_RELOAD;
+    if (kind === "golem") {
+      this.heavy = true;
+      this.aiTimer = STOMP_EVERY;
+    }
+    if (kind === "frost") {
+      this.ghost = true;
+      this.aiTimer = 0.6;
+    }
   }
 
   get dead() {
@@ -129,7 +198,10 @@ export class Enemy implements Body {
       if (this.anim.done) this.removed = true;
       return;
     }
-    if (this.anim.state === "hurt") {
+    if (this.stompShock > 0) this.stompShock -= dt;
+    if (this.breathShow > 0) this.breathShow -= dt;
+    // golem zarbadan to'xtamaydi: yerga urish tayyorgarligi davom etadi
+    if (this.anim.state === "hurt" && this.kind !== "golem") {
       if (this.anim.done) this.anim.set("walk");
       return;
     }
@@ -140,11 +212,15 @@ export class Enemy implements Body {
     if (dx !== 0) this.facingLeft = dx < 0;
     const m = this.speedMul * (this.slow > 0 ? 0.5 : 1);
 
-    if (this.kind === "blob") {
+    if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
+    else if (this.kind === "golem") this.updateGolem(dt, p, dx, dy, d, m);
+    else if (this.kind === "blob" || this.kind === "shard") {
       // sakrash: harakat faqat sinus musbat bo'lganda
-      const hop = Math.max(0, Math.sin(this.t * 5));
-      this.x += (dx / d) * 45 * m * hop * dt;
-      this.y += (dy / d) * 45 * m * hop * dt;
+      // muz bo'lagi — tez sakraydigan kichik blob
+      const hop = Math.max(0, Math.sin(this.t * (this.kind === "shard" ? 8 : 5)));
+      const speed = this.kind === "shard" ? 75 : 45;
+      this.x += (dx / d) * speed * m * hop * dt;
+      this.y += (dy / d) * speed * m * hop * dt;
       this.anim.set(hop > 0 ? "walk" : "idle");
     } else if (this.kind === "wisp") {
       const px_ = -dy / d,
@@ -236,6 +312,96 @@ export class Enemy implements Body {
     clampToRoom(this);
   }
 
+  /** Muz ruhi: suzib yaqinlashadi, 1s tayyorlanadi, oldinga konus shaklida sovuq nafas chiqaradi. */
+  private updateFrost(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+    this.aiTimer -= dt;
+    if (this.breathWindup > 0) {
+      this.breathWindup -= dt;
+      if (this.breathWindup <= 0) {
+        this.breathShow = BREATH_SHOW;
+        this.aiTimer = FROST_CD;
+        this.showAttackFrame(2);
+        if (this.breathHits(p) && p.takeHit(1, this.x, this.y, 120)) p.chill = FROST_CHILL;
+      } else this.showAttackFrame(this.breathWindup > FROST_WINDUP / 2 ? 0 : 1);
+      return;
+    }
+    if (this.breathShow > 0) return this.showAttackFrame(2);
+    if (d < FROST_NEAR && this.aiTimer <= 0) {
+      // yo'nalish tayyorgarlik boshida qotadi — chetga chiqib qochish mumkin
+      this.breathWindup = FROST_WINDUP;
+      this.breathAngle = Math.atan2(dy, dx);
+      this.showAttackFrame(0);
+      return;
+    }
+    if (d > FROST_NEAR - 8) {
+      const bob = Math.sin(this.t * 3) * 12;
+      this.x += ((dx / d) * FROST_SPEED * m - (dy / d) * bob) * dt;
+      this.y += ((dy / d) * FROST_SPEED * m + (dx / d) * bob) * dt;
+    }
+    this.anim.set("walk");
+  }
+
+  /** O'yinchi sovuq nafas konusi ichidami. */
+  breathHits(p: { x: number; y: number; size: number }) {
+    const d = Math.hypot(p.x - this.x, p.y - this.y);
+    if (d > FROST_RANGE + p.size / 2) return false;
+    return (
+      Math.abs(angleDiff(Math.atan2(p.y - this.y, p.x - this.x), this.breathAngle)) <= FROST_ARC
+    );
+  }
+
+  /** Muz golemi: sekin yuradi, har 3s da yerga uradi — atrofdagi kichik doirada 1 zarar. */
+  private updateGolem(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+    if (this.stompWindup > 0) {
+      this.stompWindup -= dt;
+      if (this.stompWindup <= 0) {
+        this.stompShock = 0.3;
+        this.justStomped = true;
+        this.aiTimer = STOMP_EVERY;
+        this.showAttackFrame(2);
+        if (d < STOMP_RADIUS + p.size / 2) p.takeHit(1, this.x, this.y, 200);
+      } else this.showAttackFrame(this.stompWindup > STOMP_WINDUP / 2 ? 0 : 1);
+      return;
+    }
+    if (this.stompShock > 0) return this.showAttackFrame(2);
+    this.aiTimer -= dt;
+    if (this.aiTimer <= 0) {
+      this.stompWindup = STOMP_WINDUP;
+      this.showAttackFrame(0);
+      return;
+    }
+    if (d > 14) {
+      this.x += (dx / d) * GOLEM_SPEED * m * dt;
+      this.y += (dy / d) * GOLEM_SPEED * m * dt;
+      this.anim.set("walk");
+    } else this.anim.set("idle");
+  }
+
+  /** Muz ruhi nafasi: tayyorgarlikda konus chegarasi, nafasda oq-ko'k bulut. */
+  private renderBreath(ctx: CanvasRenderingContext2D) {
+    const a = this.breathAngle;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.arc(this.x, this.y, FROST_RANGE, a - FROST_ARC, a + FROST_ARC);
+    ctx.closePath();
+    if (this.breathWindup > 0) {
+      // och muz polda ko'rinishi uchun to'q ko'k chegara
+      const k = 1 - this.breathWindup / FROST_WINDUP;
+      ctx.fillStyle = `rgba(60,140,230,${0.1 + 0.2 * k})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(30,90,200,${0.5 + 0.4 * Math.sin(this.breathWindup * 28)})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      const k = this.breathShow / BREATH_SHOW;
+      ctx.fillStyle = `rgba(235,248,255,${0.75 * k})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(60,140,230,${0.7 * k})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
   /** Kamonchi va qalqonli skelet kadri Animator taymeri emas, hujum vaqti bilan boshqariladi. */
   private showAttackFrame(frame: number) {
     this.anim.set("attack");
@@ -245,9 +411,30 @@ export class Enemy implements Body {
 
   render(ctx: CanvasRenderingContext2D) {
     const { state, frame } = this.anim;
+    if (this.kind === "golem" && this.stompWindup > 0) {
+      // yerga urish ogohlantirishi: qizil doira
+      ctx.strokeStyle = `rgba(220,30,40,${0.6 + 0.35 * Math.sin(this.stompWindup * 30)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y + 4, STOMP_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(230,40,50,${0.1 + 0.2 * (1 - this.stompWindup / STOMP_WINDUP)})`;
+      ctx.fill();
+    }
+    if (this.stompShock > 0) {
+      ctx.fillStyle = `rgba(200,235,255,${this.stompShock * 1.6})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y + 4, STOMP_RADIUS * (1.3 - this.stompShock), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (this.kind === "frost" && (this.breathWindup > 0 || this.breathShow > 0))
+      this.renderBreath(ctx);
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
-      ctx.strokeStyle = `rgba(200,120,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`;
+      ctx.strokeStyle =
+        this.kind === "frost" || this.kind === "golem" || this.kind === "shard"
+          ? `rgba(140,215,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`
+          : `rgba(200,120,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, 4 + 8 * k, 0, Math.PI * 2);
@@ -259,20 +446,20 @@ export class Enemy implements Body {
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 16, 2, 4);
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 11, 2, 2);
     }
-    const tall = this.kind === "rammer" || this.kind === "archer" || this.kind === "shield";
+    const tall =
+      this.kind === "rammer" ||
+      this.kind === "archer" ||
+      this.kind === "shield" ||
+      this.kind === "golem";
+    // muz ruhi yarim shaffof
+    if (this.kind === "frost") ctx.globalAlpha *= 0.78;
     renderSprite(
       ctx,
-      this.kind === "rammer"
-        ? "skeleton"
-        : this.kind === "archer" || this.kind === "shield"
-          ? this.kind
-          : this.kind === "blob"
-            ? "slime"
-            : "bat",
+      SPRITE[this.kind],
       state,
       frame,
       this.x,
-      tall ? this.y : this.y - 3,
+      tall ? this.y - (this.kind === "golem" ? 6 : 0) : this.y - 3,
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
