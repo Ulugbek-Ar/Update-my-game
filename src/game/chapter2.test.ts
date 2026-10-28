@@ -268,3 +268,16 @@ describe("2-bob yutuqlari", () => {
     expect(loadAchievements().has("noChill")).toBe(true);
   });
 });
+
+describe("2-bob musiqasi", () => {
+  it("plays the ice track on chapter 2 waves and the Snow Queen track on her wave", async () => {
+    const { sfx } = await import("./audio");
+    const { g, gi } = makeGame();
+    winBoss(g, gi);
+    g.startChapter2();
+    expect(sfx.music).toBe("ice");
+    gi.startWave(BOSS_WAVE);
+    expect(sfx.music).toBe("queen");
+    sfx.stopMusic();
+  });
+});

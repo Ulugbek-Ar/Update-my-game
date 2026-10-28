@@ -481,7 +481,7 @@ export class Game {
       sfx.roar();
       this.fx.addShake(0.4);
     } else sfx.wave();
-    sfx.playMusic(boss ? "boss" : ice ? "ice" : "normal");
+    sfx.playMusic(boss ? (ice ? "queen" : "boss") : ice ? "ice" : "normal");
   }
 
   /** Qor Malikasi: nayza ovozi, bo'ron o'yinchini suradi, yarim jondan pastda ruh chaqiradi. */

@@ -1,6 +1,6 @@
 const MUTE_KEY = "pixel-rpg-muted";
 
-export type MusicTrack = "normal" | "boss" | "ice";
+export type MusicTrack = "normal" | "boss" | "ice" | "queen";
 
 /** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
 export interface Track {
@@ -60,6 +60,21 @@ export const TRACKS: Record<MusicTrack, Track> = {
     leadWave: "triangle",
     bassWave: "sine",
     kick: 0,
+  },
+  // Qor Malikasi: re minor, muz kuyidan tezroq, baland "muz qo'ng'iroq" notalari va pulsli bas
+  queen: {
+    step: 60 / 132 / 2,
+    lead: [
+      74, null, 77, 74, 73, null, 74, null, 81, null, 80, 77, 74, null, 73, null,
+      74, null, 77, 81, 82, null, 81, 77, 80, null, 77, 73, 74, null, null, null,
+    ],
+    bass: [
+      38, null, 50, null, 38, null, 50, null, 37, null, 49, null, 37, null, 49, null,
+      34, null, 46, null, 34, null, 46, null, 33, null, 45, null, 37, null, 49, null,
+    ],
+    leadWave: "square",
+    bassWave: "triangle",
+    kick: 4,
   },
 };
 
