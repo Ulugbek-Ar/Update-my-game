@@ -7,7 +7,7 @@ export const WAVES: EnemyKind[][] = [
   ["blob", "blob", "blob"],
   ["blob", "blob", "wisp", "wisp"],
   ["wisp", "wisp", "rammer", "rammer", "blob", "archer"],
-  ["rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob", "archer", "archer"],
+  ["rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob", "archer", "archer", "shield"],
   ["blob", "blob"],
 ];
 
@@ -17,6 +17,8 @@ export const BOSS_WAVE = WAVES.length - 1;
 /** Har nechanchi cheksiz to'lqinda Boss qaytadi */
 export const ENDLESS_BOSS_EVERY = 5;
 const ENDLESS_KINDS: EnemyKind[] = ["blob", "wisp", "rammer", "archer"];
+/** Qalqonli skelet cheksiz rejimda shu to'lqindan boshlab qo'shiladi */
+export const ENDLESS_SHIELD_FROM = 6;
 
 /** Cheksiz rejimdagi tartib raqami (1, 2, ...); asosiy to'lqinlarda 0. */
 export function endlessNumber(i: number) {
@@ -26,6 +28,12 @@ export function endlessNumber(i: number) {
 export function isBossWave(i: number) {
   const n = endlessNumber(i);
   return i === BOSS_WAVE || (n > 0 && n % ENDLESS_BOSS_EVERY === 0);
+}
+
+/** Xazina sandig'i chiqishi mumkin bo'lgan to'lqin: 2- va 4-to'lqin, cheksizda har 3-to'lqin. */
+export function isChestWave(i: number) {
+  const n = endlessNumber(i);
+  return n > 0 ? n % 3 === 0 : i === 1 || i === 3;
 }
 
 /** Boss joni: har qaytishda ko'proq. */
@@ -44,10 +52,9 @@ export function waveEnemies(i: number, rand = Math.random): EnemyKind[] {
   const n = endlessNumber(i);
   if (n === 0) return WAVES[i]!;
   const count = isBossWave(i) ? 2 + n / ENDLESS_BOSS_EVERY : Math.min(16, 5 + n);
-  return Array.from(
-    { length: count },
-    () => ENDLESS_KINDS[Math.floor(rand() * ENDLESS_KINDS.length)]!,
-  );
+  const kinds: EnemyKind[] =
+    n >= ENDLESS_SHIELD_FROM ? [...ENDLESS_KINDS, "shield"] : ENDLESS_KINDS;
+  return Array.from({ length: count }, () => kinds[Math.floor(rand() * kinds.length)]!);
 }
 
 /** Qahramonga xos karta: nom, tavsif, rang, ikonka va kerak bo'lsa alohida ta'sir. */

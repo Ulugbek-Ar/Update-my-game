@@ -231,6 +231,24 @@ class SoundFX {
     this.tone(900, 0.18, "square", 0.04, 200, 0.06);
   }
 
+  /** Qalqon zarbani to'sdi — metall "dzing" */
+  block() {
+    this.tone(1900, 0.09, "square", 0.05, 1500);
+    this.tone(2800, 0.16, "triangle", 0.04, 2400, 0.02);
+  }
+
+  /** Sandiqqa zarba — yog'och "tak" */
+  chestHit() {
+    this.tone(210, 0.07, "square", 0.07, 120);
+  }
+
+  /** Sandiq ochildi — oltin jiringlashi */
+  chestOpen() {
+    [784, 988, 1175, 1568].forEach((f, i) =>
+      this.tone(f, 0.12, "square", 0.05, undefined, i * 0.07),
+    );
+  }
+
   /** Kamonchi o'q uzdi */
   arrow() {
     this.tone(1200, 0.07, "triangle", 0.04, 500);

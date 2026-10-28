@@ -1,0 +1,61 @@
+[
+  {
+    "title": "Sehrgar yangi qiyofada: qahramon tanlash kartasi",
+    "target": "screen",
+    "steps": [{ "storage": { "pixel-rpg-hero": "mage" } }, { "wait": 800 }]
+  },
+  {
+    "title": "Qora-qizil to'n va uzun kumushrang soqol — yaqin plan",
+    "closeup": { "x": 160, "y": 124, "w": 110 },
+    "steps": [
+      { "storage": { "pixel-rpg-hero": "mage", "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "wave": 0 },
+      { "spawn": { "kind": "blob", "px": 160, "py": 130, "dx": 140, "dy": 60 } },
+      { "eval": "const p = g.player; p.fx = 1; p.fy = 0; g.banner.timer = 0;" },
+      { "wait": 400 }
+    ]
+  },
+  {
+    "title": "Sehrgarning qizil-qora shari, halqasi va teleporti",
+    "closeup": { "x": 150, "y": 120, "w": 170 },
+    "steps": [
+      { "storage": { "pixel-rpg-hero": "mage", "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "wave": 0 },
+      { "spawn": { "kind": "blob", "count": 2, "dx": 110, "dy": -30 } },
+      {
+        "eval": "const p = g.player; p.fx = 1; p.fy = 0; g.bolts.push({ x: p.x + 30, y: p.y - 2, vx: 12, vy: 0, size: 6, left: 1, hit: [] }, { x: p.x + 56, y: p.y - 2, vx: 12, vy: 0, size: 8, left: 1, hit: [] }); setInterval(() => { p.spinTimer = 0.2; p.spinCooldown = 3; }, 30); setInterval(() => { p.teleportFrom = { x: p.x - 36, y: p.y + 18 }; }, 150);"
+      },
+      { "wait": 500 }
+    ]
+  },
+  {
+    "title": "Qalqonli skelet",
+    "text": "Qo'lida katta yog'och-temir qalqon va qisqa qilich bilan sekin yuradi. Qalqon doim sizga qarab asta buriladi: oldidan urilgan qilich zarbasi va sehrli shar \"dzing\" bilan to'siladi. Yaqin kelsa qalqon bilan itaradi. Uni yonidan yoki orqasidan uring: dash yoki teleport bilan orqasiga o'ting. Aylana zarba va sehrli halqa qalqonni teshib o'tadi. Joni: 5.",
+    "mob": true,
+    "video": 5,
+    "autoplay": true,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "wave": 3 },
+      { "spawn": { "kind": "shield", "dx": 70 } },
+      { "eval": "g.enemies[0].shieldAngle = Math.PI;" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Xazina sandig'i ochildi va yangi yutuq: Xazinachi",
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1", "pixel-rpg-achievements": "[]" } },
+      { "start": true },
+      { "wave": 1 },
+      { "spawn": { "kind": "blob", "px": 140, "py": 130, "dx": 150, "dy": 70 } },
+      {
+        "eval": "const p = g.player; g.chestsOpened = 2; g.spawnChest(p.x + 36, p.y - 6); g.hitChest(); g.hitChest(); g.chest.hp = 0; g.openChest(() => 0.3);"
+      },
+      { "wait": 350 }
+    ]
+  }
+]

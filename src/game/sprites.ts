@@ -1,6 +1,7 @@
 import type { AnimState } from "./animation";
 
-export type SpriteKind = "knight" | "mage" | "skeleton" | "archer" | "demon" | "slime" | "bat";
+export type SpriteKind =
+  "knight" | "mage" | "skeleton" | "archer" | "shield" | "demon" | "slime" | "bat";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -115,13 +116,15 @@ const poses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]> = {
 };
 
 // Five colors each, including the ink outline. White is only a damage effect.
-const palettes: Record<SpriteKind, readonly string[]> = {
+export const PALETTES: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
-  // Sehrgar: to'q siyoh, binafsha to'n soyasi, binafsha-ko'k to'n, moviy sehr, oqish yuz
-  mage: ["#0b0818", "#352272", "#6a4fd8", "#5fb8ff", "#f0d8b0"],
+  // Sehrgar: siyoh, qora to'n, to'q qizil (astar, kamar, tasma, kristall), kumushrang soqol, teri
+  mage: ["#050307", "#2b1c2e", "#a3192a", "#d9d4e0", "#e8c39e"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
+  // Qalqonli skelet: suyak soyasi, suyak, qo'ng'ir yog'och qalqon, kulrang temir gardish va tig'
+  shield: ["#101015", "#747b82", "#d6d9cf", "#7a4a24", "#9a9ea8"],
   demon: ["#170b11", "#681e2b", "#b23238", "#f4cb45", "#a7a3a0"],
   slime: ["#0b1a10", "#2c7a3c", "#5bc85b", "#a6f08e", "#f2fbe4"],
   bat: ["#120a1a", "#4a2470", "#8a4fc0", "#c99ae8", "#ffe14d"],
@@ -277,60 +280,218 @@ const staffTops: Record<"idle" | "walk" | "attack" | "hurt", readonly Point[]> =
   hurt: [[4, -9]],
 };
 
-function mage(p: Pixels, pose: Pose, back: boolean, top: Point, glow = false) {
+/** Soqol uchining chayqalishi (px): yurish va hujumda kadrdan kadrga o'zgaradi. */
+export const BEARD_SWAY: Record<"idle" | "walk" | "attack" | "hurt", readonly number[]> = {
+  idle: [0, 0],
+  walk: [0, 1, 0, -1],
+  attack: [-1, 1, 0],
+  hurt: [-1],
+};
+
+/** Uchli qora qalpoq: qizil tasma, kumush bezak, uchi orqaga egilgan. (x, y) — hoshiya chap-yuqorisi. */
+function wizardHat(p: Pixels, x: number, y: number) {
+  p.rect(2, x, y, 14, 2);
+  p.polygon(2, [
+    [x + 2, y],
+    [x + 12, y],
+    [x + 9, y - 4],
+    [x + 6, y - 6],
+    [x + 1, y - 7],
+    [x + 4, y - 4],
+  ]);
+  p.rect(3, x + 2, y - 1, 10, 1);
+  p.rect(4, x + 7, y - 3, 1, 1);
+  p.rect(4, x + 1, y + 1, 1, 1);
+}
+
+/**
+ * Sehrgar: 2 — qora to'n, 3 — to'q qizil astar/kamar/tasma/kristall,
+ * 4 — kumushrang soqol, qoshlar va bezaklar, 5 — teri.
+ */
+function mage(
+  p: Pixels,
+  pose: Pose,
+  back: boolean,
+  top: Point,
+  glow = false,
+  sway = 0,
+  hat = true,
+) {
   const { bob: b, lean: l } = pose;
   // oyoqlar to'n ostidan ko'rinadi
   p.rect(2, pose.leftFoot[0] - 2, pose.leftFoot[1] - 1, 4, 2);
   p.rect(2, pose.rightFoot[0] - 1, pose.rightFoot[1] - 1, 4, 2);
-  // to'n: yelkadan pastga kengayadi
-  p.polygon(3, [
+  // qora to'n: yelkadan pastga kengayadi
+  p.polygon(2, [
     [11 + l, 13 + b],
     [21 + l, 13 + b],
     [23, 26],
     [9, 26],
   ]);
-  p.polygon(2, [
-    [11 + l, 13 + b],
-    [13 + l, 13 + b],
-    [12, 26],
-    [9, 26],
-  ]);
-  p.rect(4, 11 + l, 19 + b, 10, 1);
-  p.rect(4, 9, 25, 14, 1);
-  // qo'llar
-  p.line(3, [12 + l, 15 + b], pose.otherHand, 3);
-  p.rect(5, pose.otherHand[0] - 1, pose.otherHand[1] - 1, 2, 2);
-  // tayoq
+  if (!back) {
+    // old tomondagi qizil astar (to'n ochilgan joy)
+    p.polygon(3, [
+      [15 + l, 18 + b],
+      [17 + l, 18 + b],
+      [18, 25],
+      [14, 25],
+    ]);
+    p.rect(2, 16, 21 + b, 1, 4);
+  }
+  // etak naqshi: qizil hoshiya va zigzag, ichida kumush nuqtalar
+  p.rect(3, 9, 25, 14, 1);
+  for (let x = 10; x < 23; x += 3) p.rect(3, x, 24, 1, 1);
+  p.rect(4, 11, 25, 1, 1);
+  p.rect(4, 20, 25, 1, 1);
+  // to'ndagi mayda kumush bezaklar
+  p.rect(4, 11 + l, 22 + b, 1, 1);
+  p.rect(4, 20 + l, 22 + b, 1, 1);
+  // kamar va kumush to'qa
+  p.rect(3, 11 + l, 20 + b, 10, 1);
+  p.rect(4, 16 + l, 20 + b, 1, 1);
+  // qo'llar: qora yeng, qizil yeng uchi, teri
+  const sleeve = (shoulder: Point, hand: Point) => {
+    p.line(2, shoulder, hand, 3);
+    const cx = Math.round(shoulder[0] + (hand[0] - shoulder[0]) * 0.7),
+      cy = Math.round(shoulder[1] + (hand[1] - shoulder[1]) * 0.7);
+    p.rect(3, cx - 1, cy - 1, 3, 2);
+    p.rect(5, hand[0] - 1, hand[1] - 1, 2, 2);
+  };
+  sleeve([12 + l, 15 + b], pose.otherHand);
+  // tayoq: qora, kumush halqa, uchida qizil kristall
   const [hx, hy] = pose.hand;
   const tx = hx + top[0],
     ty = hy + top[1];
   p.line(2, [hx - (top[0] >> 2), hy + 7], [tx, ty], 2);
-  p.line(3, [20 + l, 15 + b], pose.hand, 3);
-  p.rect(5, hx - 1, hy - 1, 2, 2);
-  if (glow) p.rect(4, tx - 2, ty - 2, 5, 5);
-  p.rect(4, tx - 1, ty - 1, 3, 3);
-  p.rect(5, tx, ty - 1, 1, 1);
-  // bosh va soqol
-  if (back) p.ellipse(2, 16 + l, 11 + b, 3.5, 3);
-  else {
-    p.ellipse(5, 16 + l, 11 + b, 3.5, 3);
-    p.rect(1, 14 + l, 10 + b, 1, 1);
-    p.rect(1, 17 + l, 10 + b, 1, 1);
-    p.polygon(5, [
-      [13 + l, 12 + b],
-      [19 + l, 12 + b],
-      [16 + l, 17 + b],
-    ]);
+  p.rect(4, Math.round(hx + top[0] * 0.75) - 1, Math.round(hy + top[1] * 0.75), 2, 1);
+  sleeve([20 + l, 15 + b], pose.hand);
+  if (glow) p.rect(3, tx - 2, ty - 2, 5, 5);
+  p.rect(3, tx - 1, ty - 1, 3, 3);
+  // kristall yaltirashi
+  p.rect(4, tx - (glow ? 1 : 0), ty - 1, 1, 1);
+  if (glow) {
+    p.rect(4, tx + 2, ty, 1, 1);
+    p.rect(4, tx, ty + 2, 1, 1);
   }
-  // uchli qalpoq: keng hoshiya, tasma va orqaga egilgan uch
-  p.rect(2, 9 + l, 8 + b, 14, 2);
-  p.polygon(3, [
-    [11 + l, 8 + b],
-    [21 + l, 8 + b],
-    [19 + l - b, 1 + b],
+  // bosh
+  if (back) {
+    // orqadan: kumushrang sochlar va soqolning chetlari
+    p.ellipse(4, 16 + l, 11 + b, 3.5, 3);
+    p.rect(2, 16 + l, 11 + b, 1, 3);
+    p.rect(4, 12 + l, 13 + b, 1, 3);
+    p.rect(4, 20 + l, 13 + b, 1, 3);
+  } else {
+    p.ellipse(5, 16 + l, 11 + b, 3.5, 3);
+    // kumush qoshlar va qalpoq soyasidagi ko'zlar
+    p.rect(4, 13 + l, 10 + b, 2, 1);
+    p.rect(4, 17 + l, 10 + b, 2, 1);
+    p.rect(1, 14 + l, 11 + b, 1, 1);
+    p.rect(1, 17 + l, 11 + b, 1, 1);
+    // uzun soqol: iyakdan ko'krakkacha, uchi ingichka va chayqaladi
+    const w = sway;
+    p.polygon(4, [
+      [12 + l, 12 + b],
+      [20 + l, 12 + b],
+      [20 + l, 15 + b],
+      [18 + l + w, 19 + b],
+      [16 + l + w, 22 + b],
+      [14 + l + w, 19 + b],
+      [12 + l, 15 + b],
+    ]);
+    // mo'ylov va soqol tolalari
+    p.rect(4, 12 + l, 13 + b, 9, 1);
+    p.rect(5, 16 + l, 12 + b, 1, 1);
+    p.rect(1, 15 + l, 14 + b, 3, 1);
+    p.rect(2, 15 + l + w, 17 + b, 1, 2);
+    p.rect(2, 17 + l + w, 16 + b, 1, 2);
+  }
+  if (hat) wizardHat(p, 9 + l, 8 + b);
+}
+
+/** Sehrgarning yiqilishi: qalpoq boshdan uchib ketadi, kumush soqol ko'rinib qoladi. */
+function mageFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    const pose: Pose = {
+      bob: 5,
+      lean: -3,
+      leftFoot: [12, 28],
+      rightFoot: [23, 28],
+      hand: [23, 25],
+      tip: [29, 28],
+      otherHand: [7, 23],
+    };
+    mage(p, pose, false, [5, -8], false, -1, false);
+    // qalpoq orqaga uchib ketmoqda
+    p.polygon(2, [
+      [2, 10],
+      [9, 7],
+      [3, 2],
+    ]);
+    p.line(3, [3, 9], [8, 7], 1);
+    p.rect(4, 4, 6, 1, 1);
+    return;
+  }
+  if (frame === 1) {
+    p.line(2, [16, 23], [25, 27], 3);
+    p.line(2, [17, 25], [21, 29], 3);
+    p.polygon(2, [
+      [9, 17],
+      [15, 18],
+      [21, 24],
+      [17, 28],
+      [10, 24],
+      [7, 21],
+    ]);
+    p.line(3, [11, 20], [16, 24], 1);
+    p.line(3, [17, 27], [20, 24], 1);
+    // boshi qalpoqsiz: teri, yumuq ko'z, kumush qosh va soqol
+    p.ellipse(5, 8, 15, 3, 3);
+    p.rect(4, 6, 13, 3, 1);
+    p.rect(1, 6, 14, 2, 1);
+    p.polygon(4, [
+      [5, 16],
+      [11, 16],
+      [13, 21],
+      [10, 22],
+      [6, 19],
+    ]);
+    // qalpoq uchib yerga tushmoqda
+    p.polygon(2, [
+      [1, 11],
+      [6, 7],
+      [2, 3],
+    ]);
+    p.line(3, [2, 10], [5, 8], 1);
+    // tayoq yerga
+    p.line(2, [20, 18], [28, 22], 1);
+    p.rect(3, 27, 21, 3, 3);
+    p.rect(4, 28, 21, 1, 1);
+    return;
+  }
+  // yerda yotibdi: to'n, qizil hoshiya, yonida qalpoq va tayoq
+  p.line(2, [20, 27], [27, 27], 3);
+  p.rect(2, 10, 24, 12, 5);
+  p.rect(3, 10, 28, 12, 1);
+  p.rect(3, 15, 24, 1, 4);
+  p.ellipse(5, 7, 25, 3, 2.5);
+  p.rect(4, 5, 23, 3, 1);
+  p.rect(1, 5, 24, 2, 1);
+  p.polygon(4, [
+    [6, 26],
+    [11, 25],
+    [14, 27],
+    [11, 29],
+    [6, 29],
   ]);
-  p.rect(4, 12 + l, 7 + b, 8, 1);
-  p.rect(5, 15 + l, 4 + b, 1, 1);
+  p.polygon(2, [
+    [1, 21],
+    [7, 21],
+    [2, 15],
+  ]);
+  p.rect(3, 1, 20, 6, 1);
+  p.line(2, [17, 30], [27, 30], 1);
+  p.rect(3, 27, 28, 3, 3);
+  p.rect(4, 28, 28, 1, 1);
 }
 
 /** Skelet tanasi (qurolsiz) — skelet jangchi va kamonchi uchun umumiy. */
@@ -545,6 +706,42 @@ function archer(p: Pixels, state: AnimState, frame: number) {
   loweredBow(p, pose.hand);
 }
 
+// ---- Qalqonli skelet: 2/3 — suyak, 4 — yog'och qalqon, 5 — temir gardish va qisqa qilich ----
+
+/** Qalqonning oldinga siljishi: hujumda (itarish) qalqon oldinga cho'ziladi. */
+const shieldPush: Record<"idle" | "walk" | "attack" | "hurt", readonly number[]> = {
+  idle: [0, 0],
+  walk: [0, 0, 0, 0],
+  attack: [1, 4, 2],
+  hurt: [-2],
+};
+
+/** Katta yumaloq yog'och-temir qalqon: (cx, cy) markazida. */
+function roundShield(p: Pixels, cx: number, cy: number) {
+  p.ellipse(5, cx, cy, 5.5, 7);
+  p.ellipse(4, cx, cy, 4, 5.5);
+  // taxta choklari va markazdagi temir do'mboq
+  p.rect(2, Math.round(cx) - 2, Math.round(cy) - 4, 1, 9);
+  p.rect(2, Math.round(cx) + 2, Math.round(cy) - 3, 1, 7);
+  p.rect(5, Math.round(cx) - 1, Math.round(cy) - 1, 3, 3);
+  p.rect(3, Math.round(cx), Math.round(cy) - 1, 1, 1);
+}
+
+/** Qisqa qilich orqa qo'lda, tig'i yuqoriga. */
+function shortSword(p: Pixels, hand: Point) {
+  const [hx, hy] = hand;
+  p.line(1, [hx, hy], [hx - 2, hy - 9], 4);
+  p.line(5, [hx, hy - 2], [hx - 2, hy - 9], 2);
+  p.rect(4, hx - 2, hy - 1, 4, 1);
+  p.rect(4, hx, hy, 1, 2);
+}
+
+function shieldBearer(p: Pixels, pose: Pose, push: number) {
+  shortSword(p, pose.otherHand);
+  boneBody(p, pose);
+  roundShield(p, 22 + push + pose.lean, 17 + pose.bob);
+}
+
 const axePoses: readonly { hand: Point; tip: Point }[] = [
   { hand: [23, 10], tip: [20, 3] },
   { hand: [23, 17], tip: [28, 21] },
@@ -648,8 +845,9 @@ function demon(p: Pixels, pose: Pose, attackFrame: number | null) {
 }
 
 function fallen(p: Pixels, kind: SpriteKind, frame: number) {
-  const skeletonBody = kind === "skeleton" || kind === "archer";
-  const light = skeletonBody ? 3 : kind === "knight" || kind === "mage" ? 4 : 3;
+  if (kind === "mage") return mageFallen(p, frame);
+  const skeletonBody = kind === "skeleton" || kind === "archer" || kind === "shield";
+  const light = skeletonBody ? 3 : kind === "knight" ? 4 : 3;
   // Separate buckling, side-fall, and fully prone silhouettes.
   if (frame === 0) {
     const pose: Pose = {
@@ -662,13 +860,16 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       otherHand: [7, 23],
     };
     if (kind === "knight") knight(p, pose, false);
-    else if (kind === "mage") mage(p, pose, false, [5, -8]);
     else if (kind === "archer") {
       quiver(p, pose.bob);
       boneBody(p, pose);
       redEyes(p, pose);
       // kamon qo'ldan sirg'alib tushmoqda
       bow(p, [27, 18], [22, 29], 2, null, false);
+    } else if (kind === "shield") {
+      boneBody(p, pose);
+      // qalqon qo'ldan tushib, yerga qiyshaymoqda
+      roundShield(p, 25, 23);
     } else if (skeletonBody) skeleton(p, pose);
     else demon(p, pose, 2);
     return;
@@ -694,15 +895,10 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
       p.line(5, [10, 14], [11, 10], 2);
       p.rect(5, 26, 25, 4, 4);
     }
-    if (kind === "mage") {
-      // qalpoq boshdan tushmoqda, tayoq yerga
-      p.polygon(3, [
-        [2, 13],
-        [9, 11],
-        [3, 6],
-      ]);
-      p.line(2, [20, 18], [29, 23], 1);
-      p.rect(4, 28, 22, 2, 2);
+    if (kind === "shield") {
+      p.ellipse(5, 25, 26, 5, 3.5);
+      p.ellipse(4, 25, 26, 3.5, 2.5);
+      p.rect(5, 24, 25, 2, 2);
     }
     if (kind === "archer") {
       // ko'z so'nmoqda (oxirgi kadrda o'chadi), kamon yerga qulamoqda
@@ -725,15 +921,10 @@ function fallen(p: Pixels, kind: SpriteKind, frame: number) {
     p.line(5, [8, 24], [10, 21], 2);
     p.rect(5, 26, 27, 4, 3);
   }
-  if (kind === "mage") {
-    // qalpoq va tayoq yerda yotibdi
-    p.polygon(3, [
-      [1, 29],
-      [8, 29],
-      [2, 23],
-    ]);
-    p.line(2, [17, 30], [29, 30], 1);
-    p.rect(4, 28, 29, 2, 2);
+  // qalqon yerda yotibdi
+  if (kind === "shield") {
+    p.ellipse(5, 25, 28, 5.5, 2.5);
+    p.ellipse(4, 25, 28, 4, 1.5);
   }
   // kamon yerda yotibdi
   if (kind === "archer") bow(p, [18, 29], [30, 29], 1, null, false);
@@ -889,8 +1080,10 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
           back,
           staffTops[state][frame] ?? staffTops[state][0]!,
           state === "attack" && frame === 1,
+          BEARD_SWAY[state][frame] ?? 0,
         );
       else if (kind === "skeleton") skeleton(p, pose);
+      else if (kind === "shield") shieldBearer(p, pose, shieldPush[state][frame] ?? 0);
       else demon(p, pose, state === "attack" ? frame : null);
     }
   }
@@ -918,7 +1111,7 @@ export function renderSprite(
     const raster = canvas.getContext("2d");
     if (!raster) return;
     const data = spritePixels(kind, state, frame, back);
-    const palette = palettes[kind];
+    const palette = PALETTES[kind];
     for (let py = 0; py < 32; py++)
       for (let px = 0; px < 32; px++) {
         const color = data[py * 32 + px];

@@ -251,7 +251,21 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
     } else {
       const file = `${base}.png`;
       await page.waitForTimeout(300);
-      await page.locator(target).first().screenshot({ path: file });
+      if (scene.closeup) {
+        // yaqin plan: xona koordinatalaridagi {x, y, w} atrofini kesib oladi (16:9)
+        const box = await page.locator("canvas").first().boundingBox();
+        const sc = Math.min(box.width / 320, box.height / 240);
+        const ox = box.x + (box.width - 320 * sc) / 2;
+        const oy = box.y + (box.height - 240 * sc) / 2;
+        const lw = Math.min(320, scene.closeup.w ?? 120);
+        const lh = Math.min(240, (lw * 9) / 16);
+        const lx = Math.max(0, Math.min(320 - lw, scene.closeup.x - lw / 2));
+        const ly = Math.max(0, Math.min(240 - lh, scene.closeup.y - lh / 2));
+        await page.screenshot({
+          path: file,
+          clip: { x: ox + lx * sc, y: oy + ly * sc, width: lw * sc, height: lh * sc },
+        });
+      } else await page.locator(target).first().screenshot({ path: file });
       list.push({
         file,
         title: scene.title ?? "",

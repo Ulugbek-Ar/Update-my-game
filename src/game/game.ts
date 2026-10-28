@@ -18,6 +18,7 @@ import {
   waveEnemies,
   waveSpeed,
   upgradeIcon,
+  isChestWave,
   type Upgrade,
 } from "./waves";
 import { CHARGE_TIME, SPIN_CD, SPIN_TIME, type Bolt } from "./player";
@@ -56,13 +57,37 @@ interface Drop {
 interface Coin extends Drop {
   value: number;
 }
+/** Xazina sandig'i: 3 marta urilganda ochiladi */
+export interface Chest {
+  x: number;
+  y: number;
+  hp: number;
+  /** Zarba tekkanda qisqa titrash */
+  hitFlash: number;
+  /** Ochilgandan beri o'tgan vaqt (-1 — yopiq) */
+  openT: number;
+}
+export const CHEST_CHANCE = 0.35;
+export const CHEST_HITS = 3;
+const CHEST_SIZE = 14;
+/** Sandiq ichidagi mukofotlar */
+export const CHEST_GOLD = [8, 15] as const;
+export const CHEST_HEART = 0.4;
+export const CHEST_CARD = 0.1;
 
-const KILL_POINTS: Record<EnemyKind, number> = { blob: 10, wisp: 15, rammer: 20, archer: 20 };
+const KILL_POINTS: Record<EnemyKind, number> = {
+  blob: 10,
+  wisp: 15,
+  rammer: 20,
+  archer: 20,
+  shield: 25,
+};
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
   wisp: "#8a4fc0",
   rammer: "#d6d9cf",
   archer: "#8a88a3",
+  shield: "#7a4a24",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -139,6 +164,11 @@ export class Game {
   bolts: Bolt[] = [];
   drops: Drop[] = [];
   coins: Coin[] = [];
+  chest: Chest | null = null;
+  /** Shu o'yinda ochilgan sandiqlar (Xazinachi yutug'i) */
+  chestsOpened = 0;
+  /** Sandiqdan chiqqan bepul kuch kartasi tanlanmoqda (to'lqin davom etadi) */
+  bonusPick = false;
   /** Shu o'yinda terilgan oltin (o'yin tugaganda umumiy hisobga qo'shiladi) */
   runGold = 0;
   /** Oxirgi marta hisobga qo'shilgan oltin va umumiy hisob — yakun ekranida */
@@ -224,6 +254,9 @@ export class Game {
     this.bolts = [];
     this.drops = [];
     this.coins = [];
+    this.chest = null;
+    this.chestsOpened = 0;
+    this.bonusPick = false;
     this.runGold = 0;
     this.fx = new Effects();
     this.score = 0;
@@ -301,6 +334,8 @@ export class Game {
       e.speedMul = waveSpeed(i);
       this.enemies.push(e);
     });
+    this.chest = null;
+    if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
     if (boss) {
       this.boss = new Boss(bossHp(i));
       this.boss.spawn = this.boss.spawnMax = 1.6;
@@ -308,6 +343,66 @@ export class Game {
       this.fx.addShake(0.4);
     } else sfx.wave();
     sfx.playMusic(boss ? "boss" : "normal");
+  }
+
+  /** Sandiqning to'qnashuv tanasi (ref — hitSet uchun sandiqning o'zi). */
+  private chestBody() {
+    const ch = this.chest!;
+    return { x: ch.x, y: ch.y, size: CHEST_SIZE, ref: ch } as unknown as Body & { ref: Chest };
+  }
+
+  spawnChest(x: number, y: number) {
+    this.chest = { x, y, hp: CHEST_HITS, hitFlash: 0, openT: -1 };
+  }
+
+  /** Sandiqqa bitta zarba; 3-zarbada ochiladi. */
+  hitChest() {
+    const ch = this.chest;
+    if (!ch || ch.openT >= 0) return;
+    ch.hp--;
+    ch.hitFlash = 0.15;
+    sfx.chestHit();
+    this.fx.burst(ch.x, ch.y, "#9a5e2e", 6, 50, 1);
+    if (ch.hp <= 0) this.openChest();
+    else this.fx.addShake(0.05);
+  }
+
+  /** Ochilish: oltin uchqunlar, 8–15 oltin, 40% yurak, 10% bepul kuch kartasi. */
+  openChest(rand: () => number = this.spawnRand) {
+    const ch = this.chest;
+    if (!ch) return null;
+    ch.openT = 0;
+    this.chestsOpened++;
+    if (this.chestsOpened >= 3) this.achieve("chests");
+    sfx.chestOpen();
+    this.fx.addShake(0.12);
+    this.fx.burst(ch.x, ch.y - 4, "#ffcc33", 22, 90, 2);
+    this.fx.burst(ch.x, ch.y - 4, "#fff2a8", 10, 60, 1);
+    const gold = CHEST_GOLD[0] + Math.floor(rand() * (CHEST_GOLD[1] - CHEST_GOLD[0] + 1));
+    for (let k = 0; k < 5; k++) {
+      const a = Math.PI * (0.15 + (k / 4) * 0.7);
+      this.coins.push({
+        x: ch.x + Math.cos(a) * 16,
+        y: ch.y + 6 + Math.sin(a) * 10,
+        life: COIN_LIFE,
+        value: Math.floor(gold / 5) + (k < gold % 5 ? 1 : 0),
+      });
+    }
+    this.fx.text(ch.x, ch.y - 14, `+${gold} OLTIN`, "#ffcc33");
+    const heart = rand() < CHEST_HEART;
+    if (heart) this.drops.push({ x: ch.x, y: ch.y + 14, life: 9 });
+    const card = rand() < CHEST_CARD;
+    if (card) {
+      this.choices = pickUpgrades(this.player, 3, this.cardRand);
+      if (this.choices.length) {
+        this.bonusPick = true;
+        this.choiceIndex = 0;
+        this.upgradeLock = 0.6;
+        this.stage = "upgrade";
+        this.input.clearQueued();
+      }
+    }
+    return { gold, heart, card };
   }
 
   /** Bajarilgan harakat ko'rsatmasini yashiradi; hammasi bajarilsa qayta chiqmaydi. */
@@ -519,6 +614,7 @@ export class Game {
     this.bolts = [];
     this.drops = [];
     this.coins = [];
+    this.chestsOpened = 0;
     this.input.clearQueued();
     this.startWave(BOSS_WAVE + 1);
   }
@@ -531,6 +627,12 @@ export class Game {
     this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
     this.fx.burst(this.player.x, this.player.y, u.color, 18, 70);
     this.input.clearQueued();
+    if (this.bonusPick) {
+      // sandiqdagi bepul karta: to'lqin shu joyidan davom etadi
+      this.bonusPick = false;
+      this.stage = "fight";
+      return;
+    }
     this.startWave(this.wave + 1);
   }
 
@@ -617,6 +719,23 @@ export class Game {
     }
   }
 
+  /** Qalqon to'sdi: "dzing", uchqun, zarar yo'q; qilich bo'lsa o'yinchi biroz orqaga itariladi. */
+  private shieldBlock(e: Enemy, melee: boolean) {
+    sfx.block();
+    e.blockFlash = 0.15;
+    const a = e.shieldAngle;
+    const sx = e.x + Math.cos(a) * 10,
+      sy = e.y + Math.sin(a) * 10 + 2;
+    this.fx.burst(sx, sy, "#ffe14d", 8, 80, 1);
+    this.fx.burst(sx, sy, "#d9d4e0", 4, 50, 1);
+    if (melee) {
+      const p = this.player;
+      p.vx = Math.cos(a) * 150;
+      p.vy = Math.sin(a) * 150;
+      this.freeze = 0.03;
+    }
+  }
+
   /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
   private damageTarget(t: Enemy | Boss, dmg: number) {
     const p = this.player;
@@ -687,10 +806,29 @@ export class Game {
       if (p.dashing) this.doneHint("dash");
     }
     if (p.teleportFrom) {
-      // teleport: chiqqan va tushgan joyda sehrli uchqunlar
-      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#8f6bff", 10, 50);
-      this.fx.burst(p.x, p.y, "#5fb8ff", 10, 50);
+      // teleport: chiqqan joyda qora tutun, ikkala joyda qizil uchqunlar
+      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#1a1118", 14, 30, 3);
+      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#ff3b3b", 6, 70, 1);
+      this.fx.burst(p.x, p.y, "#2b1c2e", 8, 25, 3);
+      this.fx.burst(p.x, p.y, "#ff5a3c", 10, 60, 1);
       p.teleportFrom = null;
+    }
+    const ch = this.chest;
+    if (ch) {
+      if (ch.hitFlash > 0) ch.hitFlash -= dt;
+      if (ch.openT >= 0) {
+        ch.openT += dt;
+        if (ch.openT < 0.8 && Math.random() < 0.5)
+          this.fx.burst(ch.x + (Math.random() - 0.5) * 10, ch.y - 4, "#ffe14d", 1, 40, 1);
+      }
+      // sandiq to'siq: o'yinchi ichidan o'tmaydi
+      const dx = p.x - ch.x,
+        dy = p.y - ch.y,
+        min = (p.size + CHEST_SIZE) / 2;
+      if (Math.abs(dx) < min && Math.abs(dy) < min) {
+        if (Math.abs(dx) > Math.abs(dy)) p.x = ch.x + (dx < 0 ? -min : min);
+        else p.y = ch.y + (dy < 0 ? -min : min);
+      }
     }
     if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, "rgba(104,205,228,0.8)");
     if (p.bolts.length) {
@@ -747,13 +885,23 @@ export class Game {
       this.bolts = this.bolts.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(143,107,255,0.7)");
+        // qora tutunli iz
+        if (Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(26,17,24,0.75)");
         const body = { x: b.x, y: b.y, size: b.size } as Body;
         const t = targets.find((t) => !t.dead && !b.hit.includes(t) && overlap(body, t));
+        // qalqon oldidan kelgan sharni to'sadi
+        if (t instanceof Enemy && t.blocks(t.x - b.vx, t.y - b.vy)) {
+          this.shieldBlock(t, false);
+          return false;
+        }
+        if (!t && this.chest && this.chest.openT < 0 && overlap(body, this.chestBody())) {
+          this.hitChest();
+          return false;
+        }
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
-          this.fx.burst(b.x, b.y, "#5fb8ff", 6, 60, 1);
+          this.fx.burst(b.x, b.y, "#ff5a3c", 6, 60, 1);
           this.damageTarget(t, p.damage);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
@@ -763,7 +911,7 @@ export class Game {
         this.shots = this.shots.filter((s) => !overlap(body, s as unknown as Body));
         if (this.shots.length < n) {
           this.score += 5 * (n - this.shots.length);
-          this.fx.burst(b.x, b.y, "#8f6bff", 6, 50);
+          this.fx.burst(b.x, b.y, "#a3192a", 6, 50);
           return false;
         }
         return inRoom(b as Shot);
@@ -778,19 +926,30 @@ export class Game {
       for (const t of targets) {
         if (!p.hitSet.has(t) && overlap(box, t)) {
           p.hitSet.add(t);
+          // qalqon: oldidan kelgan zarba to'siladi, aylana zarba/halqa teshib 1 zarar beradi
+          const blocked = t instanceof Enemy && t.blocks(p.x, p.y);
+          if (blocked && !p.spinning) {
+            this.shieldBlock(t, true);
+            continue;
+          }
           sfx.hit();
           this.freeze = 0.045;
           this.fx.addShake(p.spinning ? 0.14 : 0.08);
           this.fx.burst(
             t.x,
             t.y,
-            p.mage ? "#8f6bff" : p.spinning ? "#ffcc33" : "#ffffff",
+            p.mage ? "#ff3b3b" : p.spinning ? "#ffcc33" : "#ffffff",
             5,
             60,
             1,
           );
-          this.damageTarget(t, p.hitDamage);
+          this.damageTarget(t, blocked ? 1 : p.hitDamage);
         }
+      }
+      const cb = this.chest && this.chest.openT < 0 ? this.chestBody() : null;
+      if (cb && !p.hitSet.has(cb.ref) && overlap(box, cb)) {
+        p.hitSet.add(cb.ref);
+        this.hitChest();
       }
       // qilich olov shari va o'qlarni ham urib yo'q qiladi
       const before = this.shots.length;
@@ -856,6 +1015,8 @@ export class Game {
       return;
     }
 
+    // sandiq kartasi shu kadrda ochilgan bo'lsa, avval u tanlanadi
+    if (this.bonusPick) return;
     // to'lqin tugadi
     if (this.enemies.length === 0) {
       if (isBossWave(this.wave)) {
@@ -892,6 +1053,8 @@ export class Game {
     this.shots = [];
     this.bolts = [];
     this.collectCoins();
+    // ochilmagan sandiq to'lqin bilan yo'qoladi
+    this.chest = null;
     this.choices = pickUpgrades(this.player, 3, this.cardRand);
     this.choiceIndex = 0;
     this.upgradeLock = 0.6;
@@ -1026,15 +1189,26 @@ export class Game {
       c.stroke();
     }
     if (p.spinning && p.mage) {
-      // sehrli halqa: kengayib boruvchi binafsha-ko'k aylana
+      // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
       const r = p.reach * 1.2 * (1.15 - k * 0.5);
-      c.strokeStyle = `rgba(143,107,255,${0.35 + 0.6 * k})`;
-      c.lineWidth = 3;
+      c.strokeStyle = `rgba(20,10,16,${0.3 + 0.5 * k})`;
+      c.lineWidth = 4;
       c.beginPath();
-      c.arc(p.x, p.y, r, 0, Math.PI * 2);
+      c.arc(p.x, p.y, r + 1, 0, Math.PI * 2);
       c.stroke();
-      c.strokeStyle = `rgba(95,184,255,${0.25 + 0.5 * k})`;
+      c.strokeStyle = `rgba(214,40,50,${0.4 + 0.6 * k})`;
+      c.lineWidth = 2;
+      c.beginPath();
+      // to'lqinsimon chekka
+      for (let i = 0; i <= 48; i++) {
+        const a = (i / 48) * Math.PI * 2;
+        const rr = r + Math.sin(a * 8 + this.time * 20) * 1.5;
+        if (i) c.lineTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr);
+        else c.moveTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr);
+      }
+      c.stroke();
+      c.strokeStyle = `rgba(255,120,80,${0.2 + 0.4 * k})`;
       c.lineWidth = 1;
       c.beginPath();
       c.arc(p.x, p.y, r * 0.7, 0, Math.PI * 2);
@@ -1126,6 +1300,8 @@ export class Game {
           if (boss.slow > 0 && !boss.dead) this.frost(c, boss.x, boss.y, boss.size);
         },
       });
+    const ch = this.chest;
+    if (ch) all.push({ y: ch.y, r: () => this.renderChest(c, ch) });
     if (this.phase !== "attempt" || !p.dead)
       all.push({
         y: p.y,
@@ -1157,13 +1333,16 @@ export class Game {
       px(c, "#ffe14d", s.x - 1, s.y - 1, 2, 2);
     }
     for (const b of this.bolts) {
-      c.fillStyle = "rgba(143,107,255,0.35)";
+      // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro
+      c.fillStyle = "rgba(255,110,50,0.4)";
       c.beginPath();
       c.arc(b.x, b.y, b.size - 1, 0, Math.PI * 2);
       c.fill();
       const h = Math.round(b.size / 3);
-      px(c, "#6a4fd8", b.x - h, b.y - h, h * 2, h * 2);
-      px(c, "#5fb8ff", b.x - 1, b.y - 1, 2, 2);
+      px(c, "#ff5a3c", b.x - h - 1, b.y - h, h * 2 + 2, h * 2);
+      px(c, "#ff5a3c", b.x - h, b.y - h - 1, h * 2, h * 2 + 2);
+      px(c, "#a3192a", b.x - h, b.y - h, h * 2, h * 2);
+      px(c, "#ffb36b", b.x - h, b.y - h, 1, 1);
     }
     this.fx.renderParticles(c);
     this.fx.renderTexts((s, x, y, color, a) => {
@@ -1189,6 +1368,50 @@ export class Game {
     this.renderOverlays();
     this.renderToast();
     c.restore();
+  }
+
+  /** Kod bilan chizilgan sandiq: yog'och, temir tasmalar, oltin qulf; ochilganda qopqoq ko'tariladi. */
+  private renderChest(c: CanvasRenderingContext2D, ch: Chest) {
+    this.shadow(c, ch.x, ch.y + 7, 18);
+    const shake = ch.hitFlash > 0 ? (Math.floor(ch.hitFlash * 60) % 2 ? 1 : -1) : 0;
+    const x = Math.round(ch.x - 8) + shake,
+      y = Math.round(ch.y - 5);
+    const k = ch.openT < 0 ? 0 : Math.min(1, ch.openT / 0.3);
+    if (k > 0) {
+      // ochiq qopqoq orqada, ichida oltin yaltiraydi
+      const lid = Math.round(k * 4);
+      px(c, "#2a1a10", x, y - lid, 16, 4 + lid);
+      px(c, "#5a3418", x + 1, y - lid + 1, 14, 2 + lid);
+      px(c, "#9a9ea8", x + 3, y - lid, 2, 4 + lid);
+      px(c, "#9a9ea8", x + 11, y - lid, 2, 4 + lid);
+      const g = 0.35 + 0.25 * Math.sin(this.time * 10);
+      c.fillStyle = `rgba(255,214,90,${g})`;
+      c.beginPath();
+      c.ellipse(x + 8, y + 2, 12, 7, 0, 0, Math.PI * 2);
+      c.fill();
+      px(c, "#ffcc33", x + 2, y + 2, 12, 3);
+      px(c, "#fff2a8", x + 4, y + 2, 2, 1);
+      px(c, "#fff2a8", x + 10, y + 3, 1, 1);
+    }
+    // quti
+    px(c, "#2a1a10", x, y + 4, 16, 8);
+    px(c, "#7a4a24", x + 1, y + 5, 14, 6);
+    px(c, "#5a3418", x + 1, y + 8, 14, 1);
+    if (k === 0) {
+      // yopiq qopqoq
+      px(c, "#2a1a10", x, y, 16, 5);
+      px(c, "#9a5e2e", x + 1, y + 1, 14, 3);
+      px(c, "#b87a42", x + 1, y + 1, 14, 1);
+    }
+    // temir tasmalar va oltin qulf
+    px(c, "#9a9ea8", x + 3, y + (k ? 4 : 0), 2, k ? 8 : 12);
+    px(c, "#9a9ea8", x + 11, y + (k ? 4 : 0), 2, k ? 8 : 12);
+    px(c, "#ffcc33", x + 7, y + 4, 2, 3);
+    px(c, "#a8741a", x + 7, y + 6, 2, 1);
+    if (ch.hitFlash > 0) {
+      c.fillStyle = "rgba(255,255,255,0.45)";
+      c.fillRect(x, y, 16, 12);
+    }
   }
 
   /** Muz qalqonidan sekinlashgan dushman atrofida muz uchqunlari. */
@@ -1361,9 +1584,11 @@ export class Game {
     if (this.phase === "play" && this.stage === "upgrade" && !this.paused) {
       px(c, "rgba(8,4,16,0.78)", 0, 0, ROOM.w, ROOM.h);
       this.text(
-        this.endless
-          ? `CHEKSIZ ${endlessNumber(this.wave)} TOZALANDI`
-          : `${this.wave + 1}-TO'LQIN TOZALANDI`,
+        this.bonusPick
+          ? "XAZINA: BEPUL KUCH!"
+          : this.endless
+            ? `CHEKSIZ ${endlessNumber(this.wave)} TOZALANDI`
+            : `${this.wave + 1}-TO'LQIN TOZALANDI`,
         ROOM.w / 2,
         40,
         9,

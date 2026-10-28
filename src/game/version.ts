@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.6.1";
+export const GAME_VERSION = "1.7.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.0",
+    date: "2026-10-28",
+    notes:
+      "Sehrgar yangi qiyofada: qora-qizil to'n va uzun kumushrang soqol. Sehrgarning shari, halqasi va teleporti qizil-qora rangda. Yangi dushman: Qalqonli skelet — oldidan urilgan zarbani to'sadi, uni yonidan yoki orqasidan uring. Xazina sandig'i: ba'zi to'lqinlarda chiqadi, ichidan oltin, yurak yoki kuch kartasi tushadi. Yangi yutuq: Xazinachi.",
+  },
   {
     version: "1.6.1",
     date: "2026-10-27",

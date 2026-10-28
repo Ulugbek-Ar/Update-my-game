@@ -6,7 +6,13 @@ export const GOLD_KEY = "pixel-rpg-gold";
 export const SHOP_KEY = "pixel-rpg-shop";
 
 /** Har bir dushmandan tushadigan oltin */
-export const KILL_GOLD: Record<EnemyKind, number> = { blob: 1, wisp: 1, rammer: 2, archer: 2 };
+export const KILL_GOLD: Record<EnemyKind, number> = {
+  blob: 1,
+  wisp: 1,
+  rammer: 2,
+  archer: 2,
+  shield: 3,
+};
 export const BOSS_GOLD = 25;
 
 export type ShopId = "heart" | "dash" | "blade" | "luck";

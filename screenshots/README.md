@@ -20,6 +20,8 @@ Sahna maydonlari:
   - `{ "keys": [["d", 600], "Space"] }` — tugma bosib turish / bosish
   - `{ "play": true }` — biroz o'ynash (yurish + zarba)
   - `{ "wait": 500 }` — kutish (ms)
+- `closeup` — `{ "x": 160, "y": 120, "w": 120 }`: rasm o'rniga xonaning shu nuqta atrofidagi yaqin plani
+  (x, y — xona koordinatalari, w — kenglik, 16:9). Video sahnalarda ishlatilmaydi.
 
 ## Yangi dushman (mob)
 

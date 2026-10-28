@@ -11,7 +11,8 @@ export type AchievementId =
   | "winKnight"
   | "winMage"
   | "endless10"
-  | "daily";
+  | "daily"
+  | "chests";
 
 export interface Achievement {
   id: AchievementId;
@@ -24,12 +25,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "clean", name: "BENUQSON TO'LQIN", desc: "To'lqinni zarar olmasdan tozala" },
   { id: "combo10", name: "KOMBO USTASI", desc: "10 kombo yig'" },
   { id: "combo50", name: "50 KOMBO", desc: "Ketma-ket 50 kombo yig'" },
-  { id: "rich", name: "XAZINACHI", desc: "Bitta o'yinda 50 oltin ter" },
+  { id: "rich", name: "BOYVACHCHA", desc: "Bitta o'yinda 50 oltin ter" },
   { id: "boss", name: "IBLISNI YENG", desc: "Bossni mag'lub et" },
   { id: "winKnight", name: "RITSAR BILAN YUT", desc: "Ritsar bilan o'yinni yut" },
   { id: "winMage", name: "SEHRGAR BILAN YUT", desc: "Sehrgar bilan o'yinni yut" },
   { id: "endless10", name: "CHEKSIZDA 10-TO'LQIN", desc: "Cheksiz rejimda 10-to'lqinga yet" },
   { id: "daily", name: "KUNLIK SINOVCHI", desc: "Kunlik sinovda 3-to'lqinga yet" },
+  { id: "chests", name: "XAZINACHI", desc: "Bitta o'yinda 3 ta sandiq och" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

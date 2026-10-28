@@ -753,7 +753,9 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
 }
 
 function CoachPanel({ hero }: { hero: Hero }) {
-  const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "archer" | "boss">("boss");
+  const [enemy, setEnemy] = useState<"slime" | "bat" | "skeleton" | "archer" | "shield" | "boss">(
+    "boss",
+  );
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
   const [error, setError] = useState("");
@@ -788,6 +790,7 @@ function CoachPanel({ hero }: { hero: Hero }) {
           <option value="bat">Ko'rshapalak</option>
           <option value="skeleton">Skelet jangchi</option>
           <option value="archer">Kamonchi skelet</option>
+          <option value="shield">Qalqonli skelet</option>
           <option value="boss">Boss (iblis)</option>
         </select>
       </label>
