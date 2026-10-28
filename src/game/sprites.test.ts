@@ -23,7 +23,8 @@ describe("Code-drawn character frames", () => {
     "bat",
     "frost",
     "golem",
-    "shard",
+    "iceblob",
+    "wolf",
     "queen",
   ] as SpriteKind[]) {
     for (const [state, count] of Object.entries(counts) as [AnimState, number][]) {

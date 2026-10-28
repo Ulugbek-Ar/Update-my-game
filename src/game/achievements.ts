@@ -36,8 +36,8 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "daily", name: "KUNLIK SINOVCHI", desc: "Kunlik sinovda 3-to'lqinga yet" },
   { id: "chests", name: "XAZINACHI", desc: "Bitta o'yinda 3 ta sandiq och" },
   { id: "queen", name: "MUZNI ERITDI", desc: "Qor Malikasini yeng" },
-  { id: "noChill", name: "SOVUQQA CHIDAM", desc: "2-bobda sekinlashmasdan bitta to'lqin o't" },
-  { id: "twoChapters", name: "IKKI BOB", desc: "Bitta o'yinda o'lmasdan ikkala bobni yut" },
+  { id: "noChill", name: "SOVUQQA CHIDAM", desc: "2-dunyoda sekinlashmasdan bitta to'lqin o't" },
+  { id: "twoChapters", name: "IKKI DUNYO", desc: "Bitta o'yinda o'lmasdan ikkala dunyoni yut" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

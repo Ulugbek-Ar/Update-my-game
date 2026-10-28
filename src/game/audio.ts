@@ -46,7 +46,7 @@ export const TRACKS: Record<MusicTrack, Track> = {
     bassWave: "square",
     kick: 2,
   },
-  // 2-bob: sekin, sovuq — mi minor, baland "qo'ng'iroqcha" notalar va cho'ziq bas
+  // 2-dunyo: sekin, sovuq — mi minor, baland "qo'ng'iroqcha" notalar va cho'ziq bas
   ice: {
     step: 60 / 84 / 2,
     lead: [

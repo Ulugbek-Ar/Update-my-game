@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Enemy, BASH_WINDUP, SHIELD_TURN, angleDiff } from "./enemy";
 import { Player, CHARGE_TIME } from "./player";
 import { Game } from "./game";
-import { WAVES, BOSS_WAVE, ENDLESS_SHIELD_FROM, waveEnemies } from "./waves";
+import { WAVES, WAVES2, BOSS_WAVE, waveEnemies } from "./waves";
 import { KILL_GOLD } from "./shop";
 import type { Bolt } from "./player";
 
@@ -162,12 +162,13 @@ describe("Qalqonli skelet", () => {
     }
   });
 
-  it("appears once in wave 4 and in endless mode from wave 6", () => {
-    expect(WAVES[3]!.filter((k) => k === "shield").length).toBe(1);
-    for (let w = 0; w < 3; w++) expect(WAVES[w]).not.toContain("shield");
-    const last = () => 0.99;
-    for (let n = 1; n < ENDLESS_SHIELD_FROM; n++)
-      expect(waveEnemies(BOSS_WAVE + n, last)).not.toContain("shield");
-    expect(waveEnemies(BOSS_WAVE + ENDLESS_SHIELD_FROM, last)).toContain("shield");
+  it("lives only in world 2: waves 3 and 4 there and in world 2 endless mode", () => {
+    for (const w of WAVES) expect(w).not.toContain("shield");
+    expect(WAVES2[2]!.filter((k) => k === "shield").length).toBe(2);
+    expect(WAVES2[3]!.filter((k) => k === "shield").length).toBe(1);
+    // 2-dunyo cheksiz ro'yxatida qalqonli skelet 4-o'rinda: rand ~0.7 uni tanlaydi
+    expect(waveEnemies(BOSS_WAVE + 1, () => 0.7, 2)).toContain("shield");
+    for (const r of [0, 0.3, 0.6, 0.99])
+      expect(waveEnemies(BOSS_WAVE + 1, () => r, 1)).not.toContain("shield");
   });
 });

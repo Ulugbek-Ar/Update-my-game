@@ -3,7 +3,7 @@ import type { Player } from "./player";
 import { renderSprite, type SpriteKind } from "./sprites";
 
 export type EnemyKind =
-  "blob" | "wisp" | "rammer" | "archer" | "shield" | "frost" | "golem" | "shard";
+  "blob" | "wisp" | "rammer" | "archer" | "shield" | "frost" | "golem" | "iceblob" | "wolf";
 
 const SPAWN_TIME = 1;
 export const ARCHER_RELOAD = 1.5;
@@ -39,13 +39,25 @@ export const FROST_CHILL = 1.5;
 const FROST_SPEED = 42;
 /** Nafas ko'rinib turadigan vaqt */
 const BREATH_SHOW = 0.35;
-/** Muz golemi: har 3s da yerga uradi (0.8s qizil doira ogohlantiradi) */
+/** Qor odam (kind "golem"): har 3s da yerga uradi (0.8s qizil doira ogohlantiradi) */
 export const STOMP_EVERY = 3;
 export const STOMP_WINDUP = 0.8;
 export const STOMP_RADIUS = 26;
 const GOLEM_SPEED = 16;
-/** Golem o'lganda shuncha muz bo'lagiga bo'linadi */
-export const GOLEM_SHARDS = 2;
+/** Qor odam o'lganda shuncha Muz slime'ga bo'linadi */
+export const GOLEM_SPLIT = 2;
+/** Muz slime tegsa o'yinchi shuncha soniya sekin yuradi */
+export const ICEBLOB_CHILL = 0.8;
+/** Qor bo'risi: aylanib yuradi, cho'kib (ogohlantirish) sakraydi, so'ng charchab qoladi */
+export const WOLF_CIRCLE = 1.6;
+export const WOLF_CROUCH = 0.4;
+export const WOLF_LEAP_TIME = 0.35;
+export const WOLF_LEAP_SPEED = 190;
+export const WOLF_TIRED = 1;
+/** O'yinchidan shu masofada aylanadi */
+export const WOLF_RADIUS = 55;
+const WOLF_SPEED = 70;
+export type WolfPhase = "circle" | "crouch" | "leap" | "tired";
 
 /** Har dushman turining joni */
 export const ENEMY_HP: Record<EnemyKind, number> = {
@@ -56,7 +68,8 @@ export const ENEMY_HP: Record<EnemyKind, number> = {
   shield: 5,
   frost: 3,
   golem: 7,
-  shard: 2,
+  iceblob: 2,
+  wolf: 3,
 };
 
 /** Dushman turi -> sprite turi */
@@ -68,7 +81,8 @@ const SPRITE: Record<EnemyKind, SpriteKind> = {
   shield: "shield",
   frost: "frost",
   golem: "golem",
-  shard: "shard",
+  iceblob: "iceblob",
+  wolf: "wolf",
 };
 
 export interface Arrow {
@@ -84,6 +98,8 @@ export interface Arrow {
  * rammer – to'xtab nishon oladi, so'ng tez yugurib uriladi
  * archer – masofani saqlaydi va har 1.5s da o'q otadi
  * shield – sekin yuradi, qalqon bilan oldidan zarbani to'sadi, yaqinda qalqon bilan itaradi
+ * iceblob – muz slime: sakrab quvadi, tegsa sekinlashtiradi
+ * wolf   – qor bo'risi: aylanib yuradi, cho'kib sakraydi, sakrashdan keyin charchaydi
  */
 export class Enemy implements Body {
   vx = 0;
@@ -129,6 +145,9 @@ export class Enemy implements Body {
   justStomped = false;
   heavy = false;
   ghost = false;
+  /** Qor bo'risi: joriy bosqich va aylanish yo'nalishi (1 — soat mili bo'ylab, -1 — teskari) */
+  wolfPhase: WolfPhase = "circle";
+  orbit = Math.random() < 0.5 ? 1 : -1;
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.4, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -146,8 +165,8 @@ export class Enemy implements Body {
     this.size =
       kind === "golem"
         ? 20
-        : kind === "shard"
-          ? 9
+        : kind === "wolf"
+          ? 13
           : kind === "rammer" || kind === "archer" || kind === "shield"
             ? 14
             : 11;
@@ -160,6 +179,8 @@ export class Enemy implements Body {
       this.ghost = true;
       this.aiTimer = 0.6;
     }
+    // juftlikdagi bo'rilar bir vaqtda sakramasligi uchun biroz farq
+    if (kind === "wolf") this.aiTimer = WOLF_CIRCLE + Math.random() * 0.6;
   }
 
   get dead() {
@@ -200,6 +221,11 @@ export class Enemy implements Body {
     }
     if (this.stompShock > 0) this.stompShock -= dt;
     if (this.breathShow > 0) this.breathShow -= dt;
+    // sakrayotgan bo'ri zarba yesa — sakrash uziladi va charchab qoladi
+    if (this.kind === "wolf" && this.anim.state === "hurt" && this.wolfPhase === "leap") {
+      this.wolfPhase = "tired";
+      this.aiTimer = WOLF_TIRED;
+    }
     // golem zarbadan to'xtamaydi: yerga urish tayyorgarligi davom etadi
     if (this.anim.state === "hurt" && this.kind !== "golem") {
       if (this.anim.done) this.anim.set("walk");
@@ -214,11 +240,12 @@ export class Enemy implements Body {
 
     if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
     else if (this.kind === "golem") this.updateGolem(dt, p, dx, dy, d, m);
-    else if (this.kind === "blob" || this.kind === "shard") {
+    else if (this.kind === "wolf") this.updateWolf(dt, dx, dy, d, m);
+    else if (this.kind === "blob" || this.kind === "iceblob") {
       // sakrash: harakat faqat sinus musbat bo'lganda
-      // muz bo'lagi — tez sakraydigan kichik blob
-      const hop = Math.max(0, Math.sin(this.t * (this.kind === "shard" ? 8 : 5)));
-      const speed = this.kind === "shard" ? 75 : 45;
+      // muz slime — muz ustida biroz tezroq, tez-tez sakraydi
+      const hop = Math.max(0, Math.sin(this.t * (this.kind === "iceblob" ? 6 : 5)));
+      const speed = this.kind === "iceblob" ? 50 : 45;
       this.x += (dx / d) * speed * m * hop * dt;
       this.y += (dy / d) * speed * m * hop * dt;
       this.anim.set(hop > 0 ? "walk" : "idle");
@@ -341,6 +368,60 @@ export class Enemy implements Body {
     this.anim.set("walk");
   }
 
+  /**
+   * Qor bo'risi: o'yinchini WOLF_RADIUS masofada aylanadi; vaqti kelganda 0.4s cho'kadi
+   * (yo'nalish shu paytda qotadi), so'ng tez sakraydi va 1s charchab turadi.
+   */
+  private updateWolf(dt: number, dx: number, dy: number, d: number, m: number) {
+    this.aiTimer -= dt;
+    if (this.wolfPhase === "circle") {
+      const radial = Math.max(-1, Math.min(1, (d - WOLF_RADIUS) / WOLF_RADIUS));
+      let vx = (dx / d) * radial - (dy / d) * this.orbit,
+        vy = (dy / d) * radial + (dx / d) * this.orbit;
+      const l = Math.hypot(vx, vy) || 1;
+      vx /= l;
+      vy /= l;
+      this.x += vx * WOLF_SPEED * m * dt;
+      this.y += vy * WOLF_SPEED * m * dt;
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.wolfPhase = "crouch";
+        this.aiTimer = WOLF_CROUCH;
+        this.dashX = dx / d;
+        this.dashY = dy / d;
+        this.showAttackFrame(0);
+      }
+      return;
+    }
+    // cho'kish va sakrashda nishon tomonga qaraydi
+    if (this.wolfPhase !== "tired" && this.dashX !== 0) this.facingLeft = this.dashX < 0;
+    if (this.wolfPhase === "crouch") {
+      this.showAttackFrame(0);
+      if (this.aiTimer <= 0) {
+        this.wolfPhase = "leap";
+        this.aiTimer = WOLF_LEAP_TIME;
+        this.showAttackFrame(1);
+      }
+    } else if (this.wolfPhase === "leap") {
+      this.x += this.dashX * WOLF_LEAP_SPEED * m * dt;
+      this.y += this.dashY * WOLF_LEAP_SPEED * m * dt;
+      this.showAttackFrame(1);
+      if (this.aiTimer <= 0) {
+        this.wolfPhase = "tired";
+        this.aiTimer = WOLF_TIRED;
+        this.showAttackFrame(2);
+      }
+    } else {
+      // charchagan: joyida hansirab turadi — urish uchun qulay payt
+      this.showAttackFrame(2);
+      if (this.aiTimer <= 0) {
+        this.wolfPhase = "circle";
+        this.aiTimer = WOLF_CIRCLE;
+        this.anim.set("walk");
+      }
+    }
+  }
+
   /** O'yinchi sovuq nafas konusi ichidami. */
   breathHits(p: { x: number; y: number; size: number }) {
     const d = Math.hypot(p.x - this.x, p.y - this.y);
@@ -431,10 +512,9 @@ export class Enemy implements Body {
       this.renderBreath(ctx);
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
-      ctx.strokeStyle =
-        this.kind === "frost" || this.kind === "golem" || this.kind === "shard"
-          ? `rgba(140,215,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`
-          : `rgba(200,120,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`;
+      ctx.strokeStyle = ICE_KINDS.has(this.kind)
+        ? `rgba(140,215,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`
+        : `rgba(200,120,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, 4 + 8 * k, 0, Math.PI * 2);
@@ -451,8 +531,9 @@ export class Enemy implements Body {
       this.kind === "archer" ||
       this.kind === "shield" ||
       this.kind === "golem";
-    // muz ruhi yarim shaffof
+    // muz ruhi yarim shaffof, muz slime biroz shaffof
     if (this.kind === "frost") ctx.globalAlpha *= 0.78;
+    else if (this.kind === "iceblob") ctx.globalAlpha *= 0.88;
     renderSprite(
       ctx,
       SPRITE[this.kind],
@@ -474,6 +555,9 @@ export class Enemy implements Body {
     ctx.globalAlpha = 1;
   }
 }
+
+/** 2-dunyo moblari: paydo bo'lishda ko'k doira */
+const ICE_KINDS: ReadonlySet<EnemyKind> = new Set(["frost", "golem", "iceblob", "shield", "wolf"]);
 
 /** a - b burchak farqi, [-PI, PI] oralig'ida. */
 export function angleDiff(a: number, b: number) {

@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "1.8.0";
+export const GAME_VERSION = "1.9.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.0",
+    date: "2026-10-28",
+    notes:
+      "Har dunyoning o'z dushmanlari: 1-dunyoda faqat zindon moblari, 2-dunyoda faqat muz moblari. Muz golemi endi Qor odam: o'lganda 2 ta Muz slime'ga bo'linadi. Yangi mob: Muz slime — tegsa sekinlashtiradi. Yangi mob: Qor bo'risi — juft yuradi va sakrab tashlanadi. Qalqonli skelet 2-dunyoga ko'chdi va muz qiyofasini oldi. Bosh menyudan 2-dunyoni tanlash mumkin.",
+  },
   {
     version: "1.8.0",
     date: "2026-10-28",

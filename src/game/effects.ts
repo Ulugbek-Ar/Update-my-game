@@ -37,7 +37,7 @@ export class Effects {
   particles: Particle[] = [];
   texts: FloatText[] = [];
   shake = 0;
-  /** 2-bob: xonada sekin qor yog'adi */
+  /** 2-dunyo: xonada sekin qor yog'adi */
   snowOn = false;
   /** Bo'ron yo'nalishi (-1, 0, 1): qor ko'payadi va yon tomonga uchadi */
   wind = 0;

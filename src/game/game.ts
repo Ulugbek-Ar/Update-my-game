@@ -1,7 +1,7 @@
 import { ROOM, applyHit, clampToRoom, overlap, px, separate, type Body } from "./animation";
 import { Input } from "./input";
 import { Player } from "./player";
-import { Enemy, GOLEM_SHARDS, type EnemyKind } from "./enemy";
+import { Enemy, GOLEM_SPLIT, ICEBLOB_CHILL, type EnemyKind } from "./enemy";
 import { Boss, Queen, QUEEN_HP, WIND_PUSH, summonCount } from "./boss";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
@@ -19,6 +19,7 @@ import {
   waveSpeed,
   WAVES2,
   waveSpeed2,
+  type World,
   upgradeIcon,
   isChestWave,
   type Upgrade,
@@ -36,6 +37,8 @@ export const BEST_KEY = bestKeys("knight").best;
 export const ENDLESS_BEST_KEY = bestKeys("knight").endless;
 /** Birinchi o'yindagi ko'rsatmalar ko'rsatib bo'lingan */
 export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
+/** 1-dunyo yutilgan: bosh menyuda dunyo tanlash ochiladi */
+export const WORLD1_WON_KEY = "pixel-rpg-world1-won";
 export type Hint = "attack" | "spin" | "dash";
 const HINTS: Hint[] = ["attack", "spin", "dash"];
 type Phase = "play" | "attempt" | "victory";
@@ -85,17 +88,19 @@ const KILL_POINTS: Record<EnemyKind, number> = {
   shield: 25,
   frost: 20,
   golem: 35,
-  shard: 5,
+  iceblob: 10,
+  wolf: 20,
 };
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
   wisp: "#8a4fc0",
   rammer: "#d6d9cf",
   archer: "#8a88a3",
-  shield: "#7a4a24",
+  shield: "#5b9fd6",
   frost: "#9fd0ef",
-  golem: "#6e93b3",
-  shard: "#8fc3e6",
+  golem: "#f4f9ff",
+  iceblob: "#a3dcf7",
+  wolf: "#a7b0bd",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -110,7 +115,7 @@ interface FloorTheme {
   moss: number;
   /** Qizil (lavali) yoriqlar — Boss xonasi */
   red: boolean;
-  /** 2-bob: muz plitalar, qorli yoriqlar, sumalaklar, sovuq kristallar */
+  /** 2-dunyo: muz plitalar, qorli yoriqlar, sumalaklar, sovuq kristallar */
   ice?: boolean;
 }
 const STONE_WALLS = { wall: "#5c4a6e", wallDark: "#4a3b59", brick: "#6e5a82" };
@@ -194,7 +199,7 @@ function newStats(): RunStats {
   return { waves: 0, kills: 0, maxCombo: 0, gold: 0, chests: 0, time: 0 };
 }
 
-/** 2-bob boshidagi kuchlar: o'lganda 2-bob shu holatdan qayta boshlanadi. */
+/** 2-dunyo boshidagi kuchlar: o'lganda 2-dunyo shu holatdan qayta boshlanadi. */
 const POWER_KEYS = [
   "hp",
   "maxHp",
@@ -260,14 +265,18 @@ export class Game {
   /** Boss yengilgandan keyingi cheksiz rejim */
   endless = false;
   endlessBest = 0;
-  /** 1-bob: Olovli zindon, 2-bob: Muz sardobasi (faqat 1-bobni yutib o'tiladi) */
-  chapter: 1 | 2 = 1;
-  /** 2-bobni yutgan o'yinlar rekordi (alohida) */
+  /** 1-dunyo: Olovli zindon, 2-dunyo: Muz sardobasi (1-dunyoni yutib yoki menyudan tanlab) */
+  chapter: World = 1;
+  /** Bosh menyuda tanlangan boshlang'ich dunyo */
+  startWorld: World = 1;
+  /** 2-dunyo menyudan boshlandi: 1-to'lqindan oldin bepul kuch tanlanmoqda */
+  startPick = false;
+  /** 2-dunyoni yutgan o'yinlar rekordi (alohida) */
   ch2Best = 0;
   newCh2Best = false;
-  /** 2-bob boshidagi kuchlar va ochko — 2-bobda o'lganda shu holatdan qayta boshlanadi */
+  /** 2-dunyo boshidagi kuchlar va ochko — 2-dunyoda o'lganda shu holatdan qayta boshlanadi */
   private ch2Start: { powers: Powers; score: number } | null = null;
-  /** 1-bob yutilgan va 2-bobda hali o'lmagan ("Ikki bob" yutug'i) */
+  /** 1-dunyo yutilgan va 2-dunyoda hali o'lmagan ("Ikki dunyo" yutug'i) */
   private noDeathRun = false;
   /** Shu to'lqinda sovuq nafas tegdimi / to'lqinda Muz ruhi bormidi ("Sovuqqa chidam") */
   private waveChilled = false;
@@ -302,9 +311,11 @@ export class Game {
   constructor(
     canvas: HTMLCanvasElement,
     public hero: Hero = loadHero(),
-    opts: { daily?: string } = {},
+    opts: { daily?: string; world?: World } = {},
   ) {
     this.daily = opts.daily ?? null;
+    // kunlik sinov doim 1-dunyoda
+    this.startWorld = this.daily ? 1 : (opts.world ?? 1);
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
@@ -347,6 +358,7 @@ export class Game {
     this.phase = "play";
     this.endless = false;
     this.chapter = 1;
+    this.startPick = false;
     this.ch2Start = null;
     this.noDeathRun = false;
     this.newCh2Best = false;
@@ -360,7 +372,35 @@ export class Game {
       // urinish boshlanishi bilan sarflanadi (chiqib ketib qayta boshlab bo'lmaydi)
       this.saveDailyResult(false);
     }
+    if (this.startWorld === 2) return this.startFromWorld2();
     this.startWave(0);
+  }
+
+  /**
+   * Menyudan 2-dunyo: boshlang'ich kuchlarsiz (faqat do'kon), lekin 1-to'lqindan oldin
+   * 1 ta bepul kuch tanlanadi. O'lganda 2-dunyo shu tanlangan kuch bilan qayta boshlanadi.
+   */
+  private startFromWorld2() {
+    this.chapter = 2;
+    this.hints = [];
+    this.wave = -1;
+    this.boss = null;
+    this.fx.snowOn = true;
+    this.banner.timer = 0;
+    this.choices = pickUpgrades(this.player, 3, this.cardRand);
+    this.choiceIndex = 0;
+    this.upgradeLock = 0.6;
+    this.startPick = true;
+    this.stage = this.choices.length ? "upgrade" : "fight";
+    if (!this.choices.length) this.beginWorld2();
+    sfx.playMusic("ice");
+  }
+
+  /** Bepul kuch tanlangach: 2-dunyo boshidagi holat saqlanadi va 1-to'lqin boshlanadi. */
+  private beginWorld2() {
+    this.startPick = false;
+    this.ch2Start = { powers: savePowers(this.player), score: this.score };
+    this.enterChapter2();
   }
 
   /** Kunlik sinov natijasi: shu kunning yagona urinishi. */
@@ -394,31 +434,34 @@ export class Game {
     const boss = isBossWave(i);
     const endless = endlessNumber(i);
     const ch2 = this.ch2;
+    // muz dunyosi: 2-dunyo va undan keyingi cheksiz rejim
+    const ice = this.chapter === 2;
+    const hint =
+      i === 0 && !this.hints.length ? (this.player.mage ? "Shift — teleport" : "Shift — dash") : "";
     this.banner = ch2
       ? boss
         ? { title: "BOSS: QOR MALIKASI", sub: "Ko'k doiradan qoch!", timer: 2.2 }
         : i === 0
-          ? { title: "2-BOB: MUZ SARDOBASI", sub: `TO'LQIN 1/${TOTAL_WAVES}`, timer: 2.6 }
-          : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: "2-BOB", timer: 1.6 }
+          ? { title: "2-DUNYO: MUZ SARDOBASI", sub: `TO'LQIN 1/${TOTAL_WAVES}`, timer: 2.6 }
+          : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: "2-DUNYO", timer: 1.6 }
       : boss
         ? endless
-          ? { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
+          ? ice
+            ? { title: "MALIKA QAYTDI!", sub: `Malika joni: ${bossHp(i, QUEEN_HP)}`, timer: 2.2 }
+            : { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
           : { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
         : endless
           ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
-          : {
-              title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`,
-              sub:
-                i === 0 && this.daily
-                  ? `KUNLIK SINOV · ${this.daily}`
-                  : i === 0 && !this.hints.length
-                    ? this.player.mage
-                      ? "Shift — teleport"
-                      : "Shift — dash"
-                    : "",
-              timer: 1.6,
-            };
-    const kinds = ch2 ? WAVES2[i]! : waveEnemies(i);
+          : i === 0 && this.daily
+            ? { title: `TO'LQIN 1/${TOTAL_WAVES}`, sub: `KUNLIK SINOV · ${this.daily}`, timer: 1.6 }
+            : i === 0
+              ? {
+                  title: "1-DUNYO: OLOVLI ZINDON",
+                  sub: hint || `TO'LQIN 1/${TOTAL_WAVES}`,
+                  timer: 2.2,
+                }
+              : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: "", timer: 1.6 };
+    const kinds = ch2 ? WAVES2[i]! : waveEnemies(i, Math.random, this.chapter);
     this.waveChilled = false;
     this.waveHasFrost = ch2 && (boss || kinds.includes("frost"));
     kinds.forEach((kind, n) => {
@@ -428,17 +471,17 @@ export class Game {
       e.speedMul = ch2 ? waveSpeed2(i) : waveSpeed(i);
       this.enemies.push(e);
     });
-    this.fx.snowOn = ch2;
+    this.fx.snowOn = ice;
     this.fx.wind = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
     if (boss) {
-      this.boss = ch2 ? new Queen(QUEEN_HP) : new Boss(bossHp(i));
+      this.boss = ice ? new Queen(bossHp(i, QUEEN_HP)) : new Boss(bossHp(i));
       this.boss.spawn = this.boss.spawnMax = 1.6;
       sfx.roar();
       this.fx.addShake(0.4);
     } else sfx.wave();
-    sfx.playMusic(boss ? "boss" : ch2 ? "ice" : "normal");
+    sfx.playMusic(boss ? "boss" : ice ? "ice" : "normal");
   }
 
   /** Qor Malikasi: nayza ovozi, bo'ron o'yinchini suradi, yarim jondan pastda ruh chaqiradi. */
@@ -469,12 +512,12 @@ export class Game {
     }
   }
 
-  /** 2-bob davom etmoqda (cheksiz rejimda emas). */
+  /** 2-dunyo davom etmoqda (cheksiz rejimda emas). */
   get ch2() {
     return this.chapter === 2 && !this.endless;
   }
 
-  /** Iblis yengildi: kuchlar, yuraklar va ochko saqlanadi, 1 yurak tiklanadi. */
+  /** Iblis yengildi: 2-dunyoga kuchlar, yuraklar va ochko saqlanadi, 1 yurak tiklanadi. */
   startChapter2() {
     this.chapter = 2;
     this.noDeathRun = true;
@@ -484,7 +527,7 @@ export class Game {
     this.enterChapter2();
   }
 
-  /** 2-bobda o'lgandan keyin: 2-bob boshidagi kuchlar va ochko bilan qayta boshlash. */
+  /** 2-dunyoda o'lgandan keyin: 2-dunyo boshidagi kuchlar va ochko bilan qayta boshlash. */
   retryChapter2() {
     const s = this.ch2Start;
     if (!s) return this.reset();
@@ -648,7 +691,7 @@ export class Game {
   private chapterBtn = { x: ROOM.w / 2 - 80, y: 150, w: 160, h: 18 };
   private endlessBtn = { x: ROOM.w / 2 - 80, y: 172, w: 160, h: 18 };
   private newRunBtn = { x: ROOM.w / 2 - 80, y: 194, w: 160, h: 18 };
-  /** 2-bobda o'lganda: qayta boshlash yoki bosh menyu */
+  /** 2-dunyoda o'lganda: qayta boshlash yoki bosh menyu */
   private retryBtn = { x: ROOM.w / 2 - 80, y: 154, w: 160, h: 18 };
   private quitBtn = { x: ROOM.w / 2 - 80, y: 178, w: 160, h: 18 };
   private cardRect(i: number) {
@@ -817,6 +860,7 @@ export class Game {
       this.stage = "fight";
       return;
     }
+    if (this.startPick) return this.beginWorld2();
     this.startWave(this.wave + 1);
   }
 
@@ -856,9 +900,9 @@ export class Game {
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
     sfx.kill();
     if (e.kind === "golem") {
-      // golem 2 ta kichik muz bo'lagiga bo'linadi
-      for (let k = 0; k < GOLEM_SHARDS; k++) {
-        const s = new Enemy("shard", e.x + (k ? 8 : -8), e.y + 2);
+      // qor odam 2 ta Muz slime'ga bo'linadi
+      for (let k = 0; k < GOLEM_SPLIT; k++) {
+        const s = new Enemy("iceblob", e.x + (k ? 8 : -8), e.y + 2);
         s.spawn = s.spawnMax = 0.3;
         s.speedMul = e.speedMul;
         this.enemies.push(s);
@@ -969,7 +1013,7 @@ export class Game {
       if (this.toasts[0]!.timer <= 0) this.toasts.shift();
     }
     if (this.phase === "attempt" && this.ch2) {
-      // 2-bobda o'lim: o'yinchi o'zi tanlaydi
+      // 2-dunyoda o'lim: o'yinchi o'zi tanlaydi
       if (this.input.consumeEnter() || this.input.consumeKey("KeyR")) this.retryChapter2();
       else if (this.input.consumeKey("KeyQ")) this.exitToMenu();
       return;
@@ -1187,7 +1231,10 @@ export class Game {
 
     // kontakt zarar
     if (!p.dead) {
-      for (const e of this.enemies) if (e.active && overlap(p, e)) p.takeHit(1, e.x, e.y, 180);
+      for (const e of this.enemies)
+        if (e.active && overlap(p, e) && p.takeHit(1, e.x, e.y, 180) && e.kind === "iceblob")
+          // muz slime tegsa sekinlashtiradi
+          p.chill = Math.max(p.chill, ICEBLOB_CHILL);
       if (boss?.active && overlap(p, boss)) p.takeHit(1, boss.x, boss.y, 220);
       this.shots = this.shots.filter((s) => {
         if (!overlap(p, s as unknown as Body)) return true;
@@ -1253,6 +1300,8 @@ export class Game {
             this.bankGold();
             this.saveDailyResult(true);
             this.achieve(this.hero === "mage" ? "winMage" : "winKnight");
+            // 1-dunyo yutildi: bosh menyuda dunyo tanlash ochiladi (kunlik sinov ham hisob)
+            if (this.chapter === 1) save(WORLD1_WON_KEY, 1);
             if (this.chapter === 2) {
               if (this.noDeathRun) this.achieve("twoChapters");
               if (this.score > this.ch2Best) {
@@ -1304,7 +1353,7 @@ export class Game {
 
   /** Joriy to'lqin uchun pol varianti: -1 — Boss xonasi. */
   private floorIndex() {
-    if (this.ch2) return isBossWave(this.wave) ? FLOOR_ICE_BOSS : FLOOR_ICE;
+    if (this.chapter === 2) return isBossWave(this.wave) ? FLOOR_ICE_BOSS : FLOOR_ICE;
     if (isBossWave(this.wave)) return -1;
     const n = endlessNumber(this.wave);
     return n > 0 ? n % FLOORS.length : Math.min(this.wave, FLOORS.length - 1);
@@ -1442,7 +1491,7 @@ export class Game {
     const fi = this.floorIndex();
     if (!this.floor || this.floorKey !== fi) this.buildFloor(fi);
     c.drawImage(this.floor!, 0, 0);
-    if (this.ch2) {
+    if (this.chapter === 2) {
       // mash'alalar o'rniga sovuq ko'k kristallar
       for (const [i, tx] of [64, 160, 256].entries()) {
         const fl = Math.sin(this.time * 2.5 + i * 2);
@@ -1805,13 +1854,13 @@ export class Game {
         ? "BOSS"
         : this.endless
           ? `CHEKSIZ ${endlessNumber(this.wave)}`
-          : `TO'LQIN ${this.wave + 1}/${TOTAL_WAVES}`,
+          : `TO'LQIN ${Math.max(0, this.wave) + 1}/${TOTAL_WAVES}`,
       ROOM.w / 2,
       11,
       7,
       "#e0d6ee",
     );
-    if (this.ch2) this.text("2-BOB", ROOM.w / 2, 20, 5, "#9fd0ef");
+    if (this.chapter === 2) this.text("2-DUNYO", ROOM.w / 2, 20, 5, "#9fd0ef");
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
     this.text(
@@ -1910,9 +1959,11 @@ export class Game {
       this.text(
         this.bonusPick
           ? "XAZINA: BEPUL KUCH!"
-          : this.endless
-            ? `CHEKSIZ ${endlessNumber(this.wave)} TOZALANDI`
-            : `${this.wave + 1}-TO'LQIN TOZALANDI`,
+          : this.startPick
+            ? "2-DUNYO: BEPUL KUCH!"
+            : this.endless
+              ? `CHEKSIZ ${endlessNumber(this.wave)} TOZALANDI`
+              : `${this.wave + 1}-TO'LQIN TOZALANDI`,
         ROOM.w / 2,
         40,
         9,
@@ -1976,16 +2027,16 @@ export class Game {
       );
     }
     if (this.phase === "attempt" && this.ch2) {
-      // 2-bobda o'lim: qayta boshlash yoki bosh menyu
+      // 2-dunyoda o'lim: qayta boshlash yoki bosh menyu
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
       this.text("YIQILDINGIZ", ROOM.w / 2, 46, 10, "#ff4d6d");
-      this.text(`2-BOB · Urinish №${this.attempt}`, ROOM.w / 2, 66, 8, "#9fd0ef");
+      this.text(`2-DUNYO · Urinish №${this.attempt}`, ROOM.w / 2, 66, 8, "#9fd0ef");
       this.text(`Ochko: ${this.score}   Rekord: ${this.best}`, ROOM.w / 2, 82, 6, "#e0d6ee");
       if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, 94, 6, "#a6f08e");
       this.renderGoldResult(108);
       this.renderStats(122);
       for (const [b, label] of [
-        [this.retryBtn, this.touch ? "2-BOBNI QAYTA BOSHLASH" : "2-BOBNI QAYTA: Enter"],
+        [this.retryBtn, this.touch ? "2-DUNYONI QAYTA BOSHLASH" : "2-DUNYONI QAYTA: Enter"],
         [this.quitBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Q"],
       ] as const) {
         px(c, "#9fd0ef", b.x, b.y, b.w, b.h);
@@ -2025,7 +2076,7 @@ export class Game {
       px(c, "rgba(10,5,20,0.8)", 0, 0, ROOM.w, ROOM.h);
       // statistika sig'ishi uchun yozuvlar yuqoriroqda (tugmalar joyida qoladi)
       const ch2 = this.chapter === 2;
-      if (ch2) this.text("2-BOB TUGADI", ROOM.w / 2, 54, 16, "#9fd0ef");
+      if (ch2) this.text("2-DUNYO TUGADI", ROOM.w / 2, 54, 16, "#9fd0ef");
       else this.text("G'ALABA!", ROOM.w / 2, 56, 20, "#ffcc33");
       this.text(
         this.daily ? "Kunlik sinovni yutdingiz" : `${this.attempt}-urinishda yutdingiz`,
@@ -2041,8 +2092,8 @@ export class Game {
           ? "Ertaga yangi sinov"
           : ch2
             ? record
-              ? "YANGI 2-BOB REKORDI!"
-              : `2-bob rekordi: ${this.ch2Best}`
+              ? "YANGI 2-DUNYO REKORDI!"
+              : `2-dunyo rekordi: ${this.ch2Best}`
             : record
               ? "YANGI REKORD!"
               : `Rekord: ${this.best}`,
@@ -2060,7 +2111,7 @@ export class Game {
               [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
             ]
           : [
-              [this.chapterBtn, this.touch ? "2-BOBGA O'TISH" : "2-BOBGA O'TISH: Enter"],
+              [this.chapterBtn, this.touch ? "2-DUNYOGA O'TISH" : "2-DUNYOGA O'TISH: Enter"],
               [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: E"],
               [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],
             ];

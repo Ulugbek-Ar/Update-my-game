@@ -28,7 +28,7 @@ export function bestKeys(h: Hero) {
     : {
         best: "pixel-rpg-best-mage",
         endless: "pixel-rpg-endless-best-mage",
-        // 2-bobni yutgan o'yinlar rekordi alohida
+        // 2-dunyoni yutgan o'yinlar rekordi alohida
         ch2: "pixel-rpg-best-ch2-mage",
       };
 }

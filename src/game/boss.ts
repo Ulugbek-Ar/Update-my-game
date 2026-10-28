@@ -168,7 +168,7 @@ export class Boss implements Body {
   }
 }
 
-// ---------------- 2-bob Bossi: Qor Malikasi ----------------
+// ---------------- 2-dunyo Bossi: Qor Malikasi ----------------
 export const QUEEN_HP = 40;
 /** Muz nayzalari: 3 ta, ketma-ket, har biri oldin ko'k doira bilan ogohlantiriladi */
 export const SPIKE_COUNT = 3;

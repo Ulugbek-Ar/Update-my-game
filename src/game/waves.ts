@@ -2,27 +2,36 @@ import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
 import type { Hero } from "./hero";
 
-/** Har to'lqindagi dushmanlar. Oxirgi to'lqinda Boss ham chiqadi. */
+/** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi */
+export type World = 1 | 2;
+
+/** Har dunyoning o'z moblari (Bosslardan tashqari): boshqa dunyo moblari chiqmaydi. */
+export const WORLD_KINDS: Record<World, readonly EnemyKind[]> = {
+  1: ["blob", "wisp", "rammer", "archer"],
+  2: ["iceblob", "frost", "golem", "shield", "wolf"],
+};
+
+/** 1-dunyo: Olovli zindon. Oxirgi to'lqinda Iblis ham chiqadi. */
 export const WAVES: EnemyKind[][] = [
   ["blob", "blob", "blob"],
   ["blob", "blob", "wisp", "wisp"],
   ["wisp", "wisp", "rammer", "rammer", "blob", "archer"],
-  ["rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob", "archer", "archer", "shield"],
+  ["rammer", "rammer", "rammer", "rammer", "wisp", "wisp", "blob", "blob", "archer", "archer"],
   ["blob", "blob"],
 ];
 
 export const BOSS_WAVE = WAVES.length - 1;
 
-/** 2-bob: Muz sardobasi. 1-bob dushmanlari kamroq, yangi muz dushmanlari aralash; 5-to'lqinda Qor Malikasi. */
+/** 2-dunyo: Muz sardobasi — faqat muz moblari; 5-to'lqinda Qor Malikasi. Bo'rilar juft keladi. */
 export const WAVES2: EnemyKind[][] = [
-  ["frost", "frost", "blob", "wisp"],
-  ["golem", "frost", "blob", "blob", "wisp"],
-  ["golem", "frost", "frost", "rammer", "archer", "wisp"],
-  ["golem", "golem", "frost", "frost", "shield", "rammer", "archer"],
-  ["blob", "wisp"],
+  ["iceblob", "iceblob", "frost", "frost"],
+  ["wolf", "wolf", "golem", "iceblob", "iceblob"],
+  ["shield", "shield", "wolf", "wolf", "frost", "frost"],
+  ["golem", "golem", "wolf", "wolf", "shield", "frost", "frost", "iceblob", "iceblob"],
+  ["iceblob", "iceblob"],
 ];
 
-/** 2-bobda dushmanlar 1-bob oxiridan biroz tezroq boshlanadi va har to'lqinda tezlashadi. */
+/** 2-dunyoda dushmanlar 1-dunyo oxiridan biroz tezroq boshlanadi va har to'lqinda tezlashadi. */
 export function waveSpeed2(i: number) {
   return 1.15 + i * 0.05;
 }
@@ -30,9 +39,6 @@ export function waveSpeed2(i: number) {
 // ---- Cheksiz rejim: Boss mag'lub bo'lgach to'lqinlar indeksi BOSS_WAVE+1 dan davom etadi ----
 /** Har nechanchi cheksiz to'lqinda Boss qaytadi */
 export const ENDLESS_BOSS_EVERY = 5;
-const ENDLESS_KINDS: EnemyKind[] = ["blob", "wisp", "rammer", "archer"];
-/** Qalqonli skelet cheksiz rejimda shu to'lqindan boshlab qo'shiladi */
-export const ENDLESS_SHIELD_FROM = 6;
 
 /** Cheksiz rejimdagi tartib raqami (1, 2, ...); asosiy to'lqinlarda 0. */
 export function endlessNumber(i: number) {
@@ -50,9 +56,9 @@ export function isChestWave(i: number) {
   return n > 0 ? n % 3 === 0 : i === 1 || i === 3;
 }
 
-/** Boss joni: har qaytishda ko'proq. */
-export function bossHp(i: number) {
-  return 30 + 15 * Math.floor(endlessNumber(i) / ENDLESS_BOSS_EVERY);
+/** Boss joni: har qaytishda ko'proq (2-dunyoda Qor Malikasi asosiy jonidan boshlanadi). */
+export function bossHp(i: number, base = 30) {
+  return base + 15 * Math.floor(endlessNumber(i) / ENDLESS_BOSS_EVERY);
 }
 
 /** To'lqin oshgani sari dushmanlar tezlashadi (cheksiz rejimda chegaralangan). */
@@ -61,13 +67,15 @@ export function waveSpeed(i: number) {
   return n === 0 ? 1 + i * 0.07 : Math.min(2, 1 + BOSS_WAVE * 0.07 + n * 0.04);
 }
 
-/** To'lqindagi dushmanlar: asosiy to'lqinlar qat'iy, cheksizda soni oshib boradi. */
-export function waveEnemies(i: number, rand = Math.random): EnemyKind[] {
+/**
+ * To'lqindagi dushmanlar: asosiy to'lqinlar qat'iy, cheksizda soni oshib boradi.
+ * Cheksiz rejimda faqat o'sha dunyoning moblari chiqadi.
+ */
+export function waveEnemies(i: number, rand = Math.random, world: World = 1): EnemyKind[] {
   const n = endlessNumber(i);
-  if (n === 0) return WAVES[i]!;
+  if (n === 0) return (world === 2 ? WAVES2 : WAVES)[i]!;
   const count = isBossWave(i) ? 2 + n / ENDLESS_BOSS_EVERY : Math.min(16, 5 + n);
-  const kinds: EnemyKind[] =
-    n >= ENDLESS_SHIELD_FROM ? [...ENDLESS_KINDS, "shield"] : ENDLESS_KINDS;
+  const kinds = WORLD_KINDS[world];
   return Array.from({ length: count }, () => kinds[Math.floor(rand() * kinds.length)]!);
 }
 

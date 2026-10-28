@@ -1,0 +1,73 @@
+[
+  {
+    "title": "Qor odam",
+    "text": "Uchta qor shar, sabzi burun, ko'mir ko'zlar, chelak qalpoq va shox qo'llar. Sekin yuradi, zarbadan itarilmaydi. Har 3 soniyada qo'llarini ko'tarib sakraydi va yerga uradi: oldin qizil doira chiqadi, ichida qolsangiz 1 zarar. O'lganda 2 ta Muz slime'ga bo'linadi. Qizil doiradan chiqing, zarbadan keyin uring. Joni: 7.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter2();" },
+      { "wave": 1 },
+      { "spawn": { "kind": "golem", "dx": 60 } },
+      {
+        "eval": "const e = g.enemies[0]; e.aiTimer = 0.6; e.hp = 3; g.player.x = 110; e.x = 170; g.chest = null;"
+      },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Muz slime",
+    "text": "Och ko'k, ichida muz kristalli shaffof slime. Sakrab-sakrab quvadi, tegsa 1 zarar va 0.8 soniya sekinlashtiradi. Qor odamdan ham chiqadi. Sakrashlar orasida uring, ikkitasi birga kelsa aylana zarba yoki halqa qulay. Joni: 2.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter2();" },
+      { "wave": 0 },
+      { "spawn": { "kind": "iceblob", "dx": 80, "count": 2 } },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Qor bo'risi",
+    "text": "Oq-kulrang bo'ri, juft bo'lib keladi. O'yinchini aylanib yuradi, so'ng 0.4 soniya yerga cho'kadi va tez sakrab tashlanadi — tegsa 1 zarar. Sakrashdan keyin 1 soniya charchab hansiraydi — shu payt uring. Cho'kkanini ko'rsangiz chetga chiqing yoki dash qiling. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter2();" },
+      { "wave": 1 },
+      { "spawn": { "kind": "wolf", "dx": 55, "dy": -20, "count": 2 } },
+      {
+        "eval": "g.player.x = 150; g.enemies[0].aiTimer = 0.9; g.enemies[1].aiTimer = 2.4; g.chest = null;"
+      },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Muz qalqonli skelet",
+    "text": "Qalqonli skelet endi 2-dunyoda: ko'kish-oq ayozli suyaklar, muz bilan qoplangan qalqon. Qalqon doim sizga buriladi va oldidan kelgan zarbani to'sadi. Yonidan yoki orqasidan uring, aylana zarba va halqa qalqonni teshib o'tadi. Yaqin kelsa qalqon bilan itaradi. Joni: 5.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1" } },
+      { "start": true },
+      { "eval": "g.startChapter2();" },
+      { "wave": 2 },
+      { "spawn": { "kind": "shield", "dx": 60 } },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "Bosh menyu: DUNYO 1 / 2 — 2-dunyodan to'g'ridan-to'g'ri boshlash",
+    "target": "screen",
+    "steps": [
+      { "storage": { "pixel-rpg-world1-won": "1" } },
+      { "click": "2-DUNYO" },
+      { "wait": 300 }
+    ]
+  }
+]

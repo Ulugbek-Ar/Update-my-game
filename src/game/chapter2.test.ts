@@ -69,7 +69,7 @@ describe("2-bob: o'tish", () => {
     expect(g.player.dashMax).toBe(2);
     expect(g.player.hp).toBe(4);
     expect(g.score).toBe(score);
-    expect(g.banner.title).toBe("2-BOB: MUZ SARDOBASI");
+    expect(g.banner.title).toBe("2-DUNYO: MUZ SARDOBASI");
     expect(g.enemies.map((e) => e.kind)).toEqual(WAVES2[0]);
     expect(g.fx.snowOn).toBe(true);
   });
@@ -131,8 +131,8 @@ describe("2-bob: o'tish", () => {
   });
 });
 
-describe("Muz golemi", () => {
-  it("is not knocked back and splits into 2 fast 2-hp shards on death", () => {
+describe("Qor odam (golem)", () => {
+  it("is not knocked back and splits into 2 Muz slime (2 hp) on death", () => {
     const { g, gi } = makeGame();
     const golem = new Enemy("golem", 200, 80);
     expect(golem.maxHp).toBe(7);
@@ -141,9 +141,9 @@ describe("Muz golemi", () => {
     expect(golem.vx).toBe(0);
     expect(golem.vy).toBe(0);
     gi.damageTarget(golem, 99);
-    const shards = g.enemies.filter((e) => e.kind === "shard");
-    expect(shards.length).toBe(2);
-    for (const s of shards) expect(s.maxHp).toBe(2);
+    const blobs = g.enemies.filter((e) => e.kind === "iceblob");
+    expect(blobs.length).toBe(2);
+    for (const s of blobs) expect(s.maxHp).toBe(2);
   });
 
   it("stomps every 3s: 1 damage only inside the small circle", () => {
@@ -260,9 +260,9 @@ describe("2-bob yutuqlari", () => {
     g.enemies = [];
     tick(g, 0.02);
     expect(loadAchievements().has("noChill")).toBe(false);
-    // sekinlashuv tugagach keyingi to'lqin (unda ham Muz ruhi bor)
+    // sekinlashuv tugagach 3-to'lqin (unda ham Muz ruhi bor)
     g.player.chill = 0;
-    gi.startWave(1);
+    gi.startWave(2);
     g.enemies = [];
     tick(g, 0.02);
     expect(loadAchievements().has("noChill")).toBe(true);

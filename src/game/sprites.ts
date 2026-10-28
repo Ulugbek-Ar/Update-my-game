@@ -11,7 +11,8 @@ export type SpriteKind =
   | "bat"
   | "frost"
   | "golem"
-  | "shard"
+  | "iceblob"
+  | "wolf"
   | "queen";
 type Point = readonly [number, number];
 type Pose = {
@@ -134,17 +135,19 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
-  // Qalqonli skelet: suyak soyasi, suyak, qo'ng'ir yog'och qalqon, kulrang temir gardish va tig'
-  shield: ["#101015", "#747b82", "#d6d9cf", "#7a4a24", "#9a9ea8"],
+  // Muz qalqonli skelet (2-dunyo): ko'kish suyak soyasi, ayozli oq suyak, muz qoplagan qalqon, sovuq gardish va tig'
+  shield: ["#0d1b2a", "#6f8fab", "#e8f4fb", "#5b9fd6", "#c6ecff"],
   demon: ["#170b11", "#681e2b", "#b23238", "#f4cb45", "#a7a3a0"],
   slime: ["#0b1a10", "#2c7a3c", "#5bc85b", "#a6f08e", "#f2fbe4"],
   bat: ["#120a1a", "#4a2470", "#8a4fc0", "#c99ae8", "#ffe14d"],
-  // 2-bob. Muz ruhi: ko'k-oq arvoh, ko'zlarida sovuq yorug'lik
+  // 2-dunyo. Muz ruhi: ko'k-oq arvoh, ko'zlarida sovuq yorug'lik
   frost: ["#0d1b2a", "#5d8fb8", "#9fd0ef", "#e6f6ff", "#7fe9ff"],
-  // Muz golemi: to'q ko'k tosh-muz, och ko'k plitalar, qor qalpoq, yonib turgan yadro
-  golem: ["#101a24", "#3d5a75", "#6e93b3", "#d8ecf7", "#7fe9ff"],
-  // Muz bo'lagi: golemdan uzilgan kichik muz
-  shard: ["#101a24", "#4f7aa0", "#8fc3e6", "#d8f0ff", "#ffffff"],
+  // Qor odam (kind "golem"): ko'mir, qor soyasi, qor, sabzi, yog'och chelak va shox qo'llar
+  golem: ["#141821", "#9db7cc", "#f4f9ff", "#ff8a2a", "#5a3a22"],
+  // Muz slime: to'q muz, och ko'k shaffof tana, yaltiroq, ichidagi kristall
+  iceblob: ["#0b1a2e", "#3f86c2", "#a3dcf7", "#eefaff", "#2fc6f0"],
+  // Qor bo'risi: to'q kulrang yag'ir, kulrang, oq ko'krak, muz ko'k ko'z
+  wolf: ["#13161d", "#5a6372", "#a7b0bd", "#eef2f6", "#5fe3ff"],
   // Qor Malikasi: siyoh, to'q ko'k soch va burmalar, oqish-ko'k ko'ylak, oq teri va mo'yna, muz toj
   queen: ["#0e1626", "#4a6fa5", "#a9cdee", "#eef7ff", "#7fe9ff"],
 };
@@ -744,6 +747,11 @@ function roundShield(p: Pixels, cx: number, cy: number) {
   p.rect(2, Math.round(cx) + 2, Math.round(cy) - 3, 1, 7);
   p.rect(5, Math.round(cx) - 1, Math.round(cy) - 1, 3, 3);
   p.rect(3, Math.round(cx), Math.round(cy) - 1, 1, 1);
+  // muz qoplami: chetida ayoz, pastida sumalaklar
+  p.rect(3, Math.round(cx) - 3, Math.round(cy) - 6, 2, 1);
+  p.rect(3, Math.round(cx) + 2, Math.round(cy) + 4, 1, 1);
+  p.rect(5, Math.round(cx) - 2, Math.round(cy) + 7, 1, 2);
+  p.rect(5, Math.round(cx) + 1, Math.round(cy) + 7, 1, 3);
 }
 
 /** Qisqa qilich orqa qo'lda, tig'i yuqoriga. */
@@ -758,6 +766,8 @@ function shortSword(p: Pixels, hand: Point) {
 function shieldBearer(p: Pixels, pose: Pose, push: number) {
   shortSword(p, pose.otherHand);
   boneBody(p, pose);
+  // bosh suyagi ustida ayoz
+  p.rect(5, 13 + pose.lean, 4 + pose.bob, 6, 1);
   roundShield(p, 22 + push + pose.lean, 17 + pose.bob);
 }
 
@@ -1073,7 +1083,7 @@ function bat(p: Pixels, state: AnimState, frame: number) {
   p.rect(2, cx + 1, cy + 6, 1, 2);
 }
 
-// ---------------- 2-bob: muz mavjudotlari ----------------
+// ---------------- 2-dunyo: muz mavjudotlari ----------------
 
 /** Muz ruhi: suzuvchi arvoh, dumi to'lqinlanadi. */
 const frostFrames: Record<
@@ -1155,85 +1165,289 @@ function frostGhost(p: Pixels, state: AnimState, frame: number) {
   }
 }
 
-/** Muz golemi: muz-tosh bloklar, qor qalpoq, ko'kragida yonib turgan yadro. */
-const golemSlam: readonly { hand: Point; other: Point; lift: number }[] = [
-  { hand: [24, 3], other: [8, 3], lift: -1 },
-  { hand: [26, 9], other: [6, 9], lift: 0 },
-  { hand: [26, 26], other: [6, 26], lift: 2 },
-];
+// ---- Qor odam (kind "golem"): 1 — ko'mir, 2 — qor soyasi, 3 — qor, 4 — sabzi, 5 — chelak va shox qo'llar ----
 
-function golem(p: Pixels, pose: Pose, slam: number | null) {
-  const { bob: b, lean: l } = pose;
-  const s = slam === null ? null : golemSlam[slam];
-  const dy = s ? s.lift : b;
-  // og'ir oyoqlar
-  p.line(2, [12, 22 + dy], [pose.leftFoot[0], 28], 5);
-  p.line(2, [20, 22 + dy], [pose.rightFoot[0], 28], 5);
-  p.rect(3, pose.leftFoot[0] - 3, 27, 6, 2);
-  p.rect(3, pose.rightFoot[0] - 2, 27, 6, 2);
-  // gavda: katta blok, ustida och muz plitalar
-  p.rect(2, 8 + l, 10 + dy, 16, 13);
-  p.rect(3, 9 + l, 11 + dy, 6, 4);
-  p.rect(3, 17 + l, 11 + dy, 6, 4);
-  p.rect(3, 10 + l, 17 + dy, 12, 3);
-  // ko'krakdagi yadro
-  p.rect(5, 14 + l, 13 + dy, 4, 3);
-  p.rect(4, 15 + l, 13 + dy, 1, 1);
-  // qo'llar: yelkadan mushtgacha qalin
-  const hand = s ? s.hand : pose.hand,
-    other = s ? s.other : pose.otherHand;
-  p.line(2, [8 + l, 12 + dy], [other[0] - 1, other[1]], 4);
-  p.line(2, [24 + l, 12 + dy], [hand[0] + 1, hand[1]], 4);
-  p.rect(3, other[0] - 3, other[1] - 1, 4, 4);
-  p.rect(3, hand[0] - 1, hand[1] - 1, 4, 4);
-  // bosh: kichik blok, qor qalpoq, sovuq ko'zlar
-  p.rect(2, 12 + l, 4 + dy, 8, 6);
-  p.rect(4, 11 + l, 3 + dy, 10, 2);
-  p.rect(5, 13 + l, 6 + dy, 2, 1);
-  p.rect(5, 17 + l, 6 + dy, 2, 1);
-  if (slam === 2) {
-    // yerga urilganda muz parchalari otiladi
-    p.rect(4, 3, 24, 2, 2);
-    p.rect(4, 27, 23, 2, 2);
-    p.rect(5, 2, 28, 1, 1);
-    p.rect(5, 29, 27, 1, 1);
+/** Uchta qor shar: pastki, o'rta, bosh; soyasi chap-pastda. */
+function snowBall(p: Pixels, cx: number, cy: number, rx: number, ry: number) {
+  p.ellipse(2, cx, cy, rx, ry);
+  p.ellipse(3, cx + 0.6, cy - 0.8, rx - 1.2, ry - 1.2);
+}
+
+/** Shox qo'l: yelkadan uchigacha, uchida ikki barmoq-novda. */
+function twigArm(p: Pixels, from: Point, to: Point) {
+  p.line(5, from, to, 1);
+  const sx = Math.sign(to[0] - from[0]) || 1;
+  p.rect(5, to[0] - sx, to[1] - 2, 1, 2);
+  p.rect(5, to[0] + sx, to[1] - 1, 1, 1);
+}
+
+/** Chelak qalpoq: (x, y) — chelak tagining chap uchi. */
+function bucket(p: Pixels, x: number, y: number) {
+  p.rect(5, x + 1, y - 3, 7, 3);
+  p.rect(5, x, y, 9, 1);
+  p.rect(1, x + 3, y - 2, 1, 1);
+}
+
+interface SnowFrame {
+  /** butun gavda balandligi */
+  dy: number;
+  /** bosh va o'rta sharning yonga og'ishi */
+  tilt: number;
+  /** qo'l uchlari: o'ng (oldingi) va chap */
+  hand: Point;
+  other: Point;
+  /** pastki shar ezilishi (yerga urilganda) */
+  squash?: number;
+  /** yerga urilganda qor parchalari */
+  puff?: boolean;
+  /** zarba yegan: ko'zlar qisilgan */
+  hurt?: boolean;
+}
+
+const snowFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly SnowFrame[]> = {
+  idle: [
+    { dy: 0, tilt: 0, hand: [27, 11], other: [5, 12] },
+    { dy: 1, tilt: 0, hand: [27, 12], other: [5, 11] },
+  ],
+  // qor ustida chayqalib sirpanadi
+  walk: [
+    { dy: 0, tilt: -1, hand: [27, 13], other: [5, 10] },
+    { dy: -1, tilt: 0, hand: [28, 11], other: [4, 11] },
+    { dy: 0, tilt: 1, hand: [27, 10], other: [5, 13] },
+    { dy: 1, tilt: 0, hand: [26, 12], other: [6, 12] },
+  ],
+  // yerga urish: 0 — qo'llar tepada, 1 — sakradi, 2 — yerga tushdi
+  attack: [
+    { dy: 0, tilt: 0, hand: [26, 3], other: [6, 3] },
+    { dy: -2, tilt: 0, hand: [28, 5], other: [4, 5] },
+    { dy: 1, tilt: 0, hand: [29, 22], other: [3, 22], squash: 1, puff: true },
+  ],
+  hurt: [{ dy: 1, tilt: -2, hand: [27, 7], other: [6, 16], hurt: true }],
+};
+
+function snowman(p: Pixels, f: SnowFrame) {
+  const { dy, tilt } = f;
+  const mid = Math.round(tilt / 2);
+  const sq = f.squash ?? 0;
+  snowBall(p, 16, 24 + dy + sq, 8 + sq, 6 - sq);
+  twigArm(p, [11 + mid, 15 + dy], f.other);
+  twigArm(p, [21 + mid, 15 + dy], f.hand);
+  snowBall(p, 16 + mid, 16 + dy, 6, 5);
+  snowBall(p, 16 + tilt, 9 + dy, 4.5, 4);
+  // ko'mir tugmalar
+  p.rect(1, 16 + mid, 14 + dy, 1, 1);
+  p.rect(1, 16 + mid, 17 + dy, 1, 1);
+  p.rect(1, 16, 22 + dy + sq, 1, 1);
+  // ko'mir ko'zlar (zarba yeganda qisilgan) va og'iz
+  const hx = 16 + tilt,
+    hy = 9 + dy;
+  if (f.hurt) {
+    p.rect(1, hx - 3, hy - 1, 2, 1);
+    p.rect(1, hx + 1, hy - 1, 2, 1);
+  } else {
+    p.rect(1, hx - 2, hy - 2, 1, 2);
+    p.rect(1, hx + 1, hy - 2, 1, 2);
+  }
+  p.rect(1, hx - 1, hy + 2, 1, 1);
+  p.rect(1, hx + 1, hy + 2, 1, 1);
+  // sabzi burun — oldinga
+  p.rect(4, hx + 1, hy, 3, 2);
+  p.rect(4, hx + 4, hy + 1, 2, 1);
+  // chelak qalpoq
+  bucket(p, hx - 4, hy - 4);
+  if (f.puff) {
+    // yerga urilganda qor parchalari sochiladi
+    p.rect(3, 2, 26, 2, 2);
+    p.rect(3, 28, 25, 2, 2);
+    p.rect(3, 4, 22, 1, 1);
+    p.rect(3, 27, 21, 1, 1);
   }
 }
 
-function golemFallen(p: Pixels, frame: number) {
+/** Qor odam yiqilishi: chelak tushadi, bosh qulaydi, so'ng qor uyumi qoladi. */
+function snowmanFallen(p: Pixels, frame: number) {
   if (frame === 0) {
-    // tiz cho'kmoqda
-    golem(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, null);
+    // bosh og'di, chelak sirg'alib tushmoqda
+    snowBall(p, 16, 25, 8, 5);
+    twigArm(p, [11, 17], [5, 22]);
+    twigArm(p, [21, 17], [27, 21]);
+    snowBall(p, 15, 18, 6, 5);
+    snowBall(p, 20, 12, 4.5, 4);
+    p.rect(1, 19, 10, 1, 2);
+    p.rect(1, 22, 10, 1, 2);
+    p.rect(4, 23, 12, 3, 2);
+    bucket(p, 22, 6);
     return;
   }
   if (frame === 1) {
-    // bloklar ajralmoqda
-    p.rect(2, 6, 18, 9, 8);
-    p.rect(3, 7, 19, 4, 3);
-    p.rect(2, 17, 16, 9, 9);
-    p.rect(3, 18, 17, 5, 3);
-    p.rect(5, 15, 21, 3, 2);
-    p.rect(2, 12, 9, 7, 5);
-    p.rect(4, 11, 8, 9, 2);
-    p.rect(2, 4, 26, 24, 3);
+    // bosh yerga yumaladi, o'rta shar ezildi
+    snowBall(p, 14, 26, 9, 4);
+    snowBall(p, 13, 21, 6, 3.5);
+    snowBall(p, 25, 26, 4, 3.5);
+    p.rect(1, 24, 25, 1, 1);
+    p.rect(4, 27, 26, 3, 1);
+    twigArm(p, [8, 21], [3, 18]);
+    bucket(p, 19, 29);
     return;
   }
-  // muz uyumi
-  p.rect(2, 4, 24, 24, 5);
-  p.rect(3, 6, 23, 6, 3);
-  p.rect(3, 15, 22, 7, 3);
-  p.rect(4, 9, 21, 9, 2);
-  p.rect(5, 16, 26, 2, 1);
+  // qor uyumi: sabzi, ko'mir va chelak yerda
+  p.ellipse(2, 15, 28, 12, 4, 31);
+  p.ellipse(3, 15, 28, 10.5, 3, 31);
+  p.rect(4, 17, 27, 3, 1);
+  p.rect(1, 11, 27, 1, 1);
+  p.rect(1, 14, 26, 1, 1);
+  bucket(p, 22, 29);
+  p.line(5, [3, 27], [7, 25], 1);
 }
 
-/** Muz bo'lagi: slime shakli, ustida muz qirralari. */
-function shard(p: Pixels, state: AnimState, frame: number) {
-  slime(p, state, frame);
-  if (state === "death" && frame > 0) return;
-  const f = slimeFrames[state][frame] ?? slimeFrames[state][0]!;
-  const top = 27 - f.lift - f.h * 2;
-  p.line(4, [16 + f.lean - 3, top + 3], [16 + f.lean - 5, top - 1], 1);
-  p.line(4, [16 + f.lean + 2, top + 2], [16 + f.lean + 4, top - 2], 1);
+// ---- Muz slime: 2 — to'q muz, 3 — och ko'k tana, 4 — yaltiroq, 5 — ichidagi muz kristall ----
+
+function iceblob(p: Pixels, state: AnimState, frame: number) {
+  const f = slimeFrames[state][frame] ?? slimeFrames[state][0];
+  if (!f) return;
+  const base = 27 - f.lift,
+    cx = 16 + f.lean;
+  const top = base - f.h * 2;
+  // tana: tomchi shakli — tepasida uchli muz cho'qqi
+  p.ellipse(2, cx, base, f.w, f.h * 2, base);
+  if (state !== "death" || frame === 0)
+    p.polygon(2, [
+      [cx - 2, top + 3],
+      [cx + f.lean, top - 3],
+      [cx + 3, top + 3],
+    ]);
+  p.ellipse(3, cx, base - 1, f.w - 2, f.h * 2 - 3, base - 1);
+  if (state !== "death" || frame === 0) {
+    // ichidagi muz kristall: tananing pastki o'rtasida katta romb va yaltirog'i
+    const ky = base - 4;
+    p.polygon(5, [
+      [cx + 1, ky - 4],
+      [cx + 5, ky],
+      [cx + 1, ky + 3],
+      [cx - 3, ky],
+    ]);
+    p.rect(4, cx, ky - 2, 1, 3);
+    // yuzidagi yaltiroq uchqunlar
+    p.rect(4, cx - f.w + 3, top + 6, 1, 1);
+    p.rect(4, cx - f.w + 4, top + 5, 1, 3);
+    // ko'zlar: kristalldan yuqorida
+    const ey = Math.min(top + 5, ky - 6);
+    const closed = state === "hurt";
+    p.rect(1, cx - 3, ey, 2, closed ? 1 : 2);
+    p.rect(1, cx + 2, ey, 2, closed ? 1 : 2);
+    if (state === "attack") p.rect(1, cx - 1, ey + 3, 3, 1);
+    // pastki chetida muz sumalaklari
+    p.rect(4, cx - f.w + 2, base, 1, 1);
+    p.rect(4, cx + f.w - 3, base, 1, 1);
+  } else {
+    // erib ketmoqda: ko'lmak va muz siniqlari
+    for (let i = 0; i < frame * 2; i++) p.rect(5, 7 + i * 5, 29 - (i % 2) * 2, 2, 1);
+  }
+  if (f.lift > 0) p.rect(2, cx - 3, base, 6, 1);
+}
+
+// ---- Qor bo'risi: 2 — to'q kulrang yag'ir, 3 — kulrang, 4 — oq ko'krak va panjalar, 5 — muz ko'k ko'z ----
+
+interface WolfFrame {
+  /** gavda va boshning vertikal siljishi */
+  by: number;
+  hy: number;
+  /** boshning gorizontal siljishi */
+  hx?: number;
+  /** dum uchi balandligi */
+  tail: number;
+  /** oyoqlar uchining x siljishi: old-o'ng, old-chap, orqa-o'ng, orqa-chap */
+  legs: readonly [number, number, number, number];
+  /** oyoqlar uchi qaysi balandlikda (28 — yerda) */
+  feet?: readonly [number, number];
+  /** og'iz ochiq va oldida bug' (hansirash) */
+  pant?: boolean;
+  /** ko'z yumilgan */
+  blink?: boolean;
+}
+
+const wolfFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly WolfFrame[]> = {
+  idle: [
+    { by: 0, hy: 0, tail: 2, legs: [0, 0, 0, 0] },
+    { by: 1, hy: 1, tail: 0, legs: [0, 0, 0, 0] },
+  ],
+  walk: [
+    { by: 0, hy: 0, tail: 1, legs: [2, -2, -2, 2] },
+    { by: -1, hy: -1, tail: 0, legs: [0, 0, 0, 0] },
+    { by: 0, hy: 0, tail: -1, legs: [-2, 2, 2, -2] },
+    { by: 1, hy: 1, tail: 0, legs: [1, -1, -1, 1] },
+  ],
+  // 0 — cho'kdi (ogohlantirish), 1 — sakradi (cho'zilgan), 2 — charchadi (bosh pastda, hansiraydi)
+  attack: [
+    { by: 3, hy: 5, hx: 1, tail: 4, legs: [-2, -1, 2, 1] },
+    { by: -3, hy: -2, hx: 1, tail: -3, legs: [6, 4, -6, -5], feet: [22, 24] },
+    { by: 1, hy: 5, tail: 4, legs: [0, 0, 0, 0], pant: true },
+  ],
+  hurt: [{ by: 0, hy: -2, hx: -1, tail: 5, legs: [-1, -1, 1, 1], blink: true }],
+};
+
+function wolf(p: Pixels, f: WolfFrame) {
+  const { by, hy } = f;
+  const hx = f.hx ?? 0;
+  const [frontY, backY] = f.feet ?? [28, 28];
+  // orqadagi (uzoq) oyoqlar to'qroq
+  p.line(2, [22, 20 + by], [22 + f.legs[1], frontY], 2);
+  p.line(2, [10, 20 + by], [10 + f.legs[3], backY], 2);
+  // dum: yo'g'on, uchi oq
+  p.line(2, [8, 16 + by], [4, 15 + by + f.tail], 3);
+  p.rect(4, 2, 14 + by + f.tail, 2, 2);
+  // gavda: ustki yag'ir to'q, qorni oq
+  p.ellipse(2, 15, 17 + by, 9, 4.5);
+  p.ellipse(3, 15, 18 + by, 8, 3.5);
+  p.ellipse(4, 16, 20 + by, 5, 1.2);
+  // oldingi (yaqin) oyoqlar, oq panjalar
+  p.line(3, [20, 20 + by], [20 + f.legs[0], frontY], 2);
+  p.line(3, [12, 20 + by], [12 + f.legs[2], backY], 2);
+  p.rect(4, 20 + f.legs[0] - 1, frontY, 2, 1);
+  p.rect(4, 12 + f.legs[2] - 1, backY, 2, 1);
+  // bo'yin va bosh
+  const x = 24 + hx,
+    y = 13 + hy;
+  p.line(3, [20, 16 + by], [x - 1, y + 1], 4);
+  p.ellipse(3, x, y, 4, 3.5);
+  p.rect(2, x - 3, y - 3, 5, 2);
+  // quloq
+  p.polygon(2, [
+    [x - 3, y - 2],
+    [x - 1, y - 7],
+    [x + 1, y - 2],
+  ]);
+  // tumshuq, oq jag', burun
+  p.rect(3, x + 2, y, 4, 2);
+  p.rect(4, x + 1, y + 2, 4, 1);
+  p.rect(1, x + 6, y, 1, 1);
+  if (f.pant) {
+    // og'iz ochiq, sovuqda bug' chiqadi
+    p.rect(1, x + 2, y + 3, 3, 1);
+    p.rect(4, x + 6, y + 4, 2, 1);
+    p.rect(4, x + 7, y + 2, 1, 1);
+  }
+  // muz ko'k ko'z
+  p.rect(f.blink ? 1 : 5, x, y - 1, 1, 1);
+}
+
+/** Bo'ri yiqilishi: yon tomonga cho'kadi, so'ng yonboshlab yotadi. */
+function wolfFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    wolf(p, { by: 4, hy: 8, hx: 1, tail: 5, legs: [-3, -3, 3, 3], blink: true });
+    return;
+  }
+  const y = frame === 1 ? 23 : 25;
+  // yonboshlab yotibdi: oyoqlar yon tomonga cho'zilgan
+  p.line(2, [9, y], [4, y + 3], 3);
+  p.ellipse(2, 15, y, 9, frame === 1 ? 4 : 3);
+  p.ellipse(3, 15, y + 1, 8, frame === 1 ? 3 : 2);
+  p.line(3, [12, y + 2], [10, 29], 2);
+  p.line(3, [19, y + 2], [22, 29], 2);
+  p.ellipse(3, 25, y + 2, 4, 3);
+  p.rect(2, 22, y - 1, 4, 2);
+  p.rect(4, 27, y + 3, 3, 1);
+  p.rect(1, 25, y + 1, 1, 1);
 }
 
 /** Qor Malikasi: oqish-ko'k ko'ylak, muz toj, qo'lida muz tayoq (uchi qo'lga nisbatan). */
@@ -1321,26 +1535,32 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     frostGhost(p, state, frame);
     return p.outlined();
   }
-  if (kind === "shard") {
-    shard(p, state, frame);
+  if (kind === "iceblob") {
+    iceblob(p, state, frame);
     return p.outlined();
   }
-  if (kind === "golem" || kind === "queen") {
+  if (kind === "golem" || kind === "wolf") {
     const f = Math.min(2, Math.max(0, frame));
     if (state === "death") {
-      if (kind === "golem") golemFallen(p, f);
-      else queenFallen(p, f);
+      if (kind === "golem") snowmanFallen(p, f);
+      else wolfFallen(p, f);
+    } else if (kind === "golem") snowman(p, snowFrames[state][frame] ?? snowFrames[state][0]!);
+    else wolf(p, wolfFrames[state][frame] ?? wolfFrames[state][0]!);
+    return p.outlined();
+  }
+  if (kind === "queen") {
+    const f = Math.min(2, Math.max(0, frame));
+    if (state === "death") {
+      queenFallen(p, f);
       return p.outlined();
     }
     const pose = poses[state][frame] ?? poses[state][0]!;
-    if (kind === "golem") golem(p, pose, state === "attack" ? f : null);
-    else
-      queen(
-        p,
-        pose,
-        staffTops[state][frame] ?? staffTops[state][0]!,
-        state === "attack" && frame === 1,
-      );
+    queen(
+      p,
+      pose,
+      staffTops[state][frame] ?? staffTops[state][0]!,
+      state === "attack" && frame === 1,
+    );
     return p.outlined();
   }
   if (kind === "slime") {
@@ -1414,11 +1634,9 @@ export function renderSprite(
       ? 64
       : kind === "golem"
         ? 40
-        : kind === "slime" || kind === "bat" || kind === "frost"
+        : kind === "slime" || kind === "bat" || kind === "frost" || kind === "iceblob"
           ? 26
-          : kind === "shard"
-            ? 20
-            : 32;
+          : 32;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;

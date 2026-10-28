@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Game } from "@/game/game";
+import { Game, WORLD1_WON_KEY } from "@/game/game";
+import type { World } from "@/game/waves";
 import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,9 @@ function Index() {
   const [achOpen, setAchOpen] = useState(false);
   const [achCount, setAchCount] = useState(0);
   const [newsOpen, setNewsOpen] = useState(false);
+  /** 1-dunyo yutilgan: menyuda dunyo tanlash ko'rinadi */
+  const [world2Open, setWorld2Open] = useState(false);
+  const [world, setWorld] = useState<World>(1);
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
@@ -64,6 +68,7 @@ function Index() {
     setHero(loadHero());
     setDaily(loadDaily());
     setAchCount(loadAchievements().size);
+    setWorld2Open(isWorld2Open());
     try {
       setGold(loadGold());
       // yangi versiyaga birinchi kirishda — oxirgi yangiliklar bir marta
@@ -117,7 +122,7 @@ function Index() {
     const g = new Game(
       canvasRef.current,
       hero,
-      dailyRef.current ? { daily: dailyRef.current } : {},
+      dailyRef.current ? { daily: dailyRef.current } : { world },
     );
     g.touch = touch;
     g.onExit = () => {
@@ -127,6 +132,7 @@ function Index() {
       setGold(loadGold());
       setDaily(loadDaily());
       setAchCount(loadAchievements().size);
+      setWorld2Open(isWorld2Open());
       setGame(null);
       setStarted(false);
     };
@@ -166,6 +172,38 @@ function Index() {
                 </button>
               ))}
             </div>
+            {world2Open && (
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  aria-label="Dunyo tanlash"
+                  className="flex items-center gap-2 text-[9px] sm:text-[10px]"
+                >
+                  <span className="text-muted-foreground">DUNYO:</span>
+                  {([1, 2] as const).map((w) => (
+                    <button
+                      key={w}
+                      aria-label={`${w}-DUNYO`}
+                      aria-pressed={world === w}
+                      onClick={() => setWorld(w)}
+                      className={`border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
+                        world === w
+                          ? w === 2
+                            ? "border-[#9fd0ef] bg-[#9fd0ef]/15 text-[#9fd0ef]"
+                            : "border-primary bg-primary/15 text-primary"
+                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-[8px] sm:text-[9px] leading-4">
+                  {world === 2
+                    ? "2-DUNYO: Muz sardobasi · boshlang'ich kuchlarsiz, 1 ta bepul kuch"
+                    : "1-DUNYO: Olovli zindon"}
+                </p>
+              </div>
+            )}
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
                 <>
@@ -196,7 +234,9 @@ function Index() {
             <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
               5 to'lqin · har to'lqindan so'ng kuch tanlang · oxirida Boss
               <br />
-              Iblisni yengsangiz — 2-bob: Muz sardobasi
+              {world2Open
+                ? "Har dunyoning o'z dushmanlari va Bossi"
+                : "Iblisni yengsangiz — 2-dunyo: Muz sardobasi"}
               {best > 0 && (
                 <>
                   <br />
@@ -206,7 +246,7 @@ function Index() {
               {ch2Best > 0 && (
                 <>
                   <br />
-                  <span className="text-[#9fd0ef]">❄ 2-bob yutilgan rekord: {ch2Best}</span>
+                  <span className="text-[#9fd0ef]">❄ 2-dunyo yutilgan rekord: {ch2Best}</span>
                 </>
               )}
               {endlessBest > 0 && (
@@ -765,7 +805,17 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
 
 function CoachPanel({ hero }: { hero: Hero }) {
   const [enemy, setEnemy] = useState<
-    "slime" | "bat" | "skeleton" | "archer" | "shield" | "boss" | "frost" | "golem" | "queen"
+    | "slime"
+    | "bat"
+    | "skeleton"
+    | "archer"
+    | "boss"
+    | "iceblob"
+    | "frost"
+    | "golem"
+    | "shield"
+    | "wolf"
+    | "queen"
   >("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
@@ -797,15 +847,21 @@ function CoachPanel({ hero }: { hero: Hero }) {
           onChange={(e) => setEnemy(e.target.value as typeof enemy)}
           className="bg-background text-foreground border-2 border-border p-2"
         >
-          <option value="slime">Slime</option>
-          <option value="bat">Ko'rshapalak</option>
-          <option value="skeleton">Skelet jangchi</option>
-          <option value="archer">Kamonchi skelet</option>
-          <option value="shield">Qalqonli skelet</option>
-          <option value="boss">Boss (iblis)</option>
-          <option value="frost">Muz ruhi (2-bob)</option>
-          <option value="golem">Muz golemi (2-bob)</option>
-          <option value="queen">Qor Malikasi (2-bob Bossi)</option>
+          <optgroup label="1-DUNYO: Olovli zindon">
+            <option value="slime">Slime</option>
+            <option value="bat">Ko'rshapalak</option>
+            <option value="skeleton">Skelet jangchi</option>
+            <option value="archer">Kamonchi skelet</option>
+            <option value="boss">Boss (iblis)</option>
+          </optgroup>
+          <optgroup label="2-DUNYO: Muz sardobasi">
+            <option value="iceblob">Muz slime</option>
+            <option value="frost">Muz ruhi</option>
+            <option value="golem">Qor odam</option>
+            <option value="shield">Muz qalqonli skelet</option>
+            <option value="wolf">Qor bo'risi</option>
+            <option value="queen">Qor Malikasi (Boss)</option>
+          </optgroup>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-foreground">
@@ -832,4 +888,15 @@ function CoachPanel({ hero }: { hero: Hero }) {
       {tip && <p className="text-foreground whitespace-pre-wrap">{tip}</p>}
     </section>
   );
+}
+
+/** 2-dunyo menyuda tanlanadimi: 1-dunyo yutilgan (eski o'yinchilarda — g'alaba yutug'i bor). */
+function isWorld2Open() {
+  try {
+    if (localStorage.getItem(WORLD1_WON_KEY)) return true;
+  } catch {
+    /* saqlash imkonsiz */
+  }
+  const got = loadAchievements();
+  return got.has("winKnight") || got.has("winMage");
 }
