@@ -43,10 +43,13 @@ jobs:
         if: ${{ inputs.seed }}
         run: |
           for V in $(grep -oP 'version: "\K[^"]+' src/game/version.ts); do
+            git ls-remote --exit-code --tags origin "refs/tags/tg-v$V" > /dev/null && continue
             C=$(git log --format=%H -S "GAME_VERSION = \"$V\"" --reverse -- src/game/version.ts | head -1)
-            [ -n "$C" ] && git tag -f "tg-v$V" "$C" && echo "tg-v$V -> $C"
+            [ -z "$C" ] && continue
+            git tag -f "tg-v$V" "$C" > /dev/null
+            git push -qf origin "refs/tags/tg-v$V" 2> /dev/null || { git tag -f "tg-v$V" HEAD > /dev/null; git push -qf origin "refs/tags/tg-v$V"; }
+            echo "tg-v$V"
           done
-          git push -qf origin $(git tag -l 'tg-v*' | sed 's#^#refs/tags/#')
 
       - name: Bu versiya avval chiqqanmi?
         id: check
