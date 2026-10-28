@@ -29,6 +29,7 @@ import { bestKeys, loadHero, type Hero } from "./hero";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
 import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
+import { recordWorldWin } from "./progress";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 /** Ritsar rekordlari (Sehrgarniki — hero.ts dagi bestKeys) */
@@ -37,8 +38,8 @@ export const BEST_KEY = bestKeys("knight").best;
 export const ENDLESS_BEST_KEY = bestKeys("knight").endless;
 /** Birinchi o'yindagi ko'rsatmalar ko'rsatib bo'lingan */
 export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
-/** 1-dunyo yutilgan: bosh menyuda dunyo tanlash ochiladi */
-export const WORLD1_WON_KEY = "pixel-rpg-world1-won";
+/** 1-dunyo yutilgan: xaritada 2-dunyo ochiladi */
+export { WORLD1_WON_KEY } from "./progress";
 export type Hint = "attack" | "spin" | "dash";
 const HINTS: Hint[] = ["attack", "spin", "dash"];
 type Phase = "play" | "attempt" | "victory";
@@ -1300,8 +1301,8 @@ export class Game {
             this.bankGold();
             this.saveDailyResult(true);
             this.achieve(this.hero === "mage" ? "winMage" : "winKnight");
-            // 1-dunyo yutildi: bosh menyuda dunyo tanlash ochiladi (kunlik sinov ham hisob)
-            if (this.chapter === 1) save(WORLD1_WON_KEY, 1);
+            // dunyo yutildi: xaritada keyingi dunyo ochiladi (kunlik sinov ham hisob)
+            recordWorldWin(this.chapter, this.hero);
             if (this.chapter === 2) {
               if (this.noDeathRun) this.achieve("twoChapters");
               if (this.score > this.ch2Best) {

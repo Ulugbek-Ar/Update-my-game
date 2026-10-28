@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { Game, WORLD1_WON_KEY } from "@/game/game";
+import { Game } from "@/game/game";
 import type { World } from "@/game/waves";
+import { WorldMap } from "@/game/map";
 import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,8 +56,8 @@ function Index() {
   const [achOpen, setAchOpen] = useState(false);
   const [achCount, setAchCount] = useState(0);
   const [newsOpen, setNewsOpen] = useState(false);
-  /** 1-dunyo yutilgan: menyuda dunyo tanlash ko'rinadi */
-  const [world2Open, setWorld2Open] = useState(false);
+  /** Sarguzasht xaritasi ochiq (BOSHLASH dan keyin dunyo tanlanadi) */
+  const [mapOpen, setMapOpen] = useState(false);
   const [world, setWorld] = useState<World>(1);
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
@@ -68,7 +69,6 @@ function Index() {
     setHero(loadHero());
     setDaily(loadDaily());
     setAchCount(loadAchievements().size);
-    setWorld2Open(isWorld2Open());
     try {
       setGold(loadGold());
       // yangi versiyaga birinchi kirishda — oxirgi yangiliklar bir marta
@@ -132,7 +132,6 @@ function Index() {
       setGold(loadGold());
       setDaily(loadDaily());
       setAchCount(loadAchievements().size);
-      setWorld2Open(isWorld2Open());
       setGame(null);
       setStarted(false);
     };
@@ -149,7 +148,22 @@ function Index() {
     <main className="game-viewport font-pixel">
       <div className="game-screen">
         <canvas ref={canvasRef} width={960} height={540} className="game-canvas" />
-        {!started && (
+        {mapOpen && !started && canvasRef.current && (
+          <MapScreen
+            canvas={canvasRef.current}
+            hero={hero}
+            touch={touch}
+            onBack={() => setMapOpen(false)}
+            onEnter={(w) => {
+              sfx.unlock();
+              dailyRef.current = null;
+              setWorld(w);
+              setMapOpen(false);
+              setStarted(true);
+            }}
+          />
+        )}
+        {!started && !mapOpen && (
           <div className="game-menu absolute inset-0 flex flex-col items-center justify-center gap-6 bg-card/95 text-center px-4">
             <h1 className="text-primary text-lg sm:text-2xl">PIKSEL QAL'A</h1>
             <div aria-label="Qahramon tanlash" className="flex gap-3">
@@ -172,38 +186,6 @@ function Index() {
                 </button>
               ))}
             </div>
-            {world2Open && (
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  aria-label="Dunyo tanlash"
-                  className="flex items-center gap-2 text-[9px] sm:text-[10px]"
-                >
-                  <span className="text-muted-foreground">DUNYO:</span>
-                  {([1, 2] as const).map((w) => (
-                    <button
-                      key={w}
-                      aria-label={`${w}-DUNYO`}
-                      aria-pressed={world === w}
-                      onClick={() => setWorld(w)}
-                      className={`border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
-                        world === w
-                          ? w === 2
-                            ? "border-[#9fd0ef] bg-[#9fd0ef]/15 text-[#9fd0ef]"
-                            : "border-primary bg-primary/15 text-primary"
-                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {w}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-muted-foreground text-[8px] sm:text-[9px] leading-4">
-                  {world === 2
-                    ? "2-DUNYO: Muz sardobasi · boshlang'ich kuchlarsiz, 1 ta bepul kuch"
-                    : "1-DUNYO: Olovli zindon"}
-                </p>
-              </div>
-            )}
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
                 <>
@@ -234,9 +216,7 @@ function Index() {
             <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
               5 to'lqin · har to'lqindan so'ng kuch tanlang · oxirida Boss
               <br />
-              {world2Open
-                ? "Har dunyoning o'z dushmanlari va Bossi"
-                : "Iblisni yengsangiz — 2-dunyo: Muz sardobasi"}
+              Xaritada dunyolar: har birining o'z dushmanlari va Bossi
               {best > 0 && (
                 <>
                   <br />
@@ -264,8 +244,7 @@ function Index() {
             <Button
               onClick={() => {
                 sfx.unlock();
-                dailyRef.current = null;
-                setStarted(true);
+                setMapOpen(true);
               }}
               disabled={!ready}
               variant="pixel"
@@ -890,13 +869,75 @@ function CoachPanel({ hero }: { hero: Hero }) {
   );
 }
 
-/** 2-dunyo menyuda tanlanadimi: 1-dunyo yutilgan (eski o'yinchilarda — g'alaba yutug'i bor). */
-function isWorld2Open() {
-  try {
-    if (localStorage.getItem(WORLD1_WON_KEY)) return true;
-  } catch {
-    /* saqlash imkonsiz */
-  }
-  const got = loadAchievements();
-  return got.has("winKnight") || got.has("winMage");
+/** Sarguzasht xaritasi: o'yin canvasida chiziladi, pastda sensor/sichqoncha uchun tugmalar. */
+function MapScreen({
+  canvas,
+  hero,
+  touch,
+  onEnter,
+  onBack,
+}: {
+  canvas: HTMLCanvasElement;
+  hero: Hero;
+  touch: boolean;
+  onEnter: (w: World) => void;
+  onBack: () => void;
+}) {
+  const mapRef = useRef<WorldMap | null>(null);
+  const enterRef = useRef(onEnter);
+  const backRef = useRef(onBack);
+  enterRef.current = onEnter;
+  backRef.current = onBack;
+  useEffect(() => {
+    const m = new WorldMap(canvas, hero);
+    m.touch = touch;
+    m.onEnter = (w) => enterRef.current(w as World);
+    m.onBack = () => backRef.current();
+    mapRef.current = m;
+    if (import.meta.env.DEV) (window as unknown as { __map?: WorldMap }).__map = m;
+    m.start();
+    return () => {
+      m.stop();
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    };
+  }, [canvas, hero, touch]);
+  const btn = cn(
+    buttonVariants({ variant: "pixelOutline", size: "none" }),
+    "w-[10%] min-w-10 py-2 text-[8px] sm:text-[10px]",
+  );
+  // xona 4:3 — 16:9 ekranning chap va o'ng chetidagi bo'sh joyda tugmalar
+  return (
+    <div aria-label="Sarguzasht xaritasi" className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-y-0 left-[1%] flex w-[10.5%] flex-col items-center justify-center gap-3">
+        <button className={cn(btn, "pointer-events-auto w-full")} onClick={onBack}>
+          ORQAGA
+        </button>
+        <button
+          aria-label="Chapdagi dunyo"
+          className={cn(btn, "pointer-events-auto w-full")}
+          onClick={() => mapRef.current?.move(-1)}
+        >
+          {"<"}
+        </button>
+      </div>
+      <div className="absolute inset-y-0 right-[1%] flex w-[10.5%] flex-col items-center justify-center gap-3">
+        <button
+          aria-label="O'ngdagi dunyo"
+          className={cn(btn, "pointer-events-auto w-full")}
+          onClick={() => mapRef.current?.move(1)}
+        >
+          {">"}
+        </button>
+        <button
+          className={cn(
+            buttonVariants({ variant: "pixel", size: "none" }),
+            "pointer-events-auto w-full py-2 text-[8px] sm:text-[10px]",
+          )}
+          onClick={() => mapRef.current?.enter()}
+        >
+          KIRISH
+        </button>
+      </div>
+    </div>
+  );
 }

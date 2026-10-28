@@ -97,6 +97,13 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
         await page.getByRole("button", { name: step.hover, exact: true }).first().hover();
       if (step.start) {
         await page.getByRole("button", { name: "BOSHLASH" }).click();
+        // v2.0: BOSHLASH dan keyin sarguzasht xaritasi — tanlangan dunyoga kiriladi
+        const enter = page.getByRole("button", { name: "KIRISH", exact: true });
+        const map = await enter.waitFor({ state: "visible", timeout: 3000 }).then(
+          () => true,
+          () => false,
+        );
+        if (map) await enter.click();
         await page.waitForFunction(() => !!window.__game);
         await page.waitForTimeout(400);
       }
