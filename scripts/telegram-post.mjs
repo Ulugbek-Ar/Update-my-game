@@ -20,8 +20,11 @@ const bullets = entry.notes
 
 const links = [];
 if (playUrl) links.push(`🎮 <a href="${esc(playUrl)}">O'ynash</a>`);
+const prevTag = process.env.PREV_TAG;
 if (repo && sha)
-  links.push(`📜 <a href="https://github.com/${repo}/commit/${sha}">Nima o'zgardi</a>`);
+  links.push(
+    `📜 <a href="https://github.com/${repo}/${prevTag ? `compare/${prevTag}...${sha}` : `commit/${sha}`}">Nima o'zgardi</a>`,
+  );
 
 const manual = await readdir(`screenshots/v${entry.version}`).then(
   (f) =>
@@ -62,25 +65,43 @@ const newMobs = [
     : []),
 ];
 const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
-const build = () => [...head, ...bullets, ...newMobs, ...pics, ...tail].join("\n");
-while (pics.length > 2 && build().length > 1024) pics.pop();
-while (bullets.length > 1 && build().length > 1024) bullets.pop();
-const caption = build().slice(0, shots.length ? 1024 : 4096);
+const limit = shots.length ? 1024 : 4096;
+const allBullets = bullets.length;
+const more = () =>
+  bullets.length < allBullets ? [`• …va yana ${allBullets - bullets.length} ta o'zgarish`] : [];
+const build = () =>
+  [...head, ...bullets, ...more(), ...newMobs, ...pics, ...tail].join("\n");
+while (pics.length > 2 && build().length > limit) pics.pop();
+while (bullets.length > 1 && build().length > limit) bullets.pop();
+let caption = build();
+if (caption.length > limit) caption = [...head, ...bullets.map((b) => b.slice(0, 300) + "…"), ...tail].join("\n");
 
 const mime = (f) =>
   f.endsWith(".png") ? "image/png" : f.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
 const blob = async (f) => new Blob([await readFile(f)], { type: mime(f) });
 
 async function send(method, fill) {
-  const form = new FormData();
-  form.append("chat_id", chat);
-  await fill(form);
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    body: form,
-  });
-  const body = await res.json();
-  if (!body.ok) throw new Error(`Telegram xatosi (${method}): ${body.description}`);
+  for (let attempt = 1; ; attempt++) {
+    const form = new FormData();
+    form.append("chat_id", chat);
+    await fill(form);
+    let body;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+        method: "POST",
+        body: form,
+      });
+      body = await res.json();
+    } catch (e) {
+      body = { ok: false, description: e.message };
+    }
+    if (body.ok) return;
+    const wait = body.parameters?.retry_after ?? attempt * 5;
+    const fatal = body.error_code && body.error_code < 500 && body.error_code !== 429;
+    if (fatal || attempt >= 4) throw new Error(`Telegram xatosi (${method}): ${body.description}`);
+    console.log(`Telegram javob bermadi (${body.description}), ${wait}s dan keyin qayta urinish...`);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+  }
 }
 
 if (!shots.length)
@@ -123,13 +144,21 @@ for (const item of [...heroes, ...mobs]) {
     `🎮 <a href="${esc(playUrl)}">O'ynash</a>`,
     "",
     hero ? "#yangi_qahramon" : "#yangi_dushman",
-  ]
-    .join("\n")
-    .slice(0, 1024);
+  ].join("\n");
+  const textShort = [
+    hero
+      ? `🧙 <b>Yangi qahramon: ${esc(item.title)}</b>`
+      : `👾 <b>Yangi dushman: ${esc(item.title)}</b>`,
+    "",
+    ...(item.text ? [esc(item.text.slice(0, 700)) + (item.text.length > 700 ? "…" : ""), ""] : []),
+    `🎮 <a href="${esc(playUrl)}">O'ynash</a>`,
+    "",
+    hero ? "#yangi_qahramon" : "#yangi_dushman",
+  ].join("\n");
   const isVideo = item.file.endsWith(".mp4");
   await send(isVideo ? "sendAnimation" : "sendPhoto", async (f) => {
     f.append(isVideo ? "animation" : "photo", await blob(item.file), item.file.split("/").pop());
-    f.append("caption", text);
+    f.append("caption", text.length <= 1024 ? text : textShort);
     f.append("parse_mode", "HTML");
   });
   console.log(hero ? "Qahramon posti joylandi ✅" : "Mob posti joylandi ✅", item.title);
