@@ -2,7 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { Game } from "@/game/game";
 import type { World } from "@/game/waves";
-import { WorldMap } from "@/game/map";
+import { MapState, WorldMap, renderMap } from "@/game/map";
+import {
+  SCENE_H,
+  SCENE_W,
+  drawForestCard,
+  drawHunterCard,
+  renderMenuScene,
+} from "@/game/menuScene";
+import { migrateSave } from "@/game/save";
 import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -64,6 +72,8 @@ function Index() {
   const startedRef = useRef(false);
   startedRef.current = started;
   useEffect(() => {
+    // eski versiya ma'lumotlari (rekord, oltin, do'kon, yutuqlar) saqlanadi, xarita uchun to'ldiriladi
+    migrateSave();
     setReady(true);
     setMuted(sfx.loadMute());
     setHero(loadHero());
@@ -164,8 +174,14 @@ function Index() {
           />
         )}
         {!started && !mapOpen && (
-          <div className="game-menu absolute inset-0 flex flex-col items-center justify-center gap-6 bg-card/95 text-center px-4">
-            <h1 className="text-primary text-lg sm:text-2xl">PIKSEL QAL'A</h1>
+          <div
+            className="game-menu absolute inset-0 isolate flex flex-col items-center justify-center gap-6 overflow-hidden bg-card text-center px-4"
+            style={{ textShadow: "1px 1px 0 #000" }}
+          >
+            <MenuScene />
+            <h1 className="text-primary text-lg sm:text-2xl drop-shadow-[2px_2px_0_#000]">
+              PIKSEL QAL'A
+            </h1>
             <div aria-label="Qahramon tanlash" className="flex gap-3">
               {HEROES.map((h) => (
                 <button
@@ -374,7 +390,7 @@ function Index() {
       </div>
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
       {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
-      {newsOpen && !started && <NewsWindow onClose={() => setNewsOpen(false)} />}
+      {newsOpen && !started && <NewsWindow hero={hero} onClose={() => setNewsOpen(false)} />}
       {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
       {shopOpen && (
         <ShopWindow
@@ -486,6 +502,49 @@ function TouchControls({ game }: { game: Game }) {
         II
       </button>
     </div>
+  );
+}
+
+/** Bosh menyu foni: qasr, oy, yulduzlar, qahramonlar va moblar — sekin animatsiya. */
+function MenuScene() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (!c) return;
+    let raf = 0;
+    let last = 0;
+    const start = performance.now();
+    const loop = (now: number) => {
+      // ~30 kadr/s yetarli — sahna sekin harakatlanadi
+      if (now - last > 33) {
+        last = now;
+        renderMenuScene(c, (now - start) / 1000);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <>
+      <canvas
+        ref={ref}
+        width={SCENE_W}
+        height={SCENE_H}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 h-full w-full"
+        style={{ imageRendering: "pixelated" }}
+      />
+      {/* matn o'qilishi uchun markazda qorong'i, chetlarda sahna ochiq */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 40% 58% at 50% 48%, rgba(12,8,24,0.74) 0%, rgba(12,8,24,0.55) 60%, rgba(12,8,24,0.08) 100%)",
+        }}
+      />
+    </>
   );
 }
 
@@ -739,10 +798,77 @@ function AchievementsWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** "Yangiliklar" oynasidagi rasmli karta: rasm kod bilan chiziladi. */
+function NewsCard({
+  title,
+  text,
+  width,
+  height,
+  draw,
+}: {
+  title: string;
+  text: string;
+  width: number;
+  height: number;
+  draw: (c: CanvasRenderingContext2D) => void;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (c) draw(c);
+  }, [draw]);
+  return (
+    <li className="flex flex-col gap-2 border-2 border-primary bg-[#1f1730] p-2">
+      <canvas
+        ref={ref}
+        width={width}
+        height={height}
+        aria-hidden="true"
+        className="w-full border-2 border-black"
+        style={{ imageRendering: "pixelated", aspectRatio: `${width} / ${height}` }}
+      />
+      <span className="text-primary">{title}</span>
+      <span className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">{text}</span>
+    </li>
+  );
+}
+
+/** 2.0 e'loni: uchta katta yangilik rasmli kartalarda. */
+const NEWS_2_0: readonly {
+  title: string;
+  text: string;
+  width: number;
+  height: number;
+  draw: (c: CanvasRenderingContext2D, hero: Hero) => void;
+}[] = [
+  {
+    title: "SARGUZASHT XARITASI",
+    text: "3 dunyo yo'l bilan bog'langan: rekordlar, yutgan qahramonlar va qulflar.",
+    width: 320,
+    height: 240,
+    draw: (c, hero) => renderMap(c, new MapState(), 1.2, hero),
+  },
+  {
+    title: "3-DUNYO: ZULMAT O'RMONI",
+    text: "4 ta yangi mob va O'rmon Shohi — qorong'ida faqat atrofingiz yorug'.",
+    width: 160,
+    height: 120,
+    draw: (c) => drawForestCard(c, 1),
+  },
+  {
+    title: "YANGI QAHRAMON: OVCHI",
+    text: "O'q, teshuvchi kuchli o'q, orqaga sakrash va tuzoq.",
+    width: 160,
+    height: 120,
+    draw: (c) => drawHunterCard(c),
+  },
+];
+
 /** Yangi versiyaga birinchi kirishda: CHANGELOG'dagi oxirgi yozuv, har gap alohida qatorda. */
-function NewsWindow({ onClose }: { onClose: () => void }) {
+function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
   const entry = CHANGELOG[0];
   if (!entry) return null;
+  const big = entry.version.startsWith("2.0");
   const lines = entry.notes
     .split(/(?<=\.)\s+/)
     .map((l) => l.trim())
@@ -756,10 +882,26 @@ function NewsWindow({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Yangiliklar"
-        className="flex w-[min(92vw,480px)] max-h-[85dvh] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-4 text-[10px] sm:text-xs leading-5"
+        className={`flex ${big ? "w-[min(94vw,720px)]" : "w-[min(92vw,480px)]"} max-h-[85dvh] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-4 text-[10px] sm:text-xs leading-5`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary">YANGILIKLAR · v{entry.version}</h2>
+        <h2 className="text-primary">
+          {big ? `PIKSEL QAL'A 2.0!` : "YANGILIKLAR"} · v{entry.version}
+        </h2>
+        {big && (
+          <ul aria-label="Katta yangiliklar" className="grid gap-3 sm:grid-cols-3">
+            {NEWS_2_0.map((n) => (
+              <NewsCard
+                key={n.title}
+                title={n.title}
+                text={n.text}
+                width={n.width}
+                height={n.height}
+                draw={(c) => n.draw(c, hero)}
+              />
+            ))}
+          </ul>
+        )}
         <ul className="flex flex-col gap-2 text-foreground">
           {lines.map((l) => (
             <li key={l} className="flex gap-2">
@@ -944,7 +1086,7 @@ function MapScreen({
   }, [canvas, hero, touch]);
   const btn = cn(
     buttonVariants({ variant: "pixelOutline", size: "none" }),
-    "w-[10%] min-w-10 py-2 text-[8px] sm:text-[10px]",
+    "w-[10%] min-w-10 py-2 text-[7px] sm:text-[10px]",
   );
   // xona 4:3 — 16:9 ekranning chap va o'ng chetidagi bo'sh joyda tugmalar
   return (
