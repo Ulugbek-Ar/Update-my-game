@@ -3,7 +3,19 @@ import type { Player } from "./player";
 import { renderSprite, type SpriteKind } from "./sprites";
 
 export type EnemyKind =
-  "blob" | "wisp" | "rammer" | "archer" | "shield" | "frost" | "golem" | "iceblob" | "wolf";
+  | "blob"
+  | "wisp"
+  | "rammer"
+  | "archer"
+  | "shield"
+  | "frost"
+  | "golem"
+  | "iceblob"
+  | "wolf"
+  | "spider"
+  | "shroom"
+  | "treant"
+  | "owl";
 
 const SPAWN_TIME = 1;
 export const ARCHER_RELOAD = 1.5;
@@ -59,6 +71,89 @@ export const WOLF_RADIUS = 55;
 const WOLF_SPEED = 70;
 export type WolfPhase = "circle" | "crouch" | "leap" | "tired";
 
+// ---- 3-dunyo: Zulmat o'rmoni ----
+/** O'rmon o'rgimchagi: devor bo'ylab (devordan shuncha ichkarida) tez yuradi */
+export const SPIDER_INSET = 7;
+const SPIDER_SPEED = 95;
+/** To'r otish: tayyorgarlik, qayta tiklanish, masofa */
+export const SPIDER_WINDUP = 0.35;
+export const SPIDER_WEB_CD = 2.6;
+const SPIDER_RANGE = 170;
+/** To'r o'yinchi yo'liga — qarab turgan tomonida shuncha oldinga tushadi */
+export const WEB_LEAD = 26;
+export const WEB_SPEED = 120;
+/** Zaharli qo'ziqorin: yaqinlashsa bulut chiqaradi */
+export const SHROOM_NEAR = 36;
+export const SHROOM_WINDUP = 0.45;
+export const SHROOM_CD = 4;
+/** Daraxt odam: uzoqdan yerdan ildiz chiqaradi (oldin yoriq chizig'i ogohlantiradi) */
+export const TREANT_RANGE = 140;
+export const ROOT_WARN = 1;
+export const ROOT_RADIUS = 11;
+/** Ildiz ushlasa o'yinchi shuncha yurolmaydi */
+export const ROOT_SNARE = 0.8;
+export const TREANT_CD = 3.2;
+const ROOT_SHOW = 0.5;
+const TREANT_SPEED = 14;
+/** Tungi boyo'g'li: tepada uchadi, soya oldindan ko'rinadi, so'ng sho'ng'iydi */
+export const OWL_ALT = 40;
+/** Shundan pastda — yerda, urish mumkin */
+export const OWL_LOW = 8;
+export const OWL_SOAR = 2.2;
+export const OWL_MARK = 0.8;
+export const OWL_DIVE = 0.25;
+export const OWL_REST = 1.3;
+export const OWL_RISE = 0.4;
+export const OWL_HIT = 12;
+const OWL_SPEED = 60;
+export type OwlPhase = "soar" | "mark" | "dive" | "rest" | "rise";
+
+/** O'rgimchak yuradigan devor bo'yi to'rtburchagi */
+function track() {
+  const l = ROOM.wall + SPIDER_INSET,
+    t = ROOM.wall + SPIDER_INSET;
+  const r = ROOM.w - l,
+    b = ROOM.h - t;
+  return { l, t, r, b, w: r - l, h: b - t, len: 2 * (r - l + b - t) };
+}
+
+/** Devor bo'yidagi s masofadagi nuqta (yuqori chap burchakdan soat mili bo'ylab). */
+export function trackPoint(s: number): [number, number] {
+  const k = track();
+  let d = ((s % k.len) + k.len) % k.len;
+  if (d < k.w) return [k.l + d, k.t];
+  d -= k.w;
+  if (d < k.h) return [k.r, k.t + d];
+  d -= k.h;
+  if (d < k.w) return [k.r - d, k.b];
+  d -= k.w;
+  return [k.l, k.b - d];
+}
+
+/** (x, y) ga eng yaqin devor bo'yi nuqtasining s qiymati. */
+export function trackParam(x: number, y: number) {
+  const k = track();
+  const cx = Math.max(k.l, Math.min(k.r, x)),
+    cy = Math.max(k.t, Math.min(k.b, y));
+  const edges = [
+    { d: Math.abs(y - k.t), s: cx - k.l },
+    { d: Math.abs(x - k.r), s: k.w + (cy - k.t) },
+    { d: Math.abs(y - k.b), s: k.w + k.h + (k.r - cx) },
+    { d: Math.abs(x - k.l), s: 2 * k.w + k.h + (k.b - cy) },
+  ];
+  return edges.reduce((a, b) => (b.d < a.d ? b : a)).s;
+}
+
+/** O'rgimchak to'ri: uchib boradi (tx, ty) ga tushadi */
+export interface WebShot {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  tx: number;
+  ty: number;
+}
+
 /** Har dushman turining joni */
 export const ENEMY_HP: Record<EnemyKind, number> = {
   blob: 3,
@@ -70,6 +165,10 @@ export const ENEMY_HP: Record<EnemyKind, number> = {
   golem: 7,
   iceblob: 2,
   wolf: 3,
+  spider: 2,
+  shroom: 3,
+  treant: 8,
+  owl: 2,
 };
 
 /** Dushman turi -> sprite turi */
@@ -83,6 +182,10 @@ const SPRITE: Record<EnemyKind, SpriteKind> = {
   golem: "golem",
   iceblob: "iceblob",
   wolf: "wolf",
+  spider: "spider",
+  shroom: "shroom",
+  treant: "treant",
+  owl: "owl",
 };
 
 export interface Arrow {
@@ -100,6 +203,10 @@ export interface Arrow {
  * shield – sekin yuradi, qalqon bilan oldidan zarbani to'sadi, yaqinda qalqon bilan itaradi
  * iceblob – muz slime: sakrab quvadi, tegsa sekinlashtiradi
  * wolf   – qor bo'risi: aylanib yuradi, cho'kib sakraydi, sakrashdan keyin charchaydi
+ * spider – o'rmon o'rgimchagi: devor bo'ylab yuradi, o'yinchi yo'liga to'r otadi
+ * shroom – zaharli qo'ziqorin: harakatsiz, yaqinlashsa zaharli bulut chiqaradi
+ * treant – daraxt odam: sekin, uzoqdan yerdan ildiz chiqarib ushlaydi
+ * owl    – tungi boyo'g'li: tepadan sho'ng'iydi, soyasi oldindan ko'rinadi
  */
 export class Enemy implements Body {
   vx = 0;
@@ -148,6 +255,30 @@ export class Enemy implements Body {
   /** Qor bo'risi: joriy bosqich va aylanish yo'nalishi (1 — soat mili bo'ylab, -1 — teskari) */
   wolfPhase: WolfPhase = "circle";
   orbit = Math.random() < 0.5 ? 1 : -1;
+  /** O'rgimchak: devorga yetib oldimi va devor bo'yidagi joyi */
+  onWall = false;
+  trackS = 0;
+  webWindup = 0;
+  private webShow = 0;
+  /** O'yin olib ketadigan to'rlar */
+  webs: WebShot[] = [];
+  /** Qo'ziqorin: bulut tayyorgarligi; Game shu kadrda bulut chiqarishi kerak */
+  puffWindup = 0;
+  private puffShow = 0;
+  wantCloud = false;
+  /** Daraxt odam: ildiz ogohlantirishi, nishon nuqtasi va ildizlar ko'rinish vaqti */
+  rootWarn = 0;
+  rootX = 0;
+  rootY = 0;
+  rootShow = 0;
+  /** Shu kadrda ildiz yerdan chiqdi (ovoz uchun) */
+  justRooted = false;
+  /** Boyo'g'li: balandlik, bosqich va sho'ng'ish nishoni */
+  alt = 0;
+  owlPhase: OwlPhase = "soar";
+  markX = 0;
+  markY = 0;
+  private diveFrom = { x: 0, y: 0 };
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.4, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -165,11 +296,15 @@ export class Enemy implements Body {
     this.size =
       kind === "golem"
         ? 20
-        : kind === "wolf"
-          ? 13
-          : kind === "rammer" || kind === "archer" || kind === "shield"
-            ? 14
-            : 11;
+        : kind === "treant"
+          ? 18
+          : kind === "wolf"
+            ? 13
+            : kind === "rammer" || kind === "archer" || kind === "shield"
+              ? 14
+              : kind === "shroom"
+                ? 12
+                : 11;
     if (kind === "archer") this.aiTimer = ARCHER_RELOAD;
     if (kind === "golem") {
       this.heavy = true;
@@ -181,6 +316,19 @@ export class Enemy implements Body {
     }
     // juftlikdagi bo'rilar bir vaqtda sakramasligi uchun biroz farq
     if (kind === "wolf") this.aiTimer = WOLF_CIRCLE + Math.random() * 0.6;
+    if (kind === "spider") this.aiTimer = 1.4 + Math.random() * 0.8;
+    if (kind === "shroom") {
+      this.heavy = true;
+      this.aiTimer = 0.5;
+    }
+    if (kind === "treant") {
+      this.heavy = true;
+      this.aiTimer = 1.6 + Math.random();
+    }
+    if (kind === "owl") {
+      this.alt = OWL_ALT;
+      this.aiTimer = OWL_SOAR * 0.6 + Math.random();
+    }
   }
 
   get dead() {
@@ -188,7 +336,12 @@ export class Enemy implements Body {
   }
 
   get active() {
-    return !this.dead && this.spawn <= 0;
+    return !this.dead && this.spawn <= 0 && !this.airborne;
+  }
+
+  /** Boyo'g'li tepada: urib bo'lmaydi va tegmaydi */
+  get airborne() {
+    return this.kind === "owl" && this.alt > OWL_LOW;
   }
 
   /** Rammer nishon olayotganini ko'rsatish uchun */
@@ -226,8 +379,10 @@ export class Enemy implements Body {
       this.wolfPhase = "tired";
       this.aiTimer = WOLF_TIRED;
     }
-    // golem zarbadan to'xtamaydi: yerga urish tayyorgarligi davom etadi
-    if (this.anim.state === "hurt" && this.kind !== "golem") {
+    // urilgan o'rgimchak devordan itariladi — keyin devorga qayta chiqadi
+    if (this.kind === "spider" && this.anim.state === "hurt") this.onWall = false;
+    // golem va daraxt odam zarbadan to'xtamaydi: hujum tayyorgarligi davom etadi
+    if (this.anim.state === "hurt" && this.kind !== "golem" && this.kind !== "treant") {
       if (this.anim.done) this.anim.set("walk");
       return;
     }
@@ -238,7 +393,11 @@ export class Enemy implements Body {
     if (dx !== 0) this.facingLeft = dx < 0;
     const m = this.speedMul * (this.slow > 0 ? 0.5 : 1);
 
-    if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
+    if (this.kind === "spider") this.updateSpider(dt, p, d, m);
+    else if (this.kind === "shroom") this.updateShroom(dt, d);
+    else if (this.kind === "treant") this.updateTreant(dt, p, dx, dy, d, m);
+    else if (this.kind === "owl") this.updateOwl(dt, p, m);
+    else if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
     else if (this.kind === "golem") this.updateGolem(dt, p, dx, dy, d, m);
     else if (this.kind === "wolf") this.updateWolf(dt, dx, dy, d, m);
     else if (this.kind === "blob" || this.kind === "iceblob") {
@@ -422,6 +581,242 @@ export class Enemy implements Body {
     }
   }
 
+  /**
+   * O'rmon o'rgimchagi: avval eng yaqin devorga chiqadi, so'ng devor bo'ylab o'yinchiga eng
+   * yaqin nuqtaga tez yuradi; vaqti kelganda to'xtab o'yinchi yo'liga to'r otadi.
+   */
+  private updateSpider(dt: number, p: Player, d: number, m: number) {
+    this.aiTimer -= dt;
+    if (this.webWindup > 0) {
+      this.webWindup -= dt;
+      if (this.webWindup <= 0) {
+        // to'r o'yinchining oldiga — qarab turgan tomoniga tushadi
+        const k = track();
+        const tx = Math.max(k.l, Math.min(k.r, p.x + p.fx * WEB_LEAD)),
+          ty = Math.max(k.t, Math.min(k.b, p.y + p.fy * WEB_LEAD));
+        const l = Math.hypot(tx - this.x, ty - this.y) || 1;
+        this.webs.push({
+          x: this.x,
+          y: this.y,
+          vx: ((tx - this.x) / l) * WEB_SPEED,
+          vy: ((ty - this.y) / l) * WEB_SPEED,
+          tx,
+          ty,
+        });
+        this.webShow = 0.25;
+        this.aiTimer = SPIDER_WEB_CD;
+        this.showAttackFrame(2);
+      } else this.showAttackFrame(this.webWindup > SPIDER_WINDUP / 2 ? 0 : 1);
+      return;
+    }
+    if (this.webShow > 0) {
+      this.webShow -= dt;
+      return this.showAttackFrame(2);
+    }
+    const speed = SPIDER_SPEED * m * dt;
+    if (!this.onWall) {
+      const [wx, wy] = trackPoint(trackParam(this.x, this.y));
+      const l = Math.hypot(wx - this.x, wy - this.y);
+      if (l <= speed) {
+        this.onWall = true;
+        this.trackS = trackParam(wx, wy);
+      } else {
+        this.x += ((wx - this.x) / l) * speed;
+        this.y += ((wy - this.y) / l) * speed;
+      }
+      this.anim.set("walk");
+      return;
+    }
+    const len = track().len;
+    let diff = (trackParam(p.x, p.y) - this.trackS) % len;
+    if (diff > len / 2) diff -= len;
+    if (diff < -len / 2) diff += len;
+    this.trackS += Math.sign(diff) * Math.min(Math.abs(diff), speed);
+    [this.x, this.y] = trackPoint(this.trackS);
+    this.anim.set(Math.abs(diff) > 1 ? "walk" : "idle");
+    if (this.aiTimer <= 0 && d < SPIDER_RANGE) {
+      this.webWindup = SPIDER_WINDUP;
+      this.showAttackFrame(0);
+    }
+  }
+
+  /** Zaharli qo'ziqorin: joyidan qimirlamaydi; o'yinchi yaqinlashsa shishib, zaharli bulut chiqaradi. */
+  private updateShroom(dt: number, d: number) {
+    this.aiTimer -= dt;
+    if (this.puffWindup > 0) {
+      this.puffWindup -= dt;
+      if (this.puffWindup <= 0) {
+        this.wantCloud = true;
+        this.aiTimer = SHROOM_CD;
+        this.puffShow = 0.4;
+        this.showAttackFrame(2);
+      } else this.showAttackFrame(this.puffWindup > SHROOM_WINDUP / 2 ? 0 : 1);
+      return;
+    }
+    if (this.puffShow > 0) {
+      this.puffShow -= dt;
+      return this.showAttackFrame(2);
+    }
+    if (d < SHROOM_NEAR && this.aiTimer <= 0) {
+      this.puffWindup = SHROOM_WINDUP;
+      this.showAttackFrame(0);
+      return;
+    }
+    this.anim.set("idle");
+  }
+
+  /** Daraxt odam: sekin yuradi; uzoqdan o'yinchi turgan joyga yoriq chizig'i, so'ng ildizlar. */
+  private updateTreant(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+    if (this.rootShow > 0) this.rootShow -= dt;
+    if (this.rootWarn > 0) {
+      this.rootWarn -= dt;
+      if (this.rootWarn <= 0) {
+        this.justRooted = true;
+        this.rootShow = ROOT_SHOW;
+        this.aiTimer = TREANT_CD;
+        this.showAttackFrame(2);
+        if (
+          Math.hypot(p.x - this.rootX, p.y - this.rootY) < ROOT_RADIUS + p.size / 2 &&
+          p.takeHit(1, this.rootX, this.rootY, 40)
+        )
+          p.snare = Math.max(p.snare, ROOT_SNARE);
+      } else this.showAttackFrame(this.rootWarn > ROOT_WARN / 2 ? 0 : 1);
+      return;
+    }
+    if (this.rootShow > ROOT_SHOW - 0.3) return this.showAttackFrame(2);
+    this.aiTimer -= dt;
+    if (this.aiTimer <= 0 && d < TREANT_RANGE) {
+      // nishon tayyorgarlik boshida qotadi — yoriq ko'rinsa joydan chiqib qochish mumkin
+      this.rootWarn = ROOT_WARN;
+      this.rootX = p.x;
+      this.rootY = p.y;
+      this.showAttackFrame(0);
+      return;
+    }
+    if (d > 16) {
+      this.x += (dx / d) * TREANT_SPEED * m * dt;
+      this.y += (dy / d) * TREANT_SPEED * m * dt;
+      this.anim.set("walk");
+    } else this.anim.set("idle");
+  }
+
+  /**
+   * Tungi boyo'g'li: tepada aylanadi (urib bo'lmaydi), so'ng o'yinchi joyida soya paydo bo'ladi
+   * va 0.8s dan keyin shu joyga sho'ng'iydi; yerda 1.3s turadi — shu payt urish mumkin.
+   */
+  private updateOwl(dt: number, p: Player, m: number) {
+    this.aiTimer -= dt;
+    const fly = (tx: number, ty: number, speed: number) => {
+      const l = Math.hypot(tx - this.x, ty - this.y);
+      if (l < 1) return;
+      const st = Math.min(l, speed * dt);
+      this.x += ((tx - this.x) / l) * st;
+      this.y += ((ty - this.y) / l) * st;
+    };
+    if (this.owlPhase === "soar") {
+      this.alt = OWL_ALT;
+      const a = this.t * 1.4 * this.orbit;
+      fly(p.x + Math.cos(a) * 44, p.y + Math.sin(a) * 30, OWL_SPEED * m);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.owlPhase = "mark";
+        this.aiTimer = OWL_MARK;
+        this.markX = p.x;
+        this.markY = p.y;
+      }
+    } else if (this.owlPhase === "mark") {
+      fly(this.markX, this.markY, OWL_SPEED * 1.5 * m);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.owlPhase = "dive";
+        this.aiTimer = OWL_DIVE;
+        this.diveFrom = { x: this.x, y: this.y };
+      }
+    } else if (this.owlPhase === "dive") {
+      const k = Math.min(1, 1 - this.aiTimer / OWL_DIVE);
+      this.x = this.diveFrom.x + (this.markX - this.diveFrom.x) * k;
+      this.y = this.diveFrom.y + (this.markY - this.diveFrom.y) * k;
+      this.alt = OWL_ALT * (1 - k);
+      this.showAttackFrame(k < 0.5 ? 0 : 1);
+      if (this.aiTimer <= 0) {
+        this.alt = 0;
+        this.owlPhase = "rest";
+        this.aiTimer = OWL_REST;
+        this.showAttackFrame(2);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < OWL_HIT + p.size / 2)
+          p.takeHit(1, this.x, this.y, 170);
+      }
+    } else if (this.owlPhase === "rest") {
+      this.alt = 0;
+      if (this.aiTimer > OWL_REST - 0.25) this.showAttackFrame(2);
+      else this.anim.set("idle");
+      if (this.aiTimer <= 0) {
+        this.owlPhase = "rise";
+        this.aiTimer = OWL_RISE;
+      }
+    } else {
+      this.alt = OWL_ALT * Math.min(1, 1 - this.aiTimer / OWL_RISE);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.owlPhase = "soar";
+        this.aiTimer = OWL_SOAR;
+      }
+    }
+  }
+
+  /** Poldagi ogohlantirishlar (boshqa jonzotlardan oldin chiziladi): ildiz yorig'i, boyo'g'li soyasi. */
+  renderFloor(ctx: CanvasRenderingContext2D) {
+    if (this.dead) return;
+    if (this.kind === "treant" && this.rootWarn > 0) {
+      // yerdan nishon tomonga o'sib boruvchi siniq yoriq
+      const k = 1 - this.rootWarn / ROOT_WARN;
+      const x0 = this.x,
+        y0 = this.y + 8;
+      const steps = 14;
+      ctx.fillStyle = "#120a06";
+      for (let i = 0; i <= steps * Math.min(1, k * 1.6); i++) {
+        const t = i / steps;
+        const jx = ((i * 37) % 5) - 2;
+        ctx.fillRect(
+          Math.round(x0 + (this.rootX - x0) * t + jx) - 1,
+          Math.round(y0 + (this.rootY + 4 - y0) * t),
+          3,
+          2,
+        );
+      }
+      ctx.fillStyle = `rgba(200,120,40,${0.5 + 0.4 * Math.sin(this.rootWarn * 30)})`;
+      for (let i = 0; i <= steps * Math.min(1, k * 1.6); i += 2) {
+        const t = i / steps;
+        ctx.fillRect(
+          Math.round(x0 + (this.rootX - x0) * t),
+          Math.round(y0 + (this.rootY + 4 - y0) * t),
+          1,
+          1,
+        );
+      }
+      ctx.strokeStyle = `rgba(220,110,30,${0.55 + 0.4 * Math.sin(this.rootWarn * 30)})`;
+      ctx.fillStyle = `rgba(160,70,20,${0.12 + 0.25 * k})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(this.rootX, this.rootY + 4, ROOT_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    if (this.kind === "treant" && this.rootShow > 0)
+      renderRoots(ctx, this.rootX, this.rootY, ROOT_SHOW - this.rootShow);
+    if (this.kind === "owl" && (this.owlPhase === "mark" || this.owlPhase === "dive")) {
+      // sho'ng'ish nuqtasida qorayib boruvchi soya
+      const k = this.owlPhase === "dive" ? 1 : 1 - this.aiTimer / OWL_MARK;
+      ctx.fillStyle = `rgba(0,0,0,${0.25 + 0.35 * k})`;
+      ctx.beginPath();
+      ctx.ellipse(this.markX, this.markY + 6, 6 + 5 * k, 3 + 2 * k, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255,70,70,${0.4 + 0.4 * Math.sin(this.t * 25)})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
   /** O'yinchi sovuq nafas konusi ichidami. */
   breathHits(p: { x: number; y: number; size: number }) {
     const d = Math.hypot(p.x - this.x, p.y - this.y);
@@ -512,9 +907,12 @@ export class Enemy implements Body {
       this.renderBreath(ctx);
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
+      const a = 0.35 + 0.35 * Math.sin(this.spawn * 20);
       ctx.strokeStyle = ICE_KINDS.has(this.kind)
-        ? `rgba(140,215,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`
-        : `rgba(200,120,255,${0.35 + 0.35 * Math.sin(this.spawn * 20)})`;
+        ? `rgba(140,215,255,${a})`
+        : FOREST_KINDS.has(this.kind)
+          ? `rgba(150,235,90,${a})`
+          : `rgba(200,120,255,${a})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, 4 + 8 * k, 0, Math.PI * 2);
@@ -530,7 +928,8 @@ export class Enemy implements Body {
       this.kind === "rammer" ||
       this.kind === "archer" ||
       this.kind === "shield" ||
-      this.kind === "golem";
+      this.kind === "golem" ||
+      this.kind === "treant";
     // muz ruhi yarim shaffof, muz slime biroz shaffof
     if (this.kind === "frost") ctx.globalAlpha *= 0.78;
     else if (this.kind === "iceblob") ctx.globalAlpha *= 0.88;
@@ -540,7 +939,9 @@ export class Enemy implements Body {
       state,
       frame,
       this.x,
-      tall ? this.y - (this.kind === "golem" ? 6 : 0) : this.y - 3,
+      tall
+        ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
+        : this.y - 3 - Math.round(this.alt),
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
@@ -558,6 +959,30 @@ export class Enemy implements Body {
 
 /** 2-dunyo moblari: paydo bo'lishda ko'k doira */
 const ICE_KINDS: ReadonlySet<EnemyKind> = new Set(["frost", "golem", "iceblob", "shield", "wolf"]);
+/** 3-dunyo moblari: paydo bo'lishda yashil doira */
+const FOREST_KINDS: ReadonlySet<EnemyKind> = new Set(["spider", "shroom", "treant", "owl"]);
+
+/** Yerdan chiqqan ildizlar (daraxt odam va O'rmon Shohi): t — chiqqandan beri o'tgan vaqt. */
+export function renderRoots(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  const h = Math.min(1, t * 10) * 11;
+  const bx = Math.round(x),
+    by = Math.round(y + 7);
+  for (const [ox, k, lean] of [
+    [-6, 0.6, -1],
+    [-2, 1, 0],
+    [3, 0.8, 1],
+    [7, 0.5, 1],
+  ] as const) {
+    const hh = Math.round(h * k);
+    for (let i = 0; i < hh; i++) {
+      const sx = bx + ox + Math.round((lean * i) / 4);
+      ctx.fillStyle = "#1a0f08";
+      ctx.fillRect(sx - 1, by - i, 3, 1);
+      ctx.fillStyle = i > hh - 3 ? "#7bd14f" : "#6b4a2a";
+      ctx.fillRect(sx, by - i, 1, 1);
+    }
+  }
+}
 
 /** a - b burchak farqi, [-PI, PI] oralig'ida. */
 export function angleDiff(a: number, b: number) {

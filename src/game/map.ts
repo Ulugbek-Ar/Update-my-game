@@ -7,7 +7,7 @@ import { MAP_WORLDS, isWorldOpen, worldBest, worldWins, type MapWorld } from "./
 /** Xaritada oxirgi tanlangan dunyo */
 export const MAP_SEL_KEY = "pixel-rpg-map-world";
 /** O'ynash mumkin bo'lgan dunyolar */
-export const PLAYABLE_WORLDS: readonly MapWorld[] = [1, 2];
+export const PLAYABLE_WORLDS: readonly MapWorld[] = [1, 2, 3];
 
 export interface MapNode {
   world: MapWorld;

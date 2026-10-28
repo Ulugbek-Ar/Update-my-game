@@ -2,13 +2,14 @@ import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
 import type { Hero } from "./hero";
 
-/** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi */
-export type World = 1 | 2;
+/** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi, 3 — Zulmat o'rmoni */
+export type World = 1 | 2 | 3;
 
 /** Har dunyoning o'z moblari (Bosslardan tashqari): boshqa dunyo moblari chiqmaydi. */
 export const WORLD_KINDS: Record<World, readonly EnemyKind[]> = {
   1: ["blob", "wisp", "rammer", "archer"],
   2: ["iceblob", "frost", "golem", "shield", "wolf"],
+  3: ["spider", "shroom", "treant", "owl"],
 };
 
 /** 1-dunyo: Olovli zindon. Oxirgi to'lqinda Iblis ham chiqadi. */
@@ -34,6 +35,20 @@ export const WAVES2: EnemyKind[][] = [
 /** 2-dunyoda dushmanlar 1-dunyo oxiridan biroz tezroq boshlanadi va har to'lqinda tezlashadi. */
 export function waveSpeed2(i: number) {
   return 1.15 + i * 0.05;
+}
+
+/** 3-dunyo: Zulmat o'rmoni — faqat o'rmon moblari; 5-to'lqinda O'rmon Shohi. */
+export const WAVES3: EnemyKind[][] = [
+  ["spider", "spider", "shroom", "shroom"],
+  ["owl", "owl", "spider", "shroom", "treant"],
+  ["treant", "spider", "spider", "owl", "shroom", "shroom"],
+  ["treant", "treant", "owl", "owl", "spider", "spider", "shroom", "shroom", "spider"],
+  ["shroom", "shroom"],
+];
+
+/** 3-dunyoda dushmanlar 2-dunyodan biroz tezroq. */
+export function waveSpeed3(i: number) {
+  return 1.2 + i * 0.05;
 }
 
 // ---- Cheksiz rejim: Boss mag'lub bo'lgach to'lqinlar indeksi BOSS_WAVE+1 dan davom etadi ----
@@ -73,7 +88,7 @@ export function waveSpeed(i: number) {
  */
 export function waveEnemies(i: number, rand = Math.random, world: World = 1): EnemyKind[] {
   const n = endlessNumber(i);
-  if (n === 0) return (world === 2 ? WAVES2 : WAVES)[i]!;
+  if (n === 0) return (world === 3 ? WAVES3 : world === 2 ? WAVES2 : WAVES)[i]!;
   const count = isBossWave(i) ? 2 + n / ENDLESS_BOSS_EVERY : Math.min(16, 5 + n);
   const kinds = WORLD_KINDS[world];
   return Array.from({ length: count }, () => kinds[Math.floor(rand() * kinds.length)]!);

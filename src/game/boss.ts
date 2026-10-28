@@ -1,6 +1,7 @@
 import { Animator, Body, ROOM, updatePhysics, isFlashing } from "./animation";
 import type { Player } from "./player";
 import { renderSprite } from "./sprites";
+import { renderRoots } from "./enemy";
 
 export const BOSS_MAX_HP = 30;
 const SLAM_WINDUP = 0.7;
@@ -377,5 +378,198 @@ export class Queen extends Boss {
       this.facingLeft,
     );
     ctx.globalAlpha = 1;
+  }
+}
+
+// ---------------- 3-dunyo Bossi: O'rmon Shohi ----------------
+export const KING_HP = 50;
+/** Ildizlar qatori: Shohdan o'yinchi tomonga 6 ta, ketma-ket chiqadi */
+export const KING_ROOTS = 6;
+export const KING_ROOT_GAP = 18;
+export const KING_ROOT_WARN = 0.75;
+export const KING_ROOT_STEP = 0.09;
+export const KING_ROOT_RADIUS = 10;
+const KING_ROOT_SHOW = 0.5;
+/** Ildiz ushlasa o'yinchi shuncha yurolmaydi */
+export const KING_ROOT_SNARE = 0.5;
+/** Har 9s da 2 ta o'rgimchak chaqiradi, xonada ko'pi bilan 3 ta */
+export const KING_SUMMON_EVERY = 9;
+export const KING_SUMMON_COUNT = 2;
+export const MAX_SPIDERS = 3;
+/** G'azabda (jon yarmidan past) xona qorong'i: o'yinchi atrofidagi yorug'lik radiusi */
+export const KING_LIGHT = 62;
+
+/** Xonadagi tirik o'rgimchaklar soniga qarab nechta yangi o'rgimchak chaqiriladi. */
+export function spiderSummonCount(alive: number) {
+  return Math.max(0, Math.min(KING_SUMMON_COUNT, MAX_SPIDERS - alive));
+}
+
+export interface RootSpike {
+  x: number;
+  y: number;
+  warn: number;
+  life: number;
+}
+
+/** O'rmon Shohi: sekin yuradi, yerdan ildizlar qatori, o'rgimchak chaqiradi, g'azabda xonani qorong'i qiladi. */
+export class ForestKing extends Boss {
+  roots: RootSpike[] = [];
+  private castTimer = 2.2;
+  private castAnim = 0;
+  private summonTimer = 4;
+  /** Game shu kadrda o'rgimchak chaqirishi kerak */
+  wantSummon = false;
+  /** Shu kadrda ildiz yerdan chiqdi (ovoz uchun) */
+  justRooted = false;
+
+  constructor(hp = KING_HP) {
+    super(hp);
+  }
+
+  /** Jon yarmidan pastda xona qorong'i (faqat o'yinchi atrofi yorug') */
+  get dark() {
+    return this.enraged && !this.dead;
+  }
+
+  override update(dt: number, p: Player) {
+    this.justSlammed = false;
+    if (this.spawn > 0) {
+      this.spawn -= dt;
+      this.anim.update(dt);
+      return;
+    }
+    this.anim.update(dt);
+    this.vx *= 0.9;
+    this.vy *= 0.9;
+    updatePhysics(this, dt);
+    if (this.slow > 0) this.slow -= dt;
+    this.updateRoots(dt, p);
+    if (this.dead) {
+      // o'lgach yangi ildizlar chiqmaydi
+      this.roots = this.roots.filter((r) => r.warn <= 0);
+      return;
+    }
+    if (this.enraged && !this.wasEnraged) {
+      this.wasEnraged = true;
+      this.justEnraged = true;
+    }
+    this.summonTimer -= dt;
+    if (this.summonTimer <= 0) {
+      this.wantSummon = true;
+      this.summonTimer = KING_SUMMON_EVERY;
+    }
+    if (this.castAnim > 0) {
+      this.castAnim -= dt;
+      if (this.castAnim <= 0) this.anim.set("walk");
+      return;
+    }
+    if (this.anim.state === "hurt" && !this.anim.done) return;
+
+    const dx = p.x - this.x,
+      dy = p.y - this.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (dx !== 0) this.facingLeft = dx < 0;
+    const speed = (this.enraged ? 30 : 22) * (this.slow > 0 ? 0.5 : 1);
+    if (d > 44) {
+      this.x += (dx / d) * speed * dt;
+      this.y += (dy / d) * speed * dt;
+      this.anim.set("walk");
+    } else this.anim.set("idle");
+
+    this.castTimer -= dt;
+    if (this.castTimer <= 0 && d < 180) {
+      // ildizlar qatori: yo'nalish shu paytda qotadi — chetga chiqib qochish mumkin
+      const ux = dx / d,
+        uy = dy / d;
+      for (let i = 0; i < KING_ROOTS; i++) {
+        const x = this.x + ux * (22 + i * KING_ROOT_GAP),
+          y = this.y + uy * (22 + i * KING_ROOT_GAP);
+        if (x < ROOM.wall || x > ROOM.w - ROOM.wall || y < ROOM.wall || y > ROOM.h - ROOM.wall)
+          break;
+        this.roots.push({ x, y, warn: KING_ROOT_WARN + i * KING_ROOT_STEP, life: KING_ROOT_SHOW });
+      }
+      this.castTimer = (this.enraged ? 2.4 : 3.2) + Math.random() * 0.8;
+      this.castAnim = 0.6;
+      this.justSlammed = true;
+      this.anim.set("attack", true);
+    }
+  }
+
+  private updateRoots(dt: number, p: Player) {
+    for (const r of this.roots) {
+      if (r.warn > 0) {
+        r.warn -= dt;
+        if (r.warn <= 0) {
+          this.justRooted = true;
+          if (
+            Math.hypot(p.x - r.x, p.y - r.y) < KING_ROOT_RADIUS + p.size / 2 &&
+            p.takeHit(1, r.x, r.y, 120)
+          )
+            p.snare = Math.max(p.snare, KING_ROOT_SNARE);
+        }
+      } else r.life -= dt;
+    }
+    this.roots = this.roots.filter((r) => r.warn > 0 || r.life > 0);
+  }
+
+  /** Poldagi ogohlantirishlar va ildizlar — boshqa jonzotlardan oldin chiziladi. */
+  renderFloor(ctx: CanvasRenderingContext2D) {
+    for (const r of this.roots) {
+      if (r.warn > 0) {
+        const k = Math.max(0, 1 - r.warn / KING_ROOT_WARN);
+        ctx.fillStyle = `rgba(160,70,20,${0.12 + 0.3 * k})`;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y + 4, KING_ROOT_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(230,120,30,${0.5 + 0.4 * Math.sin(r.warn * 30)})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        continue;
+      }
+      renderRoots(ctx, r.x, r.y, KING_ROOT_SHOW - r.life);
+    }
+  }
+
+  override render(ctx: CanvasRenderingContext2D) {
+    const { state, frame } = this.anim;
+    if (this.spawn > 0) {
+      const k = 1 - this.spawn / this.spawnMax;
+      ctx.fillStyle = `rgba(120,210,80,${0.2 + 0.2 * Math.sin(this.spawn * 18)})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y + 8, 10 + 26 * k, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = k;
+    }
+    if (this.castAnim > 0) {
+      ctx.fillStyle = `rgba(150,230,80,${0.14 + 0.1 * Math.sin(this.castAnim * 40)})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y + 6, 28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    renderSprite(
+      ctx,
+      "king",
+      state,
+      frame,
+      this.x,
+      this.y,
+      isFlashing(this) || state === "hurt",
+      this.facingLeft,
+    );
+    ctx.globalAlpha = 1;
+  }
+
+  /** Qorong'ida ham ko'rinadigan yonib turgan ko'zlar (qorong'ilik ustidan chiziladi). */
+  renderEyes(ctx: CanvasRenderingContext2D) {
+    if (this.dead || this.spawn > 0) return;
+    // ko'zlar sprite'da markazdan ±6 px, 7 px yuqorida (ikki tomonga ham simmetrik)
+    const x = Math.round(this.x),
+      y = Math.round(this.y - 8);
+    ctx.fillStyle = "rgba(216,255,122,0.3)";
+    ctx.fillRect(x - 10, y - 2, 8, 6);
+    ctx.fillRect(x + 2, y - 2, 8, 6);
+    ctx.fillStyle = "#d8ff7a";
+    ctx.fillRect(x - 8, y, 4, 2);
+    ctx.fillRect(x + 4, y, 4, 2);
   }
 }

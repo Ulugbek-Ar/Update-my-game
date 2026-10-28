@@ -16,6 +16,10 @@ export const KILL_GOLD: Record<EnemyKind, number> = {
   golem: 3,
   iceblob: 1,
   wolf: 2,
+  spider: 1,
+  shroom: 2,
+  treant: 4,
+  owl: 2,
 };
 export const BOSS_GOLD = 25;
 

@@ -13,7 +13,12 @@ export type SpriteKind =
   | "golem"
   | "iceblob"
   | "wolf"
-  | "queen";
+  | "queen"
+  | "spider"
+  | "shroom"
+  | "treant"
+  | "owl"
+  | "king";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -150,6 +155,16 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   wolf: ["#13161d", "#5a6372", "#a7b0bd", "#eef2f6", "#5fe3ff"],
   // Qor Malikasi: siyoh, to'q ko'k soch va burmalar, oqish-ko'k ko'ylak, oq teri va mo'yna, muz toj
   queen: ["#0e1626", "#4a6fa5", "#a9cdee", "#eef7ff", "#7fe9ff"],
+  // 3-dunyo. O'rmon o'rgimchagi: siyoh, to'q binafsha-qora, tana, och tukchalar, qizil ko'zlar
+  spider: ["#07060a", "#231a2a", "#4b3a58", "#9a86a8", "#ff3b3b"],
+  // Zaharli qo'ziqorin: siyoh, to'q binafsha soya, binafsha qalpoq, oqish oyoq, zaharli yashil dog'lar
+  shroom: ["#0b0710", "#3a1650", "#7a2fa0", "#e8dcc0", "#a6f08e"],
+  // Daraxt odam: siyoh, to'q po'stloq, po'stloq, barglar, sariq ko'zlar
+  treant: ["#0d0905", "#3a2614", "#6b4a2a", "#3f7a34", "#ffe14d"],
+  // Tungi boyo'g'li: siyoh, to'q pat, kulrang-binafsha pat, och ko'krak, sariq ko'zlar
+  owl: ["#0a0810", "#3a2f4a", "#7a6a8a", "#c9b8a0", "#ffcc33"],
+  // O'rmon Shohi: siyoh, to'q po'stloq, po'stloq, mox va barglar, yashil-sariq nur (ko'z va toj)
+  king: ["#0a0805", "#2e1d10", "#5e3e22", "#4f8a3a", "#d8ff7a"],
 };
 
 /** Integer-only rasterizer: no paths, antialiasing, images, or sprite sheets. */
@@ -1529,8 +1544,514 @@ function queenFallen(p: Pixels, frame: number) {
   p.line(4, [4, 29], [12, 29], 1);
 }
 
+// ---------------- 3-dunyo: Zulmat o'rmoni ----------------
+
+interface SpiderFrame {
+  /** tananing vertikal siljishi */
+  by: number;
+  /** oyoqlar chayqalishi */
+  legs: number;
+  /** old qismi ko'tarilgan (to'r otishga tayyorlanish) */
+  rear?: number;
+  /** to'r chiqdi */
+  spit?: boolean;
+  /** oyoqlar yig'ilgan */
+  curl?: boolean;
+}
+
+const spiderFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly SpiderFrame[]> = {
+  idle: [
+    { by: 0, legs: 0 },
+    { by: 1, legs: 1 },
+  ],
+  walk: [
+    { by: 0, legs: 2 },
+    { by: -1, legs: 0 },
+    { by: 0, legs: -2 },
+    { by: -1, legs: 1 },
+  ],
+  // 0 — old oyoqlar ko'tarildi, 1 — to'liq tik turdi, 2 — to'r otdi
+  attack: [
+    { by: -1, legs: 1, rear: 2 },
+    { by: -2, legs: -1, rear: 4 },
+    { by: 0, legs: 0, rear: 1, spit: true },
+  ],
+  hurt: [{ by: 1, legs: 0, curl: true }],
+};
+
+/** O'rmon o'rgimchagi: katta qorin, 8 ta bo'g'imli oyoq, qizil ko'zlar. */
+function spider(p: Pixels, f: SpiderFrame) {
+  const b = f.by,
+    r = f.rear ?? 0;
+  for (let i = 0; i < 4; i++) {
+    const sw = i % 2 ? f.legs : -f.legs;
+    // old oyoqlar ko'tariladi
+    const lift = i === 0 ? r : i === 1 ? r >> 1 : 0;
+    const hy = 16 + b + i * 2 - (i < 2 ? r >> 1 : 0);
+    const knee = f.curl ? 6 : 4 - (i === 0 ? 1 : 0);
+    const reach = f.curl ? 9 : 3;
+    const foot = f.curl ? 21 + b + i : 18 + i * 3 + sw - lift;
+    p.line(3, [13, hy], [knee, hy - 4 - lift + sw], 1);
+    p.line(3, [knee, hy - 4 - lift + sw], [reach + (i === 3 ? 2 : 0), foot], 1);
+    p.line(3, [19, hy], [32 - knee, hy - 4 - lift - sw], 1);
+    p.line(3, [32 - knee, hy - 4 - lift - sw], [29 - reach - (i === 3 ? 2 : 0), foot - 2 * sw], 1);
+  }
+  // qorin: katta, ustida och naqsh
+  p.ellipse(3, 16, 22 + b - (r >> 2), 6.5, 5.5);
+  p.rect(4, 15, 19 + b - (r >> 2), 2, 5);
+  p.rect(4, 13, 21 + b - (r >> 2), 6, 1);
+  p.rect(2, 13, 25 + b - (r >> 2), 6, 1);
+  // bosh-ko'krak va ko'zlar
+  const hy = 14 + b - (r >> 1);
+  p.ellipse(2, 16, hy, 4.5, 3.5);
+  p.rect(5, 13, hy - 1, 2, 1);
+  p.rect(5, 17, hy - 1, 2, 1);
+  p.rect(5, 15, hy - 2, 1, 1);
+  p.rect(5, 16, hy - 2, 1, 1);
+  // jag'lar
+  p.rect(4, 14, hy + 3, 1, 2);
+  p.rect(4, 17, hy + 3, 1, 2);
+  if (f.spit) {
+    // to'r tolasi va to'r to'pi
+    p.line(4, [16, hy + 4], [16, hy + 9], 1);
+    p.rect(4, 14, 4, 5, 3);
+    p.rect(4, 15, 3, 3, 5);
+  }
+}
+
+function spiderFallen(p: Pixels, frame: number) {
+  if (frame === 0) return spider(p, { by: 3, legs: 2, curl: true });
+  // ag'darilib, oyoqlari tepaga
+  const y = frame === 1 ? 20 : 24;
+  for (let i = 0; i < 4; i++) {
+    const h = frame === 1 ? 9 - i : 4 - (i >> 1);
+    p.line(2, [12 + i, y - 2], [8 + i * 2, y - 2 - h], 1);
+    p.line(2, [20 - i, y - 2], [24 - i * 2, y - 2 - h], 1);
+  }
+  p.ellipse(3, 16, y + 1, frame === 1 ? 6.5 : 7.5, frame === 1 ? 4.5 : 3);
+  p.ellipse(2, 16, y - 1, 4, 2);
+  p.rect(4, 13, y + 2, 6, 1);
+}
+
+interface ShroomFrame {
+  /** qalpoq kengligi va balandligi qo'shimchasi */
+  cap: number;
+  ch: number;
+  sway: number;
+  /** zahar sochildi */
+  puff?: boolean;
+  squash?: boolean;
+  blink?: boolean;
+}
+
+const shroomFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly ShroomFrame[]> = {
+  idle: [
+    { cap: 0, ch: 0, sway: 0 },
+    { cap: 1, ch: 1, sway: 0, blink: true },
+  ],
+  walk: [
+    { cap: 0, ch: 0, sway: -1 },
+    { cap: 0, ch: -1, sway: 0 },
+    { cap: 0, ch: 0, sway: 1 },
+    { cap: 1, ch: 1, sway: 0 },
+  ],
+  // 0 — shishmoqda, 1 — juda shishdi, 2 — zahar sochdi (qalpoq yassilandi)
+  attack: [
+    { cap: 2, ch: -1, sway: 0 },
+    { cap: 3, ch: -2, sway: 0 },
+    { cap: -1, ch: 2, sway: 0, puff: true },
+  ],
+  hurt: [{ cap: 1, ch: 3, sway: 1, squash: true, blink: true }],
+};
+
+/** Zaharli qo'ziqorin: binafsha qalpoq, yashil dog'lar, oqish oyoqda jahldor ko'zlar. */
+function shroom(p: Pixels, f: ShroomFrame) {
+  const x = 16 + f.sway,
+    top = 13 + f.ch;
+  // oyoq
+  p.rect(4, 12, top + 2, 8, 28 - top - 2);
+  p.rect(2, 12, 27, 8, 1);
+  p.rect(2, 18, top + 3, 2, 24 - top);
+  // jahldor ko'zlar va og'iz
+  if (f.blink) {
+    p.rect(1, 13, top + 6, 2, 1);
+    p.rect(1, 17, top + 6, 2, 1);
+  } else {
+    p.rect(1, 13, top + 5, 2, 2);
+    p.rect(1, 17, top + 5, 2, 2);
+    p.rect(1, 12, top + 4, 2, 1);
+    p.rect(1, 18, top + 4, 2, 1);
+  }
+  p.rect(1, 15, top + 9, 2, 1);
+  // qalpoq: gumbaz, ostida qoramtir chekka
+  const rx = 10 + f.cap,
+    ry = (f.squash ? 4 : 6) + (f.cap >> 1);
+  p.ellipse(3, x, top + 1, rx, ry, top + 2);
+  p.rect(2, x - rx + 1, top + 1, rx * 2 - 2, 2);
+  // yashil zahar dog'lari
+  p.rect(5, x - 6, top - 3, 3, 2);
+  p.rect(5, x + 2, top - 4, 2, 2);
+  p.rect(5, x - 1, top - 1, 2, 1);
+  p.rect(5, x + 5, top - 1, 2, 1);
+  if (f.puff) {
+    // qalpoq ustidan yashil zahar uchqunlari
+    for (const [dx, dy] of [
+      [-9, -6],
+      [-4, -9],
+      [2, -10],
+      [8, -7],
+      [11, -3],
+      [-12, -2],
+    ] as const)
+      p.rect(5, x + dx, top + dy, 2, 2);
+  }
+}
+
+function shroomFallen(p: Pixels, frame: number) {
+  if (frame === 0) return shroom(p, { cap: 2, ch: 5, sway: 2, squash: true, blink: true });
+  // so'lib yerga yotdi
+  const y = frame === 1 ? 23 : 26;
+  p.rect(4, 8, y + 1, 12, 3);
+  p.rect(2, 8, y + 3, 12, 1);
+  p.ellipse(3, 21, y, frame === 1 ? 7 : 6, frame === 1 ? 4 : 2.5);
+  p.rect(5, 19, y - 2, 2, 1);
+  p.rect(5, 23, y - 1, 2, 1);
+  p.rect(1, 11, y + 2, 2, 1);
+}
+
+interface TreantFrame {
+  by: number;
+  /** o'ng va chap qo'l (shox) uchlari */
+  hand: Point;
+  other: Point;
+  /** oyoqlar (ildiz) uchining x siljishi */
+  legs: readonly [number, number];
+  /** barglar chayqalishi */
+  leaf: number;
+  glow?: boolean;
+}
+
+const treantFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly TreantFrame[]> = {
+  idle: [
+    { by: 0, hand: [26, 20], other: [6, 20], legs: [0, 0], leaf: 0 },
+    { by: 1, hand: [26, 21], other: [6, 21], legs: [0, 0], leaf: 1 },
+  ],
+  walk: [
+    { by: 0, hand: [27, 18], other: [6, 22], legs: [-2, 2], leaf: 0 },
+    { by: -1, hand: [26, 20], other: [6, 20], legs: [0, 0], leaf: 1 },
+    { by: 0, hand: [26, 22], other: [5, 18], legs: [2, -2], leaf: 0 },
+    { by: -1, hand: [26, 20], other: [6, 20], legs: [1, -1], leaf: -1 },
+  ],
+  // 0 — shoxlar tepada, 1 — shoxlar yerga sanchildi, 2 — ildiz chiqdi (ko'zlar yonadi)
+  attack: [
+    { by: -1, hand: [27, 6], other: [5, 6], legs: [-1, 1], leaf: 1 },
+    { by: 2, hand: [25, 29], other: [7, 29], legs: [-2, 2], leaf: -1 },
+    { by: 1, hand: [28, 27], other: [4, 27], legs: [-2, 2], leaf: 0, glow: true },
+  ],
+  hurt: [{ by: 1, hand: [24, 13], other: [4, 23], legs: [1, 1], leaf: 2 }],
+};
+
+/** Daraxt odam: yo'g'on tana, shox qo'llar, ildiz oyoqlar, boshida barglar, sariq ko'zlar. */
+function treant(p: Pixels, f: TreantFrame) {
+  const b = f.by;
+  // ildiz oyoqlar
+  p.line(2, [13, 23 + b], [11 + f.legs[0], 29], 3);
+  p.line(2, [19, 23 + b], [21 + f.legs[1], 29], 3);
+  p.rect(2, 8 + f.legs[0], 28, 6, 2);
+  p.rect(2, 19 + f.legs[1], 28, 6, 2);
+  // shox qo'llar va barmoqlari
+  const arm = (from: Point, to: Point) => {
+    p.line(3, from, to, 2);
+    p.line(2, to, [to[0] + (to[0] > 16 ? 2 : -2), to[1] + 2], 1);
+    p.line(2, to, [to[0], to[1] + 3], 1);
+  };
+  arm([11, 13 + b], f.other);
+  // tana: po'stloq, tik ariqchalar
+  p.polygon(3, [
+    [10, 9 + b],
+    [22, 9 + b],
+    [21, 25 + b],
+    [11, 25 + b],
+  ]);
+  p.rect(2, 13, 12 + b, 1, 11);
+  p.rect(2, 19, 14 + b, 1, 9);
+  p.rect(2, 16, 19 + b, 1, 6);
+  // yuz: chuqur ko'zlar va og'iz-kovak
+  p.rect(1, 12, 12 + b, 3, 3);
+  p.rect(1, 18, 12 + b, 3, 3);
+  p.rect(5, 13, 13 + b, f.glow ? 2 : 1, f.glow ? 2 : 1);
+  p.rect(5, 19, 13 + b, f.glow ? 2 : 1, f.glow ? 2 : 1);
+  p.rect(1, 14, 17 + b, 4, 2);
+  arm([21, 13 + b], f.hand);
+  // boshidagi barglar
+  const l = f.leaf;
+  p.ellipse(4, 16 + l, 6 + b, 9, 4.5);
+  p.ellipse(4, 9 + l, 8 + b, 3.5, 3);
+  p.ellipse(4, 23 + l, 8 + b, 3.5, 3);
+  p.rect(2, 11 + l, 5 + b, 2, 1);
+  p.rect(2, 18 + l, 4 + b, 2, 1);
+  p.rect(2, 22 + l, 7 + b, 1, 1);
+}
+
+function treantFallen(p: Pixels, frame: number) {
+  if (frame === 0)
+    return treant(p, {
+      by: 3,
+      hand: [26, 27],
+      other: [5, 27],
+      legs: [-3, 3],
+      leaf: 3,
+    });
+  // yiqildi: yon tomonga yotgan to'nka
+  const y = frame === 1 ? 20 : 24;
+  p.rect(3, 5, y, 20, 6);
+  p.rect(2, 5, y + 2, 20, 1);
+  p.rect(2, 9, y + 4, 12, 1);
+  p.ellipse(4, 26, y + 2, frame === 1 ? 4 : 3, frame === 1 ? 5 : 3);
+  p.rect(1, 12, y + 1, 2, 2);
+  p.line(3, [8, y], [6, y - 4], 1);
+  if (frame === 2) p.rect(4, 15, y - 2, 2, 2);
+}
+
+interface OwlFrame {
+  by: number;
+  /** qanot ko'tarilishi: -1 pastda, 0 yig'iq, 2 tepada */
+  wing: number;
+  blink?: boolean;
+  /** qanotlar yig'ilgan, oyoqlar oldinda (sho'ng'ish) */
+  tuck?: boolean;
+  talons?: boolean;
+}
+
+const owlFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly OwlFrame[]> = {
+  idle: [
+    { by: 0, wing: 0 },
+    { by: 0, wing: 0, blink: true },
+  ],
+  // uchish: qanot qoqish
+  walk: [
+    { by: 0, wing: 2 },
+    { by: -1, wing: 1 },
+    { by: 0, wing: -1 },
+    { by: 1, wing: 0 },
+  ],
+  // 0 — qanotlar yig'ildi, 1 — tirnoqlar oldinda, 2 — yerga qo'ndi (qanotlar yoyilgan)
+  attack: [
+    { by: -1, wing: 0, tuck: true },
+    { by: 1, wing: 0, tuck: true, talons: true },
+    { by: 2, wing: 1, talons: true },
+  ],
+  hurt: [{ by: 1, wing: -1, blink: true }],
+};
+
+/** Tungi boyo'g'li: quloq patlari, katta sariq ko'zlar, keng qanotlar. */
+function owl(p: Pixels, f: OwlFrame) {
+  const b = f.by;
+  // qanotlar
+  if (!f.tuck) {
+    const w = f.wing;
+    for (const side of [-1, 1]) {
+      const sx = 16 + side * 5;
+      p.polygon(2, [
+        [sx, 14 + b],
+        [16 + side * 15, 13 + b - w * 4],
+        [16 + side * 14, 18 + b - w * 2],
+        [16 + side * 9, 22 + b],
+        [sx, 22 + b],
+      ]);
+      p.line(3, [16 + side * 8, 16 + b - w], [16 + side * 13, 15 + b - w * 3], 1);
+    }
+  }
+  // tana va ko'krak
+  p.ellipse(3, 16, 18 + b, 6, 7);
+  p.ellipse(4, 16, 20 + b, 4, 4.5);
+  p.rect(2, 14, 19 + b, 1, 1);
+  p.rect(2, 17, 19 + b, 1, 1);
+  p.rect(2, 15, 22 + b, 1, 1);
+  p.rect(2, 18, 21 + b, 1, 1);
+  if (f.tuck) {
+    // qanotlar tanaga yopishgan
+    p.rect(2, 9, 14 + b, 3, 9);
+    p.rect(2, 20, 14 + b, 3, 9);
+  }
+  // oyoq va tirnoqlar
+  const ty = f.talons ? 26 + b : 25 + b;
+  p.rect(5, 13, ty, 2, f.talons ? 3 : 2);
+  p.rect(5, 17, ty, 2, f.talons ? 3 : 2);
+  if (f.talons) {
+    p.rect(1, 12, ty + 3, 3, 1);
+    p.rect(1, 17, ty + 3, 3, 1);
+  }
+  // bosh: quloq patlari, yuz gardishi, ko'zlar, tumshuq
+  p.ellipse(3, 16, 10 + b, 6.5, 5);
+  p.polygon(2, [
+    [10, 8 + b],
+    [11, 2 + b],
+    [14, 6 + b],
+  ]);
+  p.polygon(2, [
+    [22, 8 + b],
+    [21, 2 + b],
+    [18, 6 + b],
+  ]);
+  p.ellipse(4, 13, 10 + b, 3, 3);
+  p.ellipse(4, 19, 10 + b, 3, 3);
+  if (f.blink) {
+    p.rect(2, 11, 10 + b, 4, 1);
+    p.rect(2, 17, 10 + b, 4, 1);
+  } else {
+    p.rect(5, 12, 9 + b, 3, 3);
+    p.rect(5, 18, 9 + b, 3, 3);
+    p.rect(1, 13, 10 + b, 1, 1);
+    p.rect(1, 19, 10 + b, 1, 1);
+  }
+  p.rect(2, 15, 12 + b, 2, 2);
+}
+
+function owlFallen(p: Pixels, frame: number) {
+  if (frame === 0) return owl(p, { by: 3, wing: -1, blink: true });
+  // patlar sochilib yotibdi
+  const y = frame === 1 ? 21 : 25;
+  p.polygon(2, [
+    [4, y + 3],
+    [12, y - 1],
+    [20, y - 1],
+    [28, y + 3],
+    [16, y + 5],
+  ]);
+  p.ellipse(3, 16, y + 1, 5, frame === 1 ? 4 : 2.5);
+  p.ellipse(3, 22, y - 1, 3.5, 3);
+  p.rect(2, 21, y - 1, 3, 1);
+  p.rect(4, 6, y - 5 + frame, 2, 1);
+  p.rect(4, 25, y - 4 + frame, 1, 2);
+}
+
+/** O'rmon Shohi qo'llari: hujum kadrlarida alohida. */
+const kingArms: readonly { hand: Point; other: Point }[] = [
+  { hand: [29, 4], other: [3, 4] },
+  { hand: [26, 29], other: [6, 29] },
+  { hand: [30, 15], other: [2, 15] },
+];
+
+/**
+ * O'rmon Shohi: keng po'stloq tana, shox toj (uchlarida nurli kurtaklar), mox soqol,
+ * yashil-sariq nurli ko'zlar, ildiz oyoqlar.
+ */
+function forestKing(p: Pixels, pose: Pose, attackFrame: number | null) {
+  const { bob: b, lean: l } = pose;
+  const arms = attackFrame !== null ? kingArms[attackFrame]! : null;
+  const hand = arms ? arms.hand : ([pose.hand[0] + 4, pose.hand[1]] as Point);
+  const other = arms ? arms.other : ([pose.otherHand[0] - 4, pose.otherHand[1]] as Point);
+  // ildiz oyoqlar
+  p.line(2, [12, 22 + b], [pose.leftFoot[0] - 2, 29], 4);
+  p.line(2, [20, 22 + b], [pose.rightFoot[0] + 2, 29], 4);
+  p.rect(2, pose.leftFoot[0] - 7, 28, 8, 2);
+  p.rect(2, pose.rightFoot[0] - 1, 28, 8, 2);
+  // shox qo'llar
+  const arm = (from: Point, to: Point) => {
+    p.line(3, from, to, 3);
+    p.line(2, to, [to[0] + (to[0] > 16 ? 2 : -2), to[1] - 2], 1);
+    p.line(2, to, [to[0] + (to[0] > 16 ? 1 : -1), to[1] + 3], 1);
+  };
+  arm([9 + l, 13 + b], other);
+  // tana
+  p.polygon(3, [
+    [8 + l, 9 + b],
+    [24 + l, 9 + b],
+    [23, 25 + b],
+    [9, 25 + b],
+  ]);
+  p.rect(2, 11 + l, 12 + b, 1, 12);
+  p.rect(2, 21 + l, 13 + b, 1, 11);
+  p.rect(2, 16, 21 + b, 1, 4);
+  // mox soqol
+  p.polygon(4, [
+    [11 + l, 15 + b],
+    [21 + l, 15 + b],
+    [19 + l, 21 + b],
+    [16 + l, 23 + b],
+    [13 + l, 21 + b],
+  ]);
+  p.rect(2, 14 + l, 18 + b, 1, 2);
+  p.rect(2, 18 + l, 17 + b, 1, 3);
+  // yuz: chuqur ko'z kosalari, nurli ko'zlar, og'iz
+  p.rect(1, 11 + l, 11 + b, 4, 3);
+  p.rect(1, 17 + l, 11 + b, 4, 3);
+  const g = attackFrame === 2 ? 2 : 1;
+  p.rect(5, 12 + l, 12 + b, g + 1, g);
+  p.rect(5, 18 + l, 12 + b, g + 1, g);
+  p.rect(1, 14 + l, 15 + b, 4, 1);
+  arm([23 + l, 13 + b], hand);
+  // shox toj: o'ng va chap shoxlar, uchlarida nurli kurtaklar
+  for (const side of [-1, 1]) {
+    const bx = 16 + l + side * 4;
+    p.line(2, [bx, 9 + b], [bx + side * 3, 4 + b], 2);
+    p.line(2, [bx + side * 3, 4 + b], [bx + side * 8, 1 + b], 1);
+    p.line(2, [bx + side * 3, 4 + b], [bx + side * 2, 1 + b], 1);
+    p.line(2, [bx + side * 6, 3 + b], [bx + side * 9, 5 + b], 1);
+    p.rect(5, bx + side * 8, 1 + b, 1, 1);
+    p.rect(5, bx + side * 2, 1 + b, 1, 1);
+    p.rect(4, bx + side * 9 - 1, 5 + b, 2, 2);
+  }
+  // tepada barg tutami
+  p.rect(4, 13 + l, 7 + b, 7, 2);
+  p.rect(4, 15 + l, 6 + b, 3, 1);
+}
+
+function forestKingFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    // tiz cho'kdi, shoxlari osilib qoldi
+    forestKing(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, 1);
+    return;
+  }
+  if (frame === 1) {
+    // qurib, to'nkaga aylanmoqda
+    p.polygon(3, [
+      [9, 16],
+      [23, 16],
+      [25, 29],
+      [7, 29],
+    ]);
+    p.rect(2, 12, 18, 1, 10);
+    p.rect(2, 19, 19, 1, 9);
+    p.rect(1, 12, 20, 3, 2);
+    p.rect(1, 18, 20, 3, 2);
+    p.line(2, [10, 16], [5, 11], 1);
+    p.line(2, [22, 16], [27, 10], 1);
+    p.rect(4, 11, 15, 10, 2);
+    return;
+  }
+  // to'nka, ustida nurli yangi nihol
+  p.rect(3, 8, 23, 16, 7);
+  p.rect(2, 8, 23, 16, 2);
+  p.rect(2, 12, 26, 1, 3);
+  p.rect(2, 19, 25, 1, 4);
+  p.line(4, [16, 22], [16, 15], 1);
+  p.rect(4, 13, 15, 3, 2);
+  p.rect(4, 17, 14, 3, 2);
+  p.rect(5, 16, 13, 1, 1);
+}
+
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   const p = new Pixels();
+  if (kind === "spider" || kind === "shroom" || kind === "treant" || kind === "owl") {
+    const f = Math.min(2, Math.max(0, frame));
+    if (state === "death") {
+      if (kind === "spider") spiderFallen(p, f);
+      else if (kind === "shroom") shroomFallen(p, f);
+      else if (kind === "treant") treantFallen(p, f);
+      else owlFallen(p, f);
+    } else if (kind === "spider") spider(p, spiderFrames[state][frame] ?? spiderFrames[state][0]!);
+    else if (kind === "shroom") shroom(p, shroomFrames[state][frame] ?? shroomFrames[state][0]!);
+    else if (kind === "treant") treant(p, treantFrames[state][frame] ?? treantFrames[state][0]!);
+    else owl(p, owlFrames[state][frame] ?? owlFrames[state][0]!);
+    return p.outlined();
+  }
+  if (kind === "king") {
+    if (state === "death") forestKingFallen(p, Math.min(2, Math.max(0, frame)));
+    else forestKing(p, poses[state][frame] ?? poses[state][0]!, state === "attack" ? frame : null);
+    return p.outlined();
+  }
   if (kind === "frost") {
     frostGhost(p, state, frame);
     return p.outlined();
@@ -1630,13 +2151,20 @@ export function renderSprite(
     cache.set(key, canvas);
   }
   const size =
-    kind === "demon" || kind === "queen"
+    kind === "demon" || kind === "queen" || kind === "king"
       ? 64
-      : kind === "golem"
+      : kind === "golem" || kind === "treant"
         ? 40
-        : kind === "slime" || kind === "bat" || kind === "frost" || kind === "iceblob"
+        : kind === "slime" ||
+            kind === "bat" ||
+            kind === "frost" ||
+            kind === "iceblob" ||
+            kind === "spider" ||
+            kind === "owl"
           ? 26
-          : 32;
+          : kind === "shroom"
+            ? 28
+            : 32;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
   if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;

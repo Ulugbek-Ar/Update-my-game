@@ -81,6 +81,12 @@ export class Player implements Body {
   frost = false;
   /** Sovuq nafasdan sekinlashish qolgan vaqti (Muz ruhi) */
   chill = 0;
+  /** To'r yoki ildiz ushlagan: shuncha soniya yurolmaydi (zarba bilan uziladi) */
+  snare = 0;
+  /** Shu kadrda to'r zarba bilan uzildi (Game effekt chiqaradi) */
+  cutFree = false;
+  /** Zaharli bulut ichida o'tgan vaqt: har 1s da 1 zarar (Game hisoblaydi) */
+  poison = 0;
   /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
   bolts: Bolt[] = [];
   /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
@@ -179,6 +185,7 @@ export class Player implements Body {
     this.dashCooldown -= dt;
     this.spinCooldown -= dt;
     if (this.chill > 0) this.chill -= dt;
+    if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.spinTimer > 0) this.spinTimer -= dt;
@@ -186,6 +193,11 @@ export class Player implements Body {
     const wantAttack = input.consumeAttack();
     const wantDash = input.consumeDash();
     const { x, y } = input.axis();
+    if (wantAttack && this.snare > 0) {
+      // to'rni zarba bilan uzish
+      this.snare = 0;
+      this.cutFree = true;
+    }
 
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
@@ -196,7 +208,7 @@ export class Player implements Body {
       return;
     }
 
-    if (wantDash && this.dashCharges > 0 && this.hurtTimer <= 0) {
+    if (wantDash && this.dashCharges > 0 && this.hurtTimer <= 0 && this.snare <= 0) {
       let dx = x,
         dy = y;
       if (!dx && !dy) {
@@ -267,7 +279,7 @@ export class Player implements Body {
 
     const busy = this.attackTimer > 0 || this.hurtTimer > 0 || this.spinning;
     if (!busy) {
-      if (x || y) {
+      if ((x || y) && this.snare <= 0) {
         const l = Math.max(1, Math.hypot(x, y));
         const speed = this.speed * (this.chill > 0 ? CHILL_SPEED : 1);
         this.x += (x / l) * speed * dt;

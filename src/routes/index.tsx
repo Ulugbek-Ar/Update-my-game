@@ -795,6 +795,11 @@ function CoachPanel({ hero }: { hero: Hero }) {
     | "shield"
     | "wolf"
     | "queen"
+    | "spider"
+    | "shroom"
+    | "treant"
+    | "owl"
+    | "king"
   >("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
@@ -840,6 +845,13 @@ function CoachPanel({ hero }: { hero: Hero }) {
             <option value="shield">Muz qalqonli skelet</option>
             <option value="wolf">Qor bo'risi</option>
             <option value="queen">Qor Malikasi (Boss)</option>
+          </optgroup>
+          <optgroup label="3-DUNYO: Zulmat o'rmoni">
+            <option value="spider">O'rmon o'rgimchagi</option>
+            <option value="shroom">Zaharli qo'ziqorin</option>
+            <option value="treant">Daraxt odam</option>
+            <option value="owl">Tungi boyo'g'li</option>
+            <option value="king">O'rmon Shohi (Boss)</option>
           </optgroup>
         </select>
       </label>

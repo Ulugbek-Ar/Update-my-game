@@ -1,6 +1,6 @@
 const MUTE_KEY = "pixel-rpg-muted";
 
-export type MusicTrack = "normal" | "boss" | "ice" | "queen";
+export type MusicTrack = "normal" | "boss" | "ice" | "queen" | "forest" | "king";
 
 /** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
 export interface Track {
@@ -75,6 +75,36 @@ export const TRACKS: Record<MusicTrack, Track> = {
     leadWave: "square",
     bassWave: "triangle",
     kick: 4,
+  },
+  // 3-dunyo: Zulmat o'rmoni — re doriy lad, sekin "nay" kuyi, pastda yumshoq bas va sirli pauzalar
+  forest: {
+    step: 60 / 96 / 2,
+    lead: [
+      62, null, 65, 67, 69, null, 67, null, 65, null, 64, 62, 60, null, null, null,
+      62, null, 65, 67, 71, null, 69, 67, 69, null, 72, null, 69, null, null, null,
+    ],
+    bass: [
+      38, null, null, 45, null, null, 38, null, 36, null, null, 43, null, null, 36, null,
+      34, null, null, 41, null, null, 34, null, 33, null, null, 40, null, null, 45, null,
+    ],
+    leadWave: "triangle",
+    bassWave: "sine",
+    kick: 0,
+  },
+  // O'rmon Shohi: sol minor, og'ir barabanli tez kuy, pastda "ildiz" basi
+  king: {
+    step: 60 / 140 / 2,
+    lead: [
+      67, null, 70, 67, 74, null, 72, 70, 69, null, 70, null, 66, null, 67, null,
+      67, null, 70, 74, 75, null, 74, 72, 70, null, 69, 66, 67, null, null, null,
+    ],
+    bass: [
+      31, 31, 43, 31, 31, 31, 43, 31, 32, 32, 44, 32, 30, 30, 42, 30,
+      31, 31, 43, 31, 27, 27, 39, 27, 26, 26, 38, 26, 30, 30, 42, 30,
+    ],
+    leadWave: "square",
+    bassWave: "sawtooth",
+    kick: 2,
   },
 };
 
@@ -328,6 +358,23 @@ class SoundFX {
   blizzard() {
     this.tone(180, 0.9, "sawtooth", 0.03, 420);
     this.tone(260, 0.8, "triangle", 0.03, 120, 0.2);
+  }
+
+  /** O'rgimchak to'r otdi — yopishqoq "shiv" */
+  web() {
+    this.tone(900, 0.12, "triangle", 0.04, 300);
+  }
+
+  /** Qo'ziqorin zaharli bulut chiqardi — "pufff" */
+  poison() {
+    this.tone(120, 0.35, "sawtooth", 0.04, 70);
+    this.tone(500, 0.25, "triangle", 0.03, 180, 0.05);
+  }
+
+  /** Ildiz yerdan chiqdi — yog'och "qars" */
+  root() {
+    this.tone(180, 0.14, "square", 0.07, 60);
+    this.tone(90, 0.18, "sawtooth", 0.05, 45, 0.03);
   }
 
   /** Muz golemi yerga urdi */
