@@ -24,5 +24,7 @@ export function apkCaption(version: string) {
     "3. Telefon so'rasa, «Noma'lum manbalardan o'rnatish»ga ruxsat bering (Sozlamalar → Telegram → Ruxsat berish), so'ng orqaga qaytib o'rnating.",
     "",
     "Yangi versiyani eskisi ustidan o'rnating — saqlanishlar o'chmaydi.",
+    "",
+    "#apk #android",
   ].join("\n");
 }

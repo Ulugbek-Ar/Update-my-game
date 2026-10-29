@@ -64,7 +64,11 @@ const newMobs = [
       ]
     : []),
 ];
-const tail = ["", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
+const apkNote =
+  process.env.APK_COMING === "true"
+    ? ["", "📲 <b>Android ilova (APK)</b> — keyingi xabarda, kanal tepasida qadalgan"]
+    : [];
+const tail = [...apkNote, "", ...(links.length ? [links.join("   "), ""] : []), "#yangilanish"];
 const limit = shots.length ? 1024 : 4096;
 const allBullets = bullets.length;
 const more = () =>

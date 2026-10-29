@@ -152,7 +152,11 @@ jobs:
           GAME_URL_PUBLIC: ${{ vars.GAME_URL }}
           SHOT_VERSION: ${{ inputs.version }}
           PREV_TAG: ${{ steps.check.outputs.prev }}
-        run: node --experimental-strip-types scripts/telegram-post.mjs
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          V="${{ steps.check.outputs.version }}"
+          if [ "$HAS_KEYSTORE" = "true" ] && echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.0$'; then export APK_COMING=true; fi
+          node --experimental-strip-types scripts/telegram-post.mjs
 
       - name: Versiyani "chiqdi" deb belgilash
         if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
