@@ -690,7 +690,7 @@ export class Enemy implements Body {
           Math.hypot(p.x - this.rootX, p.y - this.rootY) < ROOT_RADIUS + p.size / 2 &&
           p.takeHit(1, this.rootX, this.rootY, 40)
         )
-          p.snare = Math.max(p.snare, ROOT_SNARE);
+          p.ensnare(ROOT_SNARE);
       } else this.showAttackFrame(this.rootWarn > ROOT_WARN / 2 ? 0 : 1);
       return;
     }

@@ -508,7 +508,7 @@ export class ForestKing extends Boss {
             Math.hypot(p.x - r.x, p.y - r.y) < KING_ROOT_RADIUS + p.size / 2 &&
             p.takeHit(1, r.x, r.y, 120)
           )
-            p.snare = Math.max(p.snare, KING_ROOT_SNARE);
+            p.ensnare(KING_ROOT_SNARE);
         }
       } else r.life -= dt;
     }

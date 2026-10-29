@@ -1498,6 +1498,9 @@ export class Game {
       if (this.shots.length < before) this.score += 5 * (before - this.shots.length);
     }
 
+    // dash oxirida dushman ichida qolsa himoya dumi chiqquncha uzayadi
+    p.inFoe =
+      this.enemies.some((e) => e.active && overlap(p, e)) || !!(boss?.active && overlap(p, boss));
     // kontakt zarar
     if (!p.dead) {
       for (const e of this.enemies)
@@ -1611,9 +1614,9 @@ export class Game {
         }
       } else w.life -= dt;
       // uchayotgan to'r tepadan o'tadi — faqat yerdagisi ushlaydi
-      if (p.dead || p.dashing || w.flying || w.life <= 0) continue;
+      if (p.dead || p.evading || w.flying || w.life <= 0) continue;
       if (Math.hypot(p.x - w.x, p.y - w.y) < WEB_RADIUS - 2 + p.size / 2) {
-        p.snare = Math.max(p.snare, WEB_SNARE);
+        p.ensnare(WEB_SNARE);
         w.life = 0;
         sfx.web();
         this.fx.burst(p.x, p.y, "#e8e4f0", 8, 40, 1);

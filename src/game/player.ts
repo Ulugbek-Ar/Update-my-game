@@ -33,6 +33,15 @@ export const JUMP_THREAT = 110;
 /** Shift'ni shuncha bosib tursa — sakrash o'rniga tuzoq */
 export const TRAP_HOLD = 0.35;
 export const TRAP_CD = 6;
+/** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
+export const DASH_GUARD = 0.2;
+/** Dash oxirida dushman ichida qolsa — chiqquncha himoya, lekin shundan oshmaydi */
+export const DASH_GUARD_MAX = 0.35;
+
+/** Player o'qiydigan boshqaruv: klaviatura/sensor (Input) yoki olamdagi buyruqlar (RealmSim). */
+export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" | "attackHeld"> & {
+  dashHeld?: () => boolean;
+};
 
 /** Sehrgarning sehrli shari */
 export interface Bolt {
@@ -74,6 +83,10 @@ export class Player implements Body {
   dashY = 0;
   /** Ketma-ket qolgan dashlar (Ikki karra dash bilan 2 ta) */
   dashCharges = 1;
+  /** Dash tugaganidan beri o'tgan vaqt (-1 — himoya dumi yo'q) */
+  guardAge = -1;
+  /** O'yinchi dushman tanasi ichida (Game/RealmSim belgilaydi) — himoya dumi uzayadi */
+  inFoe = false;
   /** Hujum tugmasi bosib turilgan vaqt */
   charge = 0;
   spinTimer = 0;
@@ -172,6 +185,17 @@ export class Player implements Body {
     return this.dashTimer > 0;
   }
 
+  /** Dash tugagach qisqa himoya: 0.2s, dushman ichida qolsa chiqquncha (eng ko'pi 0.35s). */
+  get guarded() {
+    const t = this.guardAge;
+    return t >= 0 && (t < DASH_GUARD || (this.inFoe && t < DASH_GUARD_MAX));
+  }
+
+  /** Dash/teleport/sakrash paytida yoki undan keyingi himoya dumida daxlsiz. */
+  get evading() {
+    return this.dashing || this.guarded;
+  }
+
   get spinning() {
     return this.spinTimer > 0;
   }
@@ -186,9 +210,9 @@ export class Player implements Body {
     return this.spinning ? this.damage * 2 : this.damage;
   }
 
-  /** Zarba tegsa true qaytaradi. Dash paytida daxlsiz. */
+  /** Zarba tegsa true qaytaradi. Dash paytida va himoya dumida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
-    if (this.invuln > 0 || this.dead || this.dashing) return false;
+    if (this.invuln > 0 || this.dead || this.evading) return false;
     this.hp -= dmg;
     if (this.hp <= 0) sfx.death();
     else sfx.hurt();
@@ -209,6 +233,13 @@ export class Player implements Body {
     return true;
   }
 
+  /** To'r yoki ildiz ushlaydi; dash paytida (va himoya dumida) ta'sir qilmaydi. */
+  ensnare(t: number) {
+    if (this.dead || this.evading) return false;
+    this.snare = Math.max(this.snare, t);
+    return true;
+  }
+
   heal(n: number) {
     const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + n);
@@ -226,10 +257,14 @@ export class Player implements Body {
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
   }
 
-  update(dt: number, input: Input) {
+  update(dt: number, input: PlayerInput) {
     this.anim.update(dt);
     updatePhysics(this, dt);
     if (this.dead) return;
+    if (this.guardAge >= 0) {
+      this.guardAge += dt;
+      if (!this.guarded) this.guardAge = -1;
+    }
     this.cooldown -= dt;
     this.invuln -= dt;
     this.hurtTimer -= dt;
@@ -253,6 +288,8 @@ export class Player implements Body {
 
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
+      // dash tugagan kadrdayoq himoya dumi boshlanadi — quvib kelgan mob darhol ura olmaydi
+      if (this.dashTimer <= 0) this.guardAge = 0;
       if (this.mage) return;
       const sp = this.hunter ? JUMP_SPEED : DASH_SPEED;
       this.x += this.dashX * sp * dt;
@@ -373,7 +410,7 @@ export class Player implements Body {
    * TRAP_HOLD dan ko'p bosib turilsa oyog'i ostiga tuzoq qo'yadi (6s qayta tiklanadi).
    * true — shu kadrda harakat tugadi (sakrash boshlandi).
    */
-  private updateShift(dt: number, pressed: boolean, input: Input) {
+  private updateShift(dt: number, pressed: boolean, input: PlayerInput) {
     const held = input.dashHeld?.() ?? false;
     if (pressed && this.shiftHold === -1) this.shiftHold = 0;
     if (this.shiftHold === -2) {
@@ -428,6 +465,8 @@ export class Player implements Body {
     // teleport paytida sehrgar ko'rinmaydi
     if (this.dashing && this.mage) return;
     if (this.dashing) ctx.globalAlpha = 0.7;
+    // himoya dumi: biroz shaffof
+    else if (this.guarded) ctx.globalAlpha = 0.6;
     renderSprite(
       ctx,
       this.hero,
