@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.2.2";
+export const GAME_VERSION = "2.3.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.3.0",
+    date: "2026-10-29",
+    notes:
+      "Piksel Qal'a Android ilovasiga tayyorlandi. Ilovada o'yin to'liq ekranda va faqat gorizontal holatda ochiladi. Telefonning Orqaga tugmasi o'yinni pauza qiladi. Ilova oflayn ishlaydi.",
+  },
   {
     version: "2.2.2",
     date: "2026-10-29",

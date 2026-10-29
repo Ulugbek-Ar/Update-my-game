@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Android ilova: to'liq ekran, gorizontal holat — Orqaga tugmasi o'yinni pauza qiladi",
+    "phone": { "width": 800, "height": 400 },
+    "target": "page",
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1", "pixel-rpg-hero": "knight" } },
+      { "start": true },
+      { "wave": 1 },
+      { "spawn": { "kind": "wisp", "count": 2, "dx": 80, "dy": -10 } },
+      { "wait": 600 },
+      { "eval": "window.dispatchEvent(new Event('app:back'));" },
+      { "wait": 300 }
+    ]
+  },
+  {
+    "title": "Bosh menyuda Orqaga — o'yin uslubidagi chiqish oynasi",
+    "phone": { "width": 800, "height": 400 },
+    "target": "page",
+    "steps": [
+      { "storage": { "pixel-rpg-hero": "hunter" } },
+      { "eval": "window.dispatchEvent(new Event('app:back'));" },
+      { "wait": 300 }
+    ]
+  }
+]
