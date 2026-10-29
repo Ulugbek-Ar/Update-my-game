@@ -1,0 +1,100 @@
+{
+  "bread": {
+    "name": "NON",
+    "rarity": "common",
+    "desc": "1 yurak tiklaydi.",
+    "icon": "bread",
+    "price": 6,
+    "sell": 2,
+    "heal": 1
+  },
+  "potion": {
+    "name": "SHIFO DAMLAMASI",
+    "rarity": "rare",
+    "desc": "3 yurak tiklaydi.",
+    "icon": "potion",
+    "stack": 5,
+    "price": 20,
+    "sell": 6,
+    "heal": 3
+  },
+  "meat": {
+    "name": "TO'NG'IZ GO'SHTI",
+    "rarity": "common",
+    "desc": "2 yurak tiklaydi.",
+    "icon": "meat",
+    "sell": 3,
+    "heal": 2
+  },
+  "tusk": {
+    "name": "TO'NG'IZ QOZIG'I",
+    "rarity": "common",
+    "desc": "Savdogar yaxshi narx beradi.",
+    "icon": "tusk",
+    "sell": 4
+  },
+  "tail": {
+    "name": "KALAMUSH DUMI",
+    "rarity": "common",
+    "desc": "Botqoq hidi kelib turibdi.",
+    "icon": "tail",
+    "sell": 2
+  },
+  "core": {
+    "name": "TOSH YURAK",
+    "rarity": "rare",
+    "desc": "Tosh askarning hali iliq yuragi.",
+    "icon": "core",
+    "sell": 10
+  },
+  "glow": {
+    "name": "RUH UCHQUNI",
+    "rarity": "rare",
+    "desc": "Qo'lda sekin miltillaydi.",
+    "icon": "glow",
+    "sell": 8
+  },
+  "star": {
+    "name": "YULDUZ PARCHASI",
+    "rarity": "rare",
+    "desc": "Tunda osmondan tushgan.",
+    "icon": "star",
+    "stack": 5,
+    "sell": 25
+  },
+  "coin": {
+    "name": "QADIMIY TANGA",
+    "rarity": "legendary",
+    "desc": "Qal'a zarbxonasining tangasi.",
+    "icon": "coin",
+    "stack": 3,
+    "sell": 60
+  },
+  "amulet": {
+    "name": "OQSOQOL TUMORI",
+    "rarity": "rare",
+    "desc": "Inventarda: +1 yurak.",
+    "icon": "amulet",
+    "stack": 1,
+    "sell": 15,
+    "bonus": { "maxHp": 1 }
+  },
+  "ring": {
+    "name": "TUNGI UZUK",
+    "rarity": "legendary",
+    "desc": "Inventarda: tez yurish, tunda keng yorug'lik.",
+    "icon": "ring",
+    "stack": 1,
+    "sell": 40,
+    "bonus": { "speed": 10, "light": 1 }
+  },
+  "wardblade": {
+    "name": "SARDOR QILICHI",
+    "rarity": "legendary",
+    "desc": "Inventarda: +1 zarar.",
+    "icon": "blade",
+    "stack": 1,
+    "sell": 80,
+    "bonus": { "damage": 1 }
+  }
+}

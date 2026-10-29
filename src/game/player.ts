@@ -136,6 +136,8 @@ export class Player implements Body {
   threat: { x: number; y: number } | null = null;
   /** Teleport boshlangan nuqta — Game effekt chizib, null qiladi */
   teleportFrom: { x: number; y: number } | null = null;
+  /** Chegaraga qisish: xonada 320x240, ochiq olamda (RealmSim) plitka to'qnashuvi alohida */
+  clamp: (b: Body) => void = clampToRoom;
   /** Joriy hujumda allaqachon urilganlar */
   hitSet = new Set<object>();
   anim = new Animator({
@@ -259,7 +261,7 @@ export class Player implements Body {
 
   update(dt: number, input: PlayerInput) {
     this.anim.update(dt);
-    updatePhysics(this, dt);
+    updatePhysics(this, dt, this.clamp);
     if (this.dead) return;
     if (this.guardAge >= 0) {
       this.guardAge += dt;
@@ -294,7 +296,7 @@ export class Player implements Body {
       const sp = this.hunter ? JUMP_SPEED : DASH_SPEED;
       this.x += this.dashX * sp * dt;
       this.y += this.dashY * sp * dt;
-      clampToRoom(this);
+      this.clamp(this);
       return;
     }
 
@@ -329,7 +331,7 @@ export class Player implements Body {
         this.x += this.dashX * TELEPORT_DIST;
         this.y += this.dashY * TELEPORT_DIST;
         this.dashTimer = TELEPORT_TIME;
-        clampToRoom(this);
+        this.clamp(this);
         this.anim.set("idle");
         return;
       }
@@ -381,7 +383,7 @@ export class Player implements Body {
         this.anim.set("walk");
       } else this.anim.set("idle");
     }
-    clampToRoom(this);
+    this.clamp(this);
   }
 
   /** Sehrgar shari yoki Ovchi o'qi; Uch shar/Uch o'q bilan yelpig'ich bo'lib uchadi. */

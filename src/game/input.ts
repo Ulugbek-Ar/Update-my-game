@@ -11,13 +11,15 @@ export class Input {
   private touch = { x: 0, y: 0 };
   private touchAttack = false;
   private touchDash = false;
+  /** J ham hujum tugmasi (ochiq olamda J — topshiriqlar jurnali) */
+  jAttack = true;
 
   private down = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
     if (GAME_KEYS.includes(e.key) || e.code === "Space") e.preventDefault();
     if (!e.repeat) {
-      if (e.code === "Space" || e.code === "KeyJ") this.attackQueued = true;
+      if (e.code === "Space" || (e.code === "KeyJ" && this.jAttack)) this.attackQueued = true;
       if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyK")
         this.dashQueued = true;
       if (e.code === "Enter" || e.code === "NumpadEnter") this.enterQueued = true;
@@ -68,7 +70,7 @@ export class Input {
     this.touchAttack = on;
   }
   attackHeld() {
-    return this.keys.has("Space") || this.keys.has("KeyJ") || this.touchAttack;
+    return this.keys.has("Space") || (this.jAttack && this.keys.has("KeyJ")) || this.touchAttack;
   }
   pressDash() {
     this.dashQueued = true;

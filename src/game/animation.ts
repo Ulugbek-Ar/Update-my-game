@@ -73,14 +73,15 @@ export function applyHit(b: Body, dmg: number, fromX: number, fromY: number, for
   b.vy = (dy / l) * force;
 }
 
-export function updatePhysics(b: Body, dt: number) {
+/** clamp — chegaraga qisish (standart: 320x240 xona; ochiq olamda RealmSim o'zi to'qnashtiradi). */
+export function updatePhysics(b: Body, dt: number, clamp: (b: Body) => void = clampToRoom) {
   b.x += b.vx * dt;
   b.y += b.vy * dt;
   const k = Math.min(1, 10 * dt);
   b.vx -= b.vx * k;
   b.vy -= b.vy * k;
   if (b.flash > 0) b.flash -= dt;
-  clampToRoom(b);
+  clamp(b);
 }
 
 export function clampToRoom(b: Body) {
