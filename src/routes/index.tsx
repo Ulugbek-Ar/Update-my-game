@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as RPointerEvent,
+} from "react";
 import { Game } from "@/game/game";
 import type { World } from "@/game/waves";
 import { MapState, WorldMap, renderMap } from "@/game/map";
@@ -11,7 +17,16 @@ import {
   renderMenuScene,
 } from "@/game/menuScene";
 import { migrateSave } from "@/game/save";
-import { HEROES, HERO_NAMES, bestKeys, loadHero, saveHero, type Hero } from "@/game/hero";
+import {
+  HEROES,
+  HERO_NAMES,
+  HERO_THEME,
+  bestKeys,
+  loadHero,
+  saveHero,
+  withAlpha,
+  type Hero,
+} from "@/game/hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
@@ -24,6 +39,49 @@ import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/
 import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
+
+/** Telegram Mini App API (faqat Telegram ichida mavjud) */
+interface TelegramWebApp {
+  ready?: () => void;
+  expand?: () => void;
+  disableVerticalSwipes?: () => void;
+  requestFullscreen?: () => void;
+  lockOrientation?: () => void;
+}
+
+/** Telegram ichida: to'liq ekran, pastga tortib yopish o'chiq, gorizontal holat. Tashqarida — hech narsa. */
+function initTelegram() {
+  const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } }).Telegram?.WebApp;
+  if (!tg) return;
+  for (const f of [
+    tg.ready,
+    tg.expand,
+    tg.disableVerticalSwipes,
+    tg.requestFullscreen,
+    tg.lockOrientation,
+  ]) {
+    try {
+      f?.call(tg);
+    } catch {
+      /* eski Telegram versiyasi */
+    }
+  }
+}
+
+/** BOSHLASH bosilganda (foydalanuvchi bosishi ichida): to'liq ekran va gorizontal qulf. iOS'da jim o'tadi. */
+async function enterLandscape() {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+  } catch {
+    /* qo'llanmaydi */
+  }
+  try {
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    await o.lock?.("landscape");
+  } catch {
+    /* qo'llanmaydi — aylantirish oynasi zaxira */
+  }
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -90,7 +148,31 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
+    // skript hali yuklanmagan bo'lsa — sahifa yuklangach
+    if (document.readyState === "complete") initTelegram();
+    else window.addEventListener("load", initTelegram, { once: true });
   }, []);
+
+  // Sensorli qurilmada vertikal holat: "aylantiring" oynasi, o'yin pauzada
+  const [portrait, setPortrait] = useState(false);
+  useEffect(() => {
+    if (!touch) return;
+    const mq = window.matchMedia("(orientation: portrait)");
+    const on = () => setPortrait(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [touch]);
+  useEffect(() => {
+    // gorizontalga qaytganda pauza menyusi qoladi — o'yinchi o'zi davom ettiradi
+    if (portrait) game?.setPaused(true);
+  }, [portrait, game]);
+
+  // o'yin paytida ikki marta bosib kattalashtirish va pastga tortib yangilash o'chiq
+  useEffect(() => {
+    document.documentElement.classList.toggle("in-game", started);
+    return () => document.documentElement.classList.remove("in-game");
+  }, [started]);
 
   // Rekordlar tanlangan qahramonniki
   useEffect(() => {
@@ -182,7 +264,11 @@ function Index() {
             <h1 className="text-primary text-lg sm:text-2xl drop-shadow-[2px_2px_0_#000]">
               PIKSEL QAL'A
             </h1>
-            <div aria-label="Qahramon tanlash" className="flex gap-3">
+            {/* 10 tagacha qahramon: sig'masa gorizontal aylanadi */}
+            <div
+              aria-label="Qahramon tanlash"
+              className="hero-row flex max-w-full snap-x gap-3 overflow-x-auto p-1"
+            >
               {HEROES.map((h) => (
                 <button
                   key={h}
@@ -191,9 +277,18 @@ function Index() {
                     setHero(h);
                     saveHero(h);
                   }}
-                  className={`flex flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                  style={
                     hero === h
-                      ? "border-primary bg-primary/15 text-primary"
+                      ? {
+                          borderColor: HERO_THEME[h].accent,
+                          background: withAlpha(HERO_THEME[h].accent, 0.15),
+                          color: HERO_THEME[h].uiText,
+                        }
+                      : undefined
+                  }
+                  className={`flex shrink-0 snap-center flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                    hero === h
+                      ? ""
                       : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                   }`}
                 >
@@ -275,6 +370,7 @@ function Index() {
             <Button
               onClick={() => {
                 sfx.unlock();
+                if (touch) void enterLandscape();
                 setMapOpen(true);
               }}
               disabled={!ready}
@@ -295,6 +391,7 @@ function Index() {
               <Button
                 onClick={() => {
                   sfx.unlock();
+                  if (touch) void enterLandscape();
                   dailyRef.current = todayKey();
                   setStarted(true);
                 }}
@@ -359,6 +456,7 @@ function Index() {
         )}
       </div>
       {started && touch && game && <TouchControls game={game} />}
+      {touch && portrait && <RotateOverlay />}
       {newVersion && (
         <div className="fixed bottom-2 left-1/2 -translate-x-1/2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-2 border-primary bg-card px-3 py-2 text-[9px] sm:text-[10px] text-foreground max-w-full">
           Yangi versiya v{newVersion} tayyor
@@ -431,14 +529,24 @@ function TouchControls({ game }: { game: Game }) {
     setKnob({ x: 0, y: 0 });
     game.input.setTouchAxis(0, 0);
   };
+  // tugmalar tanlangan qahramon rangida (hero.ts: HERO_THEME)
+  const theme = HERO_THEME[game.hero];
+  const vars = {
+    "--hero-border": withAlpha(theme.accent, 0.7),
+    "--hero-text": theme.uiText,
+    "--hero-press": withAlpha(theme.accent, 0.4),
+  } as CSSProperties;
   const btn =
-    "flex items-center justify-center rounded-full border-2 border-primary/70 bg-card/60 text-primary select-none active:bg-primary/40";
+    "flex items-center justify-center rounded-full border-2 border-[color:var(--hero-border)] bg-card/60 text-[color:var(--hero-text)] select-none active:bg-[color:var(--hero-press)]";
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-40 touch-none select-none">
+    <div
+      className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
+      style={vars}
+    >
       <div
         ref={baseRef}
-        className="pointer-events-auto absolute bottom-6 left-6 h-32 w-32 rounded-full border-2 border-foreground/30 bg-card/30"
+        className="touch-stick pointer-events-auto absolute rounded-full border-2 border-foreground/30 bg-card/30"
         onPointerDown={(e) => {
           pointer.current = e.pointerId;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -455,7 +563,7 @@ function TouchControls({ game }: { game: Game }) {
       </div>
       <button
         aria-label={game.player.mage ? "Sehrli shar" : game.player.hunter ? "O'q" : "Hujum"}
-        className={`${btn} pointer-events-auto absolute bottom-8 right-6 h-20 w-20 text-[10px]`}
+        className={`${btn} touch-attack pointer-events-auto absolute text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -469,7 +577,7 @@ function TouchControls({ game }: { game: Game }) {
       </button>
       <button
         aria-label={game.player.mage ? "Teleport" : game.player.hunter ? "Sakrash" : "Dash"}
-        className={`${btn} pointer-events-auto absolute bottom-32 right-24 h-14 w-14 ${game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
+        className={`${btn} touch-dash pointer-events-auto absolute ${game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
         onPointerDown={(e) => {
           e.preventDefault();
           // Ovchi: bosib turilsa tuzoq qo'yadi
@@ -493,7 +601,7 @@ function TouchControls({ game }: { game: Game }) {
       </button>
       <button
         aria-label="Pauza"
-        className={`${btn} pointer-events-auto absolute right-3 top-3 h-10 w-10 text-[10px]`}
+        className={`${btn} touch-pause pointer-events-auto absolute text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
           game.input.pressPause();
@@ -501,6 +609,35 @@ function TouchControls({ game }: { game: Game }) {
       >
         II
       </button>
+    </div>
+  );
+}
+
+/** Vertikal telefon: butun ekranli "aylantiring" oynasi (o'yin shu paytda pauzada). */
+function RotateOverlay() {
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Telefonni aylantiring"
+      className="font-pixel fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-card px-6 text-center"
+      style={{ textShadow: "1px 1px 0 #000" }}
+    >
+      <svg
+        className="rotate-phone"
+        width={96}
+        height={96}
+        viewBox="0 0 16 16"
+        shapeRendering="crispEdges"
+        aria-hidden="true"
+      >
+        <rect x={5} y={1} width={6} height={14} fill="#e0d6ee" />
+        <rect x={6} y={2} width={4} height={10} fill="#1f1730" />
+        <rect x={7} y={13} width={2} height={1} fill="#5c4a6e" />
+        <rect x={7} y={4} width={2} height={2} fill="#ffcc33" />
+      </svg>
+      <h2 className="text-primary text-sm leading-6">TELEFONNI AYLANTIRING</h2>
+      <p className="text-foreground text-[10px] leading-5">O'yin gorizontal holatda o'ynaladi</p>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.0.0";
+export const GAME_VERSION = "2.1.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.1.0",
+    date: "2026-10-29",
+    notes:
+      "Har qahramonning qobiliyatlari o'z rangida: Ritsar ko'k, Sehrgar qizil, Ovchi yashil. Telefon tugmalari tanlangan qahramon rangida. Telefonda o'yin gorizontal holatda o'ynaladi, vertikal holatda telefonni aylantirish haqida ko'rsatma chiqadi. Telegram ichida o'yin to'liq ekranga ochiladi. Yutuq xabari endi kuch tanlash ekranini yopmaydi.",
+  },
   {
     version: "2.0.0",
     date: "2026-10-28",

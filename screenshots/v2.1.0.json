@@ -1,0 +1,148 @@
+[
+  {
+    "title": "Ritsar: kuchli zarba halqasi ko'k rangda",
+    "closeup": {
+      "x": 120,
+      "y": 120,
+      "w": 140
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 2,
+          "dx": 60
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Sehrgar: sehrli halqa zaryadi qizil rangda",
+    "closeup": {
+      "x": 120,
+      "y": 120,
+      "w": 140
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 2,
+          "dx": 60
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Ovchi: teshuvchi o'q zaryadi yashil rangda",
+    "closeup": {
+      "x": 120,
+      "y": 120,
+      "w": 140
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "hunter"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 2,
+          "dx": 60
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null; window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));"
+      },
+      {
+        "wait": 100
+      }
+    ]
+  },
+  {
+    "title": "Telefonda: o'yin gorizontal holatda, tugmalar qahramon rangida",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "eval": "g.banner.timer = 0; g.hints = [];"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  },
+  {
+    "title": "Vertikal telefonda: \"Telefonni aylantiring\" oynasi",
+    "target": "page",
+    "phone": {
+      "width": 412,
+      "height": 915
+    },
+    "steps": [
+      {
+        "wait": 600
+      }
+    ]
+  }
+]

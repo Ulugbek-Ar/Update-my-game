@@ -7,7 +7,8 @@ va kanalga albom qilib joylaydi. Har bir yangilik — alohida sahna.
 Sahna maydonlari:
 
 - `title` — rasm nomi (postda "📸 Rasmlarda" ro'yxatida chiqadi)
-- `target` — `"canvas"` (standart, faqat o'yin maydoni) yoki `"screen"` (menyu/oynalar bilan)
+- `target` — `"canvas"` (standart, faqat o'yin maydoni), `"screen"` (menyu/oynalar bilan) yoki `"page"` (butun sahifa)
+- `phone` — `{ "width": 412, "height": 915 }`: sensorli telefon emulyatsiyasi (vertikal yoki gorizontal)
 - `steps` — ketma-ket qadamlar:
   - `{ "storage": { "kalit": "qiymat" } }` — sahifa ochilishidan oldin localStorage
   - `{ "click": "TUGMA MATNI" }` — menyudagi tugmani bosish

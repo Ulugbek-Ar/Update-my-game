@@ -206,3 +206,117 @@
     height: auto;
   }
 }
+
+/* Telefon kesigi (notch) chetlari: canvas va tugmalar xavfsiz hududda */
+.game-viewport {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+@supports (height: 100dvh) {
+  .game-screen {
+    width: min(
+      calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)),
+      calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 16 / 9)
+    );
+  }
+}
+
+/* O'yin paytida: ikki marta bosib kattalashtirish va pastga tortib yangilash o'chiq */
+html.in-game,
+html.in-game body {
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* Sensor tugmalari: joylashuv safe-area hisobga olingan */
+.touch-controls {
+  --pad-l: max(1.5rem, env(safe-area-inset-left));
+  --pad-r: max(1.5rem, env(safe-area-inset-right));
+  --pad-b: max(1.5rem, env(safe-area-inset-bottom));
+}
+.touch-stick {
+  left: var(--pad-l);
+  bottom: var(--pad-b);
+  width: 8rem;
+  height: 8rem;
+}
+.touch-attack {
+  right: var(--pad-r);
+  bottom: calc(var(--pad-b) + 0.5rem);
+  width: 5rem;
+  height: 5rem;
+}
+.touch-dash {
+  right: calc(var(--pad-r) + 4.5rem);
+  bottom: calc(var(--pad-b) + 6.5rem);
+  width: 3.5rem;
+  height: 3.5rem;
+}
+.touch-pause {
+  right: max(0.75rem, env(safe-area-inset-right));
+  top: max(0.75rem, env(safe-area-inset-top));
+  width: 2.5rem;
+  height: 2.5rem;
+}
+/* Past gorizontal ekran (~360px): tugmalar kichrayadi va xona chetidagi bo'sh joyga sig'adi */
+@media (max-height: 450px) {
+  .touch-controls {
+    --pad-l: max(0.75rem, env(safe-area-inset-left));
+    --pad-r: max(0.75rem, env(safe-area-inset-right));
+    --pad-b: max(0.75rem, env(safe-area-inset-bottom));
+  }
+  /* pastki HUD qatori (urinish, oltin) ochiq qoladi; tugmalar o'ng chetda ustma-ust */
+  .touch-stick {
+    bottom: calc(var(--pad-b) + 1.5rem);
+    width: 5rem;
+    height: 5rem;
+  }
+  .touch-attack {
+    bottom: calc(var(--pad-b) + 1.5rem);
+    width: 4rem;
+    height: 4rem;
+  }
+  .touch-dash {
+    right: calc(var(--pad-r) + 0.5rem);
+    bottom: calc(var(--pad-b) + 6rem);
+    width: 3rem;
+    height: 3rem;
+  }
+  .touch-pause {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+/* Qahramon kartalari qatori: 10 tagacha, sig'masa aylanadi */
+.hero-row {
+  scrollbar-width: none;
+}
+.hero-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* "Telefonni aylantiring" ikonkasi */
+.rotate-phone {
+  image-rendering: pixelated;
+  animation: rotate-phone 2.4s steps(1, end) infinite;
+}
+@keyframes rotate-phone {
+  0%,
+  40% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-45deg);
+  }
+  60%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

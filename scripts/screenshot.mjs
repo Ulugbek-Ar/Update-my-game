@@ -43,8 +43,10 @@ const list = [];
 
 for (const [i, scene] of scenes.slice(0, 9).entries()) {
   const video = Number(scene.video) || 0;
+  // phone: { width, height } — sensorli telefon emulyatsiyasi (masalan vertikal Pixel 7: 412x915)
   const ctx = await browser.newContext({
-    viewport: { width: 1280, height: 720 },
+    viewport: scene.phone ?? { width: 1280, height: 720 },
+    ...(scene.phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}),
     ...(video ? { recordVideo: { dir: `${OUT}/raw`, size: { width: 1280, height: 720 } } } : {}),
   });
   const born = Date.now();
@@ -153,7 +155,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       }
       if (step.wait) await page.waitForTimeout(step.wait);
     }
-    const target = scene.target === "screen" ? ".game-screen" : "canvas";
+    const target =
+      scene.target === "page" ? "body" : scene.target === "screen" ? ".game-screen" : "canvas";
     const base = `${OUT}/${String(i + 1).padStart(2, "0")}`;
     if (video) {
       const box = await page.locator(target).first().boundingBox();

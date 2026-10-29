@@ -69,12 +69,12 @@ const limit = shots.length ? 1024 : 4096;
 const allBullets = bullets.length;
 const more = () =>
   bullets.length < allBullets ? [`• …va yana ${allBullets - bullets.length} ta o'zgarish`] : [];
-const build = () =>
-  [...head, ...bullets, ...more(), ...newMobs, ...pics, ...tail].join("\n");
+const build = () => [...head, ...bullets, ...more(), ...newMobs, ...pics, ...tail].join("\n");
 while (pics.length > 2 && build().length > limit) pics.pop();
 while (bullets.length > 1 && build().length > limit) bullets.pop();
 let caption = build();
-if (caption.length > limit) caption = [...head, ...bullets.map((b) => b.slice(0, 300) + "…"), ...tail].join("\n");
+if (caption.length > limit)
+  caption = [...head, ...bullets.map((b) => b.slice(0, 300) + "…"), ...tail].join("\n");
 
 const mime = (f) =>
   f.endsWith(".png") ? "image/png" : f.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
@@ -99,7 +99,9 @@ async function send(method, fill) {
     const wait = body.parameters?.retry_after ?? attempt * 5;
     const fatal = body.error_code && body.error_code < 500 && body.error_code !== 429;
     if (fatal || attempt >= 4) throw new Error(`Telegram xatosi (${method}): ${body.description}`);
-    console.log(`Telegram javob bermadi (${body.description}), ${wait}s dan keyin qayta urinish...`);
+    console.log(
+      `Telegram javob bermadi (${body.description}), ${wait}s dan keyin qayta urinish...`,
+    );
     await new Promise((r) => setTimeout(r, wait * 1000));
   }
 }

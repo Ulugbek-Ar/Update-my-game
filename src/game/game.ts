@@ -35,7 +35,15 @@ import {
   type Upgrade,
 } from "./waves";
 import { CHARGE_TIME, SPIN_TIME, type Bolt } from "./player";
-import { bestKeys, loadHero, type Hero } from "./hero";
+import {
+  HERO_THEME,
+  bestKeys,
+  chargeRingColor,
+  hudBarColors,
+  loadHero,
+  withAlpha,
+  type Hero,
+} from "./hero";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
 import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
@@ -1189,7 +1197,8 @@ export class Game {
   update(dt: number) {
     this.time += dt;
     this.fx.update(dt);
-    if (this.toasts.length) {
+    // kuch tanlash ekranida yutuq xabari navbatda kutadi (sarlavhani yopmaydi)
+    if (this.toasts.length && !this.toastHeld) {
       this.toasts[0]!.timer -= dt;
       if (this.toasts[0]!.timer <= 0) this.toasts.shift();
     }
@@ -1287,8 +1296,8 @@ export class Game {
         else p.y = ch.y + (dy < 0 ? -min : min);
       }
     }
-    if (p.dashing && !p.mage)
-      this.fx.trail(p.x, p.y + 2, p.hunter ? "rgba(122,170,80,0.8)" : "rgba(104,205,228,0.8)");
+    // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
+    if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, HERO_THEME[this.hero].trail);
     if (p.bolts.length) {
       this.bolts.push(...p.bolts);
       p.bolts = [];
@@ -1459,7 +1468,7 @@ export class Game {
           this.fx.burst(
             t.x,
             t.y,
-            p.mage ? "#ff3b3b" : p.spinning ? "#ffcc33" : "#ffffff",
+            p.mage ? "#ff3b3b" : p.spinning ? HERO_THEME[this.hero].accent : "#ffffff",
             5,
             60,
             1,
@@ -2036,9 +2045,7 @@ export class Game {
     if (p.charge > 0.12) {
       const k = Math.min(1, p.charge / CHARGE_TIME);
       const full = k >= 1;
-      c.strokeStyle = full
-        ? `rgba(255,236,140,${0.6 + 0.4 * Math.sin(this.time * 30)})`
-        : "rgba(255,204,51,0.65)";
+      c.strokeStyle = chargeRingColor(this.hero, full, this.time);
       c.lineWidth = full ? 2 : 1;
       c.beginPath();
       c.arc(p.x, p.y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
@@ -2082,7 +2089,7 @@ export class Game {
       c.beginPath();
       c.arc(p.x, p.y, r, a0, a0 + Math.PI * 1.6);
       c.stroke();
-      c.strokeStyle = `rgba(255,204,51,${0.6 * k})`;
+      c.strokeStyle = withAlpha(HERO_THEME[this.hero].accent, 0.6 * k);
       c.lineWidth = 1;
       c.beginPath();
       c.arc(p.x, p.y, r * 0.75, 0, Math.PI * 2);
@@ -2482,12 +2489,8 @@ export class Game {
     // dash tayyorligi
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
-    // Sehrgarda teleport chizig'i qizil, Ovchida sakrash chizig'i yashil
-    const [on, off, empty] = p.mage
-      ? ["#ff4d4d", "#c1121f", "#3a1418"]
-      : p.hunter
-        ? ["#a6f08e", "#4f8a3a", "#1f3a1c"]
-        : ["#68cde4", "#287faf", "#1d3a4a"];
+    // dash va kuchli zarba chiziqlari qahramon rangida (hero.ts: HERO_THEME)
+    const { on, off, empty } = hudBarColors(this.hero);
     px(c, k >= 1 ? on : off, 5, 14, 30 * k, 1);
     if (p.dashMax > 1)
       for (let i = 0; i < p.dashMax; i++)
@@ -2497,7 +2500,7 @@ export class Game {
     px(c, "#000", 4, 17, 32, 3);
     px(
       c,
-      p.charged && Math.floor(this.time * 12) % 2 ? "#ffffff" : sk >= 1 ? "#ffcc33" : "#8a6a1a",
+      p.charged && Math.floor(this.time * 12) % 2 ? "#ffffff" : sk >= 1 ? on : off,
       5,
       18,
       30 * sk,
@@ -2832,10 +2835,15 @@ export class Game {
     }
   }
 
+  /** Kuch tanlash ekrani ochiq: yutuq xabari kuch tanlangandan keyin chiqadi. */
+  get toastHeld() {
+    return this.phase === "play" && this.stage === "upgrade";
+  }
+
   /** Yutuq ochildi: yuqorida navbat bilan bitta xabar. */
   private renderToast() {
     const t = this.toasts[0];
-    if (!t) return;
+    if (!t || this.toastHeld) return;
     const c = this.ctx;
     const a = Math.min(1, t.timer * 3, (3 - t.timer) * 6);
     c.globalAlpha = Math.max(0, a);
