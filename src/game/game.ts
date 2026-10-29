@@ -34,7 +34,7 @@ import {
   isChestWave,
   type Upgrade,
 } from "./waves";
-import { CHARGE_TIME, SPIN_TIME, type Bolt } from "./player";
+import { CHARGE_TIME, SPIN_TIME, type Bolt, type Target } from "./player";
 import { HERO_THEME, bestKeys, chargeRingColor, hudBarColors, withAlpha, type Hero } from "./hero";
 import { loadPlayableHero, playableHero } from "./save";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
@@ -111,6 +111,16 @@ export interface Trap {
   life: number;
   /** Yopilgandan beri o'tgan vaqt (-1 — ochiq) */
   snapT: number;
+}
+/** Mergan tutun bombasi: shuncha turadi; ichidagi dushmanlar sekinlashadi, Mergan ko'rinmaydi */
+export const SMOKE_RADIUS = 30;
+export const SMOKE_LIFE = 3;
+/** Tutundagi dushman sekinlashuvi (har kadr yangilanadi — tutundan chiqqach shuncha qoladi) */
+export const SMOKE_SLOW = 0.25;
+export interface Smoke {
+  x: number;
+  y: number;
+  life: number;
 }
 /** Oltin tanga: terilganda shuncha oltin beradi */
 interface Coin extends Drop {
@@ -325,6 +335,9 @@ export class Game {
   clouds: Cloud[] = [];
   /** Ovchi tuzoqlari */
   traps: Trap[] = [];
+  /** Mergan tutun bombalari va yashiringan joyi (dushmanlar shu nuqtani nishonga oladi) */
+  smokes: Smoke[] = [];
+  hideAt: { x: number; y: number } | null = null;
   /** O'rmon Shohi g'azabidagi qorong'ilik (0..1, asta kuchayadi) */
   darkness = 0;
   drops: Drop[] = [];
@@ -446,6 +459,8 @@ export class Game {
     this.webs = [];
     this.clouds = [];
     this.traps = [];
+    this.smokes = [];
+    this.hideAt = null;
     this.darkness = 0;
     this.drops = [];
     this.coins = [];
@@ -551,7 +566,9 @@ export class Game {
           ? "Shift — teleport"
           : this.player.hunter
             ? "Shift — orqaga sakrash"
-            : "Shift — dash"
+            : this.player.gunner
+              ? "Shift — sirpanish"
+              : "Shift — dash"
         : "";
     this.banner = later
       ? boss
@@ -595,6 +612,7 @@ export class Game {
     this.webs = [];
     this.clouds = [];
     this.traps = [];
+    this.smokes = [];
     this.darkness = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
@@ -1264,6 +1282,21 @@ export class Game {
       p.trapDenied = false;
       this.fx.text(p.x, p.y - 16, `TUZOQ ${Math.ceil(p.trapCooldown)}s`, "#b8a8cc");
     }
+    if (p.smokes.length) {
+      for (const s of p.smokes) {
+        this.smokes.push({ ...s, life: SMOKE_LIFE });
+        this.hideAt = { x: s.x, y: s.y };
+        this.fx.burst(s.x, s.y, "#b8b0a4", 18, 70, 3);
+        this.fx.burst(s.x, s.y, "#6e6860", 10, 40, 3);
+      }
+      p.smokes = [];
+      this.fx.text(p.x, p.y - 16, "TUTUN", "#d9d2c6");
+    }
+    if (p.smokeDenied) {
+      p.smokeDenied = false;
+      this.fx.text(p.x, p.y - 16, `TUTUN ${Math.ceil(p.smokeCooldown)}s`, "#b8a8cc");
+    }
+    this.updateSmokes(dt);
     if (this.hints.length) {
       if (p.attackTimer > 0) this.doneHint("attack");
       if (p.spinning) this.doneHint("spin");
@@ -1303,11 +1336,15 @@ export class Game {
     // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
     if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, HERO_THEME[this.hero].trail);
     if (p.bolts.length) {
+      // Mergan o'qi: og'izda uchqun va porox tutuni
+      for (const b of p.bolts) if (b.bullet) this.muzzle(b);
       this.bolts.push(...p.bolts);
       p.bolts = [];
     }
+    // tutunda yashiringan Merganni dushmanlar ko'rmaydi: oxirgi ko'rgan joyini nishonga oladi
+    const target = this.aiTarget();
     for (const e of this.enemies) {
-      e.update(dt, p);
+      e.update(dt, target);
       if (e.justStomped) {
         e.justStomped = false;
         sfx.stomp();
@@ -1345,7 +1382,7 @@ export class Game {
     }
     const boss = this.boss;
     if (boss) {
-      boss.update(dt, p);
+      boss.update(dt, target);
       if (boss.justEnraged) {
         boss.justEnraged = false;
         this.banner = {
@@ -1406,8 +1443,17 @@ export class Game {
       this.bolts = this.bolts.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
+        if (b.bullet) {
+          // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi
+          if (Math.random() < 0.5) this.fx.trail(b.x, b.y, "rgba(255,226,160,0.55)");
+          b.range = (b.range ?? Infinity) - Math.hypot(b.vx, b.vy) * dt;
+          if (b.range <= 0) {
+            this.fx.burst(b.x, b.y, "#9a948a", 3, 20, 1);
+            return false;
+          }
+        }
         // Sehrgar shari — qora tutunli iz, kuchli o'q — yashil iz
-        if (!b.arrow && Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(26,17,24,0.75)");
+        else if (!b.arrow && Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(26,17,24,0.75)");
         if (b.arrow && (b.power ?? 1) > 1 && Math.random() < 0.7)
           this.fx.trail(b.x, b.y, "rgba(166,240,142,0.7)");
         const body = { x: b.x, y: b.y, size: b.size } as Body;
@@ -1431,7 +1477,7 @@ export class Game {
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
-          this.fx.burst(b.x, b.y, b.arrow ? "#c9a26b" : "#ff5a3c", 6, 60, 1);
+          this.fx.burst(b.x, b.y, b.bullet ? "#ffe2a0" : b.arrow ? "#c9a26b" : "#ff5a3c", 6, 60, 1);
           if (b.poison && !t.dead) {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
@@ -1448,6 +1494,8 @@ export class Game {
           this.fx.burst(b.x, b.y, b.arrow ? "#7a4a24" : "#a3192a", 6, 50);
           return false;
         }
+        // Rikoshet: Mergan o'qi devordan bir marta qaytadi
+        if (!inRoom(b as Shot) && b.bounce) return this.ricochet(b);
         return inRoom(b as Shot);
       });
     }
@@ -1603,6 +1651,66 @@ export class Game {
     }
   }
 
+  /**
+   * Dushman va Boss nishoni. Tutunda yashiringan Mergan ko'rinmaydi: dushmanlar tutun tashlangan joyni
+   * nishonga oladi va o'sha joyga uradi — u yerda Mergan yo'q (tegib ketish va o'qlar baribir zarar beradi).
+   */
+  private aiTarget(): Target {
+    const p = this.player;
+    const at = this.hideAt;
+    if (!p.hidden || !at) return p;
+    return {
+      x: at.x,
+      y: at.y,
+      size: p.size,
+      fx: 0,
+      fy: 0,
+      chill: 0,
+      takeHit: () => false,
+      ensnare: () => false,
+    };
+  }
+
+  /** Tutun bulutlari: ichidagi dushmanlar sekinlashadi; tutundan chiqqan Mergan yana ko'rinadi. */
+  private updateSmokes(dt: number) {
+    for (const s of this.smokes) s.life -= dt;
+    this.smokes = this.smokes.filter((s) => s.life > 0);
+    const inside = (b: { x: number; y: number }) =>
+      this.smokes.some((s) => Math.hypot(b.x - s.x, b.y - s.y) < SMOKE_RADIUS);
+    const p = this.player;
+    if (p.hidden && !inside(p)) p.hideT = 0;
+    const all: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+    if (this.boss?.active) all.push(this.boss);
+    for (const t of all) if (inside(t)) t.slow = Math.max(t.slow, SMOKE_SLOW);
+  }
+
+  /** O'q otildi: to'pponcha og'zida uchqun va kulrang porox tutuni. */
+  private muzzle(b: Bolt) {
+    this.fx.burst(b.x, b.y, "#ffe2a0", 4, 80, 1);
+    this.fx.burst(b.x, b.y, "#d9a441", 2, 50, 1);
+    this.fx.burst(b.x, b.y - 2, "#a8a298", 3, 16, 2);
+  }
+
+  /** O'q devorga tegdi: tegilgan o'q bo'yicha qaytadi (yana tegishi mumkin). */
+  private ricochet(b: Bolt) {
+    const lo = ROOM.wall,
+      hiX = ROOM.w - ROOM.wall,
+      hiY = ROOM.h - ROOM.wall;
+    if (b.x <= lo || b.x >= hiX) {
+      b.vx = -b.vx;
+      b.x = Math.max(lo + 1, Math.min(hiX - 1, b.x));
+    }
+    if (b.y <= lo || b.y >= hiY) {
+      b.vy = -b.vy;
+      b.y = Math.max(lo + 1, Math.min(hiY - 1, b.y));
+    }
+    b.bounce = (b.bounce ?? 1) - 1;
+    b.hit = [];
+    sfx.ricochet();
+    this.fx.burst(b.x, b.y, "#ffe2a0", 6, 70, 1);
+    return true;
+  }
+
   /** To'rlar: uchib borib yerga tushadi; o'yinchi ustidan yursa 1s yurolmaydi (dash/teleportda o'tadi). */
   private updateWebs(dt: number) {
     const p = this.player;
@@ -1725,6 +1833,7 @@ export class Game {
     this.webs = [];
     this.clouds = [];
     this.traps = [];
+    this.smokes = [];
     this.collectCoins();
     // ochilmagan sandiq to'lqin bilan yo'qoladi
     this.chest = null;
@@ -2058,8 +2167,8 @@ export class Game {
       c.arc(p.x, p.y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
       c.stroke();
     }
-    // Ovchining kuchli o'qi uchib ketadi — atrofda halqa yo'q
-    if (p.spinning && p.hunter) return;
+    // Ovchining kuchli o'qi va Merganning yelpig'ich o'qlari uchib ketadi — atrofda halqa yo'q
+    if (p.spinning && (p.hunter || p.gunner)) return;
     if (p.spinning && p.mage) {
       // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
@@ -2173,7 +2282,8 @@ export class Game {
             e.kind === "owl" ? e.size * (1 - (e.alt / OWL_ALT) * 0.45) : e.size,
           );
         e.render(c);
-        if (e.slow > 0 && !e.dead) this.frost(c, e.x, e.y, e.size);
+        // Merganda sekinlashish faqat tutundan — muz uchqunlari chizilmaydi
+        if (e.slow > 0 && !e.dead && !p.gunner) this.frost(c, e.x, e.y, e.size);
       },
     }));
     const boss = this.boss;
@@ -2183,7 +2293,7 @@ export class Game {
         r: () => {
           if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
           boss.render(c);
-          if (boss.slow > 0 && !boss.dead) this.frost(c, boss.x, boss.y, boss.size);
+          if (boss.slow > 0 && !boss.dead && !p.gunner) this.frost(c, boss.x, boss.y, boss.size);
         },
       });
     const ch = this.chest;
@@ -2228,6 +2338,10 @@ export class Game {
         this.renderArrow(c, b);
         continue;
       }
+      if (b.bullet) {
+        this.renderBullet(c, b);
+        continue;
+      }
       // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro
       c.fillStyle = "rgba(255,110,50,0.4)";
       c.beginPath();
@@ -2241,6 +2355,7 @@ export class Game {
     }
     for (const w of this.webs) if (w.flying) this.renderWeb(c, w);
     for (const cl of this.clouds) this.renderCloud(c, cl);
+    for (const sm of this.smokes) this.renderSmoke(c, sm);
     this.fx.renderParticles(c);
     if (this.darkness > 0) {
       // O'rmon Shohi g'azabi: faqat o'yinchi atrofi yorug'
@@ -2301,6 +2416,47 @@ export class Game {
     px(c, "#4f8a3a", fx + uy, fy - ux, 1, 1);
     px(c, "#7bd14f", fx - uy - ux, fy + ux - uy, 1, 1);
     px(c, "#7bd14f", fx + uy - ux, fy - ux - uy, 1, 1);
+  }
+
+  /** Mergan o'qi: yaltiroq mis o'q va orqasida qisqa iz. */
+  private renderBullet(c: CanvasRenderingContext2D, b: Bolt) {
+    const l = Math.hypot(b.vx, b.vy) || 1;
+    const ux = b.vx / l,
+      uy = b.vy / l;
+    for (let k = 2; k <= 5; k++)
+      px(c, k < 4 ? "#d9a441" : "#8a5a2a", b.x - ux * k - 0.5, b.y - uy * k - 0.5, 1, 1);
+    px(c, "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
+    px(c, "#ffe2a0", b.x - 1, b.y - 1, 2, 2);
+  }
+
+  /** Tutun bombasi: sekin aylanuvchi quyuq kulrang tutun, chetlari so'nib boradi. */
+  private renderSmoke(c: CanvasRenderingContext2D, sm: Smoke) {
+    const a = Math.min(1, sm.life * 1.5, (SMOKE_LIFE - sm.life) * 6);
+    for (let k = 0; k < 8; k++) {
+      const ang = this.time * 0.6 + k * 0.8;
+      const r = k === 0 ? 0 : SMOKE_RADIUS * 0.5;
+      c.fillStyle = `rgba(${k % 2 ? "120,114,106" : "168,160,150"},${0.34 * a})`;
+      c.beginPath();
+      c.arc(
+        sm.x + Math.cos(ang) * r,
+        sm.y + Math.sin(ang) * r * 0.75,
+        SMOKE_RADIUS * 0.55,
+        0,
+        Math.PI * 2,
+      );
+      c.fill();
+    }
+    for (let k = 0; k < 5; k++) {
+      const ang = this.time * 1.3 + k * 1.7;
+      px(
+        c,
+        "#d9d2c6",
+        sm.x + Math.cos(ang) * (6 + k * 4),
+        sm.y - 6 + Math.sin(ang * 1.2) * 9,
+        2,
+        1,
+      );
+    }
   }
 
   /** Ovchi tuzog'i: ochiq — tishli temir jag'lar, yopilgan — dushman oyog'ida. */
@@ -2525,6 +2681,7 @@ export class Game {
         px(c, "#e8e8f0", 41, 21, 1, 2);
       }
     }
+    if (p.gunner) this.renderGunHud(p);
 
     this.text(
       isBossWave(this.wave)
@@ -2604,35 +2761,74 @@ export class Game {
     }
   }
 
+  /**
+   * Merganning HUD qismi: tutun bombasi chizig'i (kulrang), barabandagi o'qlar (otilgani xira)
+   * va qayta o'qlash chizig'i.
+   */
+  private renderGunHud(p: Game["player"]) {
+    const c = this.ctx;
+    const theme = HERO_THEME.gunner;
+    const sk = Math.max(0, Math.min(1, 1 - p.smokeCooldown / p.smokeCd));
+    px(c, "#000", 4, 21, 32, 3);
+    px(c, sk >= 1 ? "#c8c0b4" : "#5a544c", 5, 22, 30 * sk, 1);
+    for (let i = 0; i < p.ammoMax; i++) {
+      const full = i < p.ammo;
+      const x = 4 + i * 5,
+        y = 26;
+      px(c, "#000", x, y, 4, 7);
+      px(c, full ? theme.glow : "#3a332b", x + 1, y + 1, 2, 1);
+      px(c, full ? theme.accent : "#2e2820", x + 1, y + 2, 2, 3);
+      px(c, full ? theme.accentDark : "#241f19", x + 1, y + 5, 2, 1);
+    }
+    if (p.reloading) {
+      const k = Math.max(0, Math.min(1, 1 - p.reloadT / p.reloadTime));
+      px(c, "#000", 4, 34, 32, 3);
+      px(c, Math.floor(this.time * 10) % 2 ? theme.glow : theme.accent, 5, 35, 30 * k, 1);
+    }
+  }
+
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
-    const { mage, hunter } = this.player;
+    const { mage, hunter, gunner } = this.player;
     const label: Record<Hint, string> = this.touch
-      ? hunter
+      ? gunner
         ? {
-            attack: "O'Q — o'q otish",
-            spin: "O'Q ni bosib turing — teshuvchi o'q",
-            dash: "SAKRASH — orqaga, bosib tur — tuzoq",
+            attack: "O'Q — otish, o'q belgisi — o'qlash",
+            spin: "O'Q ni bosib turing — barabanni bo'shatish",
+            dash: "SIRPANISH, bosib tur — tutun",
           }
-        : {
-            attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
-            spin: mage ? "SHAR ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
-            dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
-          }
-      : hunter
+        : hunter
+          ? {
+              attack: "O'Q — o'q otish",
+              spin: "O'Q ni bosib turing — teshuvchi o'q",
+              dash: "SAKRASH — orqaga, bosib tur — tuzoq",
+            }
+          : {
+              attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
+              spin: mage ? "SHAR ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
+              dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
+            }
+      : gunner
         ? {
-            attack: "Space — o'q",
-            spin: "Bosib turing — teshuvchi o'q",
-            dash: "Shift — orqaga sakrash, bosib tur — tuzoq",
+            attack: "Space — o'q, R — qayta o'qlash",
+            spin: "Bosib turing — barabanni bo'shatish",
+            dash: "Shift — sirpanish, bosib tur — tutun",
           }
-        : {
-            attack: mage ? "Space — sehrli shar" : "Space — zarba",
-            spin: mage ? "Bosib turing — sehrli halqa" : "Bosib turing — aylana zarba",
-            dash: mage ? "Shift — teleport" : "Shift — dash",
-          };
-    // Ovchida HUD'da uchinchi (tuzoq) chizig'i bor — ko'rsatmalar biroz pastroqda
-    const top = hunter ? 28 : 24;
+        : hunter
+          ? {
+              attack: "Space — o'q",
+              spin: "Bosib turing — teshuvchi o'q",
+              dash: "Shift — orqaga sakrash, bosib tur — tuzoq",
+            }
+          : {
+              attack: mage ? "Space — sehrli shar" : "Space — zarba",
+              spin: mage ? "Bosib turing — sehrli halqa" : "Bosib turing — aylana zarba",
+              dash: mage ? "Shift — teleport" : "Shift — dash",
+            };
+    // Ovchida HUD'da uchinchi (tuzoq) chizig'i, Merganda tutun chizig'i va baraban bor —
+    // ko'rsatmalar pastroqda
+    const top = gunner ? 40 : hunter ? 28 : 24;
     const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
     px(c, "rgba(8,4,16,0.6)", 4, top, w, this.hints.length * 10 + 4);
     const blink = Math.floor(this.time * 3) % 2 ? "#ffcc33" : "#8a6a1a";
@@ -2725,12 +2921,16 @@ export class Game {
             ? "Chap doira yurish · SHAR otish · TELEPORT"
             : this.player.hunter
               ? "Chap doira yurish · O'Q otish · SAKRASH / tuzoq"
-              : "Chap doira yurish · ZARBA hujum · DASH sirpanish"
+              : this.player.gunner
+                ? "Chap doira yurish · O'Q otish · SIRPANISH / tutun"
+                : "Chap doira yurish · ZARBA hujum · DASH sirpanish"
           : this.player.mage
             ? "WASD yurish · Space shar · Shift teleport"
             : this.player.hunter
               ? "WASD yurish · Space o'q · Shift sakrash/tuzoq"
-              : "WASD yurish · Space zarba · Shift dash",
+              : this.player.gunner
+                ? "WASD · Space o'q · R o'qlash · Shift sirpanish/tutun"
+                : "WASD yurish · Space zarba · Shift dash",
         ROOM.w / 2,
         ROOM.h - 22,
         5,

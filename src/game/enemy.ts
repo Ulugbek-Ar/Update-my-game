@@ -1,5 +1,5 @@
 import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
-import type { Player } from "./player";
+import type { Target } from "./player";
 import { renderSprite, type SpriteKind } from "./sprites";
 
 export type EnemyKind =
@@ -361,7 +361,7 @@ export class Enemy implements Body {
     return Math.abs(angleDiff(a, this.shieldAngle)) <= SHIELD_ARC;
   }
 
-  update(dt: number, p: Player) {
+  update(dt: number, p: Target) {
     if (this.blockFlash > 0) this.blockFlash -= dt;
     if (this.spawn > 0) {
       // paydo bo'layotganda qalqon darhol o'yinchiga qaraydi
@@ -510,7 +510,7 @@ export class Enemy implements Body {
   }
 
   /** Muz ruhi: suzib yaqinlashadi, 1s tayyorlanadi, oldinga konus shaklida sovuq nafas chiqaradi. */
-  private updateFrost(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+  private updateFrost(dt: number, p: Target, dx: number, dy: number, d: number, m: number) {
     this.aiTimer -= dt;
     if (this.breathWindup > 0) {
       this.breathWindup -= dt;
@@ -596,7 +596,7 @@ export class Enemy implements Body {
    * O'rmon o'rgimchagi: avval eng yaqin devorga chiqadi, so'ng devor bo'ylab o'yinchiga eng
    * yaqin nuqtaga tez yuradi; vaqti kelganda to'xtab o'yinchi yo'liga to'r otadi.
    */
-  private updateSpider(dt: number, p: Player, d: number, m: number) {
+  private updateSpider(dt: number, p: Target, d: number, m: number) {
     this.aiTimer -= dt;
     if (this.webWindup > 0) {
       this.webWindup -= dt;
@@ -677,7 +677,7 @@ export class Enemy implements Body {
   }
 
   /** Daraxt odam: sekin yuradi; uzoqdan o'yinchi turgan joyga yoriq chizig'i, so'ng ildizlar. */
-  private updateTreant(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+  private updateTreant(dt: number, p: Target, dx: number, dy: number, d: number, m: number) {
     if (this.rootShow > 0) this.rootShow -= dt;
     if (this.rootWarn > 0) {
       this.rootWarn -= dt;
@@ -715,7 +715,7 @@ export class Enemy implements Body {
    * Tungi boyo'g'li: tepada aylanadi (urib bo'lmaydi), so'ng o'yinchi joyida soya paydo bo'ladi
    * va 0.8s dan keyin shu joyga sho'ng'iydi; yerda 1.3s turadi — shu payt urish mumkin.
    */
-  private updateOwl(dt: number, p: Player, m: number) {
+  private updateOwl(dt: number, p: Target, m: number) {
     this.aiTimer -= dt;
     const fly = (tx: number, ty: number, speed: number) => {
       const l = Math.hypot(tx - this.x, ty - this.y);
@@ -838,7 +838,7 @@ export class Enemy implements Body {
   }
 
   /** Muz golemi: sekin yuradi, har 3s da yerga uradi — atrofdagi kichik doirada 1 zarar. */
-  private updateGolem(dt: number, p: Player, dx: number, dy: number, d: number, m: number) {
+  private updateGolem(dt: number, p: Target, dx: number, dy: number, d: number, m: number) {
     if (this.stompWindup > 0) {
       this.stompWindup -= dt;
       if (this.stompWindup <= 0) {

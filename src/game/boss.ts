@@ -1,5 +1,5 @@
 import { Animator, Body, ROOM, updatePhysics, isFlashing } from "./animation";
-import type { Player } from "./player";
+import type { Target } from "./player";
 import { renderSprite } from "./sprites";
 import { renderRoots } from "./enemy";
 
@@ -69,7 +69,7 @@ export class Boss implements Body {
   }
 
   /** Boss kuchli itarishga chidamliroq */
-  update(dt: number, p: Player) {
+  update(dt: number, p: Target) {
     this.justSlammed = false;
     if (this.spawn > 0) {
       this.spawn -= dt;
@@ -225,7 +225,7 @@ export class Queen extends Boss {
     super(hp);
   }
 
-  override update(dt: number, p: Player) {
+  override update(dt: number, p: Target) {
     this.justSlammed = false;
     if (this.spawn > 0) {
       this.spawn -= dt;
@@ -306,7 +306,7 @@ export class Queen extends Boss {
     }
   }
 
-  private updateSpikes(dt: number, p: Player) {
+  private updateSpikes(dt: number, p: Target) {
     for (const s of this.spikes) {
       if (s.warn > 0) {
         s.warn -= dt;
@@ -434,7 +434,7 @@ export class ForestKing extends Boss {
     return this.enraged && !this.dead;
   }
 
-  override update(dt: number, p: Player) {
+  override update(dt: number, p: Target) {
     this.justSlammed = false;
     if (this.spawn > 0) {
       this.spawn -= dt;
@@ -498,7 +498,7 @@ export class ForestKing extends Boss {
     }
   }
 
-  private updateRoots(dt: number, p: Player) {
+  private updateRoots(dt: number, p: Target) {
     for (const r of this.roots) {
       if (r.warn > 0) {
         r.warn -= dt;

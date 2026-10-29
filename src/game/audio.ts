@@ -259,6 +259,56 @@ class SoundFX {
     osc.stop(t0 + dur);
   }
 
+  /** Filtrlangan oq shovqin (o'q ovozi, tutun): fayl yo'q — tasodifiy namunalar buferi. */
+  private noise(dur: number, vol: number, freq: number, delay = 0) {
+    if (this.muted || !this.ctx || !this.sfxGain || this.ctx.state !== "running") return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + delay;
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(freq, t0);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(vol, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(filter).connect(gain).connect(this.sfxGain);
+    src.start(t0);
+    src.stop(t0 + dur);
+  }
+
+  /** Mergan o'qi: qisqa shovqin portlashi va past "bum" */
+  gunshot() {
+    this.noise(0.13, 0.14, 2600);
+    this.tone(150, 0.09, "square", 0.05, 55);
+  }
+
+  /** Baraban aylanishi: tez "tr-r-r" chiqillash */
+  cylinder() {
+    for (let i = 0; i < 5; i++)
+      this.tone(1900 - i * 140, 0.025, "square", 0.03, undefined, i * 0.04);
+  }
+
+  /** Qayta o'qlandi: "chiq-chiq" */
+  reload() {
+    this.tone(2300, 0.035, "square", 0.045, 1600);
+    this.tone(1800, 0.045, "square", 0.045, 1200, 0.1);
+  }
+
+  /** Tutun bombasi: "pufff" — past shovqin */
+  smoke() {
+    this.noise(0.55, 0.07, 700);
+    this.tone(95, 0.3, "triangle", 0.03, 50);
+  }
+
+  /** Rikoshet: o'q devordan qaytdi — "tiing" */
+  ricochet() {
+    this.tone(2500, 0.1, "triangle", 0.04, 3600);
+  }
+
   /** Qisqa "vush" — hujum */
   attack() {
     this.tone(700, 0.09, "square", 0.06, 180);

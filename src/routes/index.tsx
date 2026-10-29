@@ -725,7 +725,13 @@ function TouchControls({ game }: { game: TouchTarget }) {
         />
       </div>
       <button
-        aria-label={game.player.mage ? "Sehrli shar" : game.player.hunter ? "O'q" : "Hujum"}
+        aria-label={
+          game.player.mage
+            ? "Sehrli shar"
+            : game.player.hunter || game.player.gunner
+              ? "O'q"
+              : "Hujum"
+        }
         className={`${btn} touch-attack pointer-events-auto absolute text-[10px]`}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -736,14 +742,22 @@ function TouchControls({ game }: { game: TouchTarget }) {
         onPointerUp={() => game.input.setTouchAttack(false)}
         onPointerCancel={() => game.input.setTouchAttack(false)}
       >
-        {game.player.mage ? "SHAR" : game.player.hunter ? "O'Q" : "ZARBA"}
+        {game.player.mage ? "SHAR" : game.player.hunter || game.player.gunner ? "O'Q" : "ZARBA"}
       </button>
       <button
-        aria-label={game.player.mage ? "Teleport" : game.player.hunter ? "Sakrash" : "Dash"}
-        className={`${btn} touch-dash pointer-events-auto absolute ${game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
+        aria-label={
+          game.player.mage
+            ? "Teleport"
+            : game.player.hunter
+              ? "Sakrash"
+              : game.player.gunner
+                ? "Sirpanish"
+                : "Dash"
+        }
+        className={`${btn} touch-dash pointer-events-auto absolute ${game.player.gunner ? "text-[5px]" : game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
         onPointerDown={(e) => {
           e.preventDefault();
-          // Ovchi: bosib turilsa tuzoq qo'yadi
+          // Ovchi: bosib turilsa tuzoq qo'yadi, Mergan — tutun bombasi
           e.currentTarget.setPointerCapture(e.pointerId);
           game.input.pressDash();
           game.input.setTouchDash(true);
@@ -758,10 +772,27 @@ function TouchControls({ game }: { game: TouchTarget }) {
             SAKRASH
             <span className="text-[5px] opacity-80">tursa: tuzoq</span>
           </span>
+        ) : game.player.gunner ? (
+          <span className="flex flex-col items-center leading-[9px]">
+            <span className="tracking-[-0.08em]">SIRPANISH</span>
+            <span className="opacity-80">tursa: tutun</span>
+          </span>
         ) : (
           "DASH"
         )}
       </button>
+      {game.player.gunner && (
+        <button
+          aria-label="Qayta o'qlash"
+          className={`${btn} touch-reload pointer-events-auto absolute`}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            game.input.pressReload();
+          }}
+        >
+          <BulletIcon />
+        </button>
+      )}
       <button
         aria-label="Pauza"
         className={`${btn} touch-pause pointer-events-auto absolute text-[10px]`}
@@ -892,6 +923,24 @@ function MenuScene() {
         }}
       />
     </>
+  );
+}
+
+/** O'q belgisi (piksel, 5x9) — Merganning qayta o'qlash tugmasi. */
+function BulletIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 5 9"
+      width={10}
+      height={18}
+      shapeRendering="crispEdges"
+      className="shrink-0"
+    >
+      <path d="M2 0h1v1H2zM1 1h3v2H1z" fill="#ffe2a0" />
+      <path d="M1 3h3v4H1z" fill="currentColor" />
+      <path d="M0 7h5v2H0z" fill="#8a5a2a" />
+    </svg>
   );
 }
 

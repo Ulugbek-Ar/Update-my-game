@@ -260,6 +260,13 @@ html.in-game body {
   width: 2.5rem;
   height: 2.5rem;
 }
+/* Mergan: qayta o'qlash tugmasi hujum tugmasi ustida */
+.touch-reload {
+  right: calc(var(--pad-r) + 0.25rem);
+  bottom: calc(var(--pad-b) + 6.25rem);
+  width: 2.75rem;
+  height: 2.75rem;
+}
 /* Olam: gaplashish, jurnal va xarita tugmalari */
 .touch-interact {
   right: calc(var(--pad-r) + 5.75rem);
@@ -306,6 +313,12 @@ html.in-game body {
   .touch-pause {
     width: 2rem;
     height: 2rem;
+  }
+  .touch-reload {
+    right: calc(var(--pad-r) + 4rem);
+    bottom: calc(var(--pad-b) + 6.25rem);
+    width: 2.5rem;
+    height: 2.5rem;
   }
   .touch-interact {
     right: calc(var(--pad-r) + 4.5rem);

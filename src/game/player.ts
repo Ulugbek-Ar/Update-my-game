@@ -33,6 +33,27 @@ export const JUMP_THREAT = 110;
 /** Shift'ni shuncha bosib tursa — sakrash o'rniga tuzoq */
 export const TRAP_HOLD = 0.35;
 export const TRAP_CD = 6;
+/** Mergan: 5 yurak, tezlik 92 */
+export const GUNNER_MAX_HP = 5;
+export const GUNNER_SPEED = 92;
+/** Barabandagi o'qlar, qayta o'qlash vaqti va o'qlar orasidagi vaqt */
+export const GUN_AMMO = 6;
+export const RELOAD_TIME = 1.2;
+export const GUN_CD = 0.25;
+/** Tez uchadigan o'q va uning uchish masofasi (UZOQ NISHON bilan uzoqroq) */
+export const GUN_SPEED = 300;
+export const GUN_RANGE = 170;
+/** Barabanni bo'shatish: hamma o'q shuncha vaqtda yelpig'ich (±FAN_SPREAD rad) bo'lib uchadi */
+export const FAN_TIME = 0.4;
+export const FAN_SPREAD = 0.5;
+export const FAN_CD = 3;
+/** Sirpanish: qisqa va tez, oxirida barabanga 2 ta o'q */
+export const SLIDE_TIME = 0.18;
+export const SLIDE_SPEED = 250;
+export const SLIDE_AMMO = 2;
+/** Tutun bombasi: Shift'ni bosib turish (Ovchi tuzog'idek), tutun ichida shuncha soniya ko'rinmaydi */
+export const SMOKE_CD = 6;
+export const SMOKE_HIDE = 2;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
 export const DASH_GUARD = 0.2;
 /** Dash oxirida dushman ichida qolsa — chiqquncha himoya, lekin shundan oshmaydi */
@@ -41,7 +62,18 @@ export const DASH_GUARD_MAX = 0.35;
 /** Player o'qiydigan boshqaruv: klaviatura/sensor (Input) yoki olamdagi buyruqlar (RealmSim). */
 export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" | "attackHeld"> & {
   dashHeld?: () => boolean;
+  /** Mergan: R tugmasi (telefonda o'q belgisi) — qayta o'qlash */
+  consumeReload?: () => boolean;
 };
+
+/**
+ * Dushman va Boss AI ko'radigan nishon: o'yinchining o'zi yoki tutun bombasidagi soxta nishon
+ * (yashiringan Merganni ko'rmaydi — uning oxirgi ko'ringan joyini nishonga oladi).
+ */
+export type Target = Pick<
+  Player,
+  "x" | "y" | "size" | "fx" | "fy" | "chill" | "takeHit" | "ensnare"
+>;
 
 /** Sehrgarning sehrli shari */
 export interface Bolt {
@@ -60,6 +92,12 @@ export interface Bolt {
   power?: number;
   /** Zaharli uch: tekkan dushman zaharlanadi */
   poison?: boolean;
+  /** Mergan o'qi */
+  bullet?: boolean;
+  /** Yana shuncha piksel uchadi (Mergan o'qi), so'ng so'nadi */
+  range?: number;
+  /** Devordan yana necha marta qaytadi (Rikoshet) */
+  bounce?: number;
 }
 
 export class Player implements Body {
@@ -130,6 +168,26 @@ export class Player implements Body {
   /** Tuzoq hali tayyor emas (Game xabar chiqaradi) */
   trapDenied = false;
   poisonTip = false;
+  /** Mergan: barabandagi o'qlar va sig'imi (Katta baraban bilan 8) */
+  ammo = GUN_AMMO;
+  ammoMax = GUN_AMMO;
+  /** Qayta o'qlash vaqti va qolgan vaqti (0 — o'qlanmayapti) */
+  reloadTime = RELOAD_TIME;
+  reloadT = 0;
+  /** O'q uchish masofasi va devordan qaytishlar soni (Rikoshet) */
+  range = GUN_RANGE;
+  bounce = 0;
+  /** Barabanni bo'shatish: hali otilmagan o'qlar, jami o'qlar va o'tgan vaqt */
+  fanLeft = 0;
+  fanTotal = 0;
+  fanT = 0;
+  /** Tutun bombasi: qayta tiklanish, shu kadrda tashlangan bombalar, "hali tayyor emas" xabari */
+  smokeCd = SMOKE_CD;
+  smokeCooldown = 0;
+  smokes: { x: number; y: number }[] = [];
+  smokeDenied = false;
+  /** Tutun ichida yashiringan vaqt (dushmanlar ko'rmaydi; tutundan chiqsa Game nollaydi) */
+  hideT = 0;
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
   private shiftHold = -1;
   /** Eng yaqin dushman (Game belgilaydi) — orqaga sakrash undan uzoqlashadi */
@@ -164,6 +222,15 @@ export class Player implements Body {
       this.boltSpeed = 210;
       this.boltSize = 5;
     }
+    if (hero === "gunner") {
+      this.hp = this.maxHp = GUNNER_MAX_HP;
+      this.speed = GUNNER_SPEED;
+      this.attackCd = GUN_CD;
+      this.dashCd = 0.9;
+      this.spinCd = FAN_CD;
+      this.boltSpeed = GUN_SPEED;
+      this.boltSize = 4;
+    }
   }
 
   get mage() {
@@ -172,6 +239,20 @@ export class Player implements Body {
 
   get hunter() {
     return this.hero === "hunter";
+  }
+
+  get gunner() {
+    return this.hero === "gunner";
+  }
+
+  /** Mergan qayta o'qlamoqda */
+  get reloading() {
+    return this.reloadT > 0;
+  }
+
+  /** Mergan tutun ichida yashiringan: dushmanlar uni ko'rmaydi */
+  get hidden() {
+    return this.hideT > 0;
   }
 
   /** Masofadan uradigan qahramon (Sehrgar shari yoki Ovchi o'qi) */
@@ -250,8 +331,8 @@ export class Player implements Body {
 
   /** Hujum zonasi (faqat hujum vaqtida). */
   attackBox(): Body | null {
-    // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q uchadi, maydon yo'q)
-    if (this.spinning && !this.hunter)
+    // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
+    if (this.spinning && !this.hunter && !this.gunner)
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
     // Sehrgar va Ovchining oddiy zarbasi — shar/o'q, u alohida uchadi
     if (this.attackTimer <= 0 || this.ranged) return null;
@@ -273,6 +354,9 @@ export class Player implements Body {
     this.dashCooldown -= dt;
     this.spinCooldown -= dt;
     this.trapCooldown -= dt;
+    this.smokeCooldown -= dt;
+    if (this.hideT > 0) this.hideT -= dt;
+    if (this.gunner) this.updateGun(dt, input);
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
@@ -292,20 +376,24 @@ export class Player implements Body {
       this.dashTimer -= dt;
       // dash tugagan kadrdayoq himoya dumi boshlanadi — quvib kelgan mob darhol ura olmaydi
       if (this.dashTimer <= 0) this.guardAge = 0;
+      // Mergan sirpanish oxirida barabanga o'q soladi
+      if (this.dashTimer <= 0 && this.gunner) this.slideReload();
       if (this.mage) return;
-      const sp = this.hunter ? JUMP_SPEED : DASH_SPEED;
+      const sp = this.hunter ? JUMP_SPEED : this.gunner ? SLIDE_SPEED : DASH_SPEED;
       this.x += this.dashX * sp * dt;
       this.y += this.dashY * sp * dt;
       this.clamp(this);
       return;
     }
 
-    // Ovchi: Shift'ni qisqa bosish — orqaga sakrash, bosib turish — tuzoq
-    if (this.hunter && this.updateShift(dt, wantDash, input)) return;
+    // Ovchi: Shift'ni qisqa bosish — orqaga sakrash, bosib turish — tuzoq;
+    // Mergan: qisqa bosish — sirpanish, bosib turish — tutun bombasi
+    if ((this.hunter || this.gunner) && this.updateShift(dt, wantDash, input, x, y)) return;
 
     if (
       wantDash &&
       !this.hunter &&
+      !this.gunner &&
       this.dashCharges > 0 &&
       this.hurtTimer <= 0 &&
       this.snare <= 0
@@ -339,31 +427,40 @@ export class Player implements Body {
       return;
     }
 
+    // Mergan faqat barabanda o'q bo'lsa va qayta o'qlamayotganda otadi
+    const loaded = !this.gunner || (this.ammo > 0 && !this.reloading);
     // bosib turish -> qo'yib yuborilganda aylana zarba
     if (input.attackHeld()) {
-      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning) this.charge += dt;
+      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded)
+        this.charge += dt;
     } else {
       if (this.charged && this.spinCooldown <= 0) {
-        this.spinTimer = SPIN_TIME;
+        this.spinTimer = this.gunner ? FAN_TIME : SPIN_TIME;
         this.spinCooldown = this.spinCd;
         this.attackTimer = 0;
         this.hitSet.clear();
-        sfx.spin();
+        if (this.gunner) sfx.cylinder();
+        else sfx.spin();
         this.anim.set("attack", true);
         // Ovchi: kuchaytirilgan o'q — hamma dushmanni teshib o'tadi, 2x zarar
         if (this.hunter) this.shoot(true);
+        // Mergan: barabanni bo'shatish — qolgan hamma o'q 0.4s ichida yelpig'ich bo'lib uchadi
+        if (this.gunner) this.startFan();
       }
       this.charge = 0;
     }
 
-    if (wantAttack && this.cooldown <= 0 && this.hurtTimer <= 0 && !this.spinning) {
+    if (wantAttack && this.cooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded) {
       this.attackTimer = ATTACK_TIME;
       this.cooldown = this.attackCd;
       this.hitSet.clear();
-      sfx.attack();
+      if (this.gunner) sfx.gunshot();
+      else sfx.attack();
       this.anim.set("attack", true);
       if (this.ranged) this.shoot(false);
     }
+    // bo'sh barabanda tepki bosilsa — qayta o'qlash
+    if (wantAttack && this.gunner && this.ammo <= 0 && !this.reloading) this.startReload();
 
     // Ovchi kuchli o'qdan keyin joyida turmaydi — o'q uchib ketadi
     const busy = this.attackTimer > 0 || this.hurtTimer > 0 || (this.spinning && !this.hunter);
@@ -389,6 +486,7 @@ export class Player implements Body {
   /** Sehrgar shari yoki Ovchi o'qi; Uch shar/Uch o'q bilan yelpig'ich bo'lib uchadi. */
   private shoot(power: boolean) {
     const base = Math.atan2(this.fy, this.fx);
+    if (this.gunner) return this.fire(base);
     const spread = this.hunter ? 0.22 : 0.28;
     for (let i = 0; i < this.multishot; i++) {
       const a = base + (i - (this.multishot - 1) / 2) * spread;
@@ -407,12 +505,117 @@ export class Player implements Body {
     }
   }
 
+  /** Mergan o'qi: qarab turgan tomonga (yelpig'ichda — a burchakka) tez uchadi; barabandan 1 o'q. */
+  private fire(a: number) {
+    this.bolts.push({
+      x: this.x + Math.cos(a) * 9,
+      y: this.y + Math.sin(a) * 9 - 2,
+      vx: Math.cos(a) * this.boltSpeed,
+      vy: Math.sin(a) * this.boltSpeed,
+      size: this.boltSize,
+      left: 1 + this.pierce,
+      hit: [],
+      bullet: true,
+      range: this.range,
+      bounce: this.bounce,
+    });
+    this.ammo--;
+    // baraban bo'shadi — o'zi qayta o'qlanadi (yelpig'ich tugagach)
+    if (this.ammo <= 0 && this.fanLeft <= 0) this.startReload();
+  }
+
+  /** Barabanni bo'shatish: barabandagi hamma o'q navbat bilan otiladi (updateGun). */
+  private startFan() {
+    this.fanTotal = this.fanLeft = this.ammo;
+    this.fanT = 0;
+  }
+
+  /** Qayta o'qlash: baraban aylanadi, RELOAD_TIME dan keyin to'ladi. */
+  startReload() {
+    if (!this.gunner || this.reloading || this.ammo >= this.ammoMax || this.fanLeft > 0) return;
+    this.reloadT = this.reloadTime;
+    this.charge = 0;
+    sfx.cylinder();
+  }
+
+  /** Merganning har kadrdagi qurol holati: qayta o'qlash, R tugmasi va yelpig'ich o'qlari. */
+  private updateGun(dt: number, input: PlayerInput) {
+    if (input.consumeReload?.() && !this.dead) this.startReload();
+    if (this.reloadT > 0) {
+      this.reloadT -= dt;
+      if (this.reloadT <= 0) {
+        this.reloadT = 0;
+        this.ammo = this.ammoMax;
+        sfx.reload();
+      }
+    }
+    if (this.fanLeft <= 0) return;
+    this.fanT += dt;
+    const n = this.fanTotal;
+    const gap = FAN_TIME / n;
+    // k-o'q k*gap da: yelpig'ich bir chetidan ikkinchisiga
+    while (this.fanLeft > 0 && this.fanT >= (n - this.fanLeft) * gap) {
+      const k = n - this.fanLeft;
+      const spread = n > 1 ? (k / (n - 1) - 0.5) * 2 * FAN_SPREAD : 0;
+      this.fanLeft--;
+      this.fire(Math.atan2(this.fy, this.fx) + spread);
+      sfx.gunshot();
+      this.anim.set("attack", true);
+      this.anim.frame = 1;
+    }
+    if (this.fanLeft <= 0) this.startReload();
+  }
+
+  /** Sirpanish tugadi: barabanga 2 ta o'q (qayta o'qlash ketayotgan bo'lsa — to'xtaydi, otish mumkin). */
+  private slideReload() {
+    this.ammo = Math.min(this.ammoMax, this.ammo + SLIDE_AMMO);
+    this.reloadT = 0;
+  }
+
+  /** Oldinga qisqa sirpanish (dashdek daxlsiz, oxirida himoya dumi); yo'nalish — yurish yoki qarab turgan tomon. */
+  private slide(ax: number, ay: number) {
+    if (this.dashCharges <= 0 || this.hurtTimer > 0 || this.snare > 0) return false;
+    let dx = ax,
+      dy = ay;
+    if (!dx && !dy) {
+      dx = this.fx;
+      dy = this.fy;
+    }
+    const l = Math.hypot(dx, dy) || 1;
+    this.dashX = dx / l;
+    this.dashY = dy / l;
+    this.dashTimer = SLIDE_TIME;
+    this.dashCharges--;
+    this.dashCooldown = this.dashCd;
+    this.attackTimer = 0;
+    this.charge = 0;
+    // sirpanish yelpig'ichni to'xtatadi: otilmagan o'qlar barabanda qoladi
+    this.fanLeft = 0;
+    this.spinTimer = 0;
+    sfx.dash();
+    this.anim.set("walk");
+    return true;
+  }
+
+  /** Tutun bombasi: oyog'i ostida tutun, Mergan tutun ichida SMOKE_HIDE soniya ko'rinmaydi. */
+  private throwSmoke() {
+    if (this.smokeCooldown > 0) {
+      this.smokeDenied = true;
+      return;
+    }
+    this.smokes.push({ x: this.x, y: this.y });
+    this.smokeCooldown = this.smokeCd;
+    this.hideT = SMOKE_HIDE;
+    sfx.smoke();
+  }
+
   /**
    * Ovchining Shift tugmasi: qisqa bosilsa (qo'yib yuborilganda) orqaga sakraydi,
    * TRAP_HOLD dan ko'p bosib turilsa oyog'i ostiga tuzoq qo'yadi (6s qayta tiklanadi).
-   * true — shu kadrda harakat tugadi (sakrash boshlandi).
+   * Merganda xuddi shunday: qisqa bosish — oldinga sirpanish, bosib turish — tutun bombasi.
+   * true — shu kadrda harakat tugadi (sakrash/sirpanish boshlandi).
    */
-  private updateShift(dt: number, pressed: boolean, input: PlayerInput) {
+  private updateShift(dt: number, pressed: boolean, input: PlayerInput, ax = 0, ay = 0) {
     const held = input.dashHeld?.() ?? false;
     if (pressed && this.shiftHold === -1) this.shiftHold = 0;
     if (this.shiftHold === -2) {
@@ -424,7 +627,8 @@ export class Player implements Body {
       this.shiftHold += dt;
       if (this.shiftHold >= TRAP_HOLD) {
         this.shiftHold = -2;
-        if (this.trapCooldown <= 0) {
+        if (this.gunner) this.throwSmoke();
+        else if (this.trapCooldown <= 0) {
           this.traps.push({ x: this.x, y: this.y + 4 });
           this.trapCooldown = this.trapCd;
           sfx.chestHit();
@@ -432,9 +636,9 @@ export class Player implements Body {
       }
       return false;
     }
-    // qo'yib yuborildi — orqaga sakrash
+    // qo'yib yuborildi — orqaga sakrash (Merganda — sirpanish)
     this.shiftHold = -1;
-    return this.backJump();
+    return this.gunner ? this.slide(ax, ay) : this.backJump();
   }
 
   private backJump() {
@@ -469,6 +673,8 @@ export class Player implements Body {
     if (this.dashing) ctx.globalAlpha = 0.7;
     // himoya dumi: biroz shaffof
     else if (this.guarded) ctx.globalAlpha = 0.6;
+    // tutunda yashiringan Mergan: zo'rg'a ko'rinadi
+    else if (this.hidden) ctx.globalAlpha = 0.35;
     renderSprite(
       ctx,
       this.hero,

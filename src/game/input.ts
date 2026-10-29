@@ -8,6 +8,8 @@ export class Input {
   private dashQueued = false;
   private enterQueued = false;
   private pauseQueued = false;
+  /** Mergan: R (telefonda o'q belgisi) — qayta o'qlash */
+  private reloadQueued = false;
   private touch = { x: 0, y: 0 };
   private touchAttack = false;
   private touchDash = false;
@@ -24,6 +26,7 @@ export class Input {
         this.dashQueued = true;
       if (e.code === "Enter" || e.code === "NumpadEnter") this.enterQueued = true;
       if (e.code === "Escape" || e.code === "KeyP") this.pauseQueued = true;
+      if (e.code === "KeyR") this.reloadQueued = true;
       this.pressed.add(e.code);
     }
     this.keys.add(e.code);
@@ -90,6 +93,10 @@ export class Input {
   pressPause() {
     this.pauseQueued = true;
   }
+  /** Telefondagi qayta o'qlash tugmasi (Mergan). */
+  pressReload() {
+    this.reloadQueued = true;
+  }
 
   /** Bir marta bosilgan hujum (iste'mol qilinadi). */
   consumeAttack() {
@@ -105,6 +112,12 @@ export class Input {
   consumeEnter() {
     const a = this.enterQueued;
     this.enterQueued = false;
+    return a;
+  }
+  /** Bir marta bosilgan qayta o'qlash (iste'mol qilinadi). */
+  consumeReload() {
+    const a = this.reloadQueued;
+    this.reloadQueued = false;
     return a;
   }
   /** Bir marta bosilgan Escape (iste'mol qilinadi). */
@@ -124,7 +137,7 @@ export class Input {
   }
   /** Navbatdagi barcha bir martalik bosishlarni bekor qilish. */
   clearQueued() {
-    this.attackQueued = this.dashQueued = this.enterQueued = false;
+    this.attackQueued = this.dashQueued = this.enterQueued = this.reloadQueued = false;
     this.pressed.clear();
   }
 }
