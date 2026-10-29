@@ -35,15 +35,8 @@ import {
   type Upgrade,
 } from "./waves";
 import { CHARGE_TIME, SPIN_TIME, type Bolt } from "./player";
-import {
-  HERO_THEME,
-  bestKeys,
-  chargeRingColor,
-  hudBarColors,
-  loadHero,
-  withAlpha,
-  type Hero,
-} from "./hero";
+import { HERO_THEME, bestKeys, chargeRingColor, hudBarColors, withAlpha, type Hero } from "./hero";
+import { loadPlayableHero, playableHero } from "./save";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
 import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
@@ -415,9 +408,11 @@ export class Game {
 
   constructor(
     canvas: HTMLCanvasElement,
-    public hero: Hero = loadHero(),
+    public hero: Hero = loadPlayableHero(),
     opts: { daily?: string; world?: World } = {},
   ) {
+    // qulfli (sotib olinmagan) qahramon bilan o'ynab bo'lmaydi — kunlik sinovda ham
+    hero = this.hero = playableHero(hero);
     this.daily = opts.daily ?? null;
     // kunlik sinov doim 1-dunyoda
     this.startWorld = this.daily ? 1 : (opts.world ?? 1);

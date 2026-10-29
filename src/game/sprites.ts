@@ -4,6 +4,7 @@ export type SpriteKind =
   | "knight"
   | "mage"
   | "hunter"
+  | "gunner"
   | "skeleton"
   | "archer"
   | "shield"
@@ -147,6 +148,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   mage: ["#050307", "#2b1c2e", "#a3192a", "#d9d4e0", "#e8c39e"],
   // Ovchi: siyoh, to'q yashil (shim, kapyushon ichi), yashil plash, jigarrang charm (kamon, o'qdon, etik), teri
   hunter: ["#0a0f08", "#1f4a24", "#4f8a3a", "#7a4a24", "#e8c39e"],
+  // Mergan: siyoh, porox-qora (shlyapa, shim, kamzul), jigarrang plash va etik, qizil bo'yinbog',
+  // mis-jez (to'pponcha, to'qa, shpora) — oftobda qoraygan yuz va qo'llar ham shu rangda
+  gunner: ["#0b0907", "#2b2723", "#7a4b2a", "#b8322a", "#dba45a"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -1722,6 +1726,206 @@ function hunterFallen(p: Pixels, frame: number) {
   p.line(5, [12, 20], [26, 22], 1);
 }
 
+// ---------------- Mergan ----------------
+
+/**
+ * Chaqmoqtoshli to'pponcha: hand — ushlagan qo'l, dir — stvol yo'nalishi (birlik vektor emas),
+ * flash — o'q chiqqan kadr (og'izda uchqun), smoke — stvol ustida tutun.
+ */
+function flintlock(p: Pixels, hand: Point, dir: Point, flash: boolean, smoke: boolean) {
+  const [hx, hy] = hand;
+  const l = Math.hypot(dir[0], dir[1]) || 1;
+  const ux = dir[0] / l,
+    uy = dir[1] / l;
+  // dasta qo'l ichida; mis-jez stvol qo'ldan oldinga chiqadi, ostida soya chizig'i
+  const mx = Math.round(hx + ux * 5),
+    my = Math.round(hy - 1 + uy * 5);
+  p.line(1, [hx + 1, hy], [mx, my + 1], 1);
+  p.line(5, [hx + 1, hy - 1], [mx, my], 1);
+  // chaqmoqtosh tepkisi va tepki halqasi
+  p.rect(1, hx, hy - 2, 1, 1);
+  p.rect(1, hx + 1, hy + 1, 1, 1);
+  if (flash) {
+    // og'izdagi uchqun: mis o'zak, qizil nurlar
+    p.rect(5, mx + 1, my - 1, 1, 3);
+    p.rect(5, mx + 2, my, 1, 1);
+    p.rect(4, mx + 3, my, 1, 1);
+    p.rect(4, mx + 2, my - 2, 1, 1);
+    p.rect(4, mx + 2, my + 2, 1, 1);
+  }
+  if (smoke) {
+    // stvoldan burama bo'lib ko'tarilayotgan porox tutuni
+    p.rect(2, mx + 1, my - 2, 1, 1);
+    p.rect(2, mx + 2, my - 4, 1, 1);
+    p.rect(2, mx + 1, my - 6, 1, 1);
+  }
+}
+
+/** Keng qirrali qora shlyapa: (x, y) — qirraning chap-yuqorisi; qirra uchlari biroz qayrilgan. */
+function cowboyHat(p: Pixels, x: number, y: number) {
+  p.rect(2, x, y, 16, 2);
+  p.rect(2, x, y - 1, 1, 1);
+  p.rect(2, x + 15, y - 1, 1, 1);
+  // toj: o'rtasi botiq (ikki do'nglik)
+  p.rect(2, x + 4, y - 4, 8, 4);
+  p.rect(2, x + 5, y - 5, 2, 1);
+  p.rect(2, x + 9, y - 5, 2, 1);
+  // mis to'qali tasma
+  p.rect(1, x + 4, y - 1, 8, 1);
+  p.rect(5, x + 7, y - 1, 2, 1);
+}
+
+/** Merganning hujum kadrlari: 0 — nishonga oldi, 1 — otdi (tepki, uchqun), 2 — qurolni qaytardi. */
+const gunnerShots: readonly {
+  hand: Point;
+  dir: Point;
+  flash: boolean;
+  smoke: boolean;
+  other: Point;
+}[] = [
+  { hand: [24, 15], dir: [1, 0], flash: false, smoke: false, other: [11, 19] },
+  { hand: [23, 14], dir: [3, -1], flash: true, smoke: false, other: [11, 19] },
+  { hand: [24, 17], dir: [3, 1], flash: false, smoke: true, other: [10, 19] },
+];
+
+/** Plash etagining chayqalishi (px): yurishda kadrdan kadrga o'zgaradi. */
+const COAT_SWAY: Record<"idle" | "walk" | "attack" | "hurt", readonly number[]> = {
+  idle: [0, 0],
+  walk: [1, 0, -1, 0],
+  attack: [0, -1, 0],
+  hurt: [-1],
+};
+
+/**
+ * Mergan: 2 — porox-qora shlyapa, shim va kamzul, 3 — uzun jigarrang plash va etik,
+ * 4 — qizil bo'yinbog', 5 — mis-jez to'pponcha, to'qa va shpora, oftobda qoraygan yuz va qo'llar.
+ */
+function gunner(
+  p: Pixels,
+  pose: Pose,
+  back: boolean,
+  shot: (typeof gunnerShots)[number] | null,
+  sway = 0,
+  hat = true,
+) {
+  const { bob: b, lean: l } = pose;
+  const hand = shot ? shot.hand : pose.hand;
+  const other = shot ? shot.other : pose.otherHand;
+  // oyoqlar: qora shim, jigarrang etik, tovonda mis shpora
+  p.line(2, [13, 20 + b], pose.leftFoot, 3);
+  p.line(2, [19, 20 + b], pose.rightFoot, 3);
+  for (const [fx, fy] of [pose.leftFoot, pose.rightFoot]) {
+    p.rect(3, fx - 2, fy - 1, 5, 2);
+    p.rect(5, fx - 3, fy, 1, 1);
+  }
+  // orqa qo'l
+  p.line(3, [12 + l, 14 + b], other, 3);
+  p.rect(5, other[0] - 1, other[1] - 1, 2, 2);
+  // uzun plash: yelkadan tizzagacha kengayadi, etagi chayqaladi
+  p.polygon(3, [
+    [10 + l, 12 + b],
+    [22 + l, 12 + b],
+    [23 + sway, 25 + b],
+    [9 + sway, 25 + b],
+  ]);
+  if (!back) {
+    // old tomonda ochiq plash: qora kamzul, kamar va mis to'qa
+    p.polygon(2, [
+      [15 + l, 13 + b],
+      [17 + l, 13 + b],
+      [18 + sway, 25 + b],
+      [14 + sway, 25 + b],
+    ]);
+    p.rect(1, 14 + l, 19 + b, 4, 1);
+    p.rect(5, 15 + l, 19 + b, 2, 1);
+    // plash yoqasidagi mis tugmalar
+    p.rect(5, 13 + l, 15 + b, 1, 1);
+    p.rect(5, 19 + l, 15 + b, 1, 1);
+  } else {
+    // orqadan: plash choki va etakdagi kesik
+    p.rect(2, 16 + l, 15 + b, 1, 6);
+    p.rect(2, 16 + sway, 21 + b, 1, 4);
+  }
+  // etak hoshiyasi
+  p.rect(2, 9 + sway, 25 + b, 15, 1);
+  // bo'yinbog': oldda uchburchak bo'lib ko'krakka tushadi, orqada tuguni ko'rinadi
+  p.rect(4, 13 + l, 12 + b, 7, 1);
+  if (!back) {
+    p.rect(4, 14 + l, 13 + b, 5, 1);
+    p.rect(4, 15 + l, 14 + b, 3, 1);
+    p.rect(4, 16 + l, 15 + b, 1, 1);
+  } else {
+    p.rect(4, 15 + l, 13 + b, 3, 2);
+    p.rect(4, 14 + l, 15 + b, 1, 1);
+    p.rect(4, 18 + l, 15 + b, 1, 1);
+  }
+  // bosh: shlyapa soyasidagi qoraygan yuz, ko'zlar va mo'ylov (orqadan — qora soch va bo'yin)
+  if (back) {
+    p.rect(2, 13 + l, 9 + b, 6, 2);
+    p.rect(5, 14 + l, 11 + b, 4, 1);
+  } else {
+    p.rect(5, 13 + l, 9 + b, 6, 3);
+    p.rect(2, 13 + l, 9 + b, 6, 1);
+    p.rect(1, 14 + l, 10 + b, 1, 1);
+    p.rect(1, 17 + l, 10 + b, 1, 1);
+    p.rect(2, 15 + l, 11 + b, 2, 1);
+  }
+  if (hat) cowboyHat(p, 8 + l, 7 + b);
+  // old qo'l va to'pponcha (tinch turganda stvol oldinga-pastga qaraydi)
+  p.line(3, [21 + l, 14 + b], hand, 3);
+  const dir: Point = shot ? shot.dir : [3, 1];
+  p.rect(5, hand[0] - 1, hand[1] - 1, 2, 2);
+  flintlock(p, hand, dir, shot?.flash ?? false, shot?.smoke ?? false);
+}
+
+/** Merganning yiqilishi: tiz cho'kadi, shlyapasi uchib ketadi, yerda plashi yoyilib yotadi. */
+function gunnerFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    gunner(p, { ...poses.hurt[0]!, bob: 4, lean: -2 }, false, null, -1, false);
+    // shlyapa boshdan uchib ketmoqda
+    p.rect(2, 2, 6, 11, 2);
+    p.rect(2, 4, 3, 6, 3);
+    p.rect(1, 4, 5, 6, 1);
+    return;
+  }
+  if (frame === 1) {
+    // yonboshlab qulamoqda: plash, oyoqlar va yerga tushayotgan to'pponcha
+    p.line(2, [16, 24], [25, 28], 3);
+    p.rect(3, 24, 27, 4, 2);
+    p.polygon(3, [
+      [8, 16],
+      [16, 17],
+      [21, 25],
+      [16, 28],
+      [8, 24],
+    ]);
+    p.rect(4, 7, 15, 4, 2);
+    p.rect(5, 4, 12, 4, 3);
+    p.rect(2, 4, 12, 4, 1);
+    p.rect(1, 5, 13, 1, 1);
+    p.rect(2, 6, 14, 2, 1);
+    p.rect(2, 2, 22, 9, 2);
+    p.rect(2, 4, 20, 5, 2);
+    p.line(5, [22, 18], [27, 20], 1);
+    p.rect(3, 21, 17, 2, 2);
+    return;
+  }
+  // yerda yotibdi: plash yoyilgan, yonida shlyapa va to'pponcha
+  p.rect(3, 9, 24, 14, 5);
+  p.rect(2, 9, 28, 14, 1);
+  p.line(2, [22, 27], [27, 27], 2);
+  p.rect(3, 26, 26, 3, 3);
+  p.rect(4, 7, 24, 3, 3);
+  p.rect(5, 4, 24, 3, 3);
+  p.rect(2, 3, 24, 1, 3);
+  p.rect(1, 5, 25, 2, 1);
+  p.rect(2, 1, 19, 10, 2);
+  p.rect(2, 3, 16, 6, 3);
+  p.rect(1, 3, 18, 6, 1);
+  p.line(5, [14, 21], [20, 21], 1);
+  p.rect(3, 12, 21, 2, 2);
+}
+
 // ---------------- 3-dunyo: Zulmat o'rmoni ----------------
 
 interface SpiderFrame {
@@ -2941,6 +3145,18 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
         poses[state][frame] ?? poses[state][0]!,
         back,
         state === "attack" ? (hunterShots[frame] ?? hunterShots[0]!) : null,
+      );
+    return p.outlined();
+  }
+  if (kind === "gunner") {
+    if (state === "death") gunnerFallen(p, Math.min(2, Math.max(0, frame)));
+    else
+      gunner(
+        p,
+        poses[state][frame] ?? poses[state][0]!,
+        back,
+        state === "attack" ? (gunnerShots[frame] ?? gunnerShots[0]!) : null,
+        COAT_SWAY[state][frame] ?? 0,
       );
     return p.outlined();
   }

@@ -3,6 +3,7 @@ import { Game } from "./game";
 import { CHARGE_TIME } from "./player";
 import { ACHIEVEMENTS } from "./achievements";
 import {
+  FREE_HEROES,
   HEROES,
   HERO_LIST,
   HERO_THEME,
@@ -68,14 +69,17 @@ describe("HERO_THEME", () => {
   });
 
   it("hero list keeps metadata and fits the 10-card menu row", () => {
-    expect(HERO_LIST.map((h) => h.id)).toEqual(["knight", "mage", "hunter"]);
+    expect(HERO_LIST.map((h) => h.id)).toEqual(["knight", "mage", "hunter", "gunner"]);
     expect(new Set(HEROES).size).toBe(HEROES.length);
     expect(HERO_LIST.length).toBeLessThanOrEqual(MAX_HEROES);
-    for (const h of HERO_LIST) {
-      expect(h.price).toBe(0);
+    HERO_LIST.forEach((h, i) => {
+      // dastlabki 3 tasi bepul, 4-qahramondan boshlab oltinga sotiladi
+      if (i < FREE_HEROES) expect(h.price, h.id).toBe(0);
+      else expect(h.price, h.id).toBeGreaterThan(0);
       expect(h.theme).toBe(HERO_THEME[h.id]);
       expect(h.name).toBeTruthy();
-    }
+      expect(h.desc).toBeTruthy();
+    });
   });
 
   it("withAlpha converts hex to rgba", () => {
@@ -84,6 +88,9 @@ describe("HERO_THEME", () => {
 });
 
 describe("Zaryad halqasi va HUD qahramon rangida", () => {
+  // pullik qahramonlar ham sotib olingan
+  beforeEach(() => HEROES.forEach(unlockHero));
+
   it("charge ring uses the hero accent, and glow when full", () => {
     const seen = new Set<string>();
     for (const h of HEROES) {
@@ -103,7 +110,7 @@ describe("Zaryad halqasi va HUD qahramon rangida", () => {
       // eski sariq rang qolmagan
       expect(strokes[0]).not.toMatch(/255,(204|236)/);
     }
-    expect(seen.size).toBe(3);
+    expect(seen.size).toBe(HEROES.length);
   });
 
   it("HUD dash and power bars take the hero colours", () => {

@@ -1,5 +1,5 @@
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage" | "hunter";
+export type Hero = "knight" | "mage" | "hunter" | "gunner";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -41,6 +41,15 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     uiText: "#a6f08e",
     empty: "#1f3a1c",
   },
+  // Mergan: mis va porox kulrangi
+  gunner: {
+    accent: "#d9a441",
+    accentDark: "#8a5a2a",
+    glow: "#ffe2a0",
+    trail: "rgba(150,140,124,0.8)",
+    uiText: "#d9a441",
+    empty: "#2e2820",
+  },
 };
 
 /** Qahramon metadatasi. price > 0 bo'lsa do'kondan sotib olinadi (save.ts: unlockedHeroes). */
@@ -49,15 +58,55 @@ export interface HeroInfo {
   name: string;
   theme: HeroTheme;
   price: number;
+  /** Do'kon kartasidagi qisqa tavsif: hujumi va o'ziga xosligi */
+  desc: string;
 }
 
 /** Menyudagi qahramon tanlash qatori shuncha kartaga mo'ljallangan */
 export const MAX_HEROES = 10;
+/**
+ * QOIDA: o'yinda jami MAX_HEROES tagacha qahramon. Dastlabki FREE_HEROES tasi bepul,
+ * keyingilari (4-qahramondan boshlab) do'konning QAHRAMONLAR bo'limida oltinga sotiladi.
+ */
+export const FREE_HEROES = 3;
+
+/**
+ * Mergan narxi oltin iqtisodidan. 1-dunyoning to'liq o'yini (5 to'lqin, Iblis bilan):
+ * dushmanlardan 3 + 4 + 9 + 16 + 2 = 34, Iblisdan 25, sandiqlardan 2 to'lqin × 35% × ~11.5 ≈ 8,
+ * jami ≈ 67 oltin. O'rtacha o'yinchi 12s da yo'qoladigan tangalarning bir qismini terolmaydi (≈ 55–60).
+ * 300 oltin ≈ 4.5–5.5 ta to'liq o'yin.
+ */
+export const GUNNER_PRICE = 300;
 
 export const HERO_LIST: readonly HeroInfo[] = [
-  { id: "knight", name: "RITSAR", theme: HERO_THEME.knight, price: 0 },
-  { id: "mage", name: "SEHRGAR", theme: HERO_THEME.mage, price: 0 },
-  { id: "hunter", name: "OVCHI", theme: HERO_THEME.hunter, price: 0 },
+  {
+    id: "knight",
+    name: "RITSAR",
+    theme: HERO_THEME.knight,
+    price: 0,
+    desc: "Qilich, aylana zarba va dash. 6 yurak — eng chidamli.",
+  },
+  {
+    id: "mage",
+    name: "SEHRGAR",
+    theme: HERO_THEME.mage,
+    price: 0,
+    desc: "Sehrli shar, olovli halqa va teleport. Uzoqdan uradi.",
+  },
+  {
+    id: "hunter",
+    name: "OVCHI",
+    theme: HERO_THEME.hunter,
+    price: 0,
+    desc: "O'q, teshuvchi o'q, orqaga sakrash va tuzoq. Eng tez yuradi.",
+  },
+  {
+    id: "gunner",
+    name: "MERGAN",
+    theme: HERO_THEME.gunner,
+    price: GUNNER_PRICE,
+    desc: "Chaqmoqtoshli to'pponcha: barabanda 6 o'q, bosib tursang hammasini yelpig'ich qilib otadi. Sirpanish va tutun bombasi.",
+  },
 ];
 
 export const HEROES: readonly Hero[] = HERO_LIST.map((h) => h.id);

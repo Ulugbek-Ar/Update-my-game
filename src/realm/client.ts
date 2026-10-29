@@ -7,6 +7,7 @@ import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
 import { HERO_THEME, type Hero } from "@/game/hero";
+import { playableHero } from "@/game/save";
 import { loadSettings } from "@/game/settings";
 import { addGold, loadGold, saveGold } from "@/game/shop";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
@@ -89,6 +90,8 @@ export class RealmClient {
     private canvas: HTMLCanvasElement,
     public hero: Hero,
   ) {
+    // olamda ham faqat ochilgan (sotib olingan) qahramon o'ynaydi
+    hero = this.hero = playableHero(hero);
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
     this.input.jAttack = false;

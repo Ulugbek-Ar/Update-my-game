@@ -3,7 +3,7 @@
  * yutuqlar, sozlamalar, kunlik sinov) o'chirilmaydi yoki o'zgartirilmaydi — faqat yangilari qo'shiladi.
  */
 import { MAP_WORLDS, isWorldWon, recordWorldWin, worldWins } from "./progress";
-import { HERO_KEY, HERO_LIST, type Hero } from "./hero";
+import { HERO_KEY, HERO_LIST, loadHero, saveHero, type Hero } from "./hero";
 
 export const SAVE_VERSION_KEY = "pixel-rpg-save-version";
 export const SAVE_VERSION = 3;
@@ -40,6 +40,23 @@ export function unlockHero(h: Hero) {
   }
 }
 
+/** Qulfli qahramon bilan o'ynab bo'lmaydi: ochilmagan bo'lsa — Ritsar. */
+export function playableHero(h: Hero): Hero {
+  return isHeroUnlocked(h) ? h : "knight";
+}
+
+/** Saqlangan tanlov (qahramon qulflangan bo'lsa — Ritsar). */
+export function loadPlayableHero() {
+  return playableHero(loadHero());
+}
+
+/** Faqat ochilgan qahramon tanlanadi va saqlanadi; true — tanlandi. */
+export function selectHero(h: Hero) {
+  if (!isHeroUnlocked(h)) return false;
+  saveHero(h);
+  return true;
+}
+
 /** Bir marta ishlaydi; migratsiya bajarilgan bo'lsa true qaytaradi. */
 export function migrateSave() {
   try {
@@ -55,9 +72,10 @@ export function migrateSave() {
       }
     }
     if (v < 3) {
-      // v2 -> v3: hozirgacha o'ynalgan har qahramon (bepullar va tanlangani) ochiq qoladi
+      // v2 -> v3: hozirgacha o'ynalgan har qahramon (bepullar va tanlangani) ochiq qoladi;
+      // pullik qahramon (Mergan va keyingilar) faqat do'kondan sotib olinadi
       const set = loadUnlockedHeroes();
-      const cur = HERO_LIST.find((h) => h.id === localStorage.getItem(HERO_KEY));
+      const cur = HERO_LIST.find((h) => h.id === localStorage.getItem(HERO_KEY) && h.price <= 0);
       if (cur) set.add(cur.id);
       localStorage.setItem(UNLOCKED_HEROES_KEY, JSON.stringify([...set]));
     }

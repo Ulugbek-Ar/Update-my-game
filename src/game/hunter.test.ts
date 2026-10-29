@@ -45,7 +45,7 @@ beforeEach(() => localStorage.clear());
 
 describe("Ovchi", () => {
   it("is the third hero: 5 hearts, the fastest walker, same collision size", () => {
-    expect(HEROES).toEqual(["knight", "mage", "hunter"]);
+    expect(HEROES.indexOf("hunter")).toBe(2);
     expect(HERO_NAMES.hunter).toBe("OVCHI");
     saveHero("hunter");
     expect(loadHero()).toBe("hunter");

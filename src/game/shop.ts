@@ -1,6 +1,8 @@
-/** Oltin va DO'KON: o'yinlar orasida saqlanadigan doimiy kuchaytirishlar (localStorage). */
+/** Oltin va DO'KON: o'yinlar orasida saqlanadigan doimiy kuchaytirishlar va qahramonlar (localStorage). */
 import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
+import { HERO_LIST, type Hero } from "./hero";
+import { isHeroUnlocked, unlockHero } from "./save";
 
 export const GOLD_KEY = "pixel-rpg-gold";
 export const SHOP_KEY = "pixel-rpg-shop";
@@ -150,4 +152,27 @@ export function applyShop(p: Player, levels: ShopLevels) {
 /** Omad tumori: har bosqich yurak tushish ehtimoliga +5%. */
 export function dropBonus(levels: ShopLevels) {
   return levels.luck * 0.05;
+}
+
+// ---- QAHRAMONLAR bo'limi: 4-qahramondan boshlab har bir qahramon oltinga sotiladi ----
+
+/** Qahramon narxi (bepul qahramonlarda 0). */
+export function heroPrice(h: Hero) {
+  return HERO_LIST.find((x) => x.id === h)?.price ?? 0;
+}
+
+/** Sotib olish uchun yana qancha oltin kerak (0 — yetadi). */
+export function goldShort(h: Hero, gold = loadGold()) {
+  return Math.max(0, heroPrice(h) - gold);
+}
+
+/** Qahramonni sotib olish: bir martalik — oltin yetsa ochiladi, saqlanadi va true qaytadi. */
+export function buyHero(h: Hero) {
+  if (isHeroUnlocked(h)) return false;
+  const gold = loadGold();
+  const price = heroPrice(h);
+  if (gold < price) return false;
+  saveGold(gold - price);
+  unlockHero(h);
+  return true;
 }

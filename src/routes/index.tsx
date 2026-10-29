@@ -16,17 +16,8 @@ import {
   drawHunterCard,
   renderMenuScene,
 } from "@/game/menuScene";
-import { migrateSave } from "@/game/save";
-import {
-  HEROES,
-  HERO_NAMES,
-  HERO_THEME,
-  bestKeys,
-  loadHero,
-  saveHero,
-  withAlpha,
-  type Hero,
-} from "@/game/hero";
+import { loadPlayableHero, loadUnlockedHeroes, migrateSave, selectHero } from "@/game/save";
+import { HERO_LIST, HERO_THEME, bestKeys, withAlpha, type Hero } from "@/game/hero";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
@@ -37,8 +28,18 @@ import { HAS_SERVER, IS_APP } from "@/lib/platform";
 import { backAction, exitApp, onAppActive, onBackButton } from "@/lib/native";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
-import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
+import {
+  SHOP_ITEMS,
+  buy,
+  buyHero,
+  goldShort,
+  loadGold,
+  loadShop,
+  nextCost,
+  type ShopItem,
+} from "@/game/shop";
 import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
+import type { AnimState } from "@/game/animation";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
 import { RealmClient } from "@/realm/client";
@@ -114,6 +115,14 @@ function Index() {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  /** Do'konning ochiladigan bo'limi: qulfli qahramon kartasi bosilsa — QAHRAMONLAR */
+  const [shopTab, setShopTab] = useState<ShopTab>("upgrades");
+  /** Do'kon ochilganda ko'rsatiladigan qahramon kartasi (qulfli karta bosilganda) */
+  const [shopHero, setShopHero] = useState<Hero | null>(null);
+  /** Ochilgan (bepul va sotib olingan) qahramonlar */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<Hero>>(
+    () => new Set(HERO_LIST.filter((h) => h.price <= 0).map((h) => h.id)),
+  );
   const [gold, setGold] = useState(0);
   const [coachOpen, setCoachOpen] = useState(false);
   const [newVersion, setNewVersion] = useState<string | null>(null);
@@ -148,7 +157,9 @@ function Index() {
     migrateSave();
     setReady(true);
     setMuted(sfx.loadMute());
-    setHero(loadHero());
+    // qulfli qahramon saqlangan bo'lsa ham faqat ochilgani tanlanadi
+    setHero(loadPlayableHero());
+    setUnlocked(loadUnlockedHeroes());
     setDaily(loadDaily());
     setAchCount(loadAchievements().size);
     setRealmOpen(isRealmUnlocked());
@@ -286,6 +297,7 @@ function Index() {
         () => {
           setShopOpen(false);
           setGold(loadGold());
+          setUnlocked(loadUnlockedHeroes());
         },
       ],
       [settingsOpen, () => setSettingsOpen(false)],
@@ -354,34 +366,51 @@ function Index() {
               aria-label="Qahramon tanlash"
               className="hero-row flex max-w-full snap-x gap-3 overflow-x-auto p-1"
             >
-              {HEROES.map((h) => (
-                <button
-                  key={h}
-                  aria-pressed={hero === h}
-                  onClick={() => {
-                    setHero(h);
-                    saveHero(h);
-                  }}
-                  style={
-                    hero === h
-                      ? {
-                          borderColor: HERO_THEME[h].accent,
-                          // rang qatlami to'q karta foni ustida — orqadagi sahna ko'rinmaydi
-                          background: `linear-gradient(${withAlpha(HERO_THEME[h].accent, 0.15)}, ${withAlpha(HERO_THEME[h].accent, 0.15)}), var(--color-card)`,
-                          color: HERO_THEME[h].uiText,
-                        }
-                      : undefined
-                  }
-                  className={`flex shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
-                    hero === h
-                      ? ""
-                      : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-                  }`}
-                >
-                  <HeroPreview hero={h} active={hero === h} />
-                  {HERO_NAMES[h]}
-                </button>
-              ))}
+              {HERO_LIST.map(({ id: h, name, price }) => {
+                const locked = !unlocked.has(h);
+                return (
+                  <button
+                    key={h}
+                    aria-pressed={hero === h}
+                    aria-label={locked ? `${name} — qulflangan, ${price} oltin` : undefined}
+                    onClick={() => {
+                      // sotib olinmagan qahramon: do'konning QAHRAMONLAR bo'limi ochiladi
+                      if (locked) {
+                        setShopTab("heroes");
+                        setShopHero(h);
+                        setShopOpen(true);
+                        return;
+                      }
+                      if (selectHero(h)) setHero(h);
+                    }}
+                    style={
+                      hero === h
+                        ? {
+                            borderColor: HERO_THEME[h].accent,
+                            // rang qatlami to'q karta foni ustida — orqadagi sahna ko'rinmaydi
+                            background: `linear-gradient(${withAlpha(HERO_THEME[h].accent, 0.15)}, ${withAlpha(HERO_THEME[h].accent, 0.15)}), var(--color-card)`,
+                            color: HERO_THEME[h].uiText,
+                          }
+                        : undefined
+                    }
+                    className={`flex shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                      hero === h
+                        ? ""
+                        : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <HeroPreview hero={h} active={hero === h} locked={locked} />
+                    {name}
+                    {locked && (
+                      <span className="inline-flex items-center gap-1 text-primary">
+                        <LockIcon />
+                        <PixelIcon id="coin" color="#ffcc33" size={10} />
+                        {price}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
@@ -467,7 +496,11 @@ function Index() {
             </Button>
             <div className="flex flex-wrap justify-center gap-3">
               <Button
-                onClick={() => setShopOpen(true)}
+                onClick={() => {
+                  setShopTab("upgrades");
+                  setShopHero(null);
+                  setShopOpen(true);
+                }}
                 disabled={!ready}
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
@@ -611,9 +644,17 @@ function Index() {
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {shopOpen && (
         <ShopWindow
+          tab={shopTab}
+          focusHero={shopHero}
+          onHeroBought={(h) => {
+            // sotib olingan qahramon darhol tanlanadi
+            setUnlocked(loadUnlockedHeroes());
+            if (selectHero(h)) setHero(h);
+          }}
           onClose={() => {
             setShopOpen(false);
             setGold(loadGold());
+            setUnlocked(loadUnlockedHeroes());
           }}
         />
       )}
@@ -872,28 +913,65 @@ function LockIcon() {
   );
 }
 
-/** Menyudagi qahramon rasmi: kod bilan chizilgan sprite, tanlanganda "nafas oladi". */
-function HeroPreview({ hero, active }: { hero: Hero; active: boolean }) {
+/** Do'kon kartasidagi namoyish: nafas, yurish va hujum kadrlari navbat bilan. */
+const SHOWCASE: readonly (readonly [AnimState, number])[] = [
+  ["idle", 0],
+  ["idle", 1],
+  ["idle", 0],
+  ["idle", 1],
+  ...[0, 1, 2, 3, 0, 1, 2, 3].map((f) => ["walk", f] as const),
+  ["attack", 0],
+  ["attack", 1],
+  ["attack", 2],
+  ["attack", 2],
+];
+
+/**
+ * Menyudagi qahramon rasmi: kod bilan chizilgan sprite, tanlanganda "nafas oladi".
+ * showcase — do'konda yurish va hujumni ham ko'rsatadi; locked — xira (sotib olinmagan).
+ */
+function HeroPreview({
+  hero,
+  active,
+  locked = false,
+  showcase = false,
+  size = 48,
+}: {
+  hero: Hero;
+  active: boolean;
+  locked?: boolean;
+  showcase?: boolean;
+  size?: number;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!active) return setFrame(0);
-    const id = window.setInterval(() => setFrame((f) => (f + 1) % 2), 500);
+    const id = window.setInterval(() => setFrame((f) => f + 1), showcase ? 160 : 500);
     return () => window.clearInterval(id);
-  }, [active]);
+  }, [active, showcase]);
   useEffect(() => {
     const c = ref.current?.getContext("2d");
     if (!c) return;
     c.clearRect(0, 0, 32, 32);
-    renderSprite(c, hero, "idle", frame, 16, 16, false);
-  }, [hero, frame]);
+    const [state, f] = showcase
+      ? SHOWCASE[frame % SHOWCASE.length]!
+      : (["idle", frame % 2] as const);
+    renderSprite(c, hero, state, f, 16, 16, false);
+  }, [hero, frame, showcase]);
   return (
     <canvas
       ref={ref}
       width={32}
       height={32}
       aria-hidden="true"
-      style={{ width: 48, height: 48, imageRendering: "pixelated" }}
+      style={{
+        width: size,
+        height: size,
+        imageRendering: "pixelated",
+        opacity: locked ? 0.4 : 1,
+        filter: locked ? "grayscale(0.7)" : undefined,
+      }}
     />
   );
 }
@@ -918,9 +996,27 @@ function PixelIcon({ id, color, size }: { id: string; color: string; size: numbe
   );
 }
 
-function ShopWindow({ onClose }: { onClose: () => void }) {
+/** Do'kon bo'limlari: doimiy kuchaytirishlar va qahramonlar */
+type ShopTab = "upgrades" | "heroes";
+
+function ShopWindow({
+  onClose,
+  tab: firstTab,
+  focusHero,
+  onHeroBought,
+}: {
+  onClose: () => void;
+  tab: ShopTab;
+  /** Shu qahramon kartasi ko'rinadigan joyga aylantiriladi (telefonda pastda qolmasin) */
+  focusHero: Hero | null;
+  onHeroBought: (h: Hero) => void;
+}) {
+  const [tab, setTab] = useState<ShopTab>(firstTab);
+  const focusRef = useRef<HTMLLIElement>(null);
+  useEffect(() => focusRef.current?.scrollIntoView?.({ block: "nearest" }), []);
   const [gold, setGold] = useState(loadGold);
   const [levels, setLevels] = useState(loadShop);
+  const [unlocked, setUnlocked] = useState(loadUnlockedHeroes);
   const purchase = (item: ShopItem) => {
     sfx.unlock();
     if (!buy(item.id)) return;
@@ -928,6 +1024,28 @@ function ShopWindow({ onClose }: { onClose: () => void }) {
     setGold(loadGold());
     setLevels(loadShop());
   };
+  const purchaseHero = (h: Hero) => {
+    sfx.unlock();
+    if (!buyHero(h)) return;
+    sfx.upgrade();
+    setGold(loadGold());
+    setUnlocked(loadUnlockedHeroes());
+    onHeroBought(h);
+  };
+  const tabBtn = (id: ShopTab, label: string) => (
+    <button
+      role="tab"
+      aria-selected={tab === id}
+      onClick={() => setTab(id)}
+      className={`border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
+        tab === id
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -947,55 +1065,124 @@ function ShopWindow({ onClose }: { onClose: () => void }) {
             {gold}
           </span>
         </div>
-        <p className="text-muted-foreground">
-          Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
-        </p>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {SHOP_ITEMS.map((item) => {
-            const lvl = levels[item.id];
-            const cost = nextCost(item, levels);
-            const canBuy = cost !== null && gold >= cost;
-            return (
-              <li
-                key={item.id}
-                className="flex flex-col items-center gap-2 p-[2px]"
-                style={{ background: canBuy ? item.color : "#5c4a6e" }}
-              >
-                <div className="flex w-full flex-1 flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
-                  <PixelIcon id={item.icon} color={item.color} size={36} />
-                  <span style={{ color: item.color }}>{item.name}</span>
-                  <span className="flex-1 text-foreground">{item.desc}</span>
-                  <span className="flex gap-1" aria-label={`Bosqich ${lvl}/${item.costs.length}`}>
-                    {item.costs.map((_, i) => (
-                      <span
-                        key={i}
-                        className="h-2 w-2"
-                        style={{ background: i < lvl ? item.color : "#3b2a3a" }}
-                      />
-                    ))}
-                  </span>
-                  <button
-                    onClick={() => purchase(item)}
-                    disabled={!canBuy}
-                    className={cn(
-                      buttonVariants({ variant: "pixel", size: "none" }),
-                      "w-full gap-1 px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
-                    )}
+        <div role="tablist" aria-label="Do'kon bo'limlari" className="flex flex-wrap gap-2">
+          {tabBtn("upgrades", "KUCHAYTIRISHLAR")}
+          {tabBtn("heroes", "QAHRAMONLAR")}
+        </div>
+        {tab === "upgrades" ? (
+          <>
+            <p className="text-muted-foreground">
+              Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
+            </p>
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {SHOP_ITEMS.map((item) => {
+                const lvl = levels[item.id];
+                const cost = nextCost(item, levels);
+                const canBuy = cost !== null && gold >= cost;
+                return (
+                  <li
+                    key={item.id}
+                    className="flex flex-col items-center gap-2 p-[2px]"
+                    style={{ background: canBuy ? item.color : "#5c4a6e" }}
                   >
-                    {cost === null ? (
-                      "TO'LIQ"
-                    ) : (
-                      <>
-                        <PixelIcon id="coin" color="#ffcc33" size={10} />
-                        {cost}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                    <div className="flex w-full flex-1 flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
+                      <PixelIcon id={item.icon} color={item.color} size={36} />
+                      <span style={{ color: item.color }}>{item.name}</span>
+                      <span className="flex-1 text-foreground">{item.desc}</span>
+                      <span
+                        className="flex gap-1"
+                        aria-label={`Bosqich ${lvl}/${item.costs.length}`}
+                      >
+                        {item.costs.map((_, i) => (
+                          <span
+                            key={i}
+                            className="h-2 w-2"
+                            style={{ background: i < lvl ? item.color : "#3b2a3a" }}
+                          />
+                        ))}
+                      </span>
+                      <button
+                        onClick={() => purchase(item)}
+                        disabled={!canBuy}
+                        className={cn(
+                          buttonVariants({ variant: "pixel", size: "none" }),
+                          "w-full gap-1 px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
+                        )}
+                      >
+                        {cost === null ? (
+                          "TO'LIQ"
+                        ) : (
+                          <>
+                            <PixelIcon id="coin" color="#ffcc33" size={10} />
+                            {cost}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="text-muted-foreground">
+              Dastlabki 3 qahramon bepul. 4-qahramondan boshlab har biri oltinga bir marta sotib
+              olinadi va doim ochiq qoladi.
+            </p>
+            <ul aria-label="Qahramonlar" className="grid gap-2 sm:grid-cols-2">
+              {HERO_LIST.map((h) => {
+                const open = unlocked.has(h.id);
+                const short = goldShort(h.id, gold);
+                const canBuy = !open && short === 0;
+                return (
+                  <li
+                    key={h.id}
+                    ref={h.id === focusHero ? focusRef : undefined}
+                    className="flex p-[2px]"
+                    style={{ background: open || canBuy ? h.theme.accent : "#5c4a6e" }}
+                  >
+                    <div className="flex w-full items-center gap-3 bg-[#1f1730] p-2">
+                      <HeroPreview hero={h.id} active showcase size={64} />
+                      <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <span style={{ color: h.theme.uiText }}>{h.name}</span>
+                        <span className="text-foreground">{h.desc}</span>
+                        {open ? (
+                          <span
+                            className="self-start border-2 px-2 py-1"
+                            style={{ borderColor: h.theme.accent, color: h.theme.uiText }}
+                          >
+                            {h.price > 0 ? "OCHIQ" : "BEPUL · OCHIQ"}
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => purchaseHero(h.id)}
+                              disabled={!canBuy}
+                              className={cn(
+                                buttonVariants({ variant: "pixel", size: "none" }),
+                                "w-full gap-1 whitespace-normal px-2 py-1 text-[9px] sm:text-[10px] disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
+                              )}
+                            >
+                              SOTIB OLISH
+                              <PixelIcon id="coin" color="#ffcc33" size={10} />
+                              {h.price}
+                            </button>
+                            {short > 0 && (
+                              <span className="text-muted-foreground">
+                                Yana {short} oltin kerak
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
         <button
           onClick={onClose}
           className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
