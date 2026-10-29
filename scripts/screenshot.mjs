@@ -83,6 +83,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   let focus = null;
   try {
     for (const step of scene.steps) {
+      // focus: video kesimi markazi (xona/olam ko'rinishi koordinatalarida), spawn'siz sahnalar uchun
+      if (step.focus) focus = step.focus;
       if (step.spawn) {
         const px = step.spawn.px ?? 120;
         const py = step.spawn.py ?? 120;

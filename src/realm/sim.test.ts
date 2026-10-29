@@ -21,7 +21,7 @@ function sim(hero: Hero = "knight") {
   return { s, rp };
 }
 
-/** O'yinchini plitkaga qo'yadi va yuzini burади. */
+/** O'yinchini plitkaga qo'yadi va yuzini buradi. */
 function place(rp: RealmPlayer, tx: number, ty: number, fx = 0, fy = 1) {
   rp.p.x = tileCenter(tx);
   rp.p.y = tileCenter(ty);
@@ -384,5 +384,71 @@ describe("Saqlash", () => {
     expect(s2.isExplored(rp2, 60, 95)).toBe(true);
     expect(s2.isExplored(rp2, 180, 180)).toBe(false);
     expect(rp2.p.x).toBe(tileCenter(60));
+  });
+});
+
+describe("Xarita o'tish mumkinligi", () => {
+  /** Qishloqdan yurib boriladigan plitkalar (BFS) */
+  function reachable(s: RealmSim) {
+    const seen = new Uint8Array(s.map.w * s.map.h);
+    const [sx, sy] = s.region.spawn;
+    const q = [[sx, sy] as const];
+    seen[sy * s.map.w + sx] = 1;
+    while (q.length) {
+      const [x, y] = q.pop()!;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
+        const nx = x + dx,
+          ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= s.map.w || ny >= s.map.h) continue;
+        const i = ny * s.map.w + nx;
+        if (seen[i] || s.solidAt(nx, ny)) continue;
+        seen[i] = 1;
+        q.push([nx, ny]);
+      }
+    }
+    return (x: number, y: number) => seen[y * s.map.w + x] === 1;
+  }
+
+  it("every quest place, NPC and secret entrance can be walked to from the village", () => {
+    const { s } = sim();
+    const ok = reachable(s);
+    for (const n of s.region.npcs) expect(ok(n.x, n.y + 1), n.id).toBe(true);
+    for (const z of s.region.mobZones) expect(ok(z.x, z.y), z.id).toBe(true);
+    for (const l of s.region.landmarks) expect(ok(l.x, l.y), l.id).toBe(true);
+    for (const id of [
+      "torch-moon",
+      "torch-sun",
+      "torch-star",
+      "sign-ruins",
+      "frag-cave",
+      "frag-stones",
+    ]) {
+      const o = s.object(id)!;
+      expect(ok(o.x, o.y + 1), id).toBe(true);
+    }
+    // sirlar oldi: yoriq devor, tungi eshik, daryo qirg'og'i
+    expect(ok(140, 129)).toBe(true);
+    expect(ok(136, 94)).toBe(true);
+    const river = s.object("chest-river")!;
+    expect(ok(river.x - 2, river.y)).toBe(true);
+  });
+
+  it("hidden rooms stay sealed until their secret is opened", () => {
+    const { s, rp } = sim();
+    let ok = reachable(s);
+    // yoriq devor ortidagi joy va tungi eshik ortidagi xona
+    expect(ok(141, 132)).toBe(false);
+    expect(ok(136, 89)).toBe(false);
+    s.setTile(140, 130, TILE_IDS.rubble);
+    s.doors.add("door-night");
+    ok = reachable(s);
+    expect(ok(141, 132)).toBe(true);
+    expect(ok(136, 89)).toBe(true);
+    void rp;
   });
 });

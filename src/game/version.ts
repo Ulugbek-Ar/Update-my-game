@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.1.0";
+export const GAME_VERSION = "2.2.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.2.0",
+    date: "2026-10-29",
+    notes:
+      "Abadiyat olami — kelajakdagi ko'p o'yinchili olamning birinchi sinov versiyasi. Ochiq xarita, Boshlang'ich vodiy hududi, NPC'lar va topshiriqlar. Olamda yashirin sirlar bor — ularni o'zingiz toping. Kecha va kunduz almashadi. Dash, teleport va sakrash endi mob ustidan xavfsiz o'tkazadi.",
+  },
   {
     version: "2.1.0",
     date: "2026-10-29",

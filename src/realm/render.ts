@@ -516,8 +516,9 @@ export class RealmRenderer {
     }
     c.globalAlpha = Math.max(0.15, fade) * (m.evading ? 0.6 : 1);
     const bob = m.kind === "wisp" ? Math.round(Math.sin(v.time * 3 + m.id) * 2) - 4 : 0;
-    // haykal holatidagi qo'riqchi: kulrang, ko'zsiz
+    // haykal holatidagi qo'riqchi: kulrang tosh (runa so'ngan)
     const dormant = m.state === "dormant" && (m.kind === "sentinel" || m.kind === "warden");
+    if (dormant) c.filter = "grayscale(1) brightness(0.85)";
     renderSprite(
       c,
       m.kind,
@@ -528,12 +529,7 @@ export class RealmRenderer {
       m.flash > 0 && Math.floor(m.flash * 25) % 2 === 0,
       m.face < 0,
     );
-    if (dormant) {
-      c.globalAlpha = 0.45;
-      c.fillStyle = "#6e6a72";
-      const s = m.kind === "warden" ? 40 : 22;
-      c.fillRect(x - s / 2, y - s / 2 - (m.kind === "warden" ? 14 : 4), s, s);
-    }
+    if (dormant) c.filter = "none";
     c.globalAlpha = 1;
     if (m.stun > 0 && !m.dead)
       for (let i = 0; i < 3; i++) {

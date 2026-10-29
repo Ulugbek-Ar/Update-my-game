@@ -21,6 +21,11 @@ Sahna maydonlari:
   - `{ "keys": [["d", 600], "Space"] }` — tugma bosib turish / bosish
   - `{ "play": true }` — biroz o'ynash (yurish + zarba)
   - `{ "wait": 500 }` — kutish (ms)
+  - `{ "focus": { "x": 160, "y": 120, "w": 320 } }` — video kesimi markazi (spawn'siz sahnalarda, masalan ochiq olamda)
+
+Ochiq olam (Abadiyat olami) sahnalari: `{ "click": "OLAM (SINOV)" }`, so'ng `{ "wait": 800 }` va
+`eval` ichida `window.__realm` (RealmClient: `sim`, `me`, `view`) bilan sahna sozlanadi. Namuna: `v2.2.0.json`.
+
 - `closeup` — `{ "x": 160, "y": 120, "w": 120 }`: rasm o'rniga xonaning shu nuqta atrofidagi yaqin plani
   (x, y — xona koordinatalari, w — kenglik, 16:9). Video sahnalarda ishlatilmaydi.
 

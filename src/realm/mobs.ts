@@ -489,16 +489,17 @@ function rat(m: RealmMob, t: MobTarget, ctx: MobCtx) {
       return;
     case "attack":
       m.t -= ctx.dt;
-      ctx.move(m, m.dirX * 150 * ctx.dt, m.dirY * 150 * ctx.dt);
+      ctx.move(m, m.dirX * 120 * ctx.dt, m.dirY * 120 * ctx.dt);
       if (overlaps(m, t.p, 2)) hurt(m, t, 1, 150, ctx);
       if (m.t <= 0) {
-        setState(m, "recover", 0.35);
+        setState(m, "recover", 0.4);
         m.cd = 0.9;
       }
       return;
     case "recover":
+      // tishlab, orqaga sakrab chiqadi (tishla-va-qoch)
       m.t -= ctx.dt;
-      m.anim.set("idle");
+      walkToward(m, m.x + (m.x - t.p.x), m.y + (m.y - t.p.y), m.stats.speed, ctx);
       if (m.t <= 0) setState(m, "chase");
       return;
     default: {

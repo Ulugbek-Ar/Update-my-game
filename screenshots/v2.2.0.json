@@ -1,0 +1,277 @@
+[
+  {
+    "title": "Abadiyat olami: Boshlang'ich vodiydagi qishloq — ochiq xarita, mini-xarita va inventar",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; for (const [x,y] of [[30,96],[60,96],[75,95],[90,97],[100,98],[46,75],[46,60]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=48*16+8; p.y=85*16+8; p.fx=0; p.fy=1; s.addItem(r.me,'bread',2); s.addItem(r.me,'potion',1); r.me.gold=34;"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  },
+  {
+    "title": "NPC dialogi: qishloq oqsoqoli topshiriq beradi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=42*16+8; p.y=86*16+8; p.fx=0; p.fy=-1; "
+      },
+      {
+        "wait": 400
+      },
+      {
+        "keys": ["e"]
+      },
+      {
+        "wait": 300
+      },
+      {
+        "keys": ["Digit1"]
+      },
+      {
+        "wait": 400
+      }
+    ]
+  },
+  {
+    "title": "Kecha: eski ko'prikda chiroqlar yonadi, tunda boshqa moblar chiqadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=Math.ceil((0.75-0.08)*12000); p.x=95*16+8; p.y=97*16+8; p.fx=1; p.fy=0; "
+      },
+      {
+        "wait": 1800
+      }
+    ]
+  },
+  {
+    "title": "Topshiriqlar jurnali (J tugmasi, telefonda JURNAL)",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=47*16+8; p.y=95*16+8; p.fx=0; p.fy=1; r.me.quests.boars={status:'done',step:1,progress:0}; r.me.quests.ruins={status:'active',step:2,progress:0}; s.addItem(r.me,'core',1); r.me.landmarks=['village','bridge','ruins'];"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "keys": ["j"]
+      },
+      {
+        "wait": 400
+      }
+    ]
+  },
+  {
+    "title": "Yovvoyi to'ng'iz",
+    "text": "Daryo ortidagi o'tloqda podasi bilan yuradi. Sizni ko'rsa tuyog'ini yerga uradi — yerda qizil yo'l chizig'i paydo bo'ladi, so'ng shu chiziq bo'ylab tashlanadi. Chetga o'ting: daraxt yoki toshga urilsa, boshi aylanib qoladi va himoyasiz bo'ladi. Joni: 5. Go'sht va qoziq tushiradi.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=112*16+8; p.y=70*16+8; p.fx=1; p.fy=0; const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)>360); {const m=new M(9001,'boar',p.x+90+0,p.y+0+0,'boars'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 170,
+          "y": 118,
+          "w": 320
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Botqoq kalamushi",
+    "text": "Botqoqlikda to'da bo'lib yashaydi. Sakrab-sakrab yaqinlashadi va tez tishlaydi; zarba yesa bir zum qochib, yana qaytadi. Kechasi ko'proq chiqadi. Bitta-bittalab, tishlashidan oldin uring. Joni: 2.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=76*16+8; p.y=152*16+8; p.fx=1; p.fy=0; const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)>360); {const m=new M(9001,'rat',p.x+60+0,p.y+-20+0,'rats'); m.spawnT=0; s.mobs.push(m);} {const m=new M(9002,'rat',p.x+60+14,p.y+-20+22,'rats'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 175,
+          "y": 118,
+          "w": 300
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Xaroba qo'riqchisi — tosh askar",
+    "text": "Qadimiy xarobalarda haykal bo'lib turadi — yaqinlashsangiz ko'zlarida runa yonib, uyg'onadi. Sekin, zarbadan itarilmaydi. Tosh to'qmog'ini boshi uzra ko'targanda oldidagi yerda qizil doira chiqadi — doiradan chiqing, so'ng orqasidan uring. Uzoqqa qochsangiz joyiga qaytib, yana haykalga aylanadi. Joni: 7. Tosh yurak tushiradi.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=140*16+8; p.y=112*16+8; p.fx=1; p.fy=0; const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)>360); {const m=new M(9001,'sentinel',p.x+48+0,p.y+0+0,'sentinels'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 175,
+          "y": 118,
+          "w": 300
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Sarson ruh",
+    "text": "Faqat tunda chiqadigan moviy olov-ruh: daraxtlar va suv ustidan uchib, to'lqinsimon yo'l bilan yaqinlashadi. Yoningizga kelsa yorqin chaqnab, atrofida doira belgisi paydo bo'ladi — u portlashdan oldin doiradan chiqing. Tong otganda so'nib yo'qoladi. Joni: 2.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=Math.ceil((0.75-0.08)*12000); p.x=110*16+8; p.y=70*16+8; p.fx=1; p.fy=0; const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)>360); {const m=new M(9001,'wisp',p.x+90+0,p.y+-10+0,'wisps'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 175,
+          "y": 118,
+          "w": 300
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Xaroba Sardori — mini-boss",
+    "text": "Xarobalar zalida uxlab yotgan qadimiy zirhli tosh jangchi. Har hujumi oldindan ko'rinadi: qilichini ko'targanda yerda qizil doira, hamladan oldin qizil yo'lak chiziladi. Devorga urilsa, esankirab qoladi — shunda uring. Jonining yarmida g'azablanib tezlashadi va tosh yomg'irini yog'diradi. Joni: 40. Undan afsonaviy Sardor qilichi tushadi.",
+    "mob": true,
+    "video": 6,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=159*16+8; p.y=108*16+8; p.fx=1; p.fy=0; s.mobs=s.mobs.filter(m=>m.kind==='warden'||Math.hypot(m.x-p.x,m.y-p.y)>360);"
+      },
+      {
+        "focus": {
+          "x": 185,
+          "y": 115,
+          "w": 320
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  }
+]
