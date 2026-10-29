@@ -96,6 +96,15 @@ const GameObject = z.discriminatedUnion("type", [
   z.object({ type: z.literal("fragment"), id: z.string(), x: int, y: int }),
   z.object({ type: z.literal("door"), id: z.string(), x: int, y: int, night: z.boolean() }),
   z.object({ type: z.literal("lamp"), id: z.string(), x: int, y: int }),
+  /** Asosiy dunyolarga darvoza: kaliti shu bossni yenggan o'yinchida bo'ladi */
+  z.object({
+    type: z.literal("gate"),
+    id: z.string(),
+    x: int,
+    y: int,
+    key: z.enum(["devil", "queen", "king"]),
+    name: z.string(),
+  }),
 ]);
 export type GameObjectDef = z.infer<typeof GameObject>;
 

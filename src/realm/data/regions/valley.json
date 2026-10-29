@@ -678,6 +678,13 @@
       "x": 158,
       "y": 42,
       "r": 5
+    },
+    {
+      "id": "gates",
+      "name": "UCH DARVOZA",
+      "x": 8,
+      "y": 91,
+      "r": 7
     }
   ],
   "npcs": [
@@ -963,6 +970,30 @@
       "id": "frag-niche",
       "x": 141,
       "y": 132
+    },
+    {
+      "type": "gate",
+      "id": "gate-devil",
+      "x": 7,
+      "y": 86,
+      "key": "devil",
+      "name": "IBLIS DARVOZASI"
+    },
+    {
+      "type": "gate",
+      "id": "gate-queen",
+      "x": 7,
+      "y": 91,
+      "key": "queen",
+      "name": "MUZ DARVOZASI"
+    },
+    {
+      "type": "gate",
+      "id": "gate-king",
+      "x": 7,
+      "y": 96,
+      "key": "king",
+      "name": "O'RMON DARVOZASI"
     }
   ],
   "secrets": [
@@ -984,10 +1015,10 @@
       "fragments": ["frag-cave", "frag-stones", "frag-niche"],
       "lore": [
         "QADIMIY TOSH YOZUV",
-        "Abadiyat olamida vaqt to'xtamaydi — faqat odamlar o'zgaradi.",
-        "Qal'a qo'riqchilari qasam ichdi: oxirgi darvoza ochilguncha uxlamaymiz.",
-        "Ular toshga aylandi, ammo hanuz xarobani kutishadi.",
-        "Darvoza esa vodiydan ancha narida, tog'lar ortida..."
+        "Abadiyat olamining olovli tubida bir jin tug'ildi — qo'riqchilar uni Iblis deb atadi.",
+        "U olam qal'asini yondirmoqchi bo'ldi. Qo'riqchilar uni g'arbdagi uch darvozaning biriga haydab, ortidan qulfladilar.",
+        "Darvoza ortida u boshqa dunyoda yangi qal'a topdi. Muz va o'rmon hukmdorlari ham uning izidan ketdi.",
+        "Qo'riqchilar qasam ichdi: darvozalar qayta ochilguncha uxlamaymiz. Ular toshga aylandi, ammo hanuz kutishadi..."
       ]
     },
     {

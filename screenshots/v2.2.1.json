@@ -1,0 +1,113 @@
+[
+  {
+    "title": "Bosh menyu: OLAM tugmasi qulflangan — avval Iblisni yeng, darvoza ochiladi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Xaroba Sardori hamlaga tayyorlanmoqda: yerda qizil yo'lak va yo'nalish o'qlari",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-realm-keys": "[\"devil\"]"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=160*16+8; p.y=108*16+8; p.fx=1; p.fy=0; s.mobs=s.mobs.filter(m=>m.kind==='warden'); const m=s.mobs[0]; for(let n=0;n<2000;n++){ s.step([]); if(m.state==='windup'&&m.move==='charge'&&m.t<0.45) break; if(m.state==='windup'&&m.move!=='charge') m.atk++; } s.step=()=>{};"
+      },
+      {
+        "wait": 600
+      }
+    ]
+  },
+  {
+    "title": "Xaroba Sardori yerga uradi: qizil doira to'lib boradi — doiradan chiqing",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-realm-keys": "[\"devil\"]"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=160*16+8; p.y=108*16+8; p.fx=1; p.fy=0; s.mobs=s.mobs.filter(m=>m.kind==='warden'); const m=s.mobs[0]; for(let n=0;n<2000;n++){ s.step([]); if(m.state==='windup'&&m.move==='slam'&&m.t<0.35) break; if(m.state==='windup'&&m.move!=='slam') m.atk++; } s.step=()=>{};"
+      },
+      {
+        "wait": 600
+      }
+    ]
+  },
+  {
+    "title": "Kecha: chiroqlar atrofida yumshoq, iliq yorug'lik",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-realm-keys": "[\"devil\"]"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=Math.ceil((0.75-0.08)*12000); p.x=95*16+8; p.y=97*16+8; p.fx=1; p.fy=0;"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  },
+  {
+    "title": "Vodiy chetidagi uch darvoza: Iblis kaliti bor — tez orada, qolganlari qulf",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-realm-keys": "[\"devil\"]"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; p.x=11*16+8; p.y=91*16+8; p.fx=-1; p.fy=0; s.mobs=[];"
+      },
+      {
+        "wait": 1200
+      }
+    ]
+  }
+]

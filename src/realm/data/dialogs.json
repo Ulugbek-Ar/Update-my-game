@@ -4,8 +4,8 @@
     "nodes": {
       "hello": {
         "text": [
-          "Xush kelibsan, yo'lchi. Bu — Boshlang'ich vodiy.",
-          "Bir paytlar bu yerda qal'a turgan, endi faqat xarobasi qoldi."
+          "Xush kelibsan, yo'lchi. Bu — Abadiyat olamidagi Boshlang'ich vodiy.",
+          "Qal'angga hujum qilgan Iblis ham shu olamdan chiqqan. Sen uni yengding — shuning uchun darvoza senga ochildi."
         ],
         "choices": [
           {
@@ -71,6 +71,45 @@
               "quest": "ruins",
               "state": ["active"]
             }
+          },
+          {
+            "text": "Yana ish bormi?",
+            "next": "horn-offer",
+            "if": [
+              {
+                "quest": "ruins",
+                "state": ["done"]
+              },
+              {
+                "quest": "horn",
+                "state": ["none"]
+              }
+            ]
+          },
+          {
+            "text": "Iblisning shoxini olib keldim.",
+            "next": "horn-done",
+            "if": {
+              "quest": "horn",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "horn"
+              }
+            ]
+          },
+          {
+            "text": "Iblisning shoxi haqida...",
+            "next": "horn-wait",
+            "if": {
+              "quest": "horn",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Darvozalar haqida gapirib ber.",
+            "next": "gates"
           },
           {
             "text": "Vodiy haqida gapirib ber.",
@@ -174,6 +213,61 @@
             "next": "hello"
           }
         ]
+      },
+      "horn-offer": {
+        "text": [
+          "Qal'angdagi Iblis, Qor Malikasi va O'rmon Shohi — hammasi Abadiyat olamidan kelgan.",
+          "Ishonmasam, Iblisning shoxini ko'rsat. Qal'aga qaytib, Iblisni yana bir bor yeng — shoxi o'zi shu olamga keladi."
+        ],
+        "choices": [
+          {
+            "text": "Shoxni olib kelaman.",
+            "do": [
+              {
+                "startQuest": "horn"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
+        ]
+      },
+      "horn-wait": {
+        "text": [
+          "Iblisni qal'ada (1-dunyoda) yeng. Topshiriq faol bo'lsa, uning shoxi inventaringga tushadi.",
+          "Keyin men bilan gaplash."
+        ],
+        "choices": [
+          {
+            "text": "Tushundim."
+          }
+        ]
+      },
+      "horn-done": {
+        "text": [
+          "Bu shox... olam olovi bilan yonib turibdi. Demak, rost ekan.",
+          "Ol, bu tumor Iblis o'tidan yasalgan — tunda yo'lingni yoritadi."
+        ],
+        "choices": [
+          {
+            "text": "Rahmat, oqsoqol.",
+            "next": "hello"
+          }
+        ]
+      },
+      "gates": {
+        "text": [
+          "Vodiyning g'arbiy chetida uchta qadimiy darvoza bor.",
+          "Iblis, Qor Malikasi va O'rmon Shohi o'sha darvozalardan chiqib, sening uch dunyongga borgan.",
+          "Har birini yengsang, uning darvozasi kaliti senda qoladi."
+        ],
+        "choices": [
+          {
+            "text": "Qiziq.",
+            "next": "hello"
+          }
+        ]
       }
     }
   },
@@ -200,6 +294,10 @@
             }
           },
           {
+            "text": "Iblis haqida eshitganmisan?",
+            "next": "devil"
+          },
+          {
             "text": "Xayr."
           }
         ]
@@ -218,6 +316,18 @@
               }
             ]
           },
+          {
+            "text": "Rahmat."
+          }
+        ]
+      },
+      "devil": {
+        "text": [
+          "Eshitmay bo'ladimi! Iblis bir paytlar shu vodiyda yurgan.",
+          "Keyin g'arbdagi darvozadan chiqib, boshqa dunyoga ketgan. Qor Malikasi va O'rmon Shohi ham shunday.",
+          "Xarobalardagi tosh yozuv bo'laklarini topsang, ko'proq bilasan."
+        ],
+        "choices": [
           {
             "text": "Rahmat."
           }

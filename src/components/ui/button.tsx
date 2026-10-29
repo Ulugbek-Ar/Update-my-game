@@ -18,8 +18,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         // O'yin menyusi: piksel uslubi. Hover'da ham yozuv kontrasti >= 4.5:1.
+        // Klaviatura fokusi (masalan, olamdan qaytganda) faqat ramka — fon to'ldirilmaydi.
         pixel: `rounded-none border-2 border-primary bg-primary text-primary-foreground shadow-none hover:border-primary-hover hover:bg-primary-hover ${pixelPress} ${pixelFocus}`,
-        pixelOutline: `rounded-none border-2 border-primary bg-card text-primary shadow-none hover:bg-primary hover:text-primary-foreground ${pixelPress} ${pixelFocus} disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100`,
+        pixelOutline: `rounded-none border-2 border-primary bg-card text-primary shadow-none hover:bg-primary hover:text-primary-foreground focus-visible:bg-card focus-visible:text-primary ${pixelPress} ${pixelFocus} disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100`,
         pixelLink: `rounded-none text-muted-foreground underline underline-offset-4 shadow-none hover:text-foreground ${pixelPress} ${pixelFocus}`,
       },
       size: {

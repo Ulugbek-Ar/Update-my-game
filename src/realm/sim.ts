@@ -59,7 +59,7 @@ export type RealmUi =
   | { kind: "dialog"; npc: string; node: string }
   | { kind: "shop"; npc: string }
   | { kind: "lore"; secret: string }
-  | { kind: "sign"; text: string[] };
+  | { kind: "sign"; text: string[]; title?: string };
 
 export type RealmEvent =
   | MobEvent
@@ -208,6 +208,8 @@ export class RealmPlayer {
   starAt = -1;
   /** hozir turgan belgi (joy nomi bir marta chiqadi) */
   here: string | null = null;
+  /** asosiy o'yinda yengilgan bosslar kalitlari (saqlanmaydi — klient asosiy o'yindan beradi) */
+  keys: string[] = [];
   base: { maxHp: number; damage: number; speed: number };
 
   constructor(
@@ -236,6 +238,13 @@ export class RealmPlayer {
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Darvoza kalitini beradigan boss */
+const GATE_BOSS: Record<"devil" | "queen" | "king", string> = {
+  devil: "Iblis (1-dunyo)",
+  queen: "Qor Malikasi (2-dunyo)",
+  king: "O'rmon Shohi (3-dunyo)",
+};
 
 /** Plitka markazi (px) */
 export const tileCenter = (t: number) => t * TILE + TILE / 2;
@@ -542,6 +551,12 @@ export class RealmSim {
     this.items.push({ id: this.nextId++, x, y, item, n, gold, t: 0 });
   }
 
+  /** Tashqaridan kelgan buyum (asosiy o'yindan "pochta"): inventarga, sig'masa — oyog'i ostiga. */
+  grant(rp: RealmPlayer, item: string, n = 1) {
+    if (!this.data.items[item]) return;
+    this.give(rp, item, n, rp.p.x, rp.p.y);
+  }
+
   /** Belgilangan buyumni olish (sandiq): sig'maganini yerga. */
   private give(rp: RealmPlayer, item: string, n: number, x: number, y: number) {
     const left = this.addItem(rp, item, n);
@@ -829,6 +844,21 @@ export class RealmSim {
     switch (o.type) {
       case "sign":
         rp.ui = { kind: "sign", text: o.text };
+        return;
+      case "gate":
+        rp.ui = {
+          kind: "sign",
+          title: o.name,
+          text: rp.keys.includes(o.key)
+            ? [
+                "Kalit qulfga mos keldi. Darvoza ortidan tanish dunyo shamoli esadi.",
+                "TEZ ORADA: bu yo'l keyingi yangilanishda ochiladi.",
+              ]
+            : [
+                "Darvoza qulflangan.",
+                `Kalitni ${GATE_BOSS[o.key]} beradi — uni asosiy o'yinda yeng.`,
+              ],
+        };
         return;
       case "chest":
         this.openChest(rp, o);
@@ -1263,9 +1293,20 @@ export class RealmSim {
   }
 
   private updateMarks(dt: number) {
-    const live = new Set(this.mobs.filter((m) => !m.dead).map((m) => m.id));
+    const live = new Map(this.mobs.filter((m) => !m.dead).map((m) => [m.id, m]));
     this.marks = this.marks.filter((k) => {
-      if (!live.has(k.owner)) return false;
+      const m = live.get(k.owner);
+      if (!m) return false;
+      if (!k.dmg) {
+        // hujum ogohlantirishi: aynan tayyorgarlik (windup) davomida, mob bilan birga siljiydi
+        if (m.state !== "windup") return false;
+        k.ox ??= k.x - m.x;
+        k.oy ??= k.y - m.y;
+        k.x = m.x + k.ox;
+        k.y = m.y + k.oy;
+        k.t = m.t;
+        return k.t > 0;
+      }
       k.t -= dt;
       if (k.t > 0) return true;
       if (k.dmg) {

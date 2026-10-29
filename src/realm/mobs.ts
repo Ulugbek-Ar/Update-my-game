@@ -96,6 +96,9 @@ export interface Mark {
   owner: number;
   /** > 0 bo'lsa — belgi tugaganda shu zarar beradi (tosh yomg'iri) */
   dmg?: number;
+  /** egasiga nisbatan joyi (RealmSim to'ldiradi: belgi mob bilan birga siljiydi) */
+  ox?: number;
+  oy?: number;
 }
 
 export type MobEvent =

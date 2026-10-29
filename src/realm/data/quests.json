@@ -3,16 +3,39 @@
     "name": "TO'NG'IZ BALOSI",
     "giver": "elder",
     "desc": "Oqsoqol dalalarni payhon qilayotgan yovvoyi to'ng'izlarni haydashni so'radi.",
-    "steps": [{ "type": "kill", "mob": "boar", "count": 4, "text": "To'ng'izlarni yeng" }],
-    "reward": { "gold": 25, "items": [{ "item": "bread", "n": 2 }] }
+    "steps": [
+      {
+        "type": "kill",
+        "mob": "boar",
+        "count": 4,
+        "text": "To'ng'izlarni yeng"
+      }
+    ],
+    "reward": {
+      "gold": 25,
+      "items": [
+        {
+          "item": "bread",
+          "n": 2
+        }
+      ]
+    }
   },
   "ruins": {
     "name": "XAROBA SIRI",
     "giver": "elder",
     "desc": "Xarobalardagi tosh askarlar uyg'ondi. Oqsoqol sababini bilmoqchi.",
     "steps": [
-      { "type": "talk", "npc": "merchant", "text": "Savdogar bilan gaplash" },
-      { "type": "find", "landmark": "ruins", "text": "Qadimiy xarobalarni top" },
+      {
+        "type": "talk",
+        "npc": "merchant",
+        "text": "Savdogar bilan gaplash"
+      },
+      {
+        "type": "find",
+        "landmark": "ruins",
+        "text": "Qadimiy xarobalarni top"
+      },
       {
         "type": "deliver",
         "item": "core",
@@ -21,6 +44,37 @@
         "text": "Tosh yurakni oqsoqolga olib bor"
       }
     ],
-    "reward": { "gold": 50, "items": [{ "item": "amulet", "n": 1 }] }
+    "reward": {
+      "gold": 50,
+      "items": [
+        {
+          "item": "amulet",
+          "n": 1
+        }
+      ]
+    }
+  },
+  "horn": {
+    "name": "IBLISNING SHOXI",
+    "giver": "elder",
+    "desc": "Oqsoqol Iblis rostdan Abadiyat olamidan kelganini bilmoqchi. Qal'adagi (1-dunyo) Iblisni yeng — uning shoxi olamga keladi.",
+    "steps": [
+      {
+        "type": "deliver",
+        "item": "horn",
+        "count": 1,
+        "npc": "elder",
+        "text": "Iblisni yeng va shoxini oqsoqolga olib kel"
+      }
+    ],
+    "reward": {
+      "gold": 60,
+      "items": [
+        {
+          "item": "ember",
+          "n": 1
+        }
+      ]
+    }
   }
 }

@@ -48,6 +48,7 @@ import { unlockAchievement, type Achievement, type AchievementId } from "./achie
 import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
 import { recordWorldWin } from "./progress";
+import { HORN_ITEM, hornWanted, recordBossKey, sendToRealm } from "./realmLink";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 /** Ritsar rekordlari (Sehrgarniki — hero.ts dagi bestKeys) */
@@ -1177,6 +1178,14 @@ export class Game {
       this.score += pts;
       if (!king) this.achieve(queen ? "queen" : "boss");
       this.fx.text(t.x, t.y - 24, `+${pts}`, "#ffcc33");
+      // Abadiyat olami: birinchi g'alabada darvoza kaliti, faol topshiriqda — Iblis shoxi
+      if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
+        this.fx.text(t.x, t.y - 44, "DARVOZA KALITI!", "#c9a25a");
+      if (!king && !queen && hornWanted()) {
+        sendToRealm(HORN_ITEM);
+        this.fx.text(t.x, t.y - 34, "IBLIS SHOXI — OLAMGA", "#ff7a2a");
+        this.fx.burst(t.x, t.y - 10, "#ff7a2a", 16, 80, 2);
+      }
       this.fx.burst(t.x, t.y, king ? "#a6f08e" : queen ? "#7fe9ff" : "#f4cb45", 40, 120, 3);
       this.fx.addShake(0.6);
       this.shots = [];

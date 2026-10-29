@@ -86,7 +86,7 @@ export function loadGold() {
   }
 }
 
-function saveGold(v: number) {
+export function saveGold(v: number) {
   try {
     localStorage.setItem(GOLD_KEY, String(v));
   } catch {

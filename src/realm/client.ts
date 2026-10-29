@@ -8,6 +8,8 @@ import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
 import { HERO_THEME, type Hero } from "@/game/hero";
 import { loadSettings } from "@/game/settings";
+import { addGold, loadGold, saveGold } from "@/game/shop";
+import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
 import { loadRealmData } from "./data";
 import {
   RealmSim,
@@ -22,7 +24,7 @@ import { RARITY_COLOR } from "./icons";
 import { MOB_STATS } from "./mobs";
 import { RealmRenderer, VIEW_H, VIEW_W, type Panel, type RealmView } from "./render";
 
-export const REALM_SAVE_KEY = "pixel-rpg-realm";
+export { REALM_SAVE_KEY };
 const PID = "me";
 /** Har shuncha soniyada avtomatik saqlash */
 const SAVE_EVERY = 10;
@@ -32,6 +34,8 @@ export interface RealmSave {
   world: RealmWorldSave;
   player: RealmPlayerSave;
   intro: boolean;
+  /** v2.2.1 dan: oltin asosiy o'yin bilan umumiy (eski olam oltini bir marta qo'shilgan) */
+  sharedGold?: boolean;
 }
 
 export function loadRealmSave(): RealmSave | null {
@@ -76,6 +80,8 @@ export class RealmClient {
   private saveT = 0;
   private music: MusicTrack | null = null;
   private shakeOn = true;
+  /** asosiy o'yin hisobidagi oltin (olamda o'zgarsa darhol yoziladi) */
+  private gold = 0;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -91,6 +97,10 @@ export class RealmClient {
     const save = loadRealmSave();
     if (save) this.sim.loadWorld(save.world);
     this.me = this.sim.addPlayer(PID, hero, save?.player ?? null);
+    // oltin asosiy o'yin bilan umumiy: eski saqlanishdagi olam oltini bir marta hisobga qo'shiladi
+    if (save && !save.sharedGold && save.player.gold > 0) addGold(save.player.gold);
+    this.me.gold = this.gold = loadGold();
+    this.me.keys = [...loadBossKeys()];
     this.view = {
       sim: this.sim,
       me: this.me,
@@ -115,6 +125,12 @@ export class RealmClient {
         exit: () => this.exitToMenu(),
       },
     };
+    // asosiy o'yindan kelgan buyumlar (masalan, Iblis shoxi)
+    for (const item of takeRealmInbox()) {
+      this.sim.grant(this.me, item);
+      const def = this.sim.data.items[item];
+      if (def) this.toast(`Asosiy o'yindan keldi: ${def.name}`, RARITY_COLOR[def.rarity]);
+    }
   }
 
   /** TouchControls bilan moslik (Game kabi) */
@@ -303,6 +319,7 @@ export class RealmClient {
       world: this.sim.saveWorld(),
       player,
       intro: this.view.panel !== "intro",
+      sharedGold: true,
     });
   }
 
@@ -395,7 +412,17 @@ export class RealmClient {
     this.sim.step(cmds.map((cmd) => ({ pid: PID, cmd })));
     // qayta tug'ilishda Player obyekti yangilanadi
     this.me = this.sim.players.get(PID)!;
+    if (this.me.gold !== this.gold) {
+      // umumiy hisob: asosiy o'yindagi o'zgarishni ham saqlab, farqni qo'shamiz
+      this.gold = Math.max(0, loadGold() + this.me.gold - this.gold);
+      this.me.gold = this.gold;
+      saveGold(this.gold);
+    }
     for (const e of this.sim.events) this.onEvent(e);
+    // hamladagi Sardor va to'ng'iz orqasida chang ko'tariladi
+    for (const m of this.sim.mobs)
+      if (m.state === "attack" && (m.kind === "warden" || m.kind === "boar") && !m.dead)
+        this.fx.burst(m.x - m.dirX * m.size * 0.5, m.y + m.size * 0.4, "#b8a888", 2, 25, 1);
     if (this.me.p.dashing && !this.me.p.mage)
       this.fx.trail(this.me.p.x, this.me.p.y + 2, HERO_THEME[this.hero].trail);
     this.updateMusic();

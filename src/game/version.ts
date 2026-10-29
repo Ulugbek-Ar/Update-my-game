@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.2.0";
+export const GAME_VERSION = "2.2.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.2.1",
+    date: "2026-10-29",
+    notes:
+      "Abadiyat olamiga kirish uchun avval Iblisni yeng — darvoza ochiladi. Asosiy bosslar olamdagi yangi hududlar kalitini beradi. Yangi topshiriq: Iblisning shoxi. Bosslar zarba berishdan oldin yerda ogohlantirish belgisi chiqadi. Kechasi yorug'lik yumshoqroq. Telefonda menyu va olam ekrani tartibga keltirildi.",
+  },
   {
     version: "2.2.0",
     date: "2026-10-29",

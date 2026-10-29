@@ -77,7 +77,9 @@
     "icon": "amulet",
     "stack": 1,
     "sell": 15,
-    "bonus": { "maxHp": 1 }
+    "bonus": {
+      "maxHp": 1
+    }
   },
   "ring": {
     "name": "TUNGI UZUK",
@@ -86,7 +88,10 @@
     "icon": "ring",
     "stack": 1,
     "sell": 40,
-    "bonus": { "speed": 10, "light": 1 }
+    "bonus": {
+      "speed": 10,
+      "light": 1
+    }
   },
   "wardblade": {
     "name": "SARDOR QILICHI",
@@ -95,6 +100,28 @@
     "icon": "blade",
     "stack": 1,
     "sell": 80,
-    "bonus": { "damage": 1 }
+    "bonus": {
+      "damage": 1
+    }
+  },
+  "horn": {
+    "name": "IBLIS SHOXI",
+    "rarity": "rare",
+    "desc": "Qal'adagi Iblisdan qolgan. Hali ham issiq.",
+    "icon": "horn",
+    "stack": 1,
+    "sell": 1
+  },
+  "ember": {
+    "name": "IBLIS O'TI TUMORI",
+    "rarity": "legendary",
+    "desc": "Inventarda: +1 yurak, tunda keng yorug'lik.",
+    "icon": "ember",
+    "stack": 1,
+    "sell": 50,
+    "bonus": {
+      "maxHp": 1,
+      "light": 1
+    }
   }
 }

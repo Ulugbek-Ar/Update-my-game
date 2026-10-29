@@ -40,6 +40,7 @@ import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
 import { RealmClient } from "@/realm/client";
+import { isRealmUnlocked } from "@/game/realmLink";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -129,6 +130,8 @@ function Index() {
   /** Abadiyat olami (sinov): ochiq olam rejimi */
   const [realm, setRealm] = useState(false);
   const [realmClient, setRealmClient] = useState<RealmClient | null>(null);
+  /** OLAM tugmasi: 1-dunyo Iblisi yengilgach ochiladi (dev rejimida — har doim) */
+  const [realmOpen, setRealmOpen] = useState(false);
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
@@ -142,6 +145,7 @@ function Index() {
     setHero(loadHero());
     setDaily(loadDaily());
     setAchCount(loadAchievements().size);
+    setRealmOpen(isRealmUnlocked());
     try {
       setGold(loadGold());
       // yangi versiyaga birinchi kirishda — oxirgi yangiliklar bir marta
@@ -230,6 +234,7 @@ function Index() {
       setGold(loadGold());
       setDaily(loadDaily());
       setAchCount(loadAchievements().size);
+      setRealmOpen(isRealmUnlocked());
       setGame(null);
       setStarted(false);
     };
@@ -248,6 +253,7 @@ function Index() {
     const c = new RealmClient(canvasRef.current, hero);
     c.touch = touch;
     c.onExit = () => {
+      setGold(loadGold());
       setRealmClient(null);
       setRealm(false);
     };
@@ -304,12 +310,13 @@ function Index() {
                     hero === h
                       ? {
                           borderColor: HERO_THEME[h].accent,
-                          background: withAlpha(HERO_THEME[h].accent, 0.15),
+                          // rang qatlami to'q karta foni ustida — orqadagi sahna ko'rinmaydi
+                          background: `linear-gradient(${withAlpha(HERO_THEME[h].accent, 0.15)}, ${withAlpha(HERO_THEME[h].accent, 0.15)}), var(--color-card)`,
                           color: HERO_THEME[h].uiText,
                         }
                       : undefined
                   }
-                  className={`flex shrink-0 snap-center flex-col items-center gap-1 border-2 px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                  className={`flex shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
                     hero === h
                       ? ""
                       : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
@@ -427,18 +434,26 @@ function Index() {
               </Button>
               <Button
                 onClick={() => {
+                  if (!realmOpen) return;
                   sfx.unlock();
                   if (touch) void enterLandscape();
                   setRealm(true);
                 }}
-                disabled={!ready}
-                title="Kelajakdagi ko'p o'yinchili ochiq olamning sinov versiyasi"
+                disabled={!ready || !realmOpen}
+                aria-label={realmOpen ? "OLAM (SINOV)" : "OLAM — qulflangan: Iblisni yeng"}
+                title="Abadiyat olami: Iblis, Qor Malikasi va O'rmon Shohi shu olamdan kelgan"
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
+                {!realmOpen && <LockIcon />}
                 OLAM (SINOV)
               </Button>
             </div>
+            <p className="max-w-sm text-muted-foreground text-[9px] sm:text-[10px] leading-5">
+              {realmOpen
+                ? "Bosslar Abadiyat olamidan kelgan — uch dunyo uning darvozalari"
+                : "Iblisni yeng — darvoza ochiladi"}
+            </p>
             {daily && (
               <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
                 Bugungi sinov: {daily.score} ochko ·{" "}
@@ -741,11 +756,13 @@ function MenuScene() {
     let raf = 0;
     let last = 0;
     const start = performance.now();
+    // past ekranda (telefon gorizontal) figuralar kichik va chetda — tugmalar ochiq qoladi
+    const short = window.matchMedia("(max-height: 450px)");
     const loop = (now: number) => {
       // ~30 kadr/s yetarli — sahna sekin harakatlanadi
       if (now - last > 33) {
         last = now;
-        renderMenuScene(c, (now - start) / 1000);
+        renderMenuScene(c, (now - start) / 1000, short.matches);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -772,6 +789,24 @@ function MenuScene() {
         }}
       />
     </>
+  );
+}
+
+/** Qulf belgisi (piksel, 8x9) — qulflangan tugmalarda. */
+function LockIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 8 9"
+      width={10}
+      height={11}
+      shapeRendering="crispEdges"
+      className="shrink-0"
+    >
+      <path d="M2 0h4v1H2zM1 1h1v3H1zM6 1h1v3H6z" fill="currentColor" />
+      <path d="M0 4h8v5H0z" fill="currentColor" />
+      <path d="M3 5h2v2H3z" fill="#000" />
+    </svg>
   );
 }
 

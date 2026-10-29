@@ -18,6 +18,20 @@ const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; ph
   { kind: "treant", x: 294, y: GROUND - 19, flip: true, phase: 0.4 },
 ];
 
+/**
+ * Past ekran (telefon gorizontal): menyu tugmalari sahnaning o'rtasini egallaydi, shuning uchun
+ * figuralar kichrayib, ekran chetlariga suriladi (tugmalar ustiga tushmaydi).
+ */
+const CAST_COMPACT: readonly { x: number; scale: number }[] = [
+  { x: 12, scale: 0.62 },
+  { x: 27, scale: 0.62 },
+  { x: 42, scale: 0.62 },
+  { x: 271, scale: 0.62 },
+  { x: 283, scale: 0.62 },
+  { x: 295, scale: 0.62 },
+  { x: 309, scale: 0.62 },
+];
+
 /** Tasodifiy, lekin har safar bir xil yulduzlar */
 const STARS = Array.from({ length: 60 }, (_, i) => ({
   x: (i * 97 + 13) % SCENE_W,
@@ -75,10 +89,8 @@ function background() {
   tower(104, 14, 44);
   tower(150, 20, 58);
   tower(198, 14, 40);
-  // markaziy minora uchi va bayroq
+  // markaziy minora uchi (bayroq yo'q: u qahramon kartalari ortida qizil dog' bo'lib ko'rinardi)
   for (let k = 0; k < 10; k++) px(c, "#120e22", 160 - k, base - 58 - 10 + k, k * 2 + 1, 1);
-  px(c, "#120e22", 160, base - 78, 1, 10);
-  px(c, "#b23238", 161, base - 78, 6, 3);
   // darvoza
   px(c, "#07050e", 152, base - 12, 16, 14);
   px(c, "#07050e", 154, base - 15, 12, 3);
@@ -115,8 +127,8 @@ function bats(c: CanvasRenderingContext2D, t: number) {
   }
 }
 
-/** Butun sahnani SCENE_W x SCENE_H koordinatalarda chizadi; t — soniya. */
-export function renderMenuScene(c: CanvasRenderingContext2D, t: number) {
+/** Butun sahnani SCENE_W x SCENE_H koordinatalarda chizadi; t — soniya; compact — past ekran. */
+export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact = false) {
   c.imageSmoothingEnabled = false;
   c.drawImage(background(), 0, 0);
   // miltillovchi yulduzlar
@@ -147,12 +159,19 @@ export function renderMenuScene(c: CanvasRenderingContext2D, t: number) {
   }
   bats(c, t);
   // qahramonlar va moblar: sekin "nafas oladi"
-  for (const a of CAST) {
+  CAST.forEach((a, i) => {
     const frame = Math.floor(t * 2 + a.phase * 2) % 2;
+    const k = compact ? CAST_COMPACT[i]! : { x: a.x, scale: 1 };
+    // oyoqlari yerda qoladi: kichraytirish yer chizig'iga nisbatan
+    const footY = GROUND + 4;
     c.fillStyle = "rgba(0,0,0,0.35)";
-    c.fillRect(a.x - 7, GROUND - 1, 14, 2);
-    renderSprite(c, a.kind, "idle", frame, a.x, a.y, false, a.flip);
-  }
+    c.fillRect(k.x - 7 * k.scale, GROUND - 1, 14 * k.scale, 2);
+    c.save();
+    c.translate(k.x, footY);
+    c.scale(k.scale, k.scale);
+    renderSprite(c, a.kind, "idle", frame, 0, a.y - footY, false, a.flip);
+    c.restore();
+  });
   // boyo'g'li qasr minorasida
   renderSprite(c, "owl", "idle", Math.floor(t * 0.7) % 2, 111, 77, false);
 }

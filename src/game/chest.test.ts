@@ -52,6 +52,8 @@ describe("Xazina sandig'i", () => {
 
   it("knight opens it with 3 sword hits", () => {
     const g = makeGame();
+    // qat'iy lut: 12 oltin, yurak va bepul karta yo'q (karta chiqsa o'yin to'xtab, openT o'smaydi)
+    (g as unknown as Rand).spawnRand = () => 0.5;
     idle(g);
     const p = g.player;
     p.fx = 1;
@@ -66,8 +68,7 @@ describe("Xazina sandig'i", () => {
     expect(g.chestsOpened).toBe(1);
     // yaqin tangalarni o'yinchi allaqachon terib olgan bo'lishi mumkin
     const gold = g.coins.reduce((s, c) => s + c.value, 0) + g.runGold;
-    expect(gold).toBeGreaterThanOrEqual(8);
-    expect(gold).toBeLessThanOrEqual(15);
+    expect(gold).toBe(12);
   });
 
   it("mage opens it with 3 bolts", () => {
