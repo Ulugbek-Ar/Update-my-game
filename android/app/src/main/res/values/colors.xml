@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- o'yin foni (public/manifest.webmanifest bilan bir xil) -->
+    <color name="game_background">#1F1730</color>
+    <color name="game_accent">#FFCC33</color>
+</resources>

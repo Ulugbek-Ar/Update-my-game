@@ -1,0 +1,78 @@
+apply plugin: 'com.android.application'
+
+// Versiya bitta manbadan — src/game/version.ts (GAME_VERSION). Bu yerda qo'lda yozilmaydi.
+// versionName = GAME_VERSION, versionCode = major*10000 + minor*100 + patch (2.3.0 → 20300).
+def gameVersion = {
+    def src = rootProject.file('../src/game/version.ts').getText('UTF-8')
+    def m = src =~ /GAME_VERSION\s*=\s*"(\d+)\.(\d+)\.(\d+)"/
+    if (!m.find()) throw new GradleException("GAME_VERSION topilmadi: src/game/version.ts")
+    def (major, minor, patch) = [m.group(1), m.group(2), m.group(3)].collect { it.toInteger() }
+    if (minor > 99 || patch > 99) throw new GradleException("minor va patch 0..99 bo'lishi kerak: ${m.group(0)}")
+    [name: "${major}.${minor}.${patch}".toString(), code: major * 10000 + minor * 100 + patch]
+}()
+
+// Imzo (Play Market uchun upload key) faqat muhit o'zgaruvchilaridan — GitHub Actions
+// ularni secrets'dan beradi. Keystore fayli repoda saqlanmaydi.
+def keystoreFile = System.getenv('ANDROID_KEYSTORE_FILE')
+def canSign = keystoreFile && file(keystoreFile).exists()
+
+android {
+    namespace = "com.ulugbek.pikselqala"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.ulugbek.pikselqala"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode gameVersion.code
+        versionName gameVersion.name
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (canSign) {
+            release {
+                storeFile file(keystoreFile)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (canSign) signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

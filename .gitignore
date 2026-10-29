@@ -31,3 +31,10 @@ dist-ssr
 *.sln
 *.sw?
 shots/
+
+# Android imzo kalitlari — REPOGA HECH QACHON QO'SHILMASIN (GitHub secrets'da saqlanadi)
+*.jks
+*.keystore
+*.p12
+keystore.properties
+android/key.properties

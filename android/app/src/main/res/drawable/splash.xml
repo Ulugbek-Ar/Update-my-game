@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Eski Android (12 dan past) ochilish ekrani: to'q fon, markazda Ritsar -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/game_background" />
+    <item>
+        <bitmap
+            android:filter="false"
+            android:gravity="center"
+            android:src="@drawable/splash_logo" />
+    </item>
+</layer-list>

@@ -34,6 +34,7 @@ import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG, SEEN_VERSION_KEY } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
 import { HAS_SERVER, IS_APP } from "@/lib/platform";
+import { backAction, exitApp, onAppActive, onBackButton } from "@/lib/native";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
 import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
@@ -135,6 +136,8 @@ function Index() {
   const [realmClient, setRealmClient] = useState<RealmClient | null>(null);
   /** OLAM tugmasi: 1-dunyo Iblisi yengilgach ochiladi (dev rejimida — har doim) */
   const [realmOpen, setRealmOpen] = useState(false);
+  /** "Chiqishni xohlaysizmi?" oynasi (ilovada bosh menyuda "Orqaga") */
+  const [exitOpen, setExitOpen] = useState(false);
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
@@ -270,6 +273,53 @@ function Index() {
     // qahramon faqat menyuda o'zgaradi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [realm, touch]);
+
+  // Telefonning "Orqaga" tugmasi (ilovada; brauzerda — "app:back" hodisasi):
+  // o'yinda — pauza, pauzada va oynalarda — yopish, bosh menyuda — chiqish so'rovi.
+  const backRef = useRef(() => {});
+  backRef.current = () => {
+    const windows = [
+      [exitOpen, () => setExitOpen(false)],
+      [coachOpen, () => setCoachOpen(false)],
+      [
+        shopOpen,
+        () => {
+          setShopOpen(false);
+          setGold(loadGold());
+        },
+      ],
+      [settingsOpen, () => setSettingsOpen(false)],
+      [changelogOpen, () => setChangelogOpen(false)],
+      [achOpen, () => setAchOpen(false)],
+      [newsOpen && !started, () => setNewsOpen(false)],
+    ] as const;
+    const top = windows.find(([open]) => open);
+    const action = backAction({
+      windowOpen: !!top,
+      inGame: !!game,
+      inRealm: !!realmClient,
+      inMap: mapOpen && !started && !realm,
+    });
+    if (action === "close-window") top?.[1]();
+    else if (action === "game") game?.setPaused(!game.paused);
+    else if (action === "realm") realmClient?.pressPause();
+    else if (action === "map") setMapOpen(false);
+    else setExitOpen(true);
+  };
+  useEffect(() => onBackButton(() => backRef.current()), []);
+
+  // Ilova fonga o'tganda: pauza va ovoz to'xtaydi; qaytganda pauza menyusi turadi.
+  const activeRef = useRef((_active: boolean) => {});
+  activeRef.current = (active) => {
+    if (!active) {
+      game?.setPaused(true);
+      const panel = realmClient?.view.panel;
+      if (realmClient && panel !== "pause" && panel !== "intro") realmClient.setPanel("pause");
+      realmClient?.save();
+      sfx.suspend();
+    } else if (!game?.paused) sfx.resume();
+  };
+  useEffect(() => onAppActive((active) => activeRef.current(active)), []);
 
   return (
     <main className="game-viewport font-pixel">
@@ -558,6 +608,7 @@ function Index() {
       {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
       {newsOpen && !started && <NewsWindow hero={hero} onClose={() => setNewsOpen(false)} />}
       {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
+      {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {shopOpen && (
         <ShopWindow
           onClose={() => {
@@ -1021,6 +1072,42 @@ function SettingsWindow({ onClose }: { onClose: () => void }) {
         >
           YOPISH
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Ilovadan chiqish so'rovi (brauzerning confirm oynasi o'rniga o'yin uslubidagi oyna) */
+function ExitWindow({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chiqish"
+        className="flex w-[min(92vw,380px)] flex-col items-center gap-4 border-4 border-border bg-card p-4 text-center text-[10px] sm:text-xs leading-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-primary">Chiqishni xohlaysizmi?</h2>
+        <p className="text-muted-foreground">Rekord, oltin va yutuqlar saqlangan.</p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={exitApp}
+            className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-4 py-2")}
+          >
+            HA, CHIQISH
+          </button>
+          <button
+            autoFocus
+            onClick={onClose}
+            className={cn(buttonVariants({ variant: "pixelOutline", size: "none" }), "px-4 py-2")}
+          >
+            YO'Q
+          </button>
+        </div>
       </div>
     </div>
   );
