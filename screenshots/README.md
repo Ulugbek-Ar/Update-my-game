@@ -9,6 +9,7 @@ Sahna maydonlari:
 - `title` — rasm nomi (postda "📸 Rasmlarda" ro'yxatida chiqadi)
 - `target` — `"canvas"` (standart, faqat o'yin maydoni), `"screen"` (menyu/oynalar bilan) yoki `"page"` (butun sahifa)
 - `phone` — `{ "width": 412, "height": 915 }`: sensorli telefon emulyatsiyasi (vertikal yoki gorizontal)
+- `scale` — telefon emulyatsiyasida piksel zichligi (standart 2; Play Market skrinshotlari uchun 2.4)
 - `steps` — ketma-ket qadamlar:
   - `{ "storage": { "kalit": "qiymat" } }` — sahifa ochilishidan oldin localStorage
   - `{ "click": "TUGMA MATNI" }` — menyudagi tugmani bosish
@@ -74,3 +75,11 @@ Videoda bot dushmanlarga qarab yuradi va Space bilan hujum qiladi.
 Masofali qahramon uchun `"range": 70` qo'shing — bot shu masofani saqlaydi va nishonga burilib otadi.
 
 Qo'lda olingan rasmlarni `v<VERSIYA>/` papkasiga qo'ysangiz, ular albom boshida chiqadi.
+
+## Play Market skrinshotlari
+
+`store/screenshots.json` — xuddi shu formatdagi ssenariy (gorizontal telefon, 1920x1080):
+
+```sh
+SHOT_FILE=store/screenshots.json SHOT_OUT=store/screenshots node scripts/screenshot.mjs
+```

@@ -1,0 +1,265 @@
+[
+  {
+    "title": "Ritsar: qilich va aylana zarba",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "dx": 50,
+          "dy": -10,
+          "px": 150,
+          "py": 130
+        }
+      },
+      {
+        "eval": "g.player.fx=1;g.player.fy=0;g.chest=null;"
+      },
+      {
+        "keys": [["d", 250], "Space"]
+      },
+      {
+        "wait": 120
+      }
+    ]
+  },
+  {
+    "title": "Sehrgar: sehrli sharlar",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "wisp",
+          "count": 3,
+          "dx": 90,
+          "dy": -20,
+          "px": 110,
+          "py": 130
+        }
+      },
+      {
+        "eval": "g.player.fx=1;g.player.fy=0;g.chest=null;"
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 260
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Ovchi: o'q va tuzoq",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "hunter"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 100,
+          "dy": -10,
+          "px": 100,
+          "py": 130
+        }
+      },
+      {
+        "eval": "g.player.fx=1;g.player.fy=0;g.chest=null;"
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 230
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 120
+      }
+    ]
+  },
+  {
+    "title": "Sarguzasht xaritasi: uch dunyo",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "BOSHLASH"
+      },
+      {
+        "wait": 1200
+      }
+    ]
+  },
+  {
+    "title": "Boss jangi: Iblis",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 4
+      },
+      {
+        "eval": "g.player.takeHit=()=>false; g.hints=[]; g.banner.timer=0; g.player.x=110; g.player.y=150;"
+      },
+      {
+        "wait": 2600
+      },
+      {
+        "keys": [["d", 300], "Space"]
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Abadiyat olami: ochiq xarita va qishloq",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; for (const [x,y] of [[30,96],[60,96],[75,95],[90,97],[100,98],[46,75],[46,60]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=48*16+8; p.y=85*16+8; p.fx=0; p.fy=1; s.addItem(r.me,'bread',2); s.addItem(r.me,'potion',1); r.me.gold=34;"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  },
+  {
+    "title": "Bosh menyu: Ritsar, Sehrgar va Ovchi",
+    "phone": {
+      "width": 800,
+      "height": 450
+    },
+    "scale": 2.4,
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": "[\"devil\",\"queen\"]",
+          "pixel-rpg-hero": "mage"
+        }
+      }
+    ]
+  }
+]

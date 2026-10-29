@@ -11,11 +11,12 @@ try {
   FFMPEG = require("ffmpeg-static") || "ffmpeg";
 } catch {}
 const URL = process.env.GAME_URL ?? "http://127.0.0.1:5173";
-const OUT = "shots";
+// SHOT_OUT / SHOT_FILE — boshqa papka va ssenariy (masalan Play Market: store/screenshots.json)
+const OUT = process.env.SHOT_OUT || "shots";
 
 const versionSrc = await readFile("src/game/version.ts", "utf8");
 const version = process.env.SHOT_VERSION || versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
-const scenarioFile = `screenshots/v${version}.json`;
+const scenarioFile = process.env.SHOT_FILE || `screenshots/v${version}.json`;
 const hasScenario = await access(scenarioFile).then(
   () => true,
   () => false,
@@ -46,7 +47,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   // phone: { width, height } — sensorli telefon emulyatsiyasi (masalan vertikal Pixel 7: 412x915)
   const ctx = await browser.newContext({
     viewport: scene.phone ?? { width: 1280, height: 720 },
-    ...(scene.phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}),
+    // scale — piksel zichligi (Play Market uchun 2.4: 800x450 → 1920x1080)
+    ...(scene.phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: scene.scale ?? 2 } : {}),
     ...(video ? { recordVideo: { dir: `${OUT}/raw`, size: { width: 1280, height: 720 } } } : {}),
   });
   const born = Date.now();

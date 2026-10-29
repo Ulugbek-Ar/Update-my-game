@@ -1,0 +1,30 @@
+Piksel Qal'a — retro uslubdagi piksel RPG. Qahramoningizni tanlang, zindonlarni dushmanlardan tozalang va Abadiyat olamidan kelgan bosslarni yenging!
+
+UCH QAHRAMON
+• Ritsar — qilich zarbasi, bosib turilsa aylana zarba va tez dash.
+• Sehrgar — uzoqdan sehrli shar, sehrli halqa va teleport.
+• Ovchi — eng tez qahramon: o'q, hamma dushmanni teshib o'tuvchi o'q va temir tuzoq.
+
+UCH DUNYO — SARGUZASHT XARITASI
+• Olovli zindon — slime, ko'rshapalak, skelet jangchi va kamonchilar. Boss: Iblis.
+• Muz sardobasi — muz ruhlari, qor bo'rilari, Qor odam va qalqonli skeletlar. Boss: Qor Malikasi.
+• Zulmat o'rmoni — o'rgimchaklar, zaharli qo'ziqorinlar, Daraxt odam va Tungi boyo'g'li. Boss: O'rmon Shohi.
+Har dunyoda 5 to'lqin, har to'lqindan keyin 3 ta kuch kartasidan birini tanlaysiz.
+
+ABADIYAT OLAMI
+Ochiq xarita, qishloq, NPC'lar, topshiriqlar, kecha va kunduz, yashirin sirlar va mini-boss. Asosiy bosslar olamdagi yangi hududlar kalitini beradi.
+
+YANA
+• Do'kon: oltinga doimiy kuchaytirishlar.
+• Kunlik sinov: har kuni hamma uchun bir xil, faqat bitta urinish.
+• Cheksiz rejim va har qahramon uchun alohida rekordlar.
+• 15 ta yutuq.
+• Retro chiptune musiqa va piksel effektlar.
+
+TELEFON UCHUN
+• To'liq ekran, gorizontal holat.
+• Sensorli joystik va hujum tugmalari.
+• Internet kerak emas — o'yin oflayn ishlaydi.
+• Reklama yo'q, shaxsiy ma'lumot yig'ilmaydi. Saqlanishlar faqat qurilmangizda.
+
+O'yin o'zbek tilida. Yangiliklar va yangi versiyalar haqida Telegram kanalimizda xabar beramiz.
