@@ -33,30 +33,16 @@ SHOT_FILE=store/screenshots.json SHOT_OUT=store/screenshots node scripts/screens
 > `public/privacy.html` dagi Telegram kanal havolasini (`https://t.me/TELEGRAM_KANAL`)
 > haqiqiy kanal manziliga almashtiring.
 
-## 1. Upload key (imzo kaliti) yaratish
+## 1. Imzo kaliti (keystore)
 
-Google Play **Play App Signing** ishlatadi: ilovani Google o'z kaliti bilan imzolaydi, siz esa
-faqat **upload key** bilan imzolangan AAB yuklaysiz. Upload key'ni bir marta, o'z kompyuteringizda
-yarating (Java/JDK o'rnatilgan bo'lishi kerak — `keytool` uning ichida):
+Keystore allaqachon yaratilgan: `pikselqala-upload.jks`, alias `pikselqala` (fayl va parol
+egasida saqlanadi, repoda yo'q). Shu bitta kalit bilan Telegram kanaldagi APK ham, Play Market'ga
+yuklanadigan AAB ham imzolanadi — u **hech qachon almashtirilmaydi** (sabab va secrets qo'shish:
+`docs/apk.md`).
 
-```sh
-keytool -genkeypair -v -storetype PKCS12 -keystore pikselqala-upload.jks -alias pikselqala -keyalg RSA -keysize 2048 -validity 10000
-```
-
-- Parol so'raydi (kamida 6 belgi) — uni yozib qo'ying. PKCS12 da kalit paroli keystore paroli
-  bilan bir xil bo'ladi.
-- Ism, tashkilot va hokazo savollarga istalgan javob (masalan ismingiz va `UZ`).
-- **Keystore faylini repoga HECH QACHON qo'shmang** (`.gitignore` `*.jks`, `*.keystore` ni
-  o'tkazib yubormaydi). Faylni va parolni xavfsiz joyda (masalan parol menejerida) zaxira qiling.
-  Upload key yo'qolsa, Play Console orqali yangisini tiklash mumkin, lekin bu bir necha kun oladi.
-
-Keystore'ni GitHub secret uchun base64 matnga aylantirish:
-
-```sh
-base64 -w0 pikselqala-upload.jks > pikselqala-upload.b64.txt
-```
-
-(macOS'da: `base64 -i pikselqala-upload.jks -o pikselqala-upload.b64.txt`.)
+Google Play **Play App Signing** ishlatadi. Telegram APK'sini o'rnatgan o'yinchilar Play Market'dan
+ham yangilana olishi uchun Play'dagi ilova shu kalit bilan imzolanishi kerak — 6-bo'limdagi
+birinchi relizda **o'z kalitingizni yuklang** (Google yaratgan kalitni emas).
 
 ## 2. GitHub secrets
 
@@ -64,7 +50,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 
 | Secret                      | Qiymat                                                 |
 | --------------------------- | ------------------------------------------------------ |
-| `ANDROID_KEYSTORE_BASE64`   | `pikselqala-upload.b64.txt` faylining butun matni      |
+| `ANDROID_KEYSTORE_BASE64`   | keystore faylining base64 matni (`docs/apk.md`)        |
 | `ANDROID_KEYSTORE_PASSWORD` | keystore paroli                                        |
 | `ANDROID_KEY_ALIAS`         | `pikselqala` (keytool'dagi `-alias`)                   |
 | `ANDROID_KEY_PASSWORD`      | kalit paroli (PKCS12 da keystore paroli bilan bir xil) |
@@ -160,7 +146,11 @@ yopiq testda **kamida 12 nafar testchi 14 kun uzluksiz** ilovani o'rnatgan bo'li
    Google hisobi pochtasini qo'shing (Telegram kanaldan ko'ngillilar yig'ish qulay).
 3. **Countries/regions**: O'zbekiston va kerakli boshqa davlatlar.
 4. **Create new release**:
-   - Play App Signing'ga rozilik bering ("Use Google-generated key" — tavsiya).
+   - **Play App Signing** → "Change app signing key" → **"Export and upload a key from Java
+     KeyStore"**: Console bergan PEPK vositasi va buyrug'i bilan `pikselqala-upload.jks`
+     (alias `pikselqala`) kalitini yuklang. Shunda Play'dagi ilova Telegram APK'si bilan bir xil
+     kalitda bo'ladi va o'yinchilar o'chirmasdan yangilanadi. Upload key alohida so'ralsa — o'sha
+     kalitning sertifikatini bering (AAB'lar shu kalit bilan imzolanadi).
    - Releases'dan olingan `PikselQala-v2.3.0.aab` ni yuklang.
    - Release name avtomatik (`20300 (2.3.0)`); release notes'ga `CHANGELOG` dagi matnni yozing.
 5. **Review release → Start rollout to Closed testing**. Birinchi tekshiruv bir necha kundan
@@ -174,7 +164,8 @@ yopiq testda **kamida 12 nafar testchi 14 kun uzluksiz** ilovani o'rnatgan bo'li
 
 1. `src/game/version.ts` da `GAME_VERSION` ni oshiring va `CHANGELOG` ga yozuv qo'shing
    (CLAUDE.md qoidasi). versionCode o'zi oshadi (masalan 2.3.1 → 20301).
-2. main'ga push — **Android** workflow AAB/APK yig'ib Release'ga yuklaydi (Telegram posti ham chiqadi).
+2. main'ga push — **Android** workflow AAB/APK yig'ib Release'ga yuklaydi, Telegram posti chiqadi
+   (x.y.0 versiyada post bilan birga APK ham — `docs/apk.md`).
 3. Play Console → kerakli trek → **Create new release** → yangi AAB.
 
 ## 8. Telefonda sinash
@@ -183,5 +174,6 @@ yopiq testda **kamida 12 nafar testchi 14 kun uzluksiz** ilovani o'rnatgan bo'li
 - Tekshirish: o'yin gorizontal va to'liq ekran ochiladimi; "Orqaga" — o'yinda pauza, pauzada
   davom, do'kon/sozlamalarni yopadi, bosh menyuda "Chiqishni xohlaysizmi?"; ilovani fonga olib,
   qaytganda pauza menyusi va ovoz to'xtaganmi; internetni o'chirib ham ishlaydimi.
-- Imzolangan APK va Play Market'dagi ilova turli kalit bilan imzolangan — ikkalasini bir
-  telefonga ketma-ket o'rnatish uchun avvalgisini o'chirish kerak (saqlanishlar ham o'chadi).
+- Play App Signing'da Google yaratgan kalit tanlansa, Play'dagi ilova va Telegram/Releases APK'si
+  turli kalitda bo'ladi — bir telefonda biridan ikkinchisiga o'tish uchun ilovani o'chirish kerak
+  (saqlanishlar ham o'chadi). Shuning uchun 6-bo'limda o'z kalitingizni yuklang.
