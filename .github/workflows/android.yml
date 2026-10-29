@@ -1,0 +1,118 @@
+name: Android
+
+# Har yangi versiyada (src/game/version.ts) va qo'lda ishga tushirganda Android ilova yig'iladi:
+# - secrets bor bo'lsa: imzolangan AAB (Play Market uchun) va APK (telefonda sinash uchun);
+# - secrets bo'lmasa: imzosiz debug APK (ogohlantirish bilan, workflow yiqilmaydi).
+# Fayllar GitHub Release'ga (teg v<VERSIYA>) va workflow artefaktiga yuklanadi.
+# Kerakli secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+# ANDROID_KEY_PASSWORD (docs/play-market.md).
+on:
+  push:
+    branches: [main]
+    paths: [src/game/version.ts]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - run: bun install --frozen-lockfile || bun install
+
+      - name: Versiya
+        id: v
+        run: |
+          V=$(grep -oP 'GAME_VERSION\s*=\s*"\K[^"]+' src/game/version.ts)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Piksel Qal'a v$V"
+
+      - name: Statik build (ilova uchun)
+        run: bun run build:app
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Imzo kaliti
+        id: key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Android::Imzo secrets topilmadi — faqat imzosiz debug APK yig'iladi (Play Market'ga yuklab bo'lmaydi). docs/play-market.md ga qarang."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Imzolangan AAB va APK
+        if: steps.key.outputs.signed == 'true'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon bundleRelease assembleRelease
+
+      - name: Imzosiz debug APK
+        if: steps.key.outputs.signed != 'true'
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Fayllarni yig'ish
+        env:
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p out
+          if [ "${{ steps.key.outputs.signed }}" = "true" ]; then
+            cp android/app/build/outputs/bundle/release/app-release.aab "out/PikselQala-v$V.aab"
+            cp android/app/build/outputs/apk/release/app-release.apk "out/PikselQala-v$V.apk"
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk "out/PikselQala-v$V-debug.apk"
+          fi
+          rm -f "$RUNNER_TEMP/upload.jks"
+          ls -la out
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: android-v${{ steps.v.outputs.version }}
+          path: out/
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          TAG="v$V"
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            NOTES=$(node --experimental-strip-types -e "import('./src/game/version.ts').then((m) => console.log(m.CHANGELOG.find((c) => c.version === process.env.V)?.notes ?? ''))")
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Piksel Qal'a v$V" --notes "$NOTES"
+          fi
+          gh release upload "$TAG" out/* --clobber
