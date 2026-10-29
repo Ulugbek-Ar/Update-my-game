@@ -2,7 +2,7 @@
  * Ochiq olamni chizish: kamera, ekrandan tashqarini chizmaslik (culling), tun yorug'ligi,
  * HUD, mini-xarita, tuman va oynalar. Mantiqqa ta'sir qilmaydi — faqat RealmSim holatini o'qiydi.
  */
-import { renderSprite, type SpriteKind } from "@/game/sprites";
+import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
 import { HERO_THEME, hudBarColors } from "@/game/hero";
 import type { RealmPlayer, RealmSim } from "./sim";
@@ -374,7 +374,7 @@ export class RealmRenderer {
         y = lerp(m.py, m.y, v.alpha);
       if (!inView(x, y, camX, camY, 48)) continue;
       const foot = y + m.size / 2;
-      if (m.kind === "warden") occlude(x, y - 44, 56, foot);
+      if (m.kind === "warden") occlude(x, y - 48, 56, foot);
       else if (m.kind === "sentinel") occlude(x, y - 16, 26, foot);
       all.push({ y: foot, r: () => this.mob(c, v, m, x, y) });
     }
@@ -586,22 +586,26 @@ export class RealmRenderer {
       c.restore();
       c.globalAlpha = 1;
     }
-    if (!m.dead) {
-      const h = m.kind === "warden" ? 26 : m.kind === "wisp" ? 12 : m.size / 2 + 2;
-      shadow(c, x, y + h, m.kind === "warden" ? 30 : m.size);
-    }
+    // yer — to'qnashuv qutisining pastki cheti: oyoq uchlari aynan soya ustida (faqat ruh havoda uchadi)
+    const wisp = m.kind === "wisp";
+    const ground = wisp ? y + 12 : y + m.size / 2;
+    if (!m.dead) shadow(c, x, ground, m.kind === "warden" ? 30 : m.size);
     c.globalAlpha = Math.max(0.15, fade) * (m.evading ? 0.6 : 1);
-    const bob = m.kind === "wisp" ? Math.round(Math.sin(v.time * 3 + m.id) * 2) - 4 : 0;
-    // haykal holatidagi qo'riqchi: kulrang tosh (runa so'ngan)
+    const sy = wisp
+      ? y + Math.round(Math.sin(v.time * 3 + m.id) * 2) - 4
+      : ground - spriteFootOffset(m.kind, m.anim.state, m.anim.frame);
+    // haykal holatidagi qo'riqchi: tosh (runa so'ngan); qo'riqchi moxli tusini saqlaydi
     const dormant = m.state === "dormant" && (m.kind === "sentinel" || m.kind === "warden");
-    if (dormant) c.filter = "grayscale(1) brightness(0.85)";
+    if (dormant)
+      c.filter =
+        m.kind === "warden" ? "grayscale(1) brightness(0.85)" : "grayscale(0.4) brightness(0.8)";
     renderSprite(
       c,
       m.kind,
       m.anim.state,
       m.anim.frame,
       x,
-      y + bob - (m.kind === "warden" ? 12 : 0),
+      sy,
       m.flash > 0 && Math.floor(m.flash * 25) % 2 === 0,
       m.face < 0,
     );

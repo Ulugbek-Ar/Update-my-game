@@ -82,6 +82,8 @@ export class RealmClient {
   private shakeOn = true;
   /** asosiy o'yin hisobidagi oltin (olamda o'zgarsa darhol yoziladi) */
   private gold = 0;
+  /** Sardor yurish kadri (qadam — chang) */
+  private wardenStep = new Map<number, number>();
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -419,6 +421,18 @@ export class RealmClient {
       saveGold(this.gold);
     }
     for (const e of this.sim.events) this.onEvent(e);
+    // Sardorning og'ir qadami: oyoq yerga tekkan kadrda chang va juda yengil silkinish
+    // (silkinish sozlamada o'chirilgan bo'lsa view.shake 0 — ko'rinmaydi)
+    for (const m of this.sim.mobs) {
+      if (m.kind !== "warden") continue;
+      const f = m.anim.state === "walk" ? m.anim.frame : -1;
+      if (f !== this.wardenStep.get(m.id) && (f === 0 || f === 2)) {
+        const foot = f === 0 ? -1 : 1;
+        this.fx.burst(m.x + foot * m.face * 10, m.y + m.size / 2, "#b8a888", 4, 22, 1);
+        if (Math.hypot(m.x - this.me.p.x, m.y - this.me.p.y) < 200) this.fx.addShake(0.06);
+      }
+      this.wardenStep.set(m.id, f);
+    }
     // hamladagi Sardor va to'ng'iz orqasida chang ko'tariladi
     for (const m of this.sim.mobs)
       if (m.state === "attack" && (m.kind === "warden" || m.kind === "boar") && !m.dead)

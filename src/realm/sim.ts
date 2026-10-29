@@ -945,6 +945,9 @@ export class RealmSim {
 
   private spawnInZone(zi: number) {
     const z = this.region.mobZones[zi]!;
+    // zonadagi mob soni (o'layotgan jasad ham) chegaradan oshmaydi: yagona Sardor eski jasadi
+    // yo'qolmaguncha qayta tug'ilmaydi — bir vaqtda ikkita Sardor bo'lmaydi
+    if (this.mobs.filter((m) => m.zone === z.id).length >= z.count) return false;
     let x = tileCenter(z.x),
       y = tileCenter(z.y);
     const size = z.mob === "warden" ? 28 : 16;

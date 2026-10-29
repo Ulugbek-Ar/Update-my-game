@@ -180,7 +180,8 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Botqoq kalamushi: siyoh, to'q botqoq yungi, kulrang-yashil yung, pushti dum va quloq, sariq ko'z
   rat: ["#0b0d08", "#2f3326", "#6b6a55", "#d98b8b", "#ffd84a"],
   // Xaroba qo'riqchisi: siyoh, to'q tosh, tosh, och tosh, runa nuri
-  sentinel: ["#0d0c11", "#3b3843", "#77727f", "#b3adb9", "#5fe0c8"],
+  // moxli tosh: Sardorning kulrang-bronza zirhidan aniq farq qiladi
+  sentinel: ["#0c0f0c", "#34463a", "#62806a", "#a2b89a", "#5fe0c8"],
   // Sarson ruh: siyoh, to'q ko'k, moviy olov, oqish o'zak, chaqnash
   wisp: ["#081022", "#1d3f7a", "#45b8e0", "#c4f3ff", "#fff6c8"],
   // Xaroba Sardori: siyoh, to'q temir, tosh-temir zirh, bronza hoshiya, cho'g' ko'zlar
@@ -2546,23 +2547,71 @@ function wispFallen(p: Pixels, frame: number) {
   p.ellipse(frame === 1 ? 3 : 2, 16, 18, frame === 1 ? 3 : 1.5, frame === 1 ? 3 : 1.5);
 }
 
+/**
+ * Sardorning og'ir qadami: chap va o'ng oyoq navbat bilan oldinga chiqadi (ko'tarilgan oyoq — 3px yuqorida).
+ * Oyoq yerga tekkan kadrda tana 1px pastga tushadi, oyoq o'tayotganda ko'tariladi.
+ * Har kadrda kamida bitta oyoq yerda (y = 28) — sprite soyadan uzilmaydi.
+ */
+const wardenWalk: readonly Pose[] = [
+  {
+    bob: 1,
+    lean: 0,
+    leftFoot: [9, 28],
+    rightFoot: [22, 28],
+    hand: [24, 19],
+    tip: [27, 26],
+    otherHand: [8, 21],
+  },
+  {
+    bob: 0,
+    lean: 0,
+    leftFoot: [12, 28],
+    rightFoot: [18, 25],
+    hand: [23, 18],
+    tip: [27, 25],
+    otherHand: [9, 19],
+  },
+  {
+    bob: 1,
+    lean: 0,
+    leftFoot: [10, 28],
+    rightFoot: [23, 28],
+    hand: [22, 20],
+    tip: [26, 27],
+    otherHand: [8, 17],
+  },
+  {
+    bob: 0,
+    lean: 0,
+    leftFoot: [14, 25],
+    rightFoot: [20, 28],
+    hand: [24, 19],
+    tip: [28, 26],
+    otherHand: [9, 20],
+  },
+];
+
 /** Xaroba Sardori: shoxli dubulg'a, keng yelkalar, ulkan qilich, ko'zlarida cho'g'. */
 function warden(p: Pixels, pose: Pose, attackFrame: number | null) {
   const { bob: b, lean: l } = pose;
-  p.line(2, [12, 21 + b], pose.leftFoot, 5);
-  p.line(2, [20, 21 + b], pose.rightFoot, 5);
-  p.rect(3, pose.leftFoot[0] - 3, pose.leftFoot[1], 6, 2);
-  p.rect(3, pose.rightFoot[0] - 2, pose.rightFoot[1], 6, 2);
-  // yirtiq plash
+  // yirtiq plash (oyoqlar uning ustidan chiziladi — qadam aniq ko'rinadi)
   p.polygon(2, [
     [9 + l, 12 + b],
     [23 + l, 12 + b],
-    [25, 26 + b],
-    [21, 24 + b],
-    [16, 27 + b],
-    [11, 24 + b],
-    [7, 26 + b],
+    [25, 24 + b],
+    [21, 22 + b],
+    [16, 24 + b],
+    [11, 22 + b],
+    [7, 24 + b],
   ]);
+  p.line(2, [12, 21 + b], pose.leftFoot, 5);
+  p.line(2, [20, 21 + b], pose.rightFoot, 5);
+  p.line(3, [12, 22 + b], [pose.leftFoot[0], pose.leftFoot[1] - 1], 2);
+  p.line(3, [20, 22 + b], [pose.rightFoot[0], pose.rightFoot[1] - 1], 2);
+  p.rect(3, pose.leftFoot[0] - 3, pose.leftFoot[1], 6, 2);
+  p.rect(3, pose.rightFoot[0] - 2, pose.rightFoot[1], 6, 2);
+  p.rect(4, pose.leftFoot[0] - 3, pose.leftFoot[1], 6, 1);
+  p.rect(4, pose.rightFoot[0] - 2, pose.rightFoot[1], 6, 1);
   // zirh
   p.polygon(3, [
     [10 + l, 12 + b],
@@ -2763,6 +2812,36 @@ function npcFallen(p: Pixels, kind: "elder" | "merchant", frame: number) {
   else merchant(p, pose);
 }
 
+function poseOf(kind: SpriteKind, state: Exclude<AnimState, "death">, frame: number) {
+  if (kind === "warden" && state === "walk") return wardenWalk[frame % wardenWalk.length]!;
+  return poses[state][frame] ?? poses[state][0]!;
+}
+
+/** Oyoqli olam personajlari: oyog'i pozadan aniqlanadi (qilich uchi oyoqdan pastga tushsa ham). */
+const POSED: readonly SpriteKind[] = ["sentinel", "warden", "elder", "merchant"];
+
+/**
+ * Sprite markazidan oyoq tagigacha (chizilgan piksellarda): `renderSprite(.., y)` da y = yer - shu qiymat
+ * bo'lsa, oyoq uchlari aynan yerda (soya ustida) turadi.
+ */
+export function spriteFootOffset(kind: SpriteKind, state: AnimState, frame: number) {
+  let bottom: number;
+  if (POSED.includes(kind) && state !== "death") {
+    const pose = poseOf(kind, state, Math.max(0, frame));
+    // etik: 2 qator + 1 qator kontur
+    bottom = Math.max(pose.leftFoot[1], pose.rightFoot[1]) + 3;
+  } else {
+    const data = spritePixels(kind, state, frame);
+    bottom = 0;
+    for (let i = data.length - 1; i >= 0; i--)
+      if (data[i]) {
+        bottom = Math.floor(i / 32) + 1;
+        break;
+      }
+  }
+  return ((bottom - 16) * spriteSize(kind)) / 32;
+}
+
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   const p = new Pixels();
   if (kind === "boar" || kind === "rat" || kind === "wisp") {
@@ -2784,7 +2863,7 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
       else npcFallen(p, kind, f);
       return p.outlined();
     }
-    const pose = poses[state][frame] ?? poses[state][0]!;
+    const pose = poseOf(kind, state, frame);
     const atk = state === "attack" ? f : null;
     if (kind === "sentinel") sentinel(p, pose, atk);
     else if (kind === "warden") warden(p, pose, atk);
@@ -2893,7 +2972,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 const REALM_SIZES: Partial<Record<SpriteKind, number>> = {
   boar: 30,
   rat: 22,
-  sentinel: 34,
+  sentinel: 28,
   wisp: 24,
   warden: 64,
   elder: 32,
@@ -2930,7 +3009,19 @@ export function renderSprite(
       }
     cache.set(key, canvas);
   }
-  const size =
+  const size = spriteSize(kind);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;
+  ctx.translate(Math.round(x), Math.round(y));
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(canvas, -size / 2, -size / 2, size, size);
+  ctx.restore();
+}
+
+/** Chizilgan o'lcham (px) */
+export function spriteSize(kind: SpriteKind) {
+  return (
     REALM_SIZES[kind] ??
     (kind === "demon" || kind === "queen" || kind === "king"
       ? 64
@@ -2945,14 +3036,8 @@ export function renderSprite(
           ? 26
           : kind === "shroom"
             ? 28
-            : 32);
-  ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;
-  ctx.translate(Math.round(x), Math.round(y));
-  if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(canvas, -size / 2, -size / 2, size, size);
-  ctx.restore();
+            : 32)
+  );
 }
 
 // Kuch kartalari ikonkalari (12x12): X — kuch rangi, qolganlari ICON_COLORS dan.
