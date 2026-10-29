@@ -680,21 +680,21 @@ function RealmTouchButtons({ client }: { client: RealmClient }) {
     >
       <button
         aria-label="Gaplashish"
-        className={`${btn} touch-interact text-[7px]`}
+        className={`${btn} touch-interact text-[6px]`}
         onPointerDown={tap(() => client.pressInteract())}
       >
         GAPLASH
       </button>
       <button
         aria-label="Topshiriqlar jurnali"
-        className={`${btn} touch-journal text-[6px]`}
+        className={`${btn} touch-journal text-[5px]`}
         onPointerDown={tap(() => client.toggleJournal())}
       >
         JURNAL
       </button>
       <button
         aria-label="Xarita"
-        className={`${btn} touch-map text-[6px]`}
+        className={`${btn} touch-map text-[5px]`}
         onPointerDown={tap(() => client.toggleMap())}
       >
         XARITA
