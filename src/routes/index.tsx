@@ -33,6 +33,7 @@ import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG, SEEN_VERSION_KEY } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
+import { HAS_SERVER, IS_APP } from "@/lib/platform";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
 import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/game/shop";
@@ -72,6 +73,8 @@ function initTelegram() {
 
 /** BOSHLASH bosilganda (foydalanuvchi bosishi ichida): to'liq ekran va gorizontal qulf. iOS'da jim o'tadi. */
 async function enterLandscape() {
+  // Android ilova o'zi to'liq ekran va gorizontal (AndroidManifest)
+  if (IS_APP) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
   } catch {
@@ -157,7 +160,8 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
-    // skript hali yuklanmagan bo'lsa — sahifa yuklangach
+    // skript hali yuklanmagan bo'lsa — sahifa yuklangach (ilovada skript yo'q)
+    if (IS_APP) return;
     if (document.readyState === "complete") initTelegram();
     else window.addEventListener("load", initTelegram, { once: true });
   }, []);
@@ -198,6 +202,8 @@ function Index() {
 
   // Avtomatik yangilanish: yangi versiya chiqsa menyuda darhol, o'yinda esa so'rab yangilanadi.
   useEffect(() => {
+    // statik build'da (GitHub Pages, ilova) server yo'q — yangilanish do'kon yoki sahifa orqali
+    if (!HAS_SERVER) return;
     let alive = true;
     async function check() {
       try {
@@ -482,13 +488,16 @@ function Index() {
               >
                 Yangilanishlar
               </Button>
-              <Button
-                variant="pixelLink"
-                onClick={() => setCoachOpen(true)}
-                className="text-[9px] sm:text-[10px]"
-              >
-                Jang maslahatchisi (AI)
-              </Button>
+              {/* AI server talab qiladi — GitHub Pages va ilovada yashirin */}
+              {HAS_SERVER && (
+                <Button
+                  variant="pixelLink"
+                  onClick={() => setCoachOpen(true)}
+                  className="text-[9px] sm:text-[10px]"
+                >
+                  Jang maslahatchisi (AI)
+                </Button>
+              )}
             </div>
             <button
               onClick={() => {
@@ -525,24 +534,26 @@ function Index() {
           </button>
         </div>
       )}
-      <div hidden={!coachOpen} className="fixed inset-0 z-50 bg-letterbox/70 p-4">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Jang maslahatchisi"
-          className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4"
-        >
-          <Button
-            variant="pixel"
-            size="none"
-            onClick={() => setCoachOpen(false)}
-            className="mb-3 px-4 py-2 text-[10px]"
+      {HAS_SERVER && (
+        <div hidden={!coachOpen} className="fixed inset-0 z-50 bg-letterbox/70 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Jang maslahatchisi"
+            className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4"
           >
-            YOPISH
-          </Button>
-          <CoachPanel hero={hero} />
+            <Button
+              variant="pixel"
+              size="none"
+              onClick={() => setCoachOpen(false)}
+              className="mb-3 px-4 py-2 text-[10px]"
+            >
+              YOPISH
+            </Button>
+            <CoachPanel hero={hero} />
+          </div>
         </div>
-      </div>
+      )}
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
       {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
       {newsOpen && !started && <NewsWindow hero={hero} onClose={() => setNewsOpen(false)} />}

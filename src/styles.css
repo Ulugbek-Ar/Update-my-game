@@ -1,6 +1,8 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+/* Piksel shrift ilova ichida (oflayn ham ishlaydi) */
+@import "@fontsource/press-start-2p/400.css";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { IS_APP } from "../lib/platform";
 
 function NotFoundComponent() {
   return (
@@ -91,18 +92,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap",
-      },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       // GitHub Pages'da /Update-my-game/ ostida ham to'g'ri yo'l
       { rel: "manifest", href: `${import.meta.env.BASE_URL}manifest.webmanifest` },
       { rel: "apple-touch-icon", href: `${import.meta.env.BASE_URL}icons/icon-192.png` },
     ],
-    // Telegram Mini App API: Telegram'dan tashqarida window.Telegram.WebApp bo'lmaydi
-    scripts: [{ src: "https://telegram.org/js/telegram-web-app.js", async: true }],
+    // Telegram Mini App API: Telegram'dan tashqarida window.Telegram.WebApp bo'lmaydi.
+    // Android ilovada yuklanmaydi (oflayn ishlaydi).
+    scripts: IS_APP ? [] : [{ src: "https://telegram.org/js/telegram-web-app.js", async: true }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
