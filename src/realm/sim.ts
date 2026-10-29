@@ -271,6 +271,8 @@ export class RealmSim {
   overrides = new Map<number, number>();
   doors = new Set<string>();
   wallHits: Record<string, number> = {};
+  /** plitka o'zgarsa oshadi (chizuvchi chunk keshini yangilaydi) */
+  mapVersion = 0;
   /** shu tickdagi voqealar (klient effekt va ovoz chiqaradi) */
   events: RealmEvent[] = [];
   private nextId = 1;
@@ -335,6 +337,7 @@ export class RealmSim {
 
   setTile(tx: number, ty: number, t: number) {
     this.overrides.set(ty * this.map.w + tx, t);
+    this.mapVersion++;
   }
 
   object(id: string) {
@@ -455,6 +458,7 @@ export class RealmSim {
     this.tick = w.tick;
     this.rng.s = w.rng >>> 0;
     this.overrides = new Map(w.overrides);
+    this.mapVersion++;
     this.doors = new Set(w.doors);
     this.wallHits = { ...w.wallHits };
     this.lastNight = this.night;
@@ -641,8 +645,8 @@ export class RealmSim {
     if (ui?.kind !== "dialog") return [];
     const node = this.data.dialogs[ui.npc]?.nodes[ui.node];
     if (!node) return [];
-    return node.choices.filter(
-      (c) => !c.if || c.if.state.includes(this.questStatus(rp, c.if.quest)),
+    return node.choices.filter((c) =>
+      [c.if ?? []].flat().every((k) => k.state.includes(this.questStatus(rp, k.quest))),
     );
   }
 

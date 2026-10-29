@@ -215,7 +215,8 @@ const Choice = z.object({
   text: z.string(),
   /** keyingi tugun; ko'rsatilmasa dialog yopiladi */
   next: z.string().optional(),
-  if: Cond.optional(),
+  /** bitta shart yoki shartlar ro'yxati (hammasi bajarilishi kerak) */
+  if: z.union([Cond, z.array(Cond).min(1)]).optional(),
   do: z.array(Action).default([]),
 });
 const DialogNode = z.object({
@@ -342,7 +343,8 @@ export function parseRealmData(raw: {
     for (const [nid, node] of Object.entries(d.nodes))
       for (const c of node.choices) {
         if (c.next && !d.nodes[c.next]) errors.push(`dialog ${id}.${nid}: "${c.next}" yo'q`);
-        if (c.if && !quests[c.if.quest]) errors.push(`dialog ${id}.${nid}: topshiriq yo'q`);
+        for (const cond of c.if ? [c.if].flat() : [])
+          if (!quests[cond.quest]) errors.push(`dialog ${id}.${nid}: topshiriq yo'q`);
         for (const a of c.do) {
           const q = "startQuest" in a ? a.startQuest : "completeQuest" in a ? a.completeQuest : "";
           if (q && !quests[q]) errors.push(`dialog ${id}.${nid}: topshiriq "${q}" yo'q`);

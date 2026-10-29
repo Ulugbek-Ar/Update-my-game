@@ -11,37 +11,74 @@
           {
             "text": "Senga qanday yordam bera olaman?",
             "next": "boars-offer",
-            "if": { "quest": "boars", "state": ["none"] }
+            "if": {
+              "quest": "boars",
+              "state": ["none"]
+            }
           },
           {
             "text": "To'ng'izlarni haydab yubordim.",
             "next": "boars-done",
-            "if": { "quest": "boars", "state": ["ready"] },
-            "do": [{ "completeQuest": "boars" }]
+            "if": {
+              "quest": "boars",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "boars"
+              }
+            ]
           },
           {
             "text": "To'ng'izlar haqida...",
             "next": "boars-wait",
-            "if": { "quest": "boars", "state": ["active"] }
+            "if": {
+              "quest": "boars",
+              "state": ["active"]
+            }
           },
           {
             "text": "Yana ish bormi?",
             "next": "ruins-offer",
-            "if": { "quest": "ruins", "state": ["none"] }
+            "if": [
+              {
+                "quest": "boars",
+                "state": ["done"]
+              },
+              {
+                "quest": "ruins",
+                "state": ["none"]
+              }
+            ]
           },
           {
             "text": "Tosh yuraklarni olib keldim.",
             "next": "ruins-done",
-            "if": { "quest": "ruins", "state": ["ready"] },
-            "do": [{ "completeQuest": "ruins" }]
+            "if": {
+              "quest": "ruins",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "ruins"
+              }
+            ]
           },
           {
             "text": "Xarobalar haqida...",
             "next": "ruins-wait",
-            "if": { "quest": "ruins", "state": ["active"] }
+            "if": {
+              "quest": "ruins",
+              "state": ["active"]
+            }
           },
-          { "text": "Vodiy haqida gapirib ber.", "next": "lore" },
-          { "text": "Xayr." }
+          {
+            "text": "Vodiy haqida gapirib ber.",
+            "next": "lore"
+          },
+          {
+            "text": "Xayr."
+          }
         ]
       },
       "boars-offer": {
@@ -50,8 +87,17 @@
           "Daryo ortidagi o'tloqqa borib, 4 tasini yeng. Ehtiyot bo'l: tuyog'ini yerga ursa — hozir tashlanadi!"
         ],
         "choices": [
-          { "text": "Mayli, qilaman.", "do": [{ "startQuest": "boars" }] },
-          { "text": "Keyinroq." }
+          {
+            "text": "Mayli, qilaman.",
+            "do": [
+              {
+                "startQuest": "boars"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
         ]
       },
       "boars-wait": {
@@ -59,11 +105,20 @@
           "To'ng'izlar eski ko'prikdan sharqdagi o'tloqda.",
           "Tashlanganda chetga o't — daraxtga urilsa, boshi aylanib qoladi."
         ],
-        "choices": [{ "text": "Tushundim." }]
+        "choices": [
+          {
+            "text": "Tushundim."
+          }
+        ]
       },
       "boars-done": {
         "text": ["Rahmat, yo'lchi! Ol, yo'lda asqotadi."],
-        "choices": [{ "text": "Rahmat.", "next": "hello" }]
+        "choices": [
+          {
+            "text": "Rahmat.",
+            "next": "hello"
+          }
+        ]
       },
       "ruins-offer": {
         "text": [
@@ -71,8 +126,17 @@
           "Savdogar u yerda bo'lgan — avval u bilan gaplash. Keyin xarobani top va menga 2 ta Tosh yurak olib kel."
         ],
         "choices": [
-          { "text": "Boraman.", "do": [{ "startQuest": "ruins" }] },
-          { "text": "Hozir emas." }
+          {
+            "text": "Boraman.",
+            "do": [
+              {
+                "startQuest": "ruins"
+              }
+            ]
+          },
+          {
+            "text": "Hozir emas."
+          }
         ]
       },
       "ruins-wait": {
@@ -80,21 +144,36 @@
           "Tosh askarlar haykal bo'lib turadi — yaqinlashsang uyg'onadi.",
           "Qo'llarini ko'tarsa, yerga urishidan oldin uzoqlash."
         ],
-        "choices": [{ "text": "Yaxshi." }]
+        "choices": [
+          {
+            "text": "Yaxshi."
+          }
+        ]
       },
       "ruins-done": {
         "text": [
           "Bu yuraklar hali iliq... Demak, Sardor uyg'ongan.",
           "Mana bu tumor ota-bobolarimdan qolgan. Senga ko'proq kerak."
         ],
-        "choices": [{ "text": "Rahmat, oqsoqol.", "next": "hello" }]
+        "choices": [
+          {
+            "text": "Rahmat, oqsoqol.",
+            "next": "hello"
+          }
+        ]
       },
       "lore": {
         "text": [
           "Vodiy qadimiy yo'llar chorrahasida turibdi.",
-          "Aytishlaricha, tunda xarobalarda oy nuri boshqacha tushar ekan..."
+          "Aytishlaricha, tunda xarobalarda oy nuri boshqacha tushar ekan...",
+          "Baliqchilar esa daryoda pufakchalar chiqadigan bir joy borligini aytishadi."
         ],
-        "choices": [{ "text": "Qiziq.", "next": "hello" }]
+        "choices": [
+          {
+            "text": "Qiziq.",
+            "next": "hello"
+          }
+        ]
       }
     }
   },
@@ -104,13 +183,25 @@
       "hello": {
         "text": ["Keling, keling! Mollarim arzon, sifati — a'lo!"],
         "choices": [
-          { "text": "Nimalar bor?", "do": [{ "shop": true }] },
+          {
+            "text": "Nimalar bor?",
+            "do": [
+              {
+                "shop": true
+              }
+            ]
+          },
           {
             "text": "Xarobalarda bo'lganmisan?",
             "next": "ruins",
-            "if": { "quest": "ruins", "state": ["active", "ready", "done"] }
+            "if": {
+              "quest": "ruins",
+              "state": ["active", "ready", "done"]
+            }
           },
-          { "text": "Xayr." }
+          {
+            "text": "Xayr."
+          }
         ]
       },
       "ruins": {
@@ -119,8 +210,17 @@
           "Ichkarida zirhli ulkan tosh jangchi bor — Xaroba Sardori. Unga yolg'iz bormang, shifo damlamasi oling."
         ],
         "choices": [
-          { "text": "Damlama sotib olaman.", "do": [{ "shop": true }] },
-          { "text": "Rahmat." }
+          {
+            "text": "Damlama sotib olaman.",
+            "do": [
+              {
+                "shop": true
+              }
+            ]
+          },
+          {
+            "text": "Rahmat."
+          }
         ]
       }
     }

@@ -39,6 +39,7 @@ import { SHOP_ITEMS, buy, loadGold, loadShop, nextCost, type ShopItem } from "@/
 import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
+import { RealmClient } from "@/realm/client";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -125,10 +126,14 @@ function Index() {
   /** Sarguzasht xaritasi ochiq (BOSHLASH dan keyin dunyo tanlanadi) */
   const [mapOpen, setMapOpen] = useState(false);
   const [world, setWorld] = useState<World>(1);
+  /** Abadiyat olami (sinov): ochiq olam rejimi */
+  const [realm, setRealm] = useState(false);
+  const [realmClient, setRealmClient] = useState<RealmClient | null>(null);
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
-  startedRef.current = started;
+  // olamda ham avtomatik yangilanish so'rab qilinadi
+  startedRef.current = started || realm;
   useEffect(() => {
     // eski versiya ma'lumotlari (rekord, oltin, do'kon, yutuqlar) saqlanadi, xarita uchun to'ldiriladi
     migrateSave();
@@ -166,13 +171,14 @@ function Index() {
   useEffect(() => {
     // gorizontalga qaytganda pauza menyusi qoladi — o'yinchi o'zi davom ettiradi
     if (portrait) game?.setPaused(true);
-  }, [portrait, game]);
+    if (portrait && realmClient && realmClient.view.panel === "none") realmClient.setPanel("pause");
+  }, [portrait, game, realmClient]);
 
   // o'yin paytida ikki marta bosib kattalashtirish va pastga tortib yangilash o'chiq
   useEffect(() => {
-    document.documentElement.classList.toggle("in-game", started);
+    document.documentElement.classList.toggle("in-game", started || realm);
     return () => document.documentElement.classList.remove("in-game");
-  }, [started]);
+  }, [started, realm]);
 
   // Rekordlar tanlangan qahramonniki
   useEffect(() => {
@@ -236,11 +242,28 @@ function Index() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, touch]);
 
+  // Abadiyat olami: o'sha canvas'da alohida klient (o'z saqlanishi bilan)
+  useEffect(() => {
+    if (!realm || !canvasRef.current) return;
+    const c = new RealmClient(canvasRef.current, hero);
+    c.touch = touch;
+    c.onExit = () => {
+      setRealmClient(null);
+      setRealm(false);
+    };
+    setRealmClient(c);
+    if (import.meta.env.DEV) (window as unknown as { __realm?: RealmClient }).__realm = c;
+    c.start();
+    return () => c.stop();
+    // qahramon faqat menyuda o'zgaradi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realm, touch]);
+
   return (
     <main className="game-viewport font-pixel">
       <div className="game-screen">
         <canvas ref={canvasRef} width={960} height={540} className="game-canvas" />
-        {mapOpen && !started && canvasRef.current && (
+        {mapOpen && !started && !realm && canvasRef.current && (
           <MapScreen
             canvas={canvasRef.current}
             hero={hero}
@@ -255,7 +278,7 @@ function Index() {
             }}
           />
         )}
-        {!started && !mapOpen && (
+        {!started && !mapOpen && !realm && (
           <div
             className="game-menu absolute inset-0 isolate flex flex-col items-center justify-center gap-6 overflow-hidden bg-card text-center px-4"
             style={{ textShadow: "1px 1px 0 #000" }}
@@ -402,6 +425,19 @@ function Index() {
               >
                 {daily ? `KUNLIK: ${daily.score}` : "KUNLIK SINOV"}
               </Button>
+              <Button
+                onClick={() => {
+                  sfx.unlock();
+                  if (touch) void enterLandscape();
+                  setRealm(true);
+                }}
+                disabled={!ready}
+                title="Kelajakdagi ko'p o'yinchili ochiq olamning sinov versiyasi"
+                variant="pixelOutline"
+                className="px-5 py-2 text-[10px] sm:text-xs"
+              >
+                OLAM (SINOV)
+              </Button>
             </div>
             {daily && (
               <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
@@ -456,6 +492,12 @@ function Index() {
         )}
       </div>
       {started && touch && game && <TouchControls game={game} />}
+      {realm && touch && realmClient && (
+        <>
+          <TouchControls game={realmClient} />
+          <RealmTouchButtons client={realmClient} />
+        </>
+      )}
       {touch && portrait && <RotateOverlay />}
       {newVersion && (
         <div className="fixed bottom-2 left-1/2 -translate-x-1/2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-2 border-primary bg-card px-3 py-2 text-[9px] sm:text-[10px] text-foreground max-w-full">
@@ -502,7 +544,10 @@ function Index() {
   );
 }
 
-function TouchControls({ game }: { game: Game }) {
+/** Sensor boshqaruvi ishlatadigan qism: Game yoki olam klienti (RealmClient) */
+type TouchTarget = Pick<Game, "input" | "player" | "hero">;
+
+function TouchControls({ game }: { game: TouchTarget }) {
   const baseRef = useRef<HTMLDivElement>(null);
   const pointer = useRef<number | null>(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
@@ -608,6 +653,51 @@ function TouchControls({ game }: { game: Game }) {
         }}
       >
         II
+      </button>
+    </div>
+  );
+}
+
+/** Olamdagi qo'shimcha sensor tugmalari: gaplashish, jurnal, xarita. */
+function RealmTouchButtons({ client }: { client: RealmClient }) {
+  const theme = HERO_THEME[client.hero];
+  const vars = {
+    "--hero-border": withAlpha(theme.accent, 0.7),
+    "--hero-text": theme.uiText,
+    "--hero-press": withAlpha(theme.accent, 0.4),
+  } as CSSProperties;
+  const btn =
+    "pointer-events-auto absolute flex items-center justify-center rounded-full border-2 border-[color:var(--hero-border)] bg-card/60 text-[color:var(--hero-text)] select-none active:bg-[color:var(--hero-press)]";
+  const tap = (f: () => void) => (e: RPointerEvent) => {
+    e.preventDefault();
+    sfx.unlock();
+    f();
+  };
+  return (
+    <div
+      className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
+      style={vars}
+    >
+      <button
+        aria-label="Gaplashish"
+        className={`${btn} touch-interact text-[7px]`}
+        onPointerDown={tap(() => client.pressInteract())}
+      >
+        GAPLASH
+      </button>
+      <button
+        aria-label="Topshiriqlar jurnali"
+        className={`${btn} touch-journal text-[6px]`}
+        onPointerDown={tap(() => client.toggleJournal())}
+      >
+        JURNAL
+      </button>
+      <button
+        aria-label="Xarita"
+        className={`${btn} touch-map text-[6px]`}
+        onPointerDown={tap(() => client.toggleMap())}
+      >
+        XARITA
       </button>
     </div>
   );
