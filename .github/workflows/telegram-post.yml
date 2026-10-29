@@ -23,6 +23,10 @@ on:
       wave:
         description: "Skrinshot to'lqini (0 = 1-to'lqin, 4 = Boss). Bo'sh = tasodifiy"
         required: false
+      apk:
+        description: "APK yuborish: eng oxirgi versiya APK'sini kanalga yuborish (post yuborilmaydi)"
+        type: boolean
+        default: false
 
 concurrency:
   group: telegram-post
@@ -30,10 +34,14 @@ concurrency:
 
 jobs:
   post:
+    if: ${{ !inputs.apk }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      posted: ${{ steps.posted.outputs.posted }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -152,3 +160,86 @@ jobs:
           T="tg-v${{ steps.check.outputs.version }}"
           git tag -f "$T"
           git push -qf origin "refs/tags/$T"
+
+      - name: Post kanalga chiqdi
+        id: posted
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
+        run: echo "posted=true" >> "$GITHUB_OUTPUT"
+
+  # ── Android APK kanalga ───────────────────────────────────────────────────────
+  # x.y.0 versiya posti bilan birga (x.y.z, z > 0 — APK yo'q) yoki qo'lda "APK yuborish".
+  # APK faqat doimiy keystore (secrets) bilan imzolanadi; secrets bo'lmasa yuborilmaydi —
+  # debug imzoli APK ustidan keyingi versiyalar o'rnatilmay qoladi.
+  apk-plan:
+    needs: post
+    if: ${{ !cancelled() && !inputs.seed && !inputs.test }}
+    runs-on: ubuntu-latest
+    outputs:
+      send: ${{ steps.plan.outputs.send }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: APK yuboriladimi?
+        id: plan
+        env:
+          MANUAL: ${{ inputs.apk }}
+          POST_RESULT: ${{ needs.post.result }}
+          POSTED: ${{ needs.post.outputs.posted }}
+          POST_VERSION: ${{ needs.post.outputs.version }}
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          V=$(grep -oP 'GAME_VERSION\s*=\s*"\K[^"]+' src/game/version.ts)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          RELEASE=$(node --experimental-strip-types -e "import('./src/lib/apk.ts').then((m) => console.log(m.isApkRelease(process.argv[1])))" "$V")
+          SEND=false
+          if [ "$MANUAL" = "true" ]; then
+            SEND=true
+          elif [ "$POST_RESULT" = "success" ] && [ "$POSTED" = "true" ] && [ "$POST_VERSION" = "$V" ]; then
+            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=APK::v$V — kichik tuzatish (x.y.z), APK yuborilmaydi"; fi
+          fi
+          if [ "$SEND" = "true" ] && [ "$HAS_KEYSTORE" != "true" ]; then
+            echo "::warning title=APK::Imzo secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) topilmadi — APK kanalga yuborilmaydi. docs/apk.md ga qarang."
+            SEND=false
+          fi
+          echo "send=$SEND" >> "$GITHUB_OUTPUT"
+          echo "APK v$V yuboriladi: $SEND"
+
+  apk-build:
+    needs: apk-plan
+    # !cancelled(): qo'lda "APK yuborish"da post o'tkazib yuboriladi — zanjir to'xtamasin
+    if: ${{ !cancelled() && needs.apk-plan.outputs.send == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/android.yml
+    with:
+      skip_release: true
+    secrets: inherit
+
+  apk-send:
+    needs: [apk-plan, apk-build]
+    if: ${{ !cancelled() && needs.apk-build.result == 'success' && needs.apk-build.outputs.signed == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: android-v${{ needs.apk-build.outputs.version }}
+          path: apk/
+
+      - name: APK'ni kanalga yuborish
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          APK_VERSION: ${{ needs.apk-build.outputs.version }}
+          APK_FILE: apk/PikselQala-v${{ needs.apk-build.outputs.version }}.apk
+        run: node --experimental-strip-types scripts/telegram-apk.mjs

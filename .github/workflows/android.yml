@@ -5,24 +5,42 @@ name: Android
 # - secrets bo'lmasa: imzosiz debug APK (ogohlantirish bilan, workflow yiqilmaydi).
 # Fayllar GitHub Release'ga (teg v<VERSIYA>) va workflow artefaktiga yuklanadi.
 # Kerakli secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
-# ANDROID_KEY_PASSWORD (docs/play-market.md).
+# ANDROID_KEY_PASSWORD (docs/apk.md).
+# telegram-post.yml ham shu workflow'ni chaqiradi (workflow_call) — kanalga APK yuborish uchun.
 on:
   push:
     branches: [main]
     paths: [src/game/version.ts]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      skip_release:
+        description: "Release'ga yuklamaslik (faqat artefakt)"
+        type: boolean
+        default: false
+    outputs:
+      signed:
+        description: "true — APK doimiy keystore bilan imzolangan"
+        value: ${{ jobs.build.outputs.signed }}
+      version:
+        description: "Yig'ilgan versiya (GAME_VERSION)"
+        value: ${{ jobs.build.outputs.version }}
 
 permissions:
   contents: write
 
+# chaqirilganda github.workflow — chaqiruvchi nomi: Telegram build'i bu yerdagini bekor qilmaydi
 concurrency:
-  group: android-${{ github.ref }}
+  group: android-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    outputs:
+      signed: ${{ steps.key.outputs.signed }}
+      version: ${{ steps.v.outputs.version }}
     steps:
       - uses: actions/checkout@v5
 
@@ -67,7 +85,7 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning title=Android::Imzo secrets topilmadi — faqat imzosiz debug APK yig'iladi (Play Market'ga yuklab bo'lmaydi). docs/play-market.md ga qarang."
+            echo "::warning title=Android::Imzo secrets topilmadi — faqat imzosiz debug APK yig'iladi (Play Market'ga va Telegram kanalga yaroqsiz). docs/apk.md ga qarang."
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -106,6 +124,7 @@ jobs:
           path: out/
 
       - name: GitHub Release
+        if: ${{ !inputs.skip_release }}
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ steps.v.outputs.version }}
