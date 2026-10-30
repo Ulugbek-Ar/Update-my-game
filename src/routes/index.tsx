@@ -41,6 +41,7 @@ import { isRealmUnlocked } from "@/game/realmLink";
 import { TouchControls } from "@/components/game/TouchControls";
 import { ControlsSettings, Toggle } from "@/components/game/ControlsSettings";
 import { lockGameKeys } from "@/game/input";
+import { actionKey, actionKeys, moveLabel } from "@/game/keys";
 import { useSettings } from "@/components/game/useSettings";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
@@ -145,6 +146,8 @@ function Index() {
   const [realmOpen, setRealmOpen] = useState(false);
   /** "Chiqishni xohlaysizmi?" oynasi (ilovada bosh menyuda "Orqaga") */
   const [exitOpen, setExitOpen] = useState(false);
+  /** Menyu ko'rsatmalari uchun: telefon boshqaruvi va qayta belgilangan tugmalar */
+  const { touch: ts, keys: kb } = useSettings();
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
   const dailyRef = useRef<string | null>(null);
   const startedRef = useRef(false);
@@ -415,7 +418,10 @@ function Index() {
             <p className="text-foreground text-xs sm:text-sm leading-6">
               {touch ? (
                 <>
-                  Chap doira — yurish
+                  {/* telefonda — tugma nomlari (SOZLAMALAR -> BOSHQARUV ga mos) */}
+                  {ts.stickMode === "floating"
+                    ? `Ekranning ${ts.leftHanded ? "o'ng" : "chap"} yarmi — yurish`
+                    : `${ts.leftHanded ? "O'ngdagi" : "Chapdagi"} joystik — yurish`}
                   <br />
                   {hero === "mage"
                     ? "SHAR — sehrli shar, TELEPORT — sakrash"
@@ -435,18 +441,19 @@ function Index() {
                 </>
               ) : (
                 <>
-                  WASD / strelkalar — yurish
+                  {/* kompyuterda — qayta belgilangan tugmalar */}
+                  {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} — yurish
                   <br />
-                  Space / J —{" "}
+                  {actionKeys(kb, "attack")} —{" "}
                   {hero === "mage"
                     ? "sehrli shar"
                     : hero === "hunter"
                       ? "o'q"
                       : hero === "gunner"
-                        ? "o'q (barabanda 6 ta), R — qayta o'qlash"
+                        ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
                         : "hujum"}
                   <br />
-                  Space ni bosib turish —{" "}
+                  {actionKey(kb, "attack")} ni bosib turish —{" "}
                   {hero === "mage"
                     ? "sehrli halqa"
                     : hero === "hunter"
@@ -455,7 +462,7 @@ function Index() {
                         ? "barabanni bo'shatish"
                         : "aylana zarba"}
                   <br />
-                  Shift / K —{" "}
+                  {actionKeys(kb, "dash")} —{" "}
                   {hero === "mage"
                     ? "teleport"
                     : hero === "hunter"
@@ -464,7 +471,7 @@ function Index() {
                         ? "sirpanish, bosib turish — tutun bombasi"
                         : "dash"}
                   <br />
-                  Esc — pauza, M — ovoz
+                  {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
                 </>
               )}
             </p>

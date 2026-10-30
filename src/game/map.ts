@@ -1,8 +1,8 @@
 /** Sarguzasht xaritasi: bosh menyudan keyin dunyo tanlanadigan piksel ekran (kod bilan chiziladi). */
 import { ROOM, px } from "./animation";
 import { gameKeysLocked } from "./input";
-import { normKey } from "./keys";
-import { loadSettings } from "./settings";
+import { actionKey, normKey, type KeyBinds } from "./keys";
+import { currentSettings, loadSettings } from "./settings";
 import { HEROES, type Hero } from "./hero";
 import { renderSprite } from "./sprites";
 import { MAP_WORLDS, isWorldOpen, worldBest, worldWins, type MapWorld } from "./progress";
@@ -436,6 +436,12 @@ function mapBackground() {
 }
 
 /** Xaritani 320x240 xona koordinatalarida chizadi. */
+/** Xarita ko'rsatmasi (kompyuter): qayta belgilangan tugmalar bilan. */
+export function mapKeysHint(k: KeyBinds) {
+  const pause = actionKey(k, "pause");
+  return `${actionKey(k, "left")}/${actionKey(k, "right")} — tanlash · Enter — kirish · ${pause === "Esc" ? "Esc" : `Esc/${pause}`} — orqaga`;
+}
+
 export function renderMap(
   c: CanvasRenderingContext2D,
   s: MapState,
@@ -511,9 +517,7 @@ export function renderMap(
   text(c, status, ROOM.w / 2, 222, 5, s.open[n.world] ? "#e0d6ee" : "#ff9a9a");
   text(
     c,
-    touch
-      ? "Dunyoga bosing · yana bosing — kirish"
-      : "A/D — tanlash · Enter — kirish · Esc — orqaga",
+    touch ? "Dunyoga bosing · yana bosing — kirish" : mapKeysHint(currentSettings().keys),
     ROOM.w / 2,
     234,
     5,

@@ -121,14 +121,20 @@ export function keyLabel(code: string | undefined) {
   return code;
 }
 
+/** Amalning barcha tugmalari: "Space / J". */
+export function actionKeys(k: KeyBinds, a: Action) {
+  return k[a].map(keyLabel).join(" / ") || "—";
+}
+
 /** Amalning asosiy tugmasi nomi (ko'rsatmalar uchun). */
 export function actionKey(k: KeyBinds, a: Action) {
   return keyLabel(k[a][0]);
 }
 
-/** Yurish tugmalari: "WASD", "Strelkalar" yoki "I/J/K/L". */
-export function moveLabel(k: KeyBinds) {
-  const keys = (["up", "left", "down", "right"] as const).map((a) => k[a][0] ?? "");
+/** Yurish tugmalari: "WASD", "Strelkalar" yoki "I/J/K/L" (slot 1 — qo'shimchalari, yo'q bo'lsa ""). */
+export function moveLabel(k: KeyBinds, slot: 0 | 1 = 0) {
+  const keys = (["up", "left", "down", "right"] as const).map((a) => k[a][slot] ?? "");
+  if (keys.some((c) => !c)) return "";
   if (keys.join() === "KeyW,KeyA,KeyS,KeyD") return "WASD";
   if (keys.join() === "ArrowUp,ArrowLeft,ArrowDown,ArrowRight") return "Strelkalar";
   return keys.map(keyLabel).join("/");

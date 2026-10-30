@@ -4,7 +4,9 @@
  */
 import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
-import { HERO_THEME, hudBarColors } from "@/game/hero";
+import { HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
+import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
+import { touchLabels } from "@/game/touchLayout";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
@@ -40,6 +42,8 @@ export interface RealmView {
   time: number;
   fx: Effects;
   touch: boolean;
+  /** Olamda ishlaydigan (qayta belgilangan) tugmalar — ko'rsatmalar uchun */
+  keys: KeyBinds;
   panel: Panel;
   /** dialog/do'kon tanlovi */
   sel: number;
@@ -661,7 +665,7 @@ export class RealmRenderer {
       else if (o?.type === "fragment") label = "OLISH";
       else if (o?.type === "gate") label = "KO'RISH";
     }
-    const s = v.touch ? label : `[E] ${label}`;
+    const s = v.touch ? label : `[${actionKey(v.keys, "interact")}] ${label}`;
     const w = s.length * 5 + 6;
     const gate = t.kind === "object" && sim.object(t.id)?.type === "gate";
     const y = t.y - (t.kind === "npc" ? 26 : gate ? 34 : 18) + Math.round(Math.sin(v.time * 4));
@@ -932,9 +936,7 @@ export class RealmRenderer {
         "ABADIYAT OLAMI",
         [
           "Iblis, Qor Malikasi va O'rmon Shohi shu olamdan kelgan. Sening uch dunyong — Abadiyat olamidan ochilgan darvozalar. Iblisni yenganing uchun birinchi darvoza ochildi.",
-          v.touch
-            ? "Joystik — yurish, GAPLASH — NPC va narsalar, JURNAL — topshiriqlar, XARITA — xarita."
-            : "WASD — yurish, Space — hujum, Shift — qobiliyat, E — gaplashish, J — jurnal, M — xarita, 1-8 — buyum.",
+          v.touch ? touchIntro(v.me.hero) : keysIntro(v.keys),
           "Qishloq oqsoqoli bilan gaplashing. Olamda yashirin sirlar bor — ularni o'zingiz toping.",
         ],
         "#ffe14d",
@@ -968,7 +970,13 @@ export class RealmRenderer {
     panel(c, 16, y, 288, h, color);
     text(c, title, VIEW_W / 2, y + 14, 7, color, "center");
     body.forEach((l, i) => text(c, l, 26, y + 28 + i * 8, 5, "#e0d6ee"));
-    this.closeBtn(c, v, VIEW_W / 2 - 25, y + h - 15, v.touch ? "DAVOM" : "[E] DAVOM");
+    this.closeBtn(
+      c,
+      v,
+      VIEW_W / 2 - 25,
+      y + h - 15,
+      v.touch ? "DAVOM" : `[${actionKey(v.keys, "interact")}] DAVOM`,
+    );
   }
 
   private dialog(c: CanvasRenderingContext2D, v: RealmView, npcId: string, nodeId: string) {
@@ -1051,7 +1059,15 @@ export class RealmRenderer {
       text(c, RARITY_NAME[def.rarity], 166, 141, 4, RARITY_COLOR[def.rarity]);
       wrap(def.desc, 26).forEach((l, i) => text(c, l, 166, 151 + i * 7, 4, "#e0d6ee"));
     }
-    if (!v.touch) text(c, "Strelka — tanlash, Space — olish/sotish", 24, 196, 4, "#8a7a9a");
+    if (!v.touch)
+      text(
+        c,
+        `Strelka — tanlash, ${actionKey(v.keys, "attack")} — olish/sotish`,
+        24,
+        196,
+        4,
+        "#8a7a9a",
+      );
     this.closeBtn(c, v, 250, 194);
   }
 
@@ -1099,7 +1115,7 @@ export class RealmRenderer {
     }
     text(c, `Kashfiyotlar: ${me.secrets.length}/?`, 24, 212, 5, "#c9a25a");
     text(c, `Joylar: ${me.landmarks.length}`, 150, 212, 5, "#c9a25a");
-    this.closeBtn(c, v, 248, 204, v.touch ? "YOPISH" : "[J] YOPISH");
+    this.closeBtn(c, v, 248, 204, v.touch ? "YOPISH" : `[${actionKey(v.keys, "journal")}] YOPISH`);
   }
 
   private fullMap(c: CanvasRenderingContext2D, v: RealmView) {
@@ -1223,4 +1239,16 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
     }
   }
   c.restore();
+}
+
+/** Olamga kirish matni (telefon): tugma nomlari bilan — qahramon tugmalari ham. */
+export function touchIntro(hero: Hero) {
+  const l = touchLabels(hero);
+  return `Joystik — yurish, ${l.attack.text} — hujum, ${l.dash.text} — qobiliyat, GAPLASH — NPC va narsalar, JURNAL — topshiriqlar, XARITA — xarita.`;
+}
+
+/** Olamga kirish matni (kompyuter): qayta belgilangan tugmalar bilan. */
+export function keysIntro(k: KeyBinds) {
+  const a = (x: Parameters<typeof actionKey>[1]) => actionKey(k, x);
+  return `${moveLabel(k)} — yurish, ${a("attack")} — hujum, ${a("dash")} — qobiliyat, ${a("interact")} — gaplashish, ${a("journal")} — jurnal, ${a("map")} — xarita, 1-8 — buyum.`;
 }

@@ -154,6 +154,12 @@ export function loadSettings(): Settings {
 
 type Listener = (s: Settings) => void;
 const listeners = new Set<Listener>();
+let cached: Settings | null = null;
+
+/** Joriy sozlamalar (har kadr chizishda o'qish uchun — localStorage'ni qayta o'qimaydi). */
+export function currentSettings() {
+  return (cached ??= loadSettings());
+}
 
 /** Sozlama o'zgarganda chaqiriladi (o'yin va olam darhol qo'llaydi); qaytgani — obunani bekor qilish. */
 export function onSettingsChange(fn: Listener) {
@@ -169,5 +175,6 @@ export function saveSettings(s: Settings) {
   } catch {
     /* saqlash imkonsiz */
   }
+  cached = s;
   for (const fn of listeners) fn(s);
 }

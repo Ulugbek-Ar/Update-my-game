@@ -16,7 +16,8 @@ import {
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings, onSettingsChange } from "./settings";
-import { actionKey } from "./keys";
+import { actionKey, moveLabel } from "./keys";
+import { touchLabels } from "./touchLayout";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
 import { Effects } from "./effects";
 import { renderUpgradeIcon } from "./sprites";
@@ -401,7 +402,12 @@ export class Game {
   private waveHasFrost = false;
   /** "Olti o'q": shu barabandagi o'qlar bilan o'ldirilgan dushmanlar */
   private drum = { load: -1, kills: 0 };
-  banner = { title: "", sub: "", timer: 0 };
+  /** hint — pastki qatorda qobiliyat ko'rsatmasi (dashHint) */
+  banner: { title: string; sub: string; timer: number; hint?: boolean } = {
+    title: "",
+    sub: "",
+    timer: 0,
+  };
   paused = false;
   /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
   touch = false;
@@ -572,16 +578,9 @@ export class Game {
     // muz dunyosi: 2-dunyo va undan keyingi cheksiz rejim; o'rmon — 3-dunyo
     const ice = ch === 2;
     const forest = ch === 3;
-    const hint =
-      i === 0 && !this.hints.length
-        ? this.player.mage
-          ? "Shift — teleport"
-          : this.player.hunter
-            ? "Shift — orqaga sakrash"
-            : this.player.gunner
-              ? "Shift — sirpanish"
-              : "Shift — dash"
-        : "";
+    // qobiliyat ko'rsatmasi chizish paytida yoziladi: telefonda — tugma nomi, kompyuterda —
+    // belgilangan tugma (o'yin yaratilganda touch hali ma'lum emas)
+    const hint = i === 0 && !this.hints.length;
     this.banner = later
       ? boss
         ? forest
@@ -605,8 +604,9 @@ export class Game {
             : i === 0
               ? {
                   title: WORLD_TITLES[1],
-                  sub: hint || `TO'LQIN 1/${TOTAL_WAVES}`,
+                  sub: `TO'LQIN 1/${TOTAL_WAVES}`,
                   timer: 2.2,
+                  hint,
                 }
               : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: "", timer: 1.6 };
     const kinds = waveEnemies(i, Math.random, ch);
@@ -2816,9 +2816,10 @@ export class Game {
     if (this.banner.timer > 0 && this.phase === "play" && this.stage === "fight" && !this.paused) {
       const a = Math.min(1, this.banner.timer * 2);
       c.globalAlpha = a;
-      px(c, "rgba(0,0,0,0.55)", 0, 92, ROOM.w, this.banner.sub ? 40 : 28);
+      const sub = this.banner.hint ? this.dashHint() : this.banner.sub;
+      px(c, "rgba(0,0,0,0.55)", 0, 92, ROOM.w, sub ? 40 : 28);
       this.text(this.banner.title, ROOM.w / 2, 112, 12, "#ffcc33");
-      if (this.banner.sub) this.text(this.banner.sub, ROOM.w / 2, 126, 6, "#e0d6ee");
+      if (sub) this.text(sub, ROOM.w / 2, 126, 6, "#e0d6ee");
       c.globalAlpha = 1;
     }
   }
@@ -2849,10 +2850,54 @@ export class Game {
     }
   }
 
+  /** Pauzadagi boshqaruv qatori: telefonda — tugma nomlari, kompyuterda — belgilangan tugmalar. */
+  private controlsLine() {
+    const { mage, hunter, gunner } = this.player;
+    if (this.touch)
+      return mage
+        ? "Joystik yurish · SHAR otish · TELEPORT"
+        : hunter
+          ? "Joystik yurish · O'Q otish · SAKRASH / tuzoq"
+          : gunner
+            ? "Joystik yurish · O'Q otish · SIRPANISH / tutun"
+            : "Joystik yurish · ZARBA hujum · DASH sirpanish";
+    const k = this.input.keyBinds;
+    const M = moveLabel(k),
+      A = actionKey(k, "attack"),
+      D = actionKey(k, "dash");
+    return mage
+      ? `${M} yurish · ${A} shar · ${D} teleport`
+      : hunter
+        ? `${M} yurish · ${A} o'q · ${D} sakrash/tuzoq`
+        : gunner
+          ? `${M} · ${A} o'q · ${actionKey(k, "reload")} o'qlash · ${D} sirpanish/tutun`
+          : `${M} yurish · ${A} zarba · ${D} dash`;
+  }
+
+  /** Qobiliyat nomi: dash / teleport / orqaga sakrash / sirpanish */
+  private dashName() {
+    const { mage, hunter, gunner } = this.player;
+    return mage ? "teleport" : hunter ? "orqaga sakrash" : gunner ? "sirpanish" : "dash";
+  }
+
+  /**
+   * Dunyo bannerdagi qobiliyat ko'rsatmasi: telefonda — tugma nomi ("TELEPORT tugmasi — sakrash"),
+   * kompyuterda — qayta belgilangan tugma ("Shift — teleport").
+   */
+  private dashHint() {
+    if (!this.touch) return `${actionKey(this.input.keyBinds, "dash")} — ${this.dashName()}`;
+    const { mage, hunter, gunner } = this.player;
+    const button = touchLabels(this.hero).dash.text;
+    return `${button} tugmasi — ${mage ? "sakrash" : hunter ? "orqaga sakrash" : gunner ? "+2 o'q" : "sirpanish"}`;
+  }
+
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
     const { mage, hunter, gunner } = this.player;
+    const k = this.input.keyBinds;
+    const A = actionKey(k, "attack"),
+      D = actionKey(k, "dash");
     const label: Record<Hint, string> = this.touch
       ? gunner
         ? {
@@ -2873,20 +2918,22 @@ export class Game {
             }
       : gunner
         ? {
-            attack: "Space — o'q, R — qayta o'qlash",
-            spin: "Bosib turing — barabanni bo'shatish",
-            dash: "Shift — sirpanish, bosib tur — tutun",
+            attack: `${A} — o'q, ${actionKey(k, "reload")} — qayta o'qlash`,
+            spin: `${A} ni bosib turing — barabanni bo'shatish`,
+            dash: `${D} — sirpanish, bosib tur — tutun`,
           }
         : hunter
           ? {
-              attack: "Space — o'q",
-              spin: "Bosib turing — teshuvchi o'q",
-              dash: "Shift — orqaga sakrash, bosib tur — tuzoq",
+              attack: `${A} — o'q`,
+              spin: `${A} ni bosib turing — teshuvchi o'q`,
+              dash: `${D} — orqaga sakrash, bosib tur — tuzoq`,
             }
           : {
-              attack: mage ? "Space — sehrli shar" : "Space — zarba",
-              spin: mage ? "Bosib turing — sehrli halqa" : "Bosib turing — aylana zarba",
-              dash: mage ? "Shift — teleport" : "Shift — dash",
+              attack: mage ? `${A} — sehrli shar` : `${A} — zarba`,
+              spin: mage
+                ? `${A} ni bosib turing — sehrli halqa`
+                : `${A} ni bosib turing — aylana zarba`,
+              dash: `${D} — ${this.dashName()}`,
             };
     // Ovchida HUD'da uchinchi (tuzoq) chizig'i, Merganda tutun chizig'i va baraban bor —
     // ko'rsatmalar pastroqda
@@ -2930,7 +2977,13 @@ export class Game {
         9,
         "#a6f08e",
       );
-      this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
+      this.text(
+        this.touch ? "Kuch tanlang: kartani bosing" : "Kuch tanlang: 1 / 2 / 3",
+        ROOM.w / 2,
+        58,
+        6,
+        "#e0d6ee",
+      );
       // Sehrgar kartalari qizil-qora, Ovchiniki yashil-jigarrang, Merganniki mis-kulrang:
       // ramka va fon binafsha emas
       const [frame, inner] = this.player.mage
@@ -2956,7 +3009,11 @@ export class Game {
           this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),
         );
       });
-      this.text("A/D tanlash, Enter — olish", ROOM.w / 2, 196, 5, "#b8a8cc");
+      if (!this.touch) {
+        const k = this.input.keyBinds;
+        const lr = `${actionKey(k, "left")}/${actionKey(k, "right")}`;
+        this.text(`${lr} tanlash, Enter — olish`, ROOM.w / 2, 196, 5, "#b8a8cc");
+      }
     }
     if (this.paused) {
       px(c, "rgba(0,0,0,0.7)", 0, 0, ROOM.w, ROOM.h);
@@ -2975,27 +3032,7 @@ export class Game {
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");
       }
-      this.text(
-        this.touch
-          ? this.player.mage
-            ? "Chap doira yurish · SHAR otish · TELEPORT"
-            : this.player.hunter
-              ? "Chap doira yurish · O'Q otish · SAKRASH / tuzoq"
-              : this.player.gunner
-                ? "Chap doira yurish · O'Q otish · SIRPANISH / tutun"
-                : "Chap doira yurish · ZARBA hujum · DASH sirpanish"
-          : this.player.mage
-            ? "WASD yurish · Space shar · Shift teleport"
-            : this.player.hunter
-              ? "WASD yurish · Space o'q · Shift sakrash/tuzoq"
-              : this.player.gunner
-                ? "WASD · Space o'q · R o'qlash · Shift sirpanish/tutun"
-                : "WASD yurish · Space zarba · Shift dash",
-        ROOM.w / 2,
-        ROOM.h - 22,
-        5,
-        "#b8a8cc",
-      );
+      this.text(this.controlsLine(), ROOM.w / 2, ROOM.h - 22, 5, "#b8a8cc");
     }
     if (this.phase === "attempt" && this.later) {
       // 2-/3-dunyoda o'lim: qayta boshlash yoki bosh menyu

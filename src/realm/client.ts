@@ -118,6 +118,7 @@ export class RealmClient {
       time: 0,
       fx: this.fx,
       touch: false,
+      keys: this.input.keyBinds,
       panel: save?.intro ? "none" : "intro",
       sel: 0,
       hover: null,
@@ -401,6 +402,7 @@ export class RealmClient {
     v.alpha = this.frozen ? 1 : this.acc / TICK_DT;
     v.time = this.time;
     v.touch = this.touch;
+    v.keys = this.input.keyBinds;
     v.shake = this.shakeOn && !this.frozen ? this.fx.shake : 0;
     v.me = this.me;
     this.renderer.render(this.ctx, v);
