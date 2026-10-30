@@ -30,7 +30,22 @@ for (let attempt = 1; ; attempt++) {
   } catch (e) {
     body = { ok: false, description: e.message };
   }
-  if (body.ok) break;
+  if (body.ok) {
+    const id = body.result?.message_id;
+    const pin = await fetch(`https://api.telegram.org/bot${token}/pinChatMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, message_id: id, disable_notification: true }),
+    })
+      .then((r) => r.json())
+      .catch((e) => ({ ok: false, description: e.message }));
+    if (pin.ok) console.log("APK posti kanal tepasiga qadaldi 📌");
+    else
+      console.log(
+        `::warning title=APK::Qadab bo'lmadi (${pin.description}) — botga "Xabarlarni tahrirlash" huquqini bering`,
+      );
+    break;
+  }
   const wait = body.parameters?.retry_after ?? attempt * 5;
   const fatal = body.error_code && body.error_code < 500 && body.error_code !== 429;
   if (fatal || attempt >= 4) throw new Error(`Telegram xatosi (sendDocument): ${body.description}`);
