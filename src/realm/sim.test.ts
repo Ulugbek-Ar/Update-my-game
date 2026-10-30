@@ -58,7 +58,7 @@ describe("RealmSim determinizmi", () => {
       }
       return list;
     };
-    for (const hero of ["knight", "mage", "hunter"] as Hero[]) {
+    for (const hero of ["knight", "mage", "hunter", "gunner"] as Hero[]) {
       const a = sim(hero),
         b = sim(hero);
       // to'ng'izlar o'tlog'ida — jang ham determinizmga kiradi

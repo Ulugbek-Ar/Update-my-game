@@ -421,34 +421,48 @@ function Index() {
                     ? "SHAR — sehrli shar, TELEPORT — sakrash"
                     : hero === "hunter"
                       ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                      : "ZARBA — hujum, DASH — sirpanish"}
+                      : hero === "gunner"
+                        ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
+                        : "ZARBA — hujum, DASH — sirpanish"}
                   <br />
                   {hero === "mage"
                     ? "SHAR ni bosib turing — sehrli halqa"
                     : hero === "hunter"
                       ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                      : "ZARBA ni bosib turing — aylana zarba"}
+                      : hero === "gunner"
+                        ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
+                        : "ZARBA ni bosib turing — aylana zarba"}
                 </>
               ) : (
                 <>
                   WASD / strelkalar — yurish
                   <br />
                   Space / J —{" "}
-                  {hero === "mage" ? "sehrli shar" : hero === "hunter" ? "o'q" : "hujum"}
+                  {hero === "mage"
+                    ? "sehrli shar"
+                    : hero === "hunter"
+                      ? "o'q"
+                      : hero === "gunner"
+                        ? "o'q (barabanda 6 ta), R — qayta o'qlash"
+                        : "hujum"}
                   <br />
                   Space ni bosib turish —{" "}
                   {hero === "mage"
                     ? "sehrli halqa"
                     : hero === "hunter"
                       ? "teshuvchi o'q"
-                      : "aylana zarba"}
+                      : hero === "gunner"
+                        ? "barabanni bo'shatish"
+                        : "aylana zarba"}
                   <br />
                   Shift / K —{" "}
                   {hero === "mage"
                     ? "teleport"
                     : hero === "hunter"
                       ? "orqaga sakrash, bosib turish — tuzoq"
-                      : "dash"}
+                      : hero === "gunner"
+                        ? "sirpanish, bosib turish — tutun bombasi"
+                        : "dash"}
                   <br />
                   Esc — pauza, M — ovoz
                 </>
@@ -1066,6 +1080,8 @@ function ShopWindow({
   const [gold, setGold] = useState(loadGold);
   const [levels, setLevels] = useState(loadShop);
   const [unlocked, setUnlocked] = useState(loadUnlockedHeroes);
+  /** Xarid ochgan yutuq ("YANGI QAHRAMON") */
+  const [award, setAward] = useState<string | null>(null);
   const purchase = (item: ShopItem) => {
     sfx.unlock();
     if (!buy(item.id)) return;
@@ -1075,7 +1091,10 @@ function ShopWindow({
   };
   const purchaseHero = (h: Hero) => {
     sfx.unlock();
+    const had = loadAchievements();
     if (!buyHero(h)) return;
+    const fresh = ACHIEVEMENTS.find((a) => !had.has(a.id) && loadAchievements().has(a.id));
+    if (fresh) setAward(fresh.name);
     sfx.upgrade();
     setGold(loadGold());
     setUnlocked(loadUnlockedHeroes());
@@ -1179,6 +1198,15 @@ function ShopWindow({
               Dastlabki 3 qahramon bepul. 4-qahramondan boshlab har biri oltinga bir marta sotib
               olinadi va doim ochiq qoladi.
             </p>
+            {award && (
+              <p
+                role="status"
+                className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary"
+              >
+                <PixelIcon id="trophy" color="#ffcc33" size={12} />
+                YUTUQ OCHILDI: {award}
+              </p>
+            )}
             <ul aria-label="Qahramonlar" className="grid gap-2 sm:grid-cols-2">
               {HERO_LIST.map((h) => {
                 const open = unlocked.has(h.id);

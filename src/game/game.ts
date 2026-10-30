@@ -315,6 +315,11 @@ const POWER_KEYS = [
   "multishot",
   "pierce",
   "frost",
+  // Mergan kartalari
+  "ammoMax",
+  "reloadTime",
+  "range",
+  "bounce",
 ] as const;
 type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
 function savePowers(p: Player): Powers {
@@ -392,6 +397,8 @@ export class Game {
   /** Shu to'lqinda sovuq nafas tegdimi / to'lqinda Muz ruhi bormidi ("Sovuqqa chidam") */
   private waveChilled = false;
   private waveHasFrost = false;
+  /** "Olti o'q": shu barabandagi o'qlar bilan o'ldirilgan dushmanlar */
+  private drum = { load: -1, kills: 0 };
   banner = { title: "", sub: "", timer: 0 };
   paused = false;
   /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
@@ -741,6 +748,9 @@ export class Game {
     p.y = 190;
     p.vx = p.vy = 0;
     p.chill = 0;
+    // Mergan dunyoga to'la baraban bilan kiradi
+    p.ammo = p.ammoMax;
+    p.reloadT = p.fanLeft = p.hideT = 0;
     this.phase = "play";
     this.newBest = false;
     this.newCh2Best = false;
@@ -1483,6 +1493,7 @@ export class Game {
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
           }
           this.damageTarget(t, p.damage * (b.power ?? 1));
+          if (b.bullet && t instanceof Enemy && t.dead) this.drumKill(b.load ?? 0);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
           if (--b.left <= 0) return false;
@@ -1624,7 +1635,13 @@ export class Game {
             this.bankGold();
             this.saveDailyResult(true);
             this.achieve(
-              this.hero === "mage" ? "winMage" : this.hero === "hunter" ? "winHunter" : "winKnight",
+              this.hero === "mage"
+                ? "winMage"
+                : this.hero === "hunter"
+                  ? "winHunter"
+                  : this.hero === "gunner"
+                    ? "winGunner"
+                    : "winKnight",
             );
             // dunyo yutildi: xaritada keyingi dunyo ochiladi (kunlik sinov ham hisob)
             recordWorldWin(this.chapter, this.hero);
@@ -1682,6 +1699,12 @@ export class Game {
     const all: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
     if (this.boss?.active) all.push(this.boss);
     for (const t of all) if (inside(t)) t.slow = Math.max(t.slow, SMOKE_SLOW);
+  }
+
+  /** Mergan o'qi dushmanni o'ldirdi: bitta barabandan 6 ta — "Olti o'q" yutug'i. */
+  private drumKill(load: number) {
+    if (this.drum.load !== load) this.drum = { load, kills: 0 };
+    if (++this.drum.kills >= 6) this.achieve("drumKills");
   }
 
   /** O'q otildi: to'pponcha og'zida uchqun va kulrang porox tutuni. */

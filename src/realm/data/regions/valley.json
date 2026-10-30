@@ -703,6 +703,14 @@
       "x": 52,
       "y": 89,
       "dialog": "merchant"
+    },
+    {
+      "id": "oldgunner",
+      "name": "QARI MERGAN",
+      "sprite": "oldgunner",
+      "x": 33,
+      "y": 95,
+      "dialog": "oldgunner"
     }
   ],
   "mobZones": [

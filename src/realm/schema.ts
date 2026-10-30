@@ -11,7 +11,7 @@ const Tile = z.enum(TILE_NAMES);
 
 export const MOB_KINDS = ["boar", "rat", "sentinel", "wisp", "warden"] as const;
 export type MobKind = (typeof MOB_KINDS)[number];
-export const NPC_SPRITES = ["elder", "merchant"] as const;
+export const NPC_SPRITES = ["elder", "merchant", "oldgunner"] as const;
 
 const Feature = z.discriminatedUnion("type", [
   z.object({
@@ -234,7 +234,12 @@ const DialogNode = z.object({
 });
 export const DialogsSchema = z.record(
   z.string(),
-  z.object({ start: z.string(), nodes: z.record(z.string(), DialogNode) }),
+  z.object({
+    start: z.string(),
+    /** qahramonga qarab boshqa boshlanish (masalan, Qari Mergan o'z shogirdi bilan boshqacha gaplashadi) */
+    heroStart: z.record(z.string(), z.string()).optional(),
+    nodes: z.record(z.string(), DialogNode),
+  }),
 );
 export type DialogsDef = z.infer<typeof DialogsSchema>;
 export type DialogChoice = z.infer<typeof Choice>;
@@ -264,6 +269,8 @@ export const QuestsSchema = z.record(
     name: z.string(),
     giver: z.string(),
     desc: z.string(),
+    /** bajarilgach kimga qaytish yozuvi (berilmasa — "Oqsoqolga qayt") */
+    back: z.string().optional(),
     steps: z.array(QuestStep).min(1),
     reward: z.object({ gold: int.nonnegative().default(0), items: z.array(Loot).default([]) }),
   }),
@@ -349,6 +356,8 @@ export function parseRealmData(raw: {
   for (const n of region.npcs) if (!dialogs[n.dialog]) errors.push(`NPC ${n.id}: dialog yo'q`);
   for (const [id, d] of Object.entries(dialogs)) {
     if (!d.nodes[d.start]) errors.push(`dialog ${id}: start tuguni yo'q`);
+    for (const [hero, node] of Object.entries(d.heroStart ?? {}))
+      if (!d.nodes[node]) errors.push(`dialog ${id}: ${hero} uchun "${node}" tuguni yo'q`);
     for (const [nid, node] of Object.entries(d.nodes))
       for (const c of node.choices) {
         if (c.next && !d.nodes[c.next]) errors.push(`dialog ${id}.${nid}: "${c.next}" yo'q`);

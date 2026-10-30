@@ -17,7 +17,7 @@ describe("JSON hudud validatsiyasi", () => {
     const d = parseRealmData(raw);
     expect(d.region.name).toBe("BOSHLANG'ICH VODIY");
     expect(d.region.chunks).toEqual({ w: 6, h: 6 });
-    expect(d.region.npcs.map((n) => n.id)).toEqual(["elder", "merchant"]);
+    expect(d.region.npcs.map((n) => n.id)).toEqual(["elder", "merchant", "oldgunner"]);
     // qishloq, o'rmon cheti, ko'prik, xarobalar, g'or
     for (const id of ["village", "stones", "bridge", "ruins", "cave"])
       expect(d.region.landmarks.some((l) => l.id === id)).toBe(true);

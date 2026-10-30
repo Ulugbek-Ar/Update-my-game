@@ -98,6 +98,8 @@ export interface Bolt {
   range?: number;
   /** Devordan yana necha marta qaytadi (Rikoshet) */
   bounce?: number;
+  /** Qaysi baraban (qayta o'qlashlar hisobi) — "Olti o'q" yutug'i uchun */
+  load?: number;
 }
 
 export class Player implements Body {
@@ -174,6 +176,8 @@ export class Player implements Body {
   /** Qayta o'qlash vaqti va qolgan vaqti (0 — o'qlanmayapti) */
   reloadTime = RELOAD_TIME;
   reloadT = 0;
+  /** Nechanchi baraban: har to'liq qayta o'qlashda oshadi */
+  loadId = 0;
   /** O'q uchish masofasi va devordan qaytishlar soni (Rikoshet) */
   range = GUN_RANGE;
   bounce = 0;
@@ -518,6 +522,7 @@ export class Player implements Body {
       bullet: true,
       range: this.range,
       bounce: this.bounce,
+      load: this.loadId,
     });
     this.ammo--;
     // baraban bo'shadi — o'zi qayta o'qlanadi (yelpig'ich tugagach)
@@ -546,6 +551,7 @@ export class Player implements Body {
       if (this.reloadT <= 0) {
         this.reloadT = 0;
         this.ammo = this.ammoMax;
+        this.loadId++;
         sfx.reload();
       }
     }

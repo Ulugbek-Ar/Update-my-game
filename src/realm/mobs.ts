@@ -114,6 +114,8 @@ export type MobEvent =
 export interface MobTarget {
   id: string;
   p: Player;
+  /** Mergan tutunda yashiringan: mob uni ko'rmaydi (nishonni yo'qotadi), lekin tegsa zarar beradi */
+  hidden?: boolean;
 }
 
 export interface MobCtx {
@@ -217,7 +219,7 @@ function nearest(m: RealmMob, ctx: MobCtx) {
   let best: MobTarget | null = null,
     bd = Infinity;
   for (const t of ctx.players) {
-    if (t.p.dead) continue;
+    if (t.p.dead || t.hidden) continue;
     const d = dist(m, t.p);
     if (d < bd) {
       bd = d;
@@ -337,7 +339,9 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
   }
 
   const near = nearest(m, ctx);
-  const tgt = m.target ? ctx.players.find((t) => t.id === m.target && !t.p.dead) : undefined;
+  const tgt = m.target
+    ? ctx.players.find((t) => t.id === m.target && !t.p.dead && !t.hidden)
+    : undefined;
   // leash: uydan juda uzoq yoki nishon qochib ketdi — qaytib ketadi
   const busy = m.state === "windup" || m.state === "attack" || m.state === "cast";
   if (m.target && !busy) {

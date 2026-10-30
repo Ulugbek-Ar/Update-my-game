@@ -241,6 +241,24 @@ export const ITEM_ICONS: Record<string, Icon> = {
       "............",
     ],
   },
+  // Qari Merganning mis gilzasi: ichi bo'sh jez patron, pastida qalin gardish
+  casing: {
+    colors: { k: "#120c08", b: "#d9a441", l: "#ffe2a0", d: "#8a5a2a" },
+    rows: [
+      "............",
+      "....kkkk....",
+      "...kllbbk...",
+      "...klbbbk...",
+      "...klbbbk...",
+      "...klbbbk...",
+      "...klbbbk...",
+      "...klbbbk...",
+      "..kddddddk..",
+      "..kddddddk..",
+      "...kkkkkk...",
+      "............",
+    ],
+  },
   blade: {
     colors: { k: "#0b0a0e", s: "#7a7084", l: "#d9d4e0", g: "#c9a25a", e: "#ff7a2a" },
     rows: [

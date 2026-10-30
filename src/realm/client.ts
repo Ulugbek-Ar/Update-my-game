@@ -395,6 +395,8 @@ export class RealmClient {
       if (inp.consumeAttack()) cmds.push({ type: "attack", down: true });
       if (inp.consumeDash()) cmds.push({ type: "ability", down: true });
     }
+    // Mergan: R (telefonda o'q belgisi) — qayta o'qlash; oynalar ochiq bo'lsa e'tiborsiz
+    if (inp.consumeReload() && !blocked) cmds.push({ type: "reload" });
     const pressed = (t: "attack" | "ability") => cmds.some((c) => c.type === t && c.down);
     // qisqa bosish bitta tick ichida qo'yib yuborilgan bo'lsa ham "qo'yib yuborish" yuboriladi
     const atk = !blocked && inp.attackHeld();
@@ -600,6 +602,15 @@ export class RealmClient {
         return;
       case "heal":
         fx.burst(e.x, e.y, "#a6f08e", 8, 40, 1);
+        return;
+      case "shot":
+        // to'pponcha og'zida uchqun va porox tutuni
+        fx.burst(e.x, e.y, "#ffe2a0", 4, 80, 1);
+        fx.burst(e.x, e.y - 2, "#a8a298", 3, 16, 2);
+        return;
+      case "smoke":
+        fx.burst(e.x, e.y, "#b8b0a4", 18, 70, 3);
+        fx.burst(e.x, e.y, "#6e6860", 10, 40, 3);
         return;
     }
   }

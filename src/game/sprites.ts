@@ -27,7 +27,8 @@ export type SpriteKind =
   | "wisp"
   | "warden"
   | "elder"
-  | "merchant";
+  | "merchant"
+  | "oldgunner";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -194,6 +195,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   elder: ["#0d0907", "#4a3020", "#86603e", "#e8e2d6", "#e8c39e"],
   // Savdogar: siyoh (soqol, etik), to'q ko'k salla, qizil to'n, oltin kamar, teri
   merchant: ["#0d0907", "#25305a", "#b8482a", "#f0c050", "#d9a878"],
+  // Qari Mergan: siyoh, eski jigarrang (shlyapa, etik, miltiq qo'ndog'i), rangi o'chgan plash,
+  // oq soqol-mo'ylov va qosh, yuz va miltiqning mis halqalari
+  oldgunner: ["#0d0b09", "#4a3020", "#7a7564", "#e8e2d6", "#d8a46a"],
 };
 
 /** Integer-only rasterizer: no paths, antialiasing, images, or sprite sheets. */
@@ -3001,8 +3005,64 @@ function merchant(p: Pixels, pose: Pose) {
   p.rect(1, 18 + l, 7 + b, 1, 1);
 }
 
+/** Qari Mergan: eski keng shlyapa, oq mo'ylov va soqol, rangi o'chgan plash, eski miltiqqa suyangan. */
+function oldGunner(p: Pixels, pose: Pose) {
+  const { bob: b, lean: l } = pose;
+  const [hx, hy] = pose.hand;
+  // eski miltiq hassa o'rnida: qo'ndoq yerda, stvol yuqorida, mis halqalar
+  p.line(1, [hx + 2, hy - 12], [hx + 2, 23], 1);
+  p.polygon(2, [
+    [hx + 1, 22],
+    [hx + 3, 22],
+    [hx + 5, 29],
+    [hx, 29],
+  ]);
+  p.rect(5, hx + 2, hy - 8, 1, 1);
+  p.rect(5, hx + 2, hy + 2, 1, 1);
+  // oyoqlar va etik
+  p.line(2, [13, 21 + b], pose.leftFoot, 3);
+  p.line(2, [19, 21 + b], pose.rightFoot, 3);
+  p.rect(2, pose.leftFoot[0] - 2, pose.leftFoot[1] - 1, 5, 2);
+  p.rect(2, pose.rightFoot[0] - 2, pose.rightFoot[1] - 1, 5, 2);
+  // rangi o'chgan uzun plash, ichida jigarrang kamzul
+  p.polygon(3, [
+    [11 + l, 12 + b],
+    [21 + l, 12 + b],
+    [23, 26],
+    [9, 26],
+  ]);
+  p.polygon(2, [
+    [15 + l, 13 + b],
+    [17 + l, 13 + b],
+    [17, 26],
+    [15, 26],
+  ]);
+  p.rect(1, 9, 25, 15, 1);
+  // qo'llar: biri miltiqda, biri belda
+  p.line(3, [11 + l, 14 + b], pose.otherHand, 3);
+  p.line(3, [21 + l, 14 + b], pose.hand, 3);
+  p.rect(5, hx - 1, hy - 1, 3, 2);
+  p.rect(5, pose.otherHand[0] - 1, pose.otherHand[1] - 1, 2, 2);
+  // bosh: yuz, oq qoshlar, osilgan oq mo'ylov va qisqa soqol
+  p.ellipse(5, 16 + l, 9 + b, 3.5, 3.5);
+  p.rect(4, 13 + l, 8 + b, 2, 1);
+  p.rect(4, 17 + l, 8 + b, 2, 1);
+  p.rect(1, 14 + l, 9 + b, 1, 1);
+  p.rect(1, 18 + l, 9 + b, 1, 1);
+  p.rect(4, 13 + l, 11 + b, 7, 1);
+  p.rect(4, 13 + l, 12 + b, 1, 2);
+  p.rect(4, 19 + l, 12 + b, 1, 2);
+  p.rect(4, 15 + l, 12 + b, 3, 2);
+  // eski keng shlyapa: bir chekkasi osilgan, tasmasida oq pat
+  p.rect(2, 9 + l, 5 + b, 14, 2);
+  p.rect(2, 8 + l, 6 + b, 1, 2);
+  p.rect(2, 12 + l, 1 + b, 8, 4);
+  p.rect(3, 12 + l, 4 + b, 8, 1);
+  p.line(4, [19 + l, 3 + b], [22 + l, 1 + b], 1);
+}
+
 /** NPC'lar yiqilmaydi, lekin holat mashinasi to'liq bo'lishi uchun: o'tirib qoladi. */
-function npcFallen(p: Pixels, kind: "elder" | "merchant", frame: number) {
+function npcFallen(p: Pixels, kind: "elder" | "merchant" | "oldgunner", frame: number) {
   const pose: Pose = {
     bob: 2 + frame * 2,
     lean: -frame,
@@ -3013,6 +3073,7 @@ function npcFallen(p: Pixels, kind: "elder" | "merchant", frame: number) {
     otherHand: [8, 22 + frame],
   };
   if (kind === "elder") elder(p, pose);
+  else if (kind === "oldgunner") oldGunner(p, pose);
   else merchant(p, pose);
 }
 
@@ -3022,7 +3083,7 @@ function poseOf(kind: SpriteKind, state: Exclude<AnimState, "death">, frame: num
 }
 
 /** Oyoqli olam personajlari: oyog'i pozadan aniqlanadi (qilich uchi oyoqdan pastga tushsa ham). */
-const POSED: readonly SpriteKind[] = ["sentinel", "warden", "elder", "merchant"];
+const POSED: readonly SpriteKind[] = ["sentinel", "warden", "elder", "merchant", "oldgunner"];
 
 /**
  * Sprite markazidan oyoq tagigacha (chizilgan piksellarda): `renderSprite(.., y)` da y = yer - shu qiymat
@@ -3059,7 +3120,13 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     else wisp(p, wispFrames[state][frame] ?? wispFrames[state][0]!);
     return p.outlined();
   }
-  if (kind === "sentinel" || kind === "warden" || kind === "elder" || kind === "merchant") {
+  if (
+    kind === "sentinel" ||
+    kind === "warden" ||
+    kind === "elder" ||
+    kind === "merchant" ||
+    kind === "oldgunner"
+  ) {
     const f = Math.min(2, Math.max(0, frame));
     if (state === "death") {
       if (kind === "sentinel") sentinelFallen(p, f);
@@ -3072,6 +3139,7 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     if (kind === "sentinel") sentinel(p, pose, atk);
     else if (kind === "warden") warden(p, pose, atk);
     else if (kind === "elder") elder(p, pose);
+    else if (kind === "oldgunner") oldGunner(p, pose);
     else merchant(p, pose);
     return p.outlined();
   }
@@ -3193,6 +3261,7 @@ const REALM_SIZES: Partial<Record<SpriteKind, number>> = {
   warden: 64,
   elder: 32,
   merchant: 32,
+  oldgunner: 32,
 };
 
 export function renderSprite(

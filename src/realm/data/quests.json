@@ -76,5 +76,28 @@
         }
       ]
     }
+  },
+  "powder": {
+    "name": "HO'L POROX",
+    "giver": "oldgunner",
+    "desc": "Botqoq kalamushlari Qari Merganning porox xaltasini kemirib ketdi. Botqoqlikdagi 3 ta kalamushni ovla.",
+    "back": "Qari Merganga qayt",
+    "steps": [
+      {
+        "type": "kill",
+        "mob": "rat",
+        "count": 3,
+        "text": "Botqoq kalamushlarini ovla"
+      }
+    ],
+    "reward": {
+      "gold": 30,
+      "items": [
+        {
+          "item": "casing",
+          "n": 1
+        }
+      ]
+    }
   }
 }

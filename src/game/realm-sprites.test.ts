@@ -4,7 +4,16 @@ import type { AnimState } from "./animation";
 import { RealmMob } from "@/realm/mobs";
 
 const counts: Record<AnimState, number> = { idle: 2, walk: 4, attack: 3, hurt: 1, death: 3 };
-const REALM: SpriteKind[] = ["boar", "rat", "sentinel", "wisp", "warden", "elder", "merchant"];
+const REALM: SpriteKind[] = [
+  "boar",
+  "rat",
+  "sentinel",
+  "wisp",
+  "warden",
+  "elder",
+  "merchant",
+  "oldgunner",
+];
 
 describe("Abadiyat olami spritelari (faqat kod bilan, 5 rang)", () => {
   for (const kind of REALM) {

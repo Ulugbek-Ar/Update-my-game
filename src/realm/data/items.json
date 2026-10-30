@@ -123,5 +123,16 @@
       "maxHp": 1,
       "light": 1
     }
+  },
+  "casing": {
+    "name": "MIS GILZA",
+    "rarity": "rare",
+    "desc": "Qari Merganning omad tumori. Inventarda: tez yurish.",
+    "icon": "casing",
+    "stack": 1,
+    "sell": 12,
+    "bonus": {
+      "speed": 6
+    }
   }
 }

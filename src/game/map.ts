@@ -354,7 +354,7 @@ function forest(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
   }
 }
 
-/** Qahramon belgisi (7x7): ritsar dubulg'asi, sehrgar qalpog'i, ovchi kapyushoni. */
+/** Qahramon belgisi (7x7): ritsar dubulg'asi, sehrgar qalpog'i, ovchi kapyushoni, mergan shlyapasi. */
 export function heroBadge(
   c: CanvasRenderingContext2D,
   hero: Hero,
@@ -368,13 +368,22 @@ export function heroBadge(
       ? ["#68cde4", "#183b62", "#c5e4ec"]
       : hero === "mage"
         ? ["#a3192a", "#2b1c2e", "#d9d4e0"]
-        : ["#4f8a3a", "#1f4a24", "#c9a26b"];
+        : hero === "gunner"
+          ? ["#d9a441", "#8a5a2a", "#ffe2a0"]
+          : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {
     px(c, main, x + 1, y, 5, 7);
     px(c, main, x, y + 2, 7, 4);
     px(c, dark, x + 1, y + 3, 5, 1);
     px(c, hi, x + 3, y, 1, 2);
+  } else if (hero === "gunner") {
+    // keng qirrali shlyapa, mis tasma
+    px(c, main, x, y + 4, 7, 2);
+    px(c, main, x + 1, y + 1, 5, 3);
+    px(c, dark, x + 1, y + 3, 5, 1);
+    px(c, hi, x + 3, y + 3, 1, 1);
+    px(c, dark, x + 3, y + 1, 1, 1);
   } else if (hero === "mage") {
     px(c, dark, x, y + 5, 7, 2);
     px(c, dark, x + 1, y + 3, 5, 2);

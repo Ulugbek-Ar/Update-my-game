@@ -3,6 +3,7 @@ import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
 import { HERO_LIST, type Hero } from "./hero";
 import { isHeroUnlocked, unlockHero } from "./save";
+import { unlockAchievement } from "./achievements";
 
 export const GOLD_KEY = "pixel-rpg-gold";
 export const SHOP_KEY = "pixel-rpg-shop";
@@ -51,7 +52,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: "dash",
     name: "YENGIL ETIK",
-    desc: "Dash/teleport/sakrash qaytishi 10% tez",
+    desc: "Dash/teleport/sakrash/sirpanish qaytishi 10% tez",
     color: "#a6f08e",
     icon: "wind",
     costs: [25, 50, 90],
@@ -166,7 +167,10 @@ export function goldShort(h: Hero, gold = loadGold()) {
   return Math.max(0, heroPrice(h) - gold);
 }
 
-/** Qahramonni sotib olish: bir martalik — oltin yetsa ochiladi, saqlanadi va true qaytadi. */
+/**
+ * Qahramonni sotib olish: bir martalik — oltin yetsa ochiladi, saqlanadi va true qaytadi.
+ * Birinchi xarid "YANGI QAHRAMON" yutug'ini ochadi.
+ */
 export function buyHero(h: Hero) {
   if (isHeroUnlocked(h)) return false;
   const gold = loadGold();
@@ -174,5 +178,6 @@ export function buyHero(h: Hero) {
   if (gold < price) return false;
   saveGold(gold - price);
   unlockHero(h);
+  unlockAchievement("firstHero");
   return true;
 }

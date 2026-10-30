@@ -40,8 +40,8 @@ function winCampaign(hero: "knight" | "mage") {
 }
 
 describe("Yutuqlar ro'yxati", () => {
-  it("has 15 achievements with unique ids and Uzbek names", () => {
-    expect(ACHIEVEMENTS.length).toBe(15);
+  it("has 18 achievements with unique ids and Uzbek names", () => {
+    expect(ACHIEVEMENTS.length).toBe(18);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
     const names = ACHIEVEMENTS.map((a) => a.name);
     for (const n of [
@@ -51,6 +51,9 @@ describe("Yutuqlar ro'yxati", () => {
       "50 KOMBO",
       "SEHRGAR BILAN YUT",
       "XAZINACHI",
+      "MERGAN BILAN YUT",
+      "OLTI O'Q",
+      "YANGI QAHRAMON",
     ])
       expect(names).toContain(n);
   });

@@ -334,5 +334,167 @@
         ]
       }
     }
+  },
+  "oldgunner": {
+    "start": "hello",
+    "heroStart": {
+      "gunner": "pupil"
+    },
+    "nodes": {
+      "hello": {
+        "text": [
+          "Ha, yo'lchi... Meni Qari Mergan deyishadi. Yoshligimda bu vodiyda nishonni mendan yaxshi uradigan topilmasdi.",
+          "Endi ko'zim xira, qo'lim titraydi. Lekin shogirdim bor — Mergan. U hozir sening qal'angda xizmat qiladi."
+        ],
+        "choices": [
+          {
+            "text": "Yordam kerakmi?",
+            "next": "powder-offer",
+            "if": {
+              "quest": "powder",
+              "state": ["none"]
+            }
+          },
+          {
+            "text": "Kalamushlarni ovladim.",
+            "next": "powder-done",
+            "if": {
+              "quest": "powder",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "powder"
+              }
+            ]
+          },
+          {
+            "text": "Kalamushlar haqida...",
+            "next": "powder-wait",
+            "if": {
+              "quest": "powder",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Mergan haqida gapirib ber.",
+            "next": "about"
+          },
+          {
+            "text": "Xayr."
+          }
+        ]
+      },
+      "pupil": {
+        "text": [
+          "O, shogirdim! Qal'adan omon qaytibsan-ku. Barabaning toza, poroxing quruqmi?",
+          "Esingda bo'lsin: oltita o'q — oltita imkon. Birortasini ham bekorga otma."
+        ],
+        "choices": [
+          {
+            "text": "Ustoz, sizga qanday yordam beray?",
+            "next": "powder-offer",
+            "if": {
+              "quest": "powder",
+              "state": ["none"]
+            }
+          },
+          {
+            "text": "Kalamushlarni ovladim, ustoz.",
+            "next": "powder-done",
+            "if": {
+              "quest": "powder",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "powder"
+              }
+            ]
+          },
+          {
+            "text": "Kalamushlar haqida...",
+            "next": "powder-wait",
+            "if": {
+              "quest": "powder",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Ustoz, maslahat bering.",
+            "next": "tips"
+          },
+          {
+            "text": "Xayr, ustoz."
+          }
+        ]
+      },
+      "powder-offer": {
+        "text": [
+          "Janubdagi botqoq kalamushlari porox xaltamni kemirib ketdi. Endi yarmi ho'l...",
+          "Botqoqlikdagi 3 ta kalamushni ovla. Ular tez qochadi — uzoqdan ur."
+        ],
+        "choices": [
+          {
+            "text": "Ovlab kelaman.",
+            "do": [
+              {
+                "startQuest": "powder"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
+        ]
+      },
+      "powder-wait": {
+        "text": [
+          "Kalamushlar janubdagi botqoqlikda, qamishlar orasida yashaydi.",
+          "Urilgan kalamush qochadi — ketidan quvma, yo'lini to'sib ur."
+        ],
+        "choices": [
+          {
+            "text": "Tushundim."
+          }
+        ]
+      },
+      "powder-done": {
+        "text": [
+          "Barakalla! Endi qolgan poroxim omon.",
+          "Ol, bu mis gilza — birinchi o'qimdan qolgan. Yo'lda omad keltiradi."
+        ],
+        "choices": [
+          {
+            "text": "Rahmat."
+          }
+        ]
+      },
+      "about": {
+        "text": [
+          "Mergan — men o'rgatgan eng chaqqon o'qchi. Sirpanib o'tib, barabanga ikki o'q solishni ham mendan o'rgangan.",
+          "Uni qal'angdagi do'kondan topasan. Oltinni ayama — u bunga arziydi."
+        ],
+        "choices": [
+          {
+            "text": "Qiziq.",
+            "next": "hello"
+          }
+        ]
+      },
+      "tips": {
+        "text": [
+          "Baraban bo'shab qolsa — sirpan, ikki o'q o'zi tushadi.",
+          "Tutun ichida dushman seni ko'rmaydi, sen turgan joyga uradi. Lekin unga tegib ketsang — topadi.",
+          "Dushmanlar to'planib kelsa — barabanni bir zumda bo'shat."
+        ],
+        "choices": [
+          {
+            "text": "Rahmat, ustoz.",
+            "next": "pupil"
+          }
+        ]
+      }
+    }
   }
 }

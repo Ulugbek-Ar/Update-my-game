@@ -6,7 +6,7 @@ import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites"
 import type { Effects } from "@/game/effects";
 import { HERO_THEME, hudBarColors } from "@/game/hero";
 import type { RealmPlayer, RealmSim } from "./sim";
-import { tileCenter } from "./sim";
+import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
 import { TILE_COLOR, drawTile } from "./tileArt";
 import { drawItemIcon, RARITY_COLOR, RARITY_NAME } from "./icons";
@@ -419,9 +419,30 @@ export class RealmRenderer {
     // belgining chegarasi mavjudotlar ustida ham ko'rinadi (katta Sardor doirani yopib qo'ymaydi)
     for (const k of sim.marks) if (inView(k.x, k.y, camX, camY, 160)) drawMark(c, k, v.time, true);
 
+    // Mergan tutun bombalari: sekin aylanuvchi kulrang tutun (yashiringan Mergan ustida)
+    for (const sm of sim.smokes) {
+      if (!inView(sm.x, sm.y, camX, camY, 40)) continue;
+      const a = Math.min(1, sm.life * 1.5, (SMOKE_TIME - sm.life) * 6);
+      for (let k = 0; k < 8; k++) {
+        const ang = v.time * 0.6 + k * 0.8;
+        const r = k === 0 ? 0 : SMOKE_R * 0.5;
+        c.fillStyle = `rgba(${k % 2 ? "120,114,106" : "168,160,150"},${0.34 * a})`;
+        c.beginPath();
+        c.arc(sm.x + Math.cos(ang) * r, sm.y + Math.sin(ang) * r * 0.75, SMOKE_R * 0.55, 0, 7);
+        c.fill();
+      }
+    }
+
     // o'q va sharlar
     for (const b of sim.projectiles) {
-      if (b.arrow) {
+      if (b.bullet) {
+        // Mergan o'qi: yaltiroq mis o'q, orqasida qisqa iz
+        const l = Math.hypot(b.vx, b.vy) || 1;
+        for (let k = 2; k <= 5; k++)
+          px(c, k < 4 ? "#d9a441" : "#8a5a2a", b.x - (b.vx / l) * k, b.y - (b.vy / l) * k, 1, 1);
+        px(c, "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
+        px(c, "#ffe2a0", b.x - 1, b.y - 1, 2, 2);
+      } else if (b.arrow) {
         const a = Math.atan2(b.vy, b.vx);
         c.save();
         c.translate(b.x, b.y);
@@ -712,7 +733,7 @@ export class RealmRenderer {
       for (let tx = tx0; tx < tx0 + VIEW_W / TILE + 4; tx++)
         if (sim.tileAt(tx, ty) === TILE_IDS.window) hole(tileCenter(tx), tileCenter(ty) + 6, 22);
     for (const m of sim.mobs) if (m.kind === "wisp" && !m.dead) hole(m.x, m.y, 26);
-    for (const b of sim.projectiles) if (!b.arrow) hole(b.x, b.y, 18);
+    for (const b of sim.projectiles) if (!b.arrow && !b.bullet) hole(b.x, b.y, 18);
     l.globalCompositeOperation = "source-over";
     c.drawImage(this.light, 0, 0);
     // iliq nur: yorug'lik doiralari ustida sarg'ish tus
@@ -754,6 +775,22 @@ export class RealmRenderer {
       30 * sk,
       1,
     );
+    if (p.gunner) {
+      // Mergan: barabandagi o'qlar (otilgani xira) va qayta o'qlash chizig'i — chiziqlar yonida
+      const t = HERO_THEME.gunner;
+      for (let i = 0; i < p.ammoMax; i++) {
+        const full = i < p.ammo;
+        px(c, "#000", 40 + i * 5, 13, 4, 7);
+        px(c, full ? t.glow : "#3a332b", 41 + i * 5, 14, 2, 1);
+        px(c, full ? t.accent : "#2e2820", 41 + i * 5, 15, 2, 3);
+        px(c, full ? t.accentDark : "#241f19", 41 + i * 5, 18, 2, 1);
+      }
+      if (p.reloading) {
+        const rk = Math.max(0, Math.min(1, 1 - p.reloadT / p.reloadTime));
+        px(c, "#000", 40, 21, p.ammoMax * 5 - 1, 2);
+        px(c, t.glow, 41, 21, (p.ammoMax * 5 - 3) * rk, 1);
+      }
+    }
     coin(c, 4, 24);
     text(c, String(me.gold), 13, 30, 6, "#ffcc33");
     // kashfiyotlar chap ustunda: mini-xarita va KUN/TUN bilan to'qnashmaydi (umumiy son ko'rsatilmaydi)
@@ -767,7 +804,7 @@ export class RealmRenderer {
       const step = def.steps[st.step];
       const line =
         st.status === "ready"
-          ? "Oqsoqolga qayt"
+          ? (def.back ?? "Oqsoqolga qayt")
           : step
             ? step.type === "kill"
               ? `${step.text} ${st.progress}/${step.count}`
@@ -1052,7 +1089,7 @@ export class RealmRenderer {
           y += 9;
         });
         if (st.status === "ready") {
-          text(c, "> Oqsoqolga qayting", 30, y + 2, 5, "#ffe14d");
+          text(c, `> ${def.back ?? "Oqsoqolga qayt"}ing`, 30, y + 2, 5, "#ffe14d");
           y += 9;
         }
       }

@@ -36,11 +36,16 @@ export const RESPAWN_TIME = 2.5;
 /** Jangdan tashqarida jon tiklanishi */
 export const REGEN_DELAY = 8;
 export const REGEN_EVERY = 5;
+/** Mergan tutun bombasi (asosiy o'yindagidek): radius va davomiylik */
+export const SMOKE_R = 30;
+export const SMOKE_TIME = 3;
 
 export type RealmCommand =
   | { type: "move"; x: number; y: number }
   | { type: "attack"; down: boolean }
   | { type: "ability"; down: boolean }
+  /** Mergan: qayta o'qlash */
+  | { type: "reload" }
   /** sichqoncha bilan nishonga burilish (yo'nalish vektori) */
   | { type: "aim"; x: number; y: number }
   | { type: "interact" }
@@ -78,7 +83,9 @@ export type RealmEvent =
   | { type: "respawn"; pid: string }
   | { type: "teleport"; pid: string; fromX: number; fromY: number; x: number; y: number }
   | { type: "rocks"; x: number; y: number; r: number }
-  | { type: "heal"; pid: string; x: number; y: number };
+  | { type: "heal"; pid: string; x: number; y: number }
+  | { type: "shot"; x: number; y: number }
+  | { type: "smoke"; x: number; y: number };
 
 export interface Stack {
   item: string;
@@ -152,6 +159,7 @@ class CommandInput implements PlayerInput {
   atkHeld = false;
   dashQ = false;
   dashHeldNow = false;
+  reloadQ = false;
   axis() {
     return { x: this.ax, y: this.ay };
   }
@@ -171,6 +179,11 @@ class CommandInput implements PlayerInput {
   dashHeld() {
     return this.dashHeldNow;
   }
+  consumeReload() {
+    const a = this.reloadQ;
+    this.reloadQ = false;
+    return a;
+  }
 }
 
 /** Dialog/do'kon ochiqligida o'yinchi joyida turadi. */
@@ -180,6 +193,7 @@ const IDLE_INPUT: PlayerInput = {
   consumeDash: () => false,
   attackHeld: () => false,
   dashHeld: () => false,
+  consumeReload: () => false,
 };
 
 export class RealmPlayer {
@@ -276,6 +290,8 @@ export class RealmSim {
   items: GroundItem[] = [];
   projectiles: Projectile[] = [];
   traps: Trap[] = [];
+  /** Mergan tutun bombalari: ichidagi moblar sekinlashadi, Mergan ko'rinmaydi */
+  smokes: { x: number; y: number; life: number }[] = [];
   /** dunyo o'zgarishlari: buzilgan devor, ochilgan zinapoya (plitka indeksi -> plitka) */
   overrides = new Map<number, number>();
   doors = new Set<string>();
@@ -585,7 +601,11 @@ export class RealmSim {
     q.progress = 0;
     if (q.step >= def.steps.length) {
       q.status = "ready";
-      this.events.push({ type: "quest", pid: rp.id, text: `${def.name}: oqsoqolga qayt` });
+      this.events.push({
+        type: "quest",
+        pid: rp.id,
+        text: `${def.name}: ${def.back ?? "oqsoqolga qayt"}`,
+      });
     } else {
       const next = def.steps[q.step]!;
       this.events.push({ type: "quest", pid: rp.id, text: next.text });
@@ -836,7 +856,7 @@ export class RealmSim {
       const npc = this.region.npcs.find((n) => n.id === t.id)!;
       this.onTalk(rp, npc.id);
       const d = this.data.dialogs[npc.dialog];
-      if (d) rp.ui = { kind: "dialog", npc: npc.id, node: d.start };
+      if (d) rp.ui = { kind: "dialog", npc: npc.id, node: d.heroStart?.[rp.hero] ?? d.start };
       return;
     }
     const o = this.object(t.id);
@@ -1053,6 +1073,7 @@ export class RealmSim {
     this.updateMobs(dt);
     this.updateProjectiles(dt);
     this.updateTraps(dt);
+    this.updateSmokes(dt);
     this.updateMarks(dt);
     this.updateItems(dt);
     this.updateZones();
@@ -1074,6 +1095,9 @@ export class RealmSim {
       case "ability":
         if (c.down && !rp.ui) inp.dashQ = true;
         inp.dashHeldNow = c.down && !rp.ui;
+        return;
+      case "reload":
+        if (!rp.ui) inp.reloadQ = true;
         return;
       case "aim": {
         const p = rp.p;
@@ -1153,9 +1177,26 @@ export class RealmSim {
     for (const t of p.traps) this.traps.push({ x: t.x, y: t.y, life: 20 });
     p.traps = [];
     while (this.traps.length > 2 * this.players.size) this.traps.shift();
-    for (const b of p.bolts)
+    for (const b of p.bolts) {
       this.projectiles.push({ ...b, owner: rp.id, life: 1.2, hitSet: new Set() });
+      if (b.bullet) this.events.push({ type: "shot", x: b.x, y: b.y });
+    }
     p.bolts = [];
+    // Mergan: tutun bombasi; tutundan chiqsa yana ko'rinadi
+    for (const s of p.smokes) {
+      this.smokes.push({ x: s.x, y: s.y, life: SMOKE_TIME });
+      this.events.push({ type: "smoke", x: s.x, y: s.y });
+    }
+    p.smokes = [];
+    if (p.smokeDenied) {
+      p.smokeDenied = false;
+      this.events.push({
+        type: "toast",
+        pid: rp.id,
+        text: `Tutun: ${Math.ceil(p.smokeCooldown)}s`,
+      });
+    }
+    if (p.hidden && !this.inSmoke(p)) p.hideT = 0;
 
     // yaqin jang: zarba qutisi moblarga va yoriq devorga
     const box = p.attackBox();
@@ -1211,14 +1252,32 @@ export class RealmSim {
 
   private mobCtx: MobCtx | null = null;
 
+  /** Nuqta biror tutun ichidami (Mergan tutun bombasi) */
+  inSmoke(b: { x: number; y: number }) {
+    return this.smokes.some((s) => dist(s, b) < SMOKE_R);
+  }
+
+  private updateSmokes(dt: number) {
+    for (const s of this.smokes) s.life -= dt;
+    this.smokes = this.smokes.filter((s) => s.life > 0);
+  }
+
   private updateMobs(dt: number) {
-    const targets = [...this.players.values()].map((rp) => ({ id: rp.id, p: rp.p }));
+    const targets = [...this.players.values()].map((rp) => ({
+      id: rp.id,
+      p: rp.p,
+      hidden: rp.p.hidden,
+    }));
     this.mobCtx ??= {
       rng: this.rng,
       dt,
       night: false,
       players: [],
-      move: (b, dx, dy) => this.moveBody(b, dx, dy),
+      // tutun ichidagi mob yarim tezlikda yuradi
+      move: (b, dx, dy) => {
+        const k = this.smokes.length && this.inSmoke(b) ? 0.5 : 1;
+        return this.moveBody(b, dx * k, dy * k);
+      },
       mark: (m) => this.marks.push(m),
       event: (e) => this.events.push(e),
     };
@@ -1254,6 +1313,11 @@ export class RealmSim {
       b.y += b.vy * dt;
       b.life -= dt;
       if (b.life <= 0) return false;
+      // Mergan o'qi o'z masofasini uchib bo'lgach so'nadi
+      if (b.range !== undefined) {
+        b.range -= Math.hypot(b.vx, b.vy) * dt;
+        if (b.range <= 0) return false;
+      }
       const rp = this.players.get(b.owner);
       const tx = Math.floor(b.x / TILE),
         ty = Math.floor(b.y / TILE);
