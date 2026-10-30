@@ -1,4 +1,5 @@
-const MUTE_KEY = "pixel-rpg-muted";
+/** Ovoz o'chirilganmi — qurilmaga xos (ko'chirish kodiga kirmaydi) */
+export const MUTE_KEY = "pixel-rpg-muted";
 
 export type MusicTrack = "normal" | "boss" | "ice" | "queen" | "forest" | "king";
 

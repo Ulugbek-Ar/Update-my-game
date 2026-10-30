@@ -223,6 +223,16 @@
   }
 }
 
+/* Oyna ekran balandligiga sig'adi (dvh'ni bilmaydigan eski WebView'da — vh), ichi aylanadi */
+.fit-screen {
+  max-height: calc(100vh - 1rem);
+}
+@supports (height: 100dvh) {
+  .fit-screen {
+    max-height: calc(100dvh - 1rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
 /* O'yin paytida: ikki marta bosib kattalashtirish va pastga tortib yangilash o'chiq */
 html.in-game,
 html.in-game body {

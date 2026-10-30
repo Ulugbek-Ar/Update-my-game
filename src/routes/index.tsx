@@ -40,6 +40,7 @@ import { RealmClient } from "@/realm/client";
 import { isRealmUnlocked } from "@/game/realmLink";
 import { TouchControls } from "@/components/game/TouchControls";
 import { ControlsSettings, Toggle } from "@/components/game/ControlsSettings";
+import { TransferPanel } from "@/components/game/TransferPanel";
 import { lockGameKeys } from "@/game/input";
 import { actionKey, actionKeys, moveLabel } from "@/game/keys";
 import { useSettings } from "@/components/game/useSettings";
@@ -146,6 +147,18 @@ function Index() {
   const [realmOpen, setRealmOpen] = useState(false);
   /** "Chiqishni xohlaysizmi?" oynasi (ilovada bosh menyuda "Orqaga") */
   const [exitOpen, setExitOpen] = useState(false);
+  /** Progress ko'chirish kodi bilan almashtirilganda oshadi (rekordlar qayta o'qiladi) */
+  const [progressRev, setProgressRev] = useState(0);
+  /** Ko'chirish kodi qo'llangach yoki zaxira qaytarilgach: menyu holati saqlanishdan qayta o'qiladi */
+  const refreshProgress = () => {
+    setHero(loadPlayableHero());
+    setUnlocked(loadUnlockedHeroes());
+    setDaily(loadDaily());
+    setAchCount(loadAchievements().size);
+    setRealmOpen(isRealmUnlocked());
+    setGold(loadGold());
+    setProgressRev((r) => r + 1);
+  };
   /** Menyu ko'rsatmalari uchun: telefon boshqaruvi va qayta belgilangan tugmalar */
   const { touch: ts, keys: kb } = useSettings();
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
@@ -213,7 +226,7 @@ function Index() {
     } catch {
       /* saqlash imkonsiz */
     }
-  }, [hero]);
+  }, [hero, progressRev]);
 
   // Avtomatik yangilanish: yangi versiya chiqsa menyuda darhol, o'yinda esa so'rab yangilanadi.
   useEffect(() => {
@@ -657,7 +670,13 @@ function Index() {
       {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
       {newsOpen && !started && <NewsWindow hero={hero} onClose={() => setNewsOpen(false)} />}
       {settingsOpen && (
-        <SettingsWindow hero={hero} touch={touch} onClose={() => setSettingsOpen(false)} />
+        <SettingsWindow
+          hero={hero}
+          touch={touch}
+          canImport={!started && !realm}
+          onProgressChanged={refreshProgress}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {shopOpen && (
@@ -1076,10 +1095,15 @@ function SettingsWindow({
   onClose,
   hero,
   touch,
+  canImport,
+  onProgressChanged,
 }: {
   onClose: () => void;
   hero: Hero;
   touch: boolean;
+  /** Kodni kiritish faqat bosh menyuda (o'yin yoki olam saqlanishi ustidan yozmasin) */
+  canImport: boolean;
+  onProgressChanged: () => void;
 }) {
   // jonli: boshqaruv bo'limida o'zgargan qiymatlar ustidan yozilmaydi
   const s = useSettings();
@@ -1175,6 +1199,7 @@ function SettingsWindow({
             {slider("music", "Musiqa ovozi", () => sfx.wave())}
             {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
             <Toggle label="Ekran silkinishi" on={s.shake} onChange={(v) => update({ shake: v })} />
+            <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
           </>
         ) : (
           <ControlsSettings hero={hero} touch={touch} />
