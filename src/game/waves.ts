@@ -122,15 +122,24 @@ export interface Upgrade {
   mage?: HeroCard;
   /** Ovchi uchun alohida karta */
   hunter?: HeroCard;
+  /** Mergan uchun alohida karta */
+  gunner?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
 }
 
-/** Tanlangan qahramonga mos karta (Sehrgar va Ovchida alohida nom, ikonka va ta'sir). */
+/** Tanlangan qahramonga mos karta (Sehrgar, Ovchi va Merganda alohida nom, ikonka va ta'sir). */
 export function cardFor(u: Upgrade, p: Player): Upgrade {
-  const alt = p.hero === "mage" ? u.mage : p.hero === "hunter" ? u.hunter : undefined;
+  const alt =
+    p.hero === "mage"
+      ? u.mage
+      : p.hero === "hunter"
+        ? u.hunter
+        : p.hero === "gunner"
+          ? u.gunner
+          : undefined;
   if (!alt) return u;
-  const { mage: _m, hunter: _h, ...base } = u;
+  const { mage: _m, hunter: _h, gunner: _g, ...base } = u;
   return { ...base, ...alt };
 }
 
@@ -162,6 +171,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#7bd14f",
       icon: "hheart",
     },
+    gunner: {
+      name: "QAYSAR YURAK",
+      desc: "+1 yurak va to'liq davolanish",
+      color: "#c8743a",
+      icon: "gheart",
+    },
   },
   {
     id: "blade",
@@ -177,6 +192,7 @@ export const UPGRADES: Upgrade[] = [
       icon: "fireball",
     },
     hunter: { name: "O'TKIR UCH", desc: "O'q zarari +1", color: "#c9a26b", icon: "arrowhead" },
+    gunner: { name: "OG'IR O'Q", desc: "O'q zarari +1", color: "#d9a441", icon: "slug" },
   },
   {
     id: "reach",
@@ -206,6 +222,17 @@ export const UPGRADES: Upgrade[] = [
       },
       ok: (p) => p.boltSpeed < 330,
     },
+    gunner: {
+      name: "UZOQ NISHON",
+      desc: "O'q tezroq va uzoqroq uchadi",
+      color: "#ffe2a0",
+      icon: "sight",
+      apply: (p) => {
+        p.boltSpeed += 60;
+        p.range += 60;
+      },
+      ok: (p) => p.boltSpeed < 420,
+    },
   },
   {
     id: "haste",
@@ -216,6 +243,14 @@ export const UPGRADES: Upgrade[] = [
     ok: (p) => p.attackCd > 0.2,
     mage: { name: "TEZ AFSUN", desc: "Sharlar orasi 25% qisqa", color: "#ffd166", icon: "book" },
     hunter: { name: "TEZ KAMON", desc: "O'qlar orasi 25% qisqa", color: "#e8c37a", icon: "bow" },
+    gunner: {
+      name: "TEZ QO'L",
+      desc: "Qayta o'qlash 30% tez",
+      color: "#e0b04a",
+      icon: "cylinder",
+      apply: (p) => (p.reloadTime *= 0.7),
+      ok: (p) => p.reloadTime > 0.6,
+    },
   },
   {
     id: "wind",
@@ -239,6 +274,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#7bd14f",
       icon: "leaf",
     },
+    gunner: {
+      name: "CHAQQON OYOQ",
+      desc: "Tezlik +15%, sirpanish tezroq qaytadi",
+      color: "#b07a48",
+      icon: "spur",
+    },
   },
   {
     id: "vamp",
@@ -259,6 +300,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#c9a26b",
       icon: "fang",
+    },
+    gunner: {
+      name: "OV PULI",
+      desc: "Har bir necha o'ldirishda +1 yurak",
+      color: "#d9a441",
+      icon: "bounty",
     },
   },
   {
@@ -282,6 +329,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#a6f08e",
       icon: "thorn",
     },
+    gunner: {
+      name: "TEMIR KAMZUL",
+      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      color: "#9a948a",
+      icon: "vest",
+    },
   },
   {
     id: "dash2",
@@ -301,6 +354,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Ketma-ket 2 ta orqaga sakrash",
       color: "#e8c37a",
       icon: "boots",
+    },
+    gunner: {
+      name: "IKKI KARRA SIRPANISH",
+      desc: "Ketma-ket 2 ta sirpanish",
+      color: "#d9a441",
+      icon: "slide2",
     },
   },
   {
@@ -322,6 +381,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Barcha yuraklarni tiklash",
       color: "#7bd14f",
       icon: "herb",
+    },
+    gunner: {
+      name: "DORI SHISHASI",
+      desc: "Barcha yuraklarni tiklash",
+      color: "#c8743a",
+      icon: "flask",
     },
   },
   // ---- Faqat Sehrgar ----
@@ -365,6 +430,31 @@ export const UPGRADES: Upgrade[] = [
     hero: "hunter",
     apply: (p) => (p.poisonTip = true),
     ok: (p) => !p.poisonTip,
+  },
+  // ---- Faqat Mergan ----
+  {
+    id: "drum",
+    name: "KATTA BARABAN",
+    desc: "Barabanda 8 ta o'q",
+    color: "#d9a441",
+    icon: "drum",
+    hero: "gunner",
+    apply: (p) => {
+      p.ammoMax = 8;
+      p.ammo = 8;
+      p.reloadT = 0;
+    },
+    ok: (p) => p.ammoMax < 8,
+  },
+  {
+    id: "ricochet",
+    name: "RIKOSHET",
+    desc: "O'q devordan 1 marta qaytadi",
+    color: "#ffe2a0",
+    icon: "ricochet",
+    hero: "gunner",
+    apply: (p) => (p.bounce = 1),
+    ok: (p) => p.bounce < 1,
   },
 ];
 

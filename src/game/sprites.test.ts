@@ -16,6 +16,7 @@ describe("Code-drawn character frames", () => {
     "knight",
     "mage",
     "hunter",
+    "gunner",
     "skeleton",
     "archer",
     "shield",
@@ -213,6 +214,52 @@ describe("Sehrgar: yangi qiyofa", () => {
   });
 });
 
+describe("Mergan sprite", () => {
+  const count = (frame: Uint8Array, color: number) => frame.filter((c) => c === color).length;
+  const living = (Object.entries(counts) as [AnimState, number][]).filter(([s]) => s !== "death");
+
+  it("13 distinct frames (+ back view) with all five colors in every living frame", () => {
+    expect(PALETTES.gunner).toHaveLength(5);
+    const all: string[] = [];
+    for (const [state, n] of Object.entries(counts) as [AnimState, number][])
+      for (let f = 0; f < n; f++) {
+        const frame = spritePixels("gunner", state, f);
+        expect(Math.max(...frame)).toBeLessThanOrEqual(5);
+        if (state !== "death")
+          for (let c = 1; c <= 5; c++)
+            expect(count(frame, c), `${state}${f}:${c}`).toBeGreaterThan(0);
+        all.push(frame.join(","));
+      }
+    expect(new Set(all).size).toBe(13);
+    for (const [state, n] of living)
+      for (let f = 0; f < n; f++) {
+        const back = spritePixels("gunner", state, f, true).join(",");
+        expect(back).not.toBe(spritePixels("gunner", state, f).join(","));
+        expect(all).not.toContain(back);
+      }
+  });
+
+  it("wears a wide black hat and a red neckerchief, the brass pistol flashes when firing", () => {
+    const idle = spritePixels("gunner", "idle", 0);
+    // keng qirrali shlyapa: 8-qatorda 16 piksel qora (2)
+    expect(idle.slice(8 * 32, 9 * 32).filter((c) => c === 2).length).toBeGreaterThanOrEqual(15);
+    expect(count(idle, 4)).toBeGreaterThanOrEqual(12);
+    const brass = (f: number) => count(spritePixels("gunner", "attack", f), 5);
+    const red = (f: number) => count(spritePixels("gunner", "attack", f), 4);
+    // otish kadrida og'izda mis-qizil uchqun
+    expect(brass(1)).toBeGreaterThan(brass(0));
+    expect(red(1)).toBeGreaterThan(red(0));
+  });
+
+  it("the hat flies off on death", () => {
+    const standing = spritePixels("gunner", "hurt", 0);
+    const fall = spritePixels("gunner", "death", 0);
+    expect(fall.join(",")).not.toBe(standing.join(","));
+    for (let f = 0; f < 3; f++)
+      expect(count(spritePixels("gunner", "death", f), 2)).toBeGreaterThan(20);
+  });
+});
+
 describe("Qalqonli skelet sprite", () => {
   const count = (frame: Uint8Array, color: number) => frame.filter((c) => c === color).length;
 
@@ -234,13 +281,14 @@ describe("Qalqonli skelet sprite", () => {
 
 describe("Upgrade card icons", () => {
   it("draws a 12x12 icon for every upgrade", () => {
-    for (const hero of ["knight", "mage", "hunter"] as const)
+    for (const hero of ["knight", "mage", "hunter", "gunner"] as const)
       for (const u of UPGRADES.map((u) => cardFor(u, new Player(hero)))) {
         const rows = UPGRADE_ICONS[upgradeIcon(u)];
         expect(rows, u.id).toBeDefined();
         expect(rows!.length).toBe(12);
-        // Ovchi ikonkalari yashil-jigarrang palitra harflari bilan (G, D, B, T, W)
-        for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTW]{12}$/);
+        // Ovchi ikonkalari yashil-jigarrang (G, D, B, T, W), Merganniki mis-jez-kulrang
+        // (M, J, Y, P, N, H, E) palitra harflari bilan
+        for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTWMJYPNHE]{12}$/);
       }
   });
 });

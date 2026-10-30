@@ -2869,12 +2869,15 @@ export class Game {
         "#a6f08e",
       );
       this.text("Kuch tanlang: 1 / 2 / 3", ROOM.w / 2, 58, 6, "#e0d6ee");
-      // Sehrgar kartalari qizil-qora, Ovchiniki yashil-jigarrang: ramka va fon binafsha emas
+      // Sehrgar kartalari qizil-qora, Ovchiniki yashil-jigarrang, Merganniki mis-kulrang:
+      // ramka va fon binafsha emas
       const [frame, inner] = this.player.mage
         ? ["#5a2a30", "#1f1520"]
         : this.player.hunter
           ? ["#4a3a22", "#151c11"]
-          : ["#5c4a6e", "#1f1730"];
+          : this.player.gunner
+            ? ["#5a4426", "#18140f"]
+            : ["#5c4a6e", "#1f1730"];
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
         const sel = i === this.choiceIndex;
