@@ -266,6 +266,45 @@ describe("RealmRoom", () => {
   });
 });
 
+describe("Server muhiti (DOM'siz, Cloudflare Worker kabi)", () => {
+  it("all heroes fight mobs, die and respawn without touching the DOM", () => {
+    expect(typeof window).toBe("undefined");
+    const rm = room();
+    const heroes = ["knight", "mage", "hunter", "gunner"] as const;
+    const ids = heroes.map((hero, i) => join(rm, String(1000 + i), 0, { hero }).id);
+    // to'ng'izlar o'tlog'iga
+    for (const id of ids) {
+      const p = rm.sim.players.get(id)!.p;
+      p.x = 112 * 16 + 8;
+      p.y = 64 * 16 + 8;
+    }
+    const r = new Rng(9);
+    for (let t = 0; t < 600; t++) {
+      for (const [i, id] of ids.entries()) {
+        const c = rm.members.get(id)!.conn;
+        if (t % 6 === i)
+          rm.receive(
+            id,
+            c,
+            JSON.stringify({
+              t: "cmd",
+              s: t + 1,
+              c: [
+                { type: "move", x: r.int(3) - 1, y: r.int(3) - 1 },
+                { type: "attack", down: r.next() < 0.5 },
+                { type: "ability", down: r.next() < 0.2 },
+              ],
+            }),
+            t * 0.05,
+          );
+      }
+      rm.step();
+    }
+    expect(rm.sim.tick).toBe(600);
+    expect(rm.size).toBe(4);
+  });
+});
+
 describe("Lobbi", () => {
   it("fills a room up to 8, then opens the next one", () => {
     const r = new Rng(3);
