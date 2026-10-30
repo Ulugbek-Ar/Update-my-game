@@ -245,6 +245,7 @@ function Index() {
       dailyRef.current ? { daily: dailyRef.current } : { world },
     );
     g.touch = touch;
+    g.onSettings = () => setSettingsOpen(true);
     g.onExit = () => {
       setBest(g.best);
       setEndlessBest(g.endlessBest);
@@ -270,6 +271,7 @@ function Index() {
     if (!realm || !canvasRef.current) return;
     const c = new RealmClient(canvasRef.current, hero);
     c.touch = touch;
+    c.onSettings = () => setSettingsOpen(true);
     c.onExit = () => {
       setGold(loadGold());
       setRealmClient(null);

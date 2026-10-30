@@ -59,7 +59,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   left: "Chapga",
   right: "O'ngga",
   attack: "Hujum",
-  dash: "Dash / teleport / sakrash",
+  dash: "Qobiliyat (dash)",
   reload: "Qayta o'qlash (Mergan)",
   pause: "Pauza",
   mute: "Ovoz",

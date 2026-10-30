@@ -1,5 +1,8 @@
 /** Sarguzasht xaritasi: bosh menyudan keyin dunyo tanlanadigan piksel ekran (kod bilan chiziladi). */
 import { ROOM, px } from "./animation";
+import { gameKeysLocked } from "./input";
+import { normKey } from "./keys";
+import { loadSettings } from "./settings";
 import { HEROES, type Hero } from "./hero";
 import { renderSprite } from "./sprites";
 import { MAP_WORLDS, isWorldOpen, worldBest, worldWins, type MapWorld } from "./progress";
@@ -146,15 +149,20 @@ export class WorldMap {
     this.state = new MapState(playable);
   }
 
-  /** Klaviatura: A/D yoki strelkalar — tanlash, Enter/Space — kirish, Esc — orqaga. */
+  /**
+   * Klaviatura: chap/o'ng yurish tugmalari (asl A/D) yoki strelkalar — tanlash, Enter yoki hujum
+   * tugmasi (asl Space) — kirish, Esc yoki pauza tugmasi — orqaga. Tugmalar SOZLAMALAR dan.
+   */
   private onKey = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
-    if (e.repeat) return;
-    if (e.code === "KeyA" || e.code === "ArrowLeft") this.state.move(-1);
-    else if (e.code === "KeyD" || e.code === "ArrowRight") this.state.move(1);
-    else if (e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space") this.enter();
-    else if (e.code === "Escape") this.onBack?.();
+    if (e.repeat || gameKeysLocked()) return;
+    const k = loadSettings().keys;
+    const key = normKey(e.code);
+    if (k.left.includes(key) || key === "ArrowLeft") this.state.move(-1);
+    else if (k.right.includes(key) || key === "ArrowRight") this.state.move(1);
+    else if (key === "Enter" || k.attack.includes(key)) this.enter();
+    else if (key === "Escape" || k.pause.includes(key)) this.onBack?.();
     else return;
     e.preventDefault();
   };

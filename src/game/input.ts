@@ -1,3 +1,14 @@
+import {
+  ACTIONS,
+  DEFAULT_KEYS,
+  effectiveKeys,
+  normKey,
+  type Action,
+  type KeyBinds,
+  type KeyContext,
+} from "./keys";
+import { loadSettings, onSettingsChange } from "./settings";
+
 const GAME_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space", "Escape"];
 
 /** Sozlamalar oynasi ochiq bo'lsa o'yin klaviaturaga javob bermaydi (tugma belgilash ham shu yerda). */
@@ -29,26 +40,52 @@ export class Input {
   private touch = { x: 0, y: 0 };
   private touchAttack = false;
   private touchDash = false;
-  /** J ham hujum tugmasi (ochiq olamda J — topshiriqlar jurnali) */
-  jAttack = true;
+  /** Asosiy o'yin yoki olam: olamda gaplashish/jurnal/xarita tugmalari umumiy amallardan ustun */
+  private ctx: KeyContext = "game";
+  /** SOZLAMALAR -> BOSHQARUV dagi tugmalar */
+  private raw: KeyBinds = DEFAULT_KEYS;
+  /** Shu rejimda ishlaydigan tugmalar */
+  keyBinds: KeyBinds = effectiveKeys(DEFAULT_KEYS, "game");
+  private offSettings: (() => void) | null = null;
+
+  /** Olamda (J — jurnal, M — xarita, E — gaplashish) yoki asosiy o'yinda. */
+  setContext(ctx: KeyContext) {
+    this.ctx = ctx;
+    this.keyBinds = effectiveKeys(this.raw, ctx);
+  }
+  /** Qayta belgilangan tugmalar (sozlama o'zgarsa darhol). */
+  setKeys(k: KeyBinds) {
+    this.raw = k;
+    this.keyBinds = effectiveKeys(k, this.ctx);
+  }
+  private is(a: Action, key: string) {
+    return this.keyBinds[a].includes(key);
+  }
+  private held(a: Action) {
+    return this.keyBinds[a].some((c) => this.keys.has(c));
+  }
 
   private down = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
     if (locks > 0) return;
-    if (GAME_KEYS.includes(e.key) || e.code === "Space") e.preventDefault();
+    const key = normKey(e.code);
+    // belgilangan tugma brauzer amalini qilmaydi (Ctrl/Cmd bilan birga — qiladi: Ctrl+R va h.k.)
+    const bound = ACTIONS.some((a) => this.is(a, key));
+    const combo = (e.ctrlKey || e.metaKey || e.altKey) && !/^(Control|Meta|Alt)$/.test(key);
+    if (GAME_KEYS.includes(e.key) || e.code === "Space" || (bound && !combo)) e.preventDefault();
     if (!e.repeat) {
-      if (e.code === "Space" || (e.code === "KeyJ" && this.jAttack)) this.attackQueued = true;
-      if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyK")
-        this.dashQueued = true;
+      if (this.is("attack", key)) this.attackQueued = true;
+      if (this.is("dash", key)) this.dashQueued = true;
       if (e.code === "Enter" || e.code === "NumpadEnter") this.enterQueued = true;
-      if (e.code === "Escape" || e.code === "KeyP") this.pauseQueued = true;
-      if (e.code === "KeyR") this.reloadQueued = true;
+      if (this.is("pause", key)) this.pauseQueued = true;
+      if (this.is("reload", key)) this.reloadQueued = true;
       this.pressed.add(e.code);
+      this.pressed.add(key);
     }
-    this.keys.add(e.code);
+    this.keys.add(key);
   };
-  private up = (e: KeyboardEvent) => this.keys.delete(e.code);
+  private up = (e: KeyboardEvent) => this.keys.delete(normKey(e.code));
   private blur = () => {
     this.keys.clear();
     this.touch = { x: 0, y: 0 };
@@ -57,23 +94,24 @@ export class Input {
   };
 
   attach() {
+    this.setKeys(loadSettings().keys);
+    this.offSettings?.();
+    this.offSettings = onSettingsChange((st) => this.setKeys(st.keys));
     window.addEventListener("keydown", this.down);
     window.addEventListener("keyup", this.up);
     window.addEventListener("blur", this.blur);
   }
   detach() {
+    this.offSettings?.();
+    this.offSettings = null;
     window.removeEventListener("keydown", this.down);
     window.removeEventListener("keyup", this.up);
     window.removeEventListener("blur", this.blur);
   }
 
   axis() {
-    const k = this.keys;
-    const x =
-      (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) -
-      (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
-    const y =
-      (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) - (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0);
+    const x = (this.held("right") ? 1 : 0) - (this.held("left") ? 1 : 0);
+    const y = (this.held("down") ? 1 : 0) - (this.held("up") ? 1 : 0);
     if (x || y) return { x, y };
     return { x: this.touch.x, y: this.touch.y };
   }
@@ -90,7 +128,7 @@ export class Input {
     this.touchAttack = on;
   }
   attackHeld() {
-    return this.keys.has("Space") || (this.jAttack && this.keys.has("KeyJ")) || this.touchAttack;
+    return this.held("attack") || this.touchAttack;
   }
   pressDash() {
     this.dashQueued = true;
@@ -100,12 +138,7 @@ export class Input {
     this.touchDash = on;
   }
   dashHeld() {
-    return (
-      this.keys.has("ShiftLeft") ||
-      this.keys.has("ShiftRight") ||
-      this.keys.has("KeyK") ||
-      this.touchDash
-    );
+    return this.held("dash") || this.touchDash;
   }
   pressPause() {
     this.pauseQueued = true;
@@ -142,6 +175,12 @@ export class Input {
     const a = this.pauseQueued;
     this.pauseQueued = false;
     return a;
+  }
+  /** Amal tugmasi (qayta belgilangan) shu kadrda bosilganmi — ovoz, gaplashish, jurnal, xarita. */
+  consumeAction(a: Action) {
+    let hit = false;
+    for (const c of this.keyBinds[a]) if (this.pressed.delete(c)) hit = true;
+    return hit;
   }
   /** Berilgan tugmalardan biri shu kadrda bosilganmi. */
   consumeKey(...codes: string[]) {

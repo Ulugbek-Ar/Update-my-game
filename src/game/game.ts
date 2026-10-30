@@ -15,7 +15,8 @@ import {
 } from "./boss";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
-import { loadSettings } from "./settings";
+import { loadSettings, onSettingsChange } from "./settings";
+import { actionKey } from "./keys";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
 import { Effects } from "./effects";
 import { renderUpgradeIcon } from "./sprites";
@@ -404,6 +405,9 @@ export class Game {
   paused = false;
   /** Sensorli qurilma: ko'rsatmalar shunga qarab chiqadi (React belgilaydi). */
   touch = false;
+  /** Pauzadagi SOZLAMALAR tugmasi (React oynani ochadi) */
+  onSettings: (() => void) | null = null;
+  private offSettings: (() => void) | null = null;
   /** "Bosh menyuga qaytish" bosilganda React menyusini ko'rsatadi. */
   onExit: (() => void) | null = null;
   msgTimer = 0;
@@ -902,9 +906,27 @@ export class Game {
   }
 
   // Tugmalar (xona koordinatalarida)
-  private resumeBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 4, w: 160, h: 18 };
-  private restartBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 28, w: 160, h: 18 };
-  private menuBtn = { x: ROOM.w / 2 - 80, y: ROOM.h / 2 + 52, w: 160, h: 18 };
+  /**
+   * Pauza tugmalari: davom etish, SOZLAMALAR (o'ynab turib boshqaruvni moslash), qaytadan
+   * boshlash (kunlik sinovda yo'q) va bosh menyu.
+   */
+  private pauseButtons() {
+    const list: [label: string, act: () => void][] = [
+      [
+        this.touch ? "Davom etish" : `Davom etish: ${actionKey(this.input.keyBinds, "pause")}`,
+        () => this.setPaused(false),
+      ],
+      ["Sozlamalar", () => this.onSettings?.()],
+      // kunlik sinovda qayta boshlash yo'q — bitta urinish
+      ...(this.daily ? [] : [["Qaytadan boshlash", () => this.restart()] as [string, () => void]]),
+      [this.daily ? "Menyuga (urinish tugaydi)" : "Bosh menyuga qaytish", () => this.exitToMenu()],
+    ];
+    return list.map(([label, act], i) => ({
+      label,
+      act,
+      rect: { x: ROOM.w / 2 - 80, y: ROOM.h / 2 - 2 + i * 22, w: 160, h: 18 },
+    }));
+  }
   private chapterBtn = { x: ROOM.w / 2 - 80, y: 150, w: 160, h: 18 };
   private endlessBtn = { x: ROOM.w / 2 - 80, y: 172, w: 160, h: 18 };
   private newRunBtn = { x: ROOM.w / 2 - 80, y: 194, w: 160, h: 18 };
@@ -936,9 +958,9 @@ export class Game {
     const hit = (b: { x: number; y: number; w: number; h: number }) =>
       x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
     if (this.paused) {
-      if (hit(this.resumeBtn)) this.setPaused(false);
-      else if (hit(this.restartBtn) && !this.daily) this.restart();
-      else if (hit(this.menuBtn)) this.exitToMenu();
+      this.pauseButtons()
+        .find((b) => hit(b.rect))
+        ?.act();
       return;
     }
     if (this.phase === "victory") {
@@ -969,6 +991,10 @@ export class Game {
 
   start() {
     this.input.attach();
+    // o'yin ichida SOZLAMALAR o'zgarsa darhol qo'llanadi
+    this.offSettings = onSettingsChange((st) => {
+      this.shakeOn = st.shake;
+    });
     this.canvas.addEventListener("click", this.onClick);
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("blur", this.onBlur);
@@ -978,7 +1004,7 @@ export class Game {
       const dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
       if (this.input.consumePause()) this.setPaused(!this.paused);
-      if (this.input.consumeKey("KeyM")) sfx.toggleMute();
+      if (this.input.consumeAction("mute")) sfx.toggleMute();
       if (this.paused) {
         // pauzada bosilgan hujum/Enter navbatlari tozalanadi
         this.input.clearQueued();
@@ -996,6 +1022,8 @@ export class Game {
   stop() {
     cancelAnimationFrame(this.raf);
     this.input.detach();
+    this.offSettings?.();
+    this.offSettings = null;
     this.canvas.removeEventListener("click", this.onClick);
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("blur", this.onBlur);
@@ -1092,8 +1120,11 @@ export class Game {
     const inp = this.input;
     for (let i = 0; i < n; i++)
       if (inp.consumeKey(`Digit${i + 1}`, `Numpad${i + 1}`)) return this.choose(i);
-    if (inp.consumeKey("ArrowLeft", "KeyA")) this.choiceIndex = (this.choiceIndex + n - 1) % n;
-    if (inp.consumeKey("ArrowRight", "KeyD")) this.choiceIndex = (this.choiceIndex + 1) % n;
+    // chap/o'ng — qayta belgilangan yurish tugmalari yoki strelkalar
+    const left = inp.consumeAction("left") || inp.consumeKey("ArrowLeft");
+    const right = inp.consumeAction("right") || inp.consumeKey("ArrowRight");
+    if (left) this.choiceIndex = (this.choiceIndex + n - 1) % n;
+    if (right) this.choiceIndex = (this.choiceIndex + 1) % n;
     if (inp.consumeEnter() || inp.consumeAttack()) this.choose(this.choiceIndex);
     inp.consumeDash();
   }
@@ -2929,22 +2960,17 @@ export class Game {
     }
     if (this.paused) {
       px(c, "rgba(0,0,0,0.7)", 0, 0, ROOM.w, ROOM.h);
-      this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - 34, 18, "#ffcc33");
+      this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - 40, 18, "#ffcc33");
       this.text(
         this.touch
           ? `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"}`
-          : `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (M)`,
+          : `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (${actionKey(this.input.keyBinds, "mute")})`,
         ROOM.w / 2,
-        ROOM.h / 2 - 14,
+        ROOM.h / 2 - 20,
         6,
         "#b8a8cc",
       );
-      for (const [b, label] of [
-        [this.resumeBtn, this.touch ? "Davom etish" : "Davom etish: Esc"],
-        // kunlik sinovda qayta boshlash yo'q — bitta urinish
-        ...(this.daily ? [] : ([[this.restartBtn, "Qaytadan boshlash"]] as const)),
-        [this.menuBtn, this.daily ? "Menyuga (urinish tugaydi)" : "Bosh menyuga qaytish"],
-      ] as const) {
+      for (const { rect: b, label } of this.pauseButtons()) {
         px(c, "#ffcc33", b.x, b.y, b.w, b.h);
         px(c, "#2a1f38", b.x + 1, b.y + 1, b.w - 2, b.h - 2);
         this.text(label, ROOM.w / 2, b.y + 12, 7, "#e0d6ee");

@@ -8,7 +8,7 @@ import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
 import { HERO_THEME, type Hero } from "@/game/hero";
 import { playableHero } from "@/game/save";
-import { loadSettings } from "@/game/settings";
+import { loadSettings, onSettingsChange } from "@/game/settings";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "@/game/haptics";
 import { addGold, loadGold, saveGold } from "@/game/shop";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
@@ -66,6 +66,9 @@ export class RealmClient {
   fx = new Effects();
   touch = false;
   onExit: (() => void) | null = null;
+  /** Pauzadagi SOZLAMALAR (React oynani ochadi; olam pauzada qoladi) */
+  onSettings: (() => void) | null = null;
+  private offSettings: (() => void) | null = null;
   view: RealmView;
   private renderer = new RealmRenderer();
   private ctx: CanvasRenderingContext2D;
@@ -95,7 +98,8 @@ export class RealmClient {
     hero = this.hero = playableHero(hero);
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
-    this.input.jAttack = false;
+    // olamda J — jurnal, M — xarita, E — gaplashish (qayta belgilansa ham shu amallar ustun)
+    this.input.setContext("realm");
     const settings = loadSettings();
     this.shakeOn = settings.shake;
     sfx.setVolumes(settings.music, settings.sfx);
@@ -129,6 +133,7 @@ export class RealmClient {
         close: () => this.closeTop(),
         panel: (p) => this.setPanel(p),
         exit: () => this.exitToMenu(),
+        settings: () => this.onSettings?.(),
       },
     };
     // asosiy o'yindan kelgan buyumlar (masalan, Iblis shoxi)
@@ -295,6 +300,10 @@ export class RealmClient {
 
   start() {
     this.input.attach();
+    // SOZLAMALAR o'zgarsa darhol: silkinish (ovoz oynaning o'zida qo'llanadi)
+    this.offSettings = onSettingsChange((st) => {
+      this.shakeOn = st.shake;
+    });
     this.canvas.addEventListener("click", this.onClick);
     this.canvas.addEventListener("contextmenu", this.onContext);
     this.canvas.addEventListener("mousemove", this.onMove);
@@ -314,6 +323,8 @@ export class RealmClient {
     cancelAnimationFrame(this.raf);
     this.save();
     this.input.detach();
+    this.offSettings?.();
+    this.offSettings = null;
     this.canvas.removeEventListener("click", this.onClick);
     this.canvas.removeEventListener("contextmenu", this.onContext);
     this.canvas.removeEventListener("mousemove", this.onMove);
@@ -348,12 +359,15 @@ export class RealmClient {
       else this.setPanel(this.view.panel === "none" ? "pause" : this.view.panel);
     }
     if (inp.consumeKey("KeyQ") && this.view.panel === "pause") this.exitToMenu();
-    if (inp.consumeKey("KeyJ")) this.toggleJournal();
-    if (inp.consumeKey("KeyM")) this.toggleMap();
-    if (inp.consumeKey("KeyE", "Enter", "NumpadEnter")) this.confirm();
+    if (inp.consumeAction("journal")) this.toggleJournal();
+    if (inp.consumeAction("map")) this.toggleMap();
+    // Enter doim tasdiqlaydi; gaplashish tugmasi (asl E) qayta belgilanishi mumkin
+    if (inp.consumeAction("interact") || inp.consumeKey("Enter", "NumpadEnter")) this.confirm();
     if (ui?.kind === "dialog" || ui?.kind === "shop") {
-      if (inp.consumeKey("ArrowUp", "KeyW", "ArrowLeft", "KeyA")) this.moveSel(-1);
-      if (inp.consumeKey("ArrowDown", "KeyS", "ArrowRight", "KeyD")) this.moveSel(1);
+      const prev = [inp.consumeAction("up"), inp.consumeAction("left")];
+      const next = [inp.consumeAction("down"), inp.consumeAction("right")];
+      if (prev.some(Boolean) || inp.consumeKey("ArrowUp", "ArrowLeft")) this.moveSel(-1);
+      if (next.some(Boolean) || inp.consumeKey("ArrowDown", "ArrowRight")) this.moveSel(1);
     }
     for (let i = 0; i < 8; i++)
       if (inp.consumeKey(`Digit${i + 1}`)) {

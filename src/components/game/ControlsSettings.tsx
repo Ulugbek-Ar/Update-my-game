@@ -20,6 +20,7 @@ import { ButtonFace, StickView } from "./TouchControls";
 import { BTN_CLASS, heroVars, placedStyle, setTouchSettings } from "./touchUi";
 import { TouchIconSvg } from "./TouchIcon";
 import { LayoutEditor } from "./LayoutEditor";
+import { KeyBindsPanel } from "./KeyBindsPanel";
 import { useSettings } from "./useSettings";
 import { useViewport } from "./useViewport";
 
@@ -286,7 +287,30 @@ export function TouchSettingsPanel({ hero }: { hero: Hero }) {
   );
 }
 
-/** BOSHQARUV bo'limi */
-export function ControlsSettings({ hero }: { hero: Hero; touch: boolean }) {
-  return <TouchSettingsPanel hero={hero} />;
+/** BOSHQARUV bo'limi: telefonda — TELEFON, kompyuterda — KOMPYUTER ochiladi */
+export function ControlsSettings({ hero, touch }: { hero: Hero; touch: boolean }) {
+  const [part, setPart] = useState<"touch" | "keys">(touch ? "touch" : "keys");
+  const tab = (id: "touch" | "keys", label: string) => (
+    <button
+      role="tab"
+      aria-selected={part === id}
+      onClick={() => setPart(id)}
+      className={`flex-1 border-b-2 px-2 py-1 ${pixelFocus} ${
+        part === id
+          ? "border-primary text-primary"
+          : "border-border text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-3">
+      <div role="tablist" aria-label="Boshqaruv turi" className="flex gap-2">
+        {tab("touch", "TELEFON")}
+        {tab("keys", "KOMPYUTER")}
+      </div>
+      {part === "touch" ? <TouchSettingsPanel hero={hero} /> : <KeyBindsPanel />}
+    </div>
+  );
 }

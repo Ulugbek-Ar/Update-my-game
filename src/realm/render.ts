@@ -57,6 +57,8 @@ export interface RealmView {
     close(): void;
     panel(p: Panel): void;
     exit(): void;
+    /** Pauzadagi SOZLAMALAR */
+    settings(): void;
   };
 }
 
@@ -1124,7 +1126,7 @@ export class RealmRenderer {
 
   private pause(c: CanvasRenderingContext2D, v: RealmView) {
     px(c, "rgba(0,0,0,0.6)", 0, 0, VIEW_W, VIEW_H);
-    panel(c, 80, 60, 160, 120, "#5c4a6e");
+    panel(c, 80, 60, 160, 136, "#5c4a6e");
     text(c, "PAUZA", VIEW_W / 2, 82, 8, "#ffe14d", "center");
     const btn = (label: string, y: number, act: () => void) => {
       px(c, "#5c4a6e", 100, y, 120, 18);
@@ -1133,8 +1135,9 @@ export class RealmRenderer {
       v.buttons.push({ x: 100, y, w: 120, h: 18, act });
     };
     btn("DAVOM ETISH", 96, () => v.act.panel("none"));
-    btn("BOSH MENYU", 120, () => v.act.exit());
-    text(c, "Olam saqlanadi", VIEW_W / 2, 160, 5, "#8a7a9a", "center");
+    btn("SOZLAMALAR", 120, () => v.act.settings());
+    btn("BOSH MENYU", 144, () => v.act.exit());
+    text(c, "Olam saqlanadi", VIEW_W / 2, 182, 5, "#8a7a9a", "center");
   }
 }
 
