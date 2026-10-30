@@ -1,0 +1,27 @@
+# Piksel Qal'a — Abadiyat olami multiplayer serveri (Cloudflare Workers + Durable Objects, bepul tarif).
+# Deploy: .github/workflows/server.yml (secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID).
+# Batafsil: docs/server.md
+name = "pikselqala-server"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+workers_dev = true
+# ../src dagi o'yin kodi "@/..." yo'llarini shu tsconfig orqali topadi
+tsconfig = "tsconfig.json"
+
+# Har bir olam xonasi — bitta Durable Object (nomi — xona kodi)
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+# Lobbi — xonalar ro'yxati va kunlik so'rovlar hisobi (bitta nusxa)
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "LobbyDO"
+
+# Bepul tarif faqat SQLite saqlashli Durable Object'larni qo'llaydi
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDO", "LobbyDO"]
+
+[observability]
+enabled = true

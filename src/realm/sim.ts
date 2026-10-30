@@ -447,6 +447,13 @@ export class RealmSim {
     return rp;
   }
 
+  /** O'yinchi xonadan chiqdi: moblar uni quvlashni to'xtatadi, o'qlari so'nadi. */
+  removePlayer(id: string) {
+    if (!this.players.delete(id)) return;
+    for (const m of this.mobs) if (m.target === id) m.target = null;
+    this.projectiles = this.projectiles.filter((b) => b.owner !== id);
+  }
+
   savePlayer(id: string): RealmPlayerSave | null {
     const rp = this.players.get(id);
     if (!rp) return null;
@@ -1081,7 +1088,8 @@ export class RealmSim {
     this.mobs = this.mobs.filter((m) => !(m.dead && m.deathT > 1));
   }
 
-  private command(rp: RealmPlayer, c: RealmCommand) {
+  /** Buyruqni o'yinchiga qo'llash (step ichida; onlayn klient o'z bashorati uchun ham chaqiradi). */
+  command(rp: RealmPlayer, c: RealmCommand) {
     const inp = rp.input;
     switch (c.type) {
       case "move":
@@ -1129,15 +1137,12 @@ export class RealmSim {
     }
   }
 
-  private updatePlayer(rp: RealmPlayer, dt: number) {
+  /**
+   * O'yinchi harakati: eng yaqin tahdid, Player.update va plitka to'qnashuvi.
+   * Onlayn klient o'z qahramonini shu bilan oldindan ko'rsatadi (prediction) — server bilan bir xil kod.
+   */
+  movePlayer(rp: RealmPlayer, dt: number) {
     const p = rp.p;
-    if (p.dead) {
-      p.anim.update(dt);
-      rp.deadT += dt;
-      if (rp.deadT >= RESPAWN_TIME) this.respawn(rp);
-      return;
-    }
-    const hpBefore = p.hp;
     let threat: RealmMob | null = null,
       td = Infinity;
     for (const m of this.mobs) {
@@ -1158,6 +1163,18 @@ export class RealmSim {
     p.x = x0;
     p.y = y0;
     if (dx || dy) this.moveBody(p, dx, dy);
+  }
+
+  private updatePlayer(rp: RealmPlayer, dt: number) {
+    const p = rp.p;
+    if (p.dead) {
+      p.anim.update(dt);
+      rp.deadT += dt;
+      if (rp.deadT >= RESPAWN_TIME) this.respawn(rp);
+      return;
+    }
+    const hpBefore = p.hp;
+    this.movePlayer(rp, dt);
     if (p.teleportFrom) {
       this.events.push({
         type: "teleport",

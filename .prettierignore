@@ -8,3 +8,5 @@ bun.lock
 routeTree.gen.ts
 android
 shots
+server/.wrangler
+server/node_modules

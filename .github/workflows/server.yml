@@ -1,0 +1,93 @@
+name: Server
+
+# Abadiyat olami multiplayer serveri (Cloudflare Workers + Durable Objects) deploy'i:
+# server/ yoki server ishlatadigan o'yin mantig'i (RealmSim) o'zgarganda va qo'lda ishga tushirganda.
+# Kerakli secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (docs/server.md).
+# Secrets bo'lmasa — ogohlantirish, workflow yiqilmaydi (faqat tekshiruv bajariladi).
+on:
+  push:
+    branches: [main]
+    paths:
+      - server/**
+      - src/realm/**
+      - src/game/player.ts
+      - src/game/animation.ts
+      - src/game/hero.ts
+      - src/game/version.ts
+      - .github/workflows/server.yml
+  workflow_dispatch:
+
+concurrency:
+  group: server-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Secrets bormi?
+        id: secrets
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Server::CLOUDFLARE_API_TOKEN yoki CLOUDFLARE_ACCOUNT_ID topilmadi — server deploy qilinmadi. docs/server.md ga qarang."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # server o'yin kodini (src/realm) import qiladi — uning bog'liqliklari (zod) kerak
+      - run: bun install --frozen-lockfile || bun install
+
+      - run: npm ci
+        working-directory: server
+
+      - name: Tekshiruv (tsc va dry-run)
+        working-directory: server
+        run: |
+          npx tsc --noEmit
+          npx wrangler deploy --dry-run --outdir .wrangler/dry
+
+      - name: Deploy
+        id: deploy
+        if: steps.secrets.outputs.ok == 'true'
+        working-directory: server
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler deploy 2>&1 | tee deploy.log
+          URL=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          [ -z "$URL" ] && URL="https://pikselqala-server.ulugbek2647.workers.dev"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Server manzili va /health
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          H=""
+          for i in 1 2 3 4 5 6; do
+            H=$(curl -sf "$URL/health") && break
+            sleep 5
+          done
+          echo "Server: $URL"
+          echo "/health: $H"
+          echo "::notice title=Server::$URL — $H"
+          {
+            echo "### Piksel Qal'a serveri"
+            echo "- Manzil: $URL"
+            echo "- /health: \`${H:-javob yo'q}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
