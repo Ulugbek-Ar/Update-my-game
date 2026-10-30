@@ -1,0 +1,181 @@
+[
+  {
+    "title": "Kunlik sovg'a: har kuni kirib oltin oling, 7-kuni katta sovg'a",
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-gold": "120"
+        }
+      },
+      {
+        "eval": "const d = new Date(); d.setDate(d.getDate() - 1); const p = (n) => String(n).padStart(2, '0'); localStorage.setItem('pixel-rpg-gift', JSON.stringify({ date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, day: 6 }));"
+      },
+      {
+        "click": "SOVG'A"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "7-kun: 50 oltin, tanga yomg'iri va yangi yutuq — Sodiq o'yinchi",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-gold": "120"
+        }
+      },
+      {
+        "eval": "const d = new Date(); d.setDate(d.getDate() - 1); const p = (n) => String(n).padStart(2, '0'); localStorage.setItem('pixel-rpg-gift', JSON.stringify({ date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, day: 6 }));"
+      },
+      {
+        "click": "SOVG'A"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "OLISH: +50 OLTIN"
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Progressni ko'chirish kodi: Sozlamalar → Umumiy → Progressni ko'chirish → KODNI OLISH",
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-gold": "742",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-achievements": [
+            "first",
+            "clean",
+            "combo10",
+            "rich",
+            "boss",
+            "winKnight",
+            "winGunner",
+            "chests",
+            "queen",
+            "firstHero"
+          ],
+          "pixel-rpg-best": "5230",
+          "pixel-rpg-best-gunner": "7480",
+          "pixel-rpg-best-ch2-gunner": "6110",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": ["devil", "queen"]
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "KODNI OLISH"
+      },
+      {
+        "wait": 800
+      },
+      {
+        "eval": "document.querySelector('textarea[readonly]').blur();"
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Boshqa qurilmada: kodni kiriting — oltin, qahramonlar va yutuqlar ko'rib chiqiladi, keyin almashtiriladi",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-gold": "742",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-achievements": [
+            "first",
+            "clean",
+            "combo10",
+            "rich",
+            "boss",
+            "winKnight",
+            "winGunner",
+            "chests",
+            "queen",
+            "firstHero"
+          ],
+          "pixel-rpg-best": "5230",
+          "pixel-rpg-best-gunner": "7480",
+          "pixel-rpg-best-ch2-gunner": "6110",
+          "pixel-rpg-world1-won": "1",
+          "pixel-rpg-world2-won": "1",
+          "pixel-rpg-realm-keys": ["devil", "queen"]
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "KODNI OLISH"
+      },
+      {
+        "wait": 800
+      },
+      {
+        "eval": "window.__code = document.querySelector('textarea[readonly]').value; localStorage.setItem('pixel-rpg-gold', '15'); localStorage.setItem('pixel-rpg-achievements', '[\"first\"]'); localStorage.setItem('pixel-rpg-unlocked-heroes', '[]'); localStorage.setItem('pixel-rpg-best-gunner', '0'); localStorage.setItem('pixel-rpg-best-ch2-gunner', '0');"
+      },
+      {
+        "keys": ["Escape"]
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "KODNI KIRITISH"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "const t = document.querySelector('textarea[placeholder=\"PQ1-...\"]'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, window.__code); t.dispatchEvent(new Event('input', { bubbles: true }));"
+      },
+      {
+        "wait": 200
+      },
+      {
+        "click": "DAVOM ETISH"
+      },
+      {
+        "wait": 600
+      }
+    ]
+  }
+]

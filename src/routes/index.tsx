@@ -1220,22 +1220,20 @@ function SettingsWindow({
       {label}
     </button>
   );
+  // Past telefon ekrani va dvh'ni bilmaydigan eski WebView: oyna ekranga sig'adi (fit-screen),
+  // sarlavha va X aylanmaydi, ichi alohida aylanadi; baribir sig'masa — fon aylanadi (m-auto)
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-2" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Sozlamalar"
-        className={`settings-window flex max-h-[calc(100dvh-1rem)] flex-col gap-4 overflow-y-auto border-4 border-border bg-card p-4 text-[10px] sm:text-xs leading-5 ${
+        className={`settings-window fit-screen m-auto flex flex-col overflow-hidden border-4 border-border bg-card text-[10px] sm:text-xs leading-5 ${
           tab === "controls" ? "w-[min(96vw,760px)]" : "w-[min(92vw,420px)]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* sarlavha aylantirilganda ham ko'rinadi (past telefon ekrani) */}
-        <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap items-center justify-between gap-2 bg-card px-4 pb-2 pt-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-4">
           <h2 className="text-primary">SOZLAMALAR</h2>
           <div role="tablist" aria-label="Sozlamalar bo'limlari" className="flex gap-2">
             {tabBtn("general", "UMUMIY")}
@@ -1249,22 +1247,31 @@ function SettingsWindow({
             </button>
           </div>
         </div>
-        {tab === "general" ? (
-          <>
-            {slider("music", "Musiqa ovozi", () => sfx.wave())}
-            {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
-            <Toggle label="Ekran silkinishi" on={s.shake} onChange={(v) => update({ shake: v })} />
-            <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
-          </>
-        ) : (
-          <ControlsSettings hero={hero} touch={touch} />
-        )}
-        <button
-          onClick={onClose}
-          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
-        >
-          YOPISH
-        </button>
+        <div className="settings-body flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
+          {tab === "general" ? (
+            <>
+              {slider("music", "Musiqa ovozi", () => sfx.wave())}
+              {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
+              <Toggle
+                label="Ekran silkinishi"
+                on={s.shake}
+                onChange={(v) => update({ shake: v })}
+              />
+              <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
+            </>
+          ) : (
+            <ControlsSettings hero={hero} touch={touch} />
+          )}
+          <button
+            onClick={onClose}
+            className={cn(
+              buttonVariants({ variant: "pixel", size: "none" }),
+              "self-start px-4 py-2",
+            )}
+          >
+            YOPISH
+          </button>
+        </div>
       </div>
     </div>
   );

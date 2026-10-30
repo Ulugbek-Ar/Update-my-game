@@ -1,6 +1,6 @@
 /** Bosh menyu foni: qasr, oy va yulduzlar fonida qahramonlar va moblar (kod bilan chiziladi). */
 import { px } from "./animation";
-import { renderSprite, type SpriteKind } from "./sprites";
+import { renderSprite, spriteSize, type SpriteKind } from "./sprites";
 
 /** Sahna o'lchami: 16:9 ekranni to'liq qoplaydi */
 export const SCENE_W = 320;
@@ -31,6 +31,21 @@ const CAST_COMPACT: readonly { x: number; scale: number }[] = [
   { x: 295, scale: 0.62 },
   { x: 309, scale: 0.62 },
 ];
+
+/**
+ * Boyo'g'li o'ng chetdagi Daraxt odamning tojida o'tiradi: qasr minorasi menyu ko'rsatmalari ortida
+ * qolib ketardi (telefonda matn ustiga tushardi). compact — past ekran (figuralar kichik, chetda).
+ */
+const TREANT = CAST.findIndex((a) => a.kind === "treant");
+/** Boyo'g'li markazi Daraxt odam sprite qutisi tepasidan shuncha yuqorida (1x masshtabda) */
+const OWL_ABOVE = 5.4;
+export function owlPerch(compact: boolean) {
+  const a = CAST[TREANT]!;
+  const k = compact ? CAST_COMPACT[TREANT]! : { x: a.x, scale: 1 };
+  const footY = GROUND + 4;
+  const top = a.y - footY - spriteSize("treant") / 2 - OWL_ABOVE;
+  return { x: k.x, y: Math.round(footY + top * k.scale), scale: k.scale };
+}
 
 /** Tasodifiy, lekin har safar bir xil yulduzlar */
 const STARS = Array.from({ length: 60 }, (_, i) => ({
@@ -172,8 +187,16 @@ export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact 
     renderSprite(c, a.kind, "idle", frame, 0, a.y - footY, false, a.flip);
     c.restore();
   });
-  // boyo'g'li qasr minorasida
-  renderSprite(c, "owl", "idle", Math.floor(t * 0.7) % 2, 111, 77, false);
+  // boyo'g'li Daraxt odamning tojida; Daraxt odam nafas olganda (idle 1-kadr) toji
+  // 1 sprite piksel pastga tushadi — boyo'g'li ham birga
+  const owl = owlPerch(compact);
+  const breath = Math.floor(t * 2 + CAST[TREANT]!.phase * 2) % 2;
+  const bob = Math.round((breath * spriteSize("treant") * owl.scale) / 32);
+  c.save();
+  c.translate(owl.x, owl.y + bob);
+  c.scale(owl.scale, owl.scale);
+  renderSprite(c, "owl", "idle", Math.floor(t * 0.7) % 2, 0, 0, false, true);
+  c.restore();
 }
 
 // ---------------- "Yangiliklar" oynasi uchun 2.0 rasmlari (160x120) ----------------
