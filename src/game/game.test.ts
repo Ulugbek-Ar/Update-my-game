@@ -3,7 +3,7 @@ import { Game, BEST_KEY, ENDLESS_BEST_KEY, TUTORIAL_KEY } from "./game";
 import { Enemy } from "./enemy";
 import { BOSS_WAVE, UPGRADES } from "./waves";
 import { sfx } from "./audio";
-import { saveSettings } from "./settings";
+import { DEFAULT_SETTINGS, saveSettings } from "./settings";
 import { CHARGE_TIME, PLAYER_MAX_HP } from "./player";
 import { GOLD_KEY, SHOP_KEY, addGold, loadGold } from "./shop";
 
@@ -161,7 +161,7 @@ describe("Fon musiqasi o'yinda", () => {
 describe("Sozlamalar o'yinda", () => {
   it("reads the screen-shake setting from localStorage", () => {
     expect(makeGame().g.shakeOn).toBe(true);
-    saveSettings({ music: 50, sfx: 50, shake: false });
+    saveSettings({ ...DEFAULT_SETTINGS, music: 50, sfx: 50, shake: false });
     expect(makeGame().g.shakeOn).toBe(false);
   });
 });

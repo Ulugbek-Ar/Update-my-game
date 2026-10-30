@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { SAVE_VERSION, SAVE_VERSION_KEY, migrateSave } from "./save";
 import { loadGold, loadShop } from "./shop";
 import { loadAchievements } from "./achievements";
-import { loadSettings } from "./settings";
+import { DEFAULT_SETTINGS, loadSettings } from "./settings";
 import { loadDaily } from "./daily";
 import { loadHero } from "./hero";
 import { MapState } from "./map";
@@ -54,7 +54,8 @@ describe("Saqlash migratsiyasi (v1.9 -> 2.0)", () => {
     expect([...loadAchievements()].sort()).toEqual(
       ["boss", "first", "queen", "winKnight", "winMage"].sort(),
     );
-    expect(loadSettings()).toEqual({ music: 35, sfx: 70, shake: false });
+    // v2.5: eski sozlamalar saqlanadi, boshqaruv bo'limi asl qiymatlar bilan qo'shiladi
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, music: 35, sfx: 70, shake: false });
     expect(loadDaily("2026-10-28")).toMatchObject({ score: 880, wave: 3 });
     expect(loadHero()).toBe("mage");
   });
