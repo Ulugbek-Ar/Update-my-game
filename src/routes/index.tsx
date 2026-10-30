@@ -1,11 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as RPointerEvent,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import { Game } from "@/game/game";
 import type { World } from "@/game/waves";
 import { MapState, WorldMap, renderMap } from "@/game/map";
@@ -44,6 +38,10 @@ import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
 import { RealmClient } from "@/realm/client";
 import { isRealmUnlocked } from "@/game/realmLink";
+import { TouchControls } from "@/components/game/TouchControls";
+import { ControlsSettings, Toggle } from "@/components/game/ControlsSettings";
+import { lockGameKeys } from "@/game/input";
+import { useSettings } from "@/components/game/useSettings";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -613,12 +611,7 @@ function Index() {
         )}
       </div>
       {started && touch && game && <TouchControls game={game} />}
-      {realm && touch && realmClient && (
-        <>
-          <TouchControls game={realmClient} />
-          <RealmTouchButtons client={realmClient} />
-        </>
-      )}
+      {realm && touch && realmClient && <TouchControls game={realmClient} realm={realmClient} />}
       {touch && portrait && <RotateOverlay />}
       {newVersion && (
         <div className="fixed bottom-2 left-1/2 -translate-x-1/2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-2 border-primary bg-card px-3 py-2 text-[9px] sm:text-[10px] text-foreground max-w-full">
@@ -654,7 +647,9 @@ function Index() {
       {changelogOpen && <ChangelogWindow onClose={() => setChangelogOpen(false)} />}
       {achOpen && <AchievementsWindow onClose={() => setAchOpen(false)} />}
       {newsOpen && !started && <NewsWindow hero={hero} onClose={() => setNewsOpen(false)} />}
-      {settingsOpen && <SettingsWindow onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsWindow hero={hero} touch={touch} onClose={() => setSettingsOpen(false)} />
+      )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {shopOpen && (
         <ShopWindow
@@ -673,196 +668,6 @@ function Index() {
         />
       )}
     </main>
-  );
-}
-
-/** Sensor boshqaruvi ishlatadigan qism: Game yoki olam klienti (RealmClient) */
-type TouchTarget = Pick<Game, "input" | "player" | "hero">;
-
-function TouchControls({ game }: { game: TouchTarget }) {
-  const baseRef = useRef<HTMLDivElement>(null);
-  const pointer = useRef<number | null>(null);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
-
-  const move = (e: RPointerEvent) => {
-    const el = baseRef.current;
-    if (!el || pointer.current !== e.pointerId) return;
-    const r = el.getBoundingClientRect();
-    const R = r.width / 2;
-    let dx = e.clientX - (r.left + R),
-      dy = e.clientY - (r.top + R);
-    const l = Math.hypot(dx, dy);
-    if (l > R) {
-      dx = (dx / l) * R;
-      dy = (dy / l) * R;
-    }
-    setKnob({ x: dx, y: dy });
-    const ax = dx / R,
-      ay = dy / R;
-    game.input.setTouchAxis(Math.abs(ax) > 0.25 ? ax : 0, Math.abs(ay) > 0.25 ? ay : 0);
-  };
-  const end = () => {
-    pointer.current = null;
-    setKnob({ x: 0, y: 0 });
-    game.input.setTouchAxis(0, 0);
-  };
-  // tugmalar tanlangan qahramon rangida (hero.ts: HERO_THEME)
-  const theme = HERO_THEME[game.hero];
-  const vars = {
-    "--hero-border": withAlpha(theme.accent, 0.7),
-    "--hero-text": theme.uiText,
-    "--hero-press": withAlpha(theme.accent, 0.4),
-  } as CSSProperties;
-  const btn =
-    "flex items-center justify-center rounded-full border-2 border-[color:var(--hero-border)] bg-card/60 text-[color:var(--hero-text)] select-none active:bg-[color:var(--hero-press)]";
-
-  return (
-    <div
-      className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
-      style={vars}
-    >
-      <div
-        ref={baseRef}
-        className="touch-stick pointer-events-auto absolute rounded-full border-2 border-foreground/30 bg-card/30"
-        onPointerDown={(e) => {
-          pointer.current = e.pointerId;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          move(e);
-        }}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerCancel={end}
-      >
-        <div
-          className="absolute left-1/2 top-1/2 h-12 w-12 rounded-full bg-foreground/40"
-          style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
-        />
-      </div>
-      <button
-        aria-label={
-          game.player.mage
-            ? "Sehrli shar"
-            : game.player.hunter || game.player.gunner
-              ? "O'q"
-              : "Hujum"
-        }
-        className={`${btn} touch-attack pointer-events-auto absolute text-[10px]`}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.currentTarget.setPointerCapture(e.pointerId);
-          game.input.pressAttack();
-          game.input.setTouchAttack(true);
-        }}
-        onPointerUp={() => game.input.setTouchAttack(false)}
-        onPointerCancel={() => game.input.setTouchAttack(false)}
-      >
-        {game.player.mage ? "SHAR" : game.player.hunter || game.player.gunner ? "O'Q" : "ZARBA"}
-      </button>
-      <button
-        aria-label={
-          game.player.mage
-            ? "Teleport"
-            : game.player.hunter
-              ? "Sakrash"
-              : game.player.gunner
-                ? "Sirpanish"
-                : "Dash"
-        }
-        className={`${btn} touch-dash pointer-events-auto absolute ${game.player.gunner ? "text-[5px]" : game.player.mage || game.player.hunter ? "text-[6px]" : "text-[8px]"}`}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          // Ovchi: bosib turilsa tuzoq qo'yadi, Mergan — tutun bombasi
-          e.currentTarget.setPointerCapture(e.pointerId);
-          game.input.pressDash();
-          game.input.setTouchDash(true);
-        }}
-        onPointerUp={() => game.input.setTouchDash(false)}
-        onPointerCancel={() => game.input.setTouchDash(false)}
-      >
-        {game.player.mage ? (
-          "TELEPORT"
-        ) : game.player.hunter ? (
-          <span className="flex flex-col items-center leading-[9px]">
-            SAKRASH
-            <span className="text-[5px] opacity-80">tursa: tuzoq</span>
-          </span>
-        ) : game.player.gunner ? (
-          <span className="flex flex-col items-center leading-[9px]">
-            <span className="tracking-[-0.08em]">SIRPANISH</span>
-            <span className="opacity-80">tursa: tutun</span>
-          </span>
-        ) : (
-          "DASH"
-        )}
-      </button>
-      {game.player.gunner && (
-        <button
-          aria-label="Qayta o'qlash"
-          className={`${btn} touch-reload pointer-events-auto absolute`}
-          onPointerDown={(e) => {
-            e.preventDefault();
-            game.input.pressReload();
-          }}
-        >
-          <BulletIcon />
-        </button>
-      )}
-      <button
-        aria-label="Pauza"
-        className={`${btn} touch-pause pointer-events-auto absolute text-[10px]`}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          game.input.pressPause();
-        }}
-      >
-        II
-      </button>
-    </div>
-  );
-}
-
-/** Olamdagi qo'shimcha sensor tugmalari: gaplashish, jurnal, xarita. */
-function RealmTouchButtons({ client }: { client: RealmClient }) {
-  const theme = HERO_THEME[client.hero];
-  const vars = {
-    "--hero-border": withAlpha(theme.accent, 0.7),
-    "--hero-text": theme.uiText,
-    "--hero-press": withAlpha(theme.accent, 0.4),
-  } as CSSProperties;
-  const btn =
-    "pointer-events-auto absolute flex items-center justify-center rounded-full border-2 border-[color:var(--hero-border)] bg-card/60 text-[color:var(--hero-text)] select-none active:bg-[color:var(--hero-press)]";
-  const tap = (f: () => void) => (e: RPointerEvent) => {
-    e.preventDefault();
-    sfx.unlock();
-    f();
-  };
-  return (
-    <div
-      className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
-      style={vars}
-    >
-      <button
-        aria-label="Gaplashish"
-        className={`${btn} touch-interact text-[6px]`}
-        onPointerDown={tap(() => client.pressInteract())}
-      >
-        GAPLASH
-      </button>
-      <button
-        aria-label="Topshiriqlar jurnali"
-        className={`${btn} touch-journal text-[5px]`}
-        onPointerDown={tap(() => client.toggleJournal())}
-      >
-        JURNAL
-      </button>
-      <button
-        aria-label="Xarita"
-        className={`${btn} touch-map text-[5px]`}
-        onPointerDown={tap(() => client.toggleMap())}
-      >
-        XARITA
-      </button>
-    </div>
   );
 }
 
@@ -937,24 +742,6 @@ function MenuScene() {
         }}
       />
     </>
-  );
-}
-
-/** O'q belgisi (piksel, 5x9) — Merganning qayta o'qlash tugmasi. */
-function BulletIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 5 9"
-      width={10}
-      height={18}
-      shapeRendering="crispEdges"
-      className="shrink-0"
-    >
-      <path d="M2 0h1v1H2zM1 1h3v2H1z" fill="#ffe2a0" />
-      <path d="M1 3h3v4H1z" fill="currentColor" />
-      <path d="M0 7h5v2H0z" fill="#8a5a2a" />
-    </svg>
   );
 }
 
@@ -1274,14 +1061,42 @@ function ShopWindow({
   );
 }
 
-function SettingsWindow({ onClose }: { onClose: () => void }) {
-  const [s, setS] = useState<Settings>(loadSettings);
+type SettingsTab = "general" | "controls";
+
+function SettingsWindow({
+  onClose,
+  hero,
+  touch,
+}: {
+  onClose: () => void;
+  hero: Hero;
+  touch: boolean;
+}) {
+  // jonli: boshqaruv bo'limida o'zgargan qiymatlar ustidan yozilmaydi
+  const s = useSettings();
+  const [tab, setTab] = useState<SettingsTab>("general");
   const update = (patch: Partial<Settings>) => {
-    const next = { ...s, ...patch };
-    setS(next);
+    const next = { ...loadSettings(), ...patch };
     saveSettings(next);
     sfx.setVolumes(next.music, next.sfx);
   };
+  // o'yin ichidan ochilganda ham o'yin klaviaturaga javob bermaydi; Esc — yopish
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const release = lockGameKeys();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Escape" && !document.querySelector("[data-key-capture]")) {
+        e.preventDefault();
+        closeRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      release();
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
   const slider = (key: "music" | "sfx", label: string, preview: () => void) => (
     <label className="flex flex-col gap-2 text-foreground">
       <span>
@@ -1303,36 +1118,58 @@ function SettingsWindow({ onClose }: { onClose: () => void }) {
       />
     </label>
   );
+  const tabBtn = (id: SettingsTab, label: string) => (
+    <button
+      role="tab"
+      aria-selected={tab === id}
+      onClick={() => setTab(id)}
+      className={`border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
+        tab === id
+          ? "border-primary text-primary"
+          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Sozlamalar"
-        className="flex w-[min(92vw,420px)] flex-col gap-4 border-4 border-border bg-card p-4 text-[10px] sm:text-xs leading-5"
+        className={`settings-window flex max-h-[calc(100dvh-1rem)] flex-col gap-4 overflow-y-auto border-4 border-border bg-card p-4 text-[10px] sm:text-xs leading-5 ${
+          tab === "controls" ? "w-[min(96vw,760px)]" : "w-[min(92vw,420px)]"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary">SOZLAMALAR</h2>
-        {slider("music", "Musiqa ovozi", () => sfx.wave())}
-        {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
-        <div className="flex items-center justify-between gap-3 text-foreground">
-          Ekran silkinishi
-          <button
-            role="switch"
-            aria-checked={s.shake}
-            onClick={() => update({ shake: !s.shake })}
-            className={`min-w-20 border-2 px-3 py-1 ${pixelPress} ${pixelFocus} ${
-              s.shake
-                ? "border-primary bg-primary text-primary-foreground hover:border-primary-hover hover:bg-primary-hover"
-                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-            }`}
-          >
-            {s.shake ? "YOQIQ" : "O'CHIQ"}
-          </button>
+        {/* sarlavha aylantirilganda ham ko'rinadi (past telefon ekrani) */}
+        <div className="sticky -top-4 z-10 -mx-4 -mt-4 flex flex-wrap items-center justify-between gap-2 bg-card px-4 pb-2 pt-4">
+          <h2 className="text-primary">SOZLAMALAR</h2>
+          <div role="tablist" aria-label="Sozlamalar bo'limlari" className="flex gap-2">
+            {tabBtn("general", "UMUMIY")}
+            {tabBtn("controls", "BOSHQARUV")}
+            <button
+              onClick={onClose}
+              aria-label="Yopish"
+              className={`border-2 border-border px-2 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
+            >
+              X
+            </button>
+          </div>
         </div>
+        {tab === "general" ? (
+          <>
+            {slider("music", "Musiqa ovozi", () => sfx.wave())}
+            {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
+            <Toggle label="Ekran silkinishi" on={s.shake} onChange={(v) => update({ shake: v })} />
+          </>
+        ) : (
+          <ControlsSettings hero={hero} touch={touch} />
+        )}
         <button
           onClick={onClose}
           className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}

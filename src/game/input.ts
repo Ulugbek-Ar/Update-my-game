@@ -1,5 +1,21 @@
 const GAME_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Space", "Escape"];
 
+/** Sozlamalar oynasi ochiq bo'lsa o'yin klaviaturaga javob bermaydi (tugma belgilash ham shu yerda). */
+let locks = 0;
+/** Qulflaydi; qaytgan funksiya qulfni bo'shatadi (bir martalik). */
+export function lockGameKeys() {
+  locks++;
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    locks--;
+  };
+}
+export function gameKeysLocked() {
+  return locks > 0;
+}
+
 export class Input {
   private keys = new Set<string>();
   /** Shu kadrda bosilgan tugmalar (kadr oxirida tozalanadi) */
@@ -19,6 +35,7 @@ export class Input {
   private down = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
+    if (locks > 0) return;
     if (GAME_KEYS.includes(e.key) || e.code === "Space") e.preventDefault();
     if (!e.repeat) {
       if (e.code === "Space" || (e.code === "KeyJ" && this.jAttack)) this.attackQueued = true;

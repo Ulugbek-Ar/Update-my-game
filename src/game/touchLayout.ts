@@ -4,6 +4,7 @@
  * Foydalanuvchi joylashtirgan elementlar xavfsiz hudud o'lchamiga nisbatan (0–1) saqlanadi —
  * boshqa o'lchamli telefonda ham shu nisbatda turadi.
  */
+import type { Hero } from "./hero";
 import type { ControlId, ControlPos, TouchSettings } from "./settings";
 
 export interface Insets {
@@ -168,3 +169,88 @@ export function stickAxis(dx: number, dy: number, radius: number, deadzone: numb
     knob: { x: dx, y: dy },
   };
 }
+
+// ---- tugma yozuvlari: tugma ichiga sig'adi, sig'masa — kod bilan chizilgan ikonka ----
+
+/** Shundan kichik shrift o'qilmaydi — o'rniga ikonka */
+export const MIN_LABEL_FONT = 4;
+const MIN_SUB_FONT = 3.5;
+
+/**
+ * Dumaloq tugma ichiga sig'adigan shrift o'lchami (Press Start 2P: har harf eni 1em).
+ * sub — ikkinchi kichik qator (sig'masa tashlab ketiladi). Asosiy yozuv sig'masa — null (ikonka).
+ */
+export function fitLabel(
+  diameter: number,
+  main: string,
+  sub?: string,
+): { main: number; sub: number } | null {
+  const r = (diameter - 4) / 2 - 1.5;
+  const chord = (y: number) => (Math.abs(y) >= r ? 0 : 2 * Math.sqrt(r * r - y * y));
+  const edge = (top: number, h: number) => Math.max(Math.abs(top), Math.abs(top + h));
+  for (let f = Math.min(14, diameter * 0.17); f >= MIN_LABEL_FONT; f -= 0.25) {
+    const fs = sub ? f * 0.72 : 0;
+    if (sub && fs < MIN_SUB_FONT) break;
+    const gap = sub ? f * 0.35 : 0;
+    const top = -(f + gap + fs) / 2;
+    if (main.length * f > chord(edge(top, f))) continue;
+    if (sub && sub.length * fs > chord(edge(top + f + gap, fs))) continue;
+    const round = (v: number) => Math.round(v * 100) / 100;
+    return { main: round(f), sub: round(fs) };
+  }
+  return sub ? fitLabel(diameter, main) : null;
+}
+
+export type TouchIcon =
+  | "sword"
+  | "orb"
+  | "arrow"
+  | "bullet"
+  | "dash"
+  | "teleport"
+  | "jump"
+  | "slide"
+  | "talk"
+  | "book"
+  | "map";
+
+export interface ButtonLabel {
+  text: string;
+  /** Ikkinchi qator (bosib turish) */
+  sub?: string;
+  aria: string;
+  icon: TouchIcon;
+}
+
+/** To'rtala qahramonning hujum va qobiliyat tugmalari */
+export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> {
+  switch (hero) {
+    case "mage":
+      return {
+        attack: { text: "SHAR", aria: "Sehrli shar", icon: "orb" },
+        dash: { text: "TELEPORT", aria: "Teleport", icon: "teleport" },
+      };
+    case "hunter":
+      return {
+        attack: { text: "O'Q", aria: "O'q", icon: "arrow" },
+        dash: { text: "SAKRASH", sub: "tursa: tuzoq", aria: "Sakrash", icon: "jump" },
+      };
+    case "gunner":
+      return {
+        attack: { text: "O'Q", aria: "O'q", icon: "bullet" },
+        dash: { text: "SIRPANISH", sub: "tursa: tutun", aria: "Sirpanish", icon: "slide" },
+      };
+    default:
+      return {
+        attack: { text: "ZARBA", aria: "Hujum", icon: "sword" },
+        dash: { text: "DASH", aria: "Dash", icon: "dash" },
+      };
+  }
+}
+
+/** Olam tugmalari */
+export const REALM_LABELS: Record<"interact" | "journal" | "map", ButtonLabel> = {
+  interact: { text: "GAPLASH", aria: "Gaplashish", icon: "talk" },
+  journal: { text: "JURNAL", aria: "Topshiriqlar jurnali", icon: "book" },
+  map: { text: "XARITA", aria: "Xarita", icon: "map" },
+};

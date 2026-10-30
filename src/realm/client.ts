@@ -9,6 +9,7 @@ import { sfx, type MusicTrack } from "@/game/audio";
 import { HERO_THEME, type Hero } from "@/game/hero";
 import { playableHero } from "@/game/save";
 import { loadSettings } from "@/game/settings";
+import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "@/game/haptics";
 import { addGold, loadGold, saveGold } from "@/game/shop";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
 import { loadRealmData } from "./data";
@@ -155,6 +156,17 @@ export class RealmClient {
     this.view.sel = 0;
   }
 
+  /** Sensor: hozir yurish mumkinmi (oyna va panellar ochiq bo'lmasa) */
+  acceptsMove() {
+    return !this.me.ui && this.view.panel === "none" && !this.me.p.dead;
+  }
+
+  /** Sensor: ekrandagi nuqtada olam tugmasi (inventar, minixarita) bormi */
+  touchUiAt(clientX: number, clientY: number) {
+    const { x, y } = this.toView({ clientX, clientY });
+    return this.view.buttons.some((b) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+  }
+
   /** Sensor tugmalari */
   pressInteract() {
     this.confirm();
@@ -216,7 +228,7 @@ export class RealmClient {
     if (n) this.view.sel = (this.view.sel + d + n) % n;
   }
 
-  private toView(e: MouseEvent) {
+  private toView(e: { clientX: number; clientY: number }) {
     const r = this.canvas.getBoundingClientRect();
     const bx = ((e.clientX - r.left) / r.width) * this.canvas.width;
     const by = ((e.clientY - r.top) / r.height) * this.canvas.height;
@@ -507,6 +519,13 @@ export class RealmClient {
         if (e.pid === PID) {
           fx.addShake(0.15);
           fx.burst(e.x, e.y, "#ff4d6d", 8, 60, 1);
+          // telefonda qisqa tebranish; Sardor (boss) zarbasi — kuchliroq
+          if (this.touch) {
+            const boss = this.sim.mobs.some(
+              (m) => m.kind === "warden" && m.target === this.me.id && !m.dead,
+            );
+            vibrate(boss ? BOSS_BUZZ : HIT_BUZZ);
+          }
         }
         return;
       case "bonk":

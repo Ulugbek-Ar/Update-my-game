@@ -16,6 +16,7 @@ import {
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings } from "./settings";
+import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
 import { Effects } from "./effects";
 import { renderUpgradeIcon } from "./sprites";
 import {
@@ -867,6 +868,11 @@ export class Game {
     return best;
   }
 
+  /** Sensor: hozir joystik bilan yurish mumkinmi (jang paytida, pauzasiz). */
+  acceptsMove() {
+    return this.phase === "play" && this.stage === "fight" && !this.paused && !this.player.dead;
+  }
+
   /** Pauza faqat jang paytida, o'lim animatsiyasi yoki urinish yozuvida emas. */
   private canPause() {
     return this.phase === "play" && !this.player.dead;
@@ -1135,6 +1141,8 @@ export class Game {
 
   private onPlayerHurt() {
     const p = this.player;
+    // telefonda qisqa tebranish; boss jangida — kuchliroq
+    if (this.touch) vibrate(this.boss?.active ? BOSS_BUZZ : HIT_BUZZ);
     this.waveHurt = true;
     this.combo = 0;
     this.comboTimer = 0;
