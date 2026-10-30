@@ -19,7 +19,8 @@ export type AchievementId =
   | "noChill"
   | "twoChapters"
   | "drumKills"
-  | "firstHero";
+  | "firstHero"
+  | "loyal";
 
 export interface Achievement {
   id: AchievementId;
@@ -46,6 +47,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "twoChapters", name: "IKKI DUNYO", desc: "Bitta o'yinda o'lmasdan ikkala dunyoni yut" },
   { id: "drumKills", name: "OLTI O'Q", desc: "Bitta barabandagi o'qlar bilan 6 ta dushmanni yeng" },
   { id: "firstHero", name: "YANGI QAHRAMON", desc: "Do'kondan birinchi qahramonni sotib ol" },
+  { id: "loyal", name: "SODIQ O'YINCHI", desc: "Kunlik sovg'ani 7 kun ketma-ket ol" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

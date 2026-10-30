@@ -36,6 +36,7 @@ import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
 import type { AnimState } from "@/game/animation";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
+import { GIFT_REWARDS, claimGift, giftStatus, type GiftClaim } from "@/game/gift";
 import { RealmClient } from "@/realm/client";
 import { isRealmUnlocked } from "@/game/realmLink";
 import { TouchControls } from "@/components/game/TouchControls";
@@ -147,6 +148,21 @@ function Index() {
   const [realmOpen, setRealmOpen] = useState(false);
   /** "Chiqishni xohlaysizmi?" oynasi (ilovada bosh menyuda "Orqaga") */
   const [exitOpen, setExitOpen] = useState(false);
+  /** KUNLIK SOVG'A oynasi va bugungi sovg'a hali olinmaganmi (menyuda SOVG'A miltillaydi) */
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [giftReady, setGiftReady] = useState(false);
+  /** Oyna shu sanada o'zi ochilgan (yopilsa, shu kuni qayta ochilmaydi — tugma miltillaydi) */
+  const giftShownRef = useRef("");
+  /** Bosh menyu ochilganda: bugungi sovg'a olinmagan bo'lsa oyna kuniga bir marta o'zi ochiladi */
+  const checkGift = () => {
+    const ready = !giftStatus().claimed;
+    setGiftReady(ready);
+    const today = todayKey();
+    if (ready && giftShownRef.current !== today) {
+      giftShownRef.current = today;
+      setGiftOpen(true);
+    }
+  };
   /** Progress ko'chirish kodi bilan almashtirilganda oshadi (rekordlar qayta o'qiladi) */
   const [progressRev, setProgressRev] = useState(0);
   /** Ko'chirish kodi qo'llangach yoki zaxira qaytarilgach: menyu holati saqlanishdan qayta o'qiladi */
@@ -157,6 +173,7 @@ function Index() {
     setAchCount(loadAchievements().size);
     setRealmOpen(isRealmUnlocked());
     setGold(loadGold());
+    setGiftReady(!giftStatus().claimed);
     setProgressRev((r) => r + 1);
   };
   /** Menyu ko'rsatmalari uchun: telefon boshqaruvi va qayta belgilangan tugmalar */
@@ -177,6 +194,7 @@ function Index() {
     setDaily(loadDaily());
     setAchCount(loadAchievements().size);
     setRealmOpen(isRealmUnlocked());
+    checkGift();
     try {
       setGold(loadGold());
       // yangi versiyaga birinchi kirishda — oxirgi yangiliklar bir marta
@@ -192,6 +210,17 @@ function Index() {
     if (IS_APP) return;
     if (document.readyState === "complete") initTelegram();
     else window.addEventListener("load", initTelegram, { once: true });
+  }, []);
+
+  // Ertasi kuni ilova/sahifaga menyuda qaytilsa — yangi sovg'a
+  const checkGiftRef = useRef(checkGift);
+  checkGiftRef.current = checkGift;
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !startedRef.current) checkGiftRef.current();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   // Sensorli qurilmada vertikal holat: "aylantiring" oynasi, o'yin pauzada
@@ -270,6 +299,7 @@ function Index() {
       setDaily(loadDaily());
       setAchCount(loadAchievements().size);
       setRealmOpen(isRealmUnlocked());
+      checkGift();
       setGame(null);
       setStarted(false);
     };
@@ -290,6 +320,7 @@ function Index() {
     c.onSettings = () => setSettingsOpen(true);
     c.onExit = () => {
       setGold(loadGold());
+      checkGift();
       setRealmClient(null);
       setRealm(false);
     };
@@ -317,6 +348,7 @@ function Index() {
         },
       ],
       [settingsOpen, () => setSettingsOpen(false)],
+      [giftOpen, () => setGiftOpen(false)],
       [changelogOpen, () => setChangelogOpen(false)],
       [achOpen, () => setAchOpen(false)],
       [newsOpen && !started, () => setNewsOpen(false)],
@@ -584,6 +616,19 @@ function Index() {
               </p>
             )}
             <div className="flex flex-wrap justify-center gap-x-4">
+              {/* bugungi sovg'a olinmagan bo'lsa — miltillaydi */}
+              <Button
+                variant="pixelLink"
+                onClick={() => setGiftOpen(true)}
+                title={giftReady ? "Bugungi sovg'a sizni kutmoqda" : "Kunlik sovg'a"}
+                className={cn(
+                  "gap-1 text-[9px] sm:text-[10px]",
+                  giftReady && "gift-blink text-primary",
+                )}
+              >
+                <PixelIcon id="gift" color="#ffcc33" size={12} />
+                SOVG'A
+              </Button>
               <Button
                 variant="pixelLink"
                 onClick={() => setSettingsOpen(true)}
@@ -679,6 +724,16 @@ function Index() {
         />
       )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
+      {giftOpen && !newsOpen && !started && !realm && (
+        <GiftWindow
+          onClose={() => setGiftOpen(false)}
+          onClaim={() => {
+            setGiftReady(false);
+            setGold(loadGold());
+            setAchCount(loadAchievements().size);
+          }}
+        />
+      )}
       {shopOpen && (
         <ShopWindow
           tab={shopTab}
@@ -1211,6 +1266,170 @@ function SettingsWindow({
           YOPISH
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Belgi (piksel, 8x7) — olingan kunlik sovg'a kataklarida. */
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 8 7" width={12} height={11} shapeRendering="crispEdges">
+      <path
+        d="M7 0h1v2H7zM6 2h1v1H6zM5 3h1v1H5zM4 4h1v1H4zM3 5h1v2H3zM2 4h1v2H2zM1 3h1v2H1zM0 2h1v2H0z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** 7-kun: ekran bo'ylab tushadigan tangalar (bir marta). */
+function CoinRain() {
+  const coins = Array.from({ length: 28 }, (_, i) => ({
+    left: (i * 37 + 11) % 100,
+    delay: ((i * 53) % 18) / 10,
+    dur: 1.6 + ((i * 29) % 12) / 10,
+    size: 14 + ((i * 17) % 3) * 6,
+  }));
+  return (
+    <div
+      aria-hidden="true"
+      className="coin-rain pointer-events-none fixed inset-0 z-[56] overflow-hidden"
+    >
+      {coins.map((c, i) => (
+        <span
+          key={i}
+          style={{
+            left: `${c.left}%`,
+            animationDelay: `${c.delay}s`,
+            animationDuration: `${c.dur}s`,
+          }}
+        >
+          <PixelIcon id="coin" color="#ffcc33" size={c.size} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** KUNLIK SOVG'A: 7 katak (bugungisi yoritilgan, olinganlari belgili), OLISH — oltin hisobga. */
+function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => void }) {
+  const [status, setStatus] = useState(giftStatus);
+  const [claim, setClaim] = useState<GiftClaim | null>(null);
+  const take = () => {
+    sfx.unlock();
+    const c = claimGift();
+    if (!c) return;
+    sfx.upgrade();
+    setClaim(c);
+    setStatus(giftStatus());
+    onClaim();
+  };
+  const next = (status.day % GIFT_REWARDS.length) + 1;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Kunlik sovg'a"
+        className="fit-screen flex w-[min(94vw,600px)] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-3 sm:p-4 text-[10px] sm:text-xs leading-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="inline-flex items-center gap-2 text-primary">
+            <PixelIcon id="gift" color="#ffcc33" size={16} />
+            KUNLIK SOVG'A
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label="Yopish"
+            className={`border-2 border-border px-2 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
+          >
+            X
+          </button>
+        </div>
+        <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">
+          Har kuni kiring — sovg'a kattalashadi, 7-kuni katta sovg'a. Bir kun o'tkazib yuborilsa —
+          yana 1-kundan.
+        </p>
+        <ol aria-label="7 kunlik sovg'alar" className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+          {GIFT_REWARDS.map((gold, i) => {
+            const day = i + 1;
+            const today = day === status.day;
+            const got = day < status.day || (today && status.claimed);
+            const big = day === GIFT_REWARDS.length;
+            return (
+              <li
+                key={day}
+                aria-current={today ? "date" : undefined}
+                aria-label={`${day}-kun: ${gold} oltin${got ? ", olingan" : today ? ", bugun" : ""}`}
+                className={cn(
+                  "relative flex flex-col items-center gap-1 border-2 px-1 py-2 text-center",
+                  today && !got
+                    ? "gift-today border-primary bg-primary/15 text-primary"
+                    : got
+                      ? "border-primary/60 text-foreground/70"
+                      : "border-border text-muted-foreground",
+                )}
+              >
+                <span className="text-[8px] sm:text-[9px]">{day}-KUN</span>
+                <PixelIcon id={big ? "gift" : "coin"} color="#ffcc33" size={big ? 26 : 20} />
+                <span className={big ? "text-primary" : undefined}>{gold}</span>
+                {got && (
+                  <span className="absolute right-0.5 top-0.5 text-[#a6f08e]">
+                    <CheckIcon />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {claim ? (
+          <div role="status" className="flex flex-col gap-1">
+            <p className="gift-pop inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
+              <PixelIcon id="coin" color="#ffcc33" size={16} />+{claim.gold} OLTIN!
+            </p>
+            {claim.achievement && (
+              <p className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary">
+                <PixelIcon id="trophy" color="#ffcc33" size={12} />
+                YUTUQ OCHILDI: {claim.achievement.name}
+              </p>
+            )}
+            <p className="text-muted-foreground">
+              Ertaga: {GIFT_REWARDS[next - 1]} oltin{" "}
+              <span className="whitespace-nowrap">({next}-kun).</span>
+            </p>
+          </div>
+        ) : status.claimed ? (
+          <p className="text-muted-foreground">
+            Bugungi sovg'a olindi. Ertaga: {GIFT_REWARDS[next - 1]} oltin{" "}
+            <span className="whitespace-nowrap">({next}-kun).</span>
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {!status.claimed && (
+            <button
+              autoFocus
+              onClick={take}
+              className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-4 py-2")}
+            >
+              OLISH: +{status.reward} OLTIN
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className={cn(
+              buttonVariants({ variant: status.claimed ? "pixel" : "pixelOutline", size: "none" }),
+              "px-4 py-2",
+            )}
+          >
+            YOPISH
+          </button>
+        </div>
+      </div>
+      {claim?.day === GIFT_REWARDS.length && <CoinRain />}
     </div>
   );
 }

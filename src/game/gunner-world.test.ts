@@ -90,8 +90,9 @@ describe("Mergan hamma rejimlarda", () => {
     expect(loadAchievements().has("drumKills")).toBe(false);
   });
 
-  it("buying the first hero unlocks YANGI QAHRAMON; 18 achievements in total", () => {
-    expect(ACHIEVEMENTS).toHaveLength(18);
+  it("buying the first hero unlocks YANGI QAHRAMON; 19 achievements in total", () => {
+    // v2.6: + SODIQ O'YINCHI (kunlik sovg'a)
+    expect(ACHIEVEMENTS).toHaveLength(19);
     addGold(GUNNER_PRICE);
     expect(loadAchievements().has("firstHero")).toBe(false);
     expect(buyHero("gunner")).toBe(true);

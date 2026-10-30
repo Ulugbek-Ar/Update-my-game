@@ -278,3 +278,63 @@ html.in-game body {
     transform: rotate(-90deg);
   }
 }
+
+/* Kunlik sovg'a: menyudagi SOVG'A tugmasi miltillaydi, bugungi katak yonib turadi */
+@keyframes gift-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.gift-blink {
+  animation: gift-blink 1s steps(1, end) infinite;
+}
+@keyframes gift-glow {
+  50% {
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+}
+.gift-today {
+  animation: gift-glow 1.2s steps(1, end) infinite;
+}
+@keyframes gift-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.gift-pop {
+  animation: gift-pop 0.35s ease-out both;
+  transform-origin: left center;
+}
+/* 7-kun: tanga yomg'iri */
+@keyframes coin-fall {
+  from {
+    transform: translateY(-40px) rotate(0deg);
+  }
+  to {
+    transform: translateY(110vh) rotate(540deg);
+  }
+}
+.coin-rain > span {
+  position: absolute;
+  top: 0;
+  transform: translateY(-40px);
+  animation: coin-fall 2s linear both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gift-blink,
+  .gift-today,
+  .gift-pop {
+    animation: none;
+  }
+  .coin-rain {
+    display: none;
+  }
+}

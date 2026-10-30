@@ -61,6 +61,13 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   await ctx.addInitScript((s) => {
     for (const [k, v] of Object.entries(s))
       localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+    // "Kunlik sovg'a" oynasi ham sahnani to'smasin: bugungi sovg'a olingan (sahna o'zi bermasa)
+    if (!("pixel-rpg-gift" in s)) {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, "0");
+      const date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      localStorage.setItem("pixel-rpg-gift", JSON.stringify({ date, day: 1 }));
+    }
   }, storage);
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });

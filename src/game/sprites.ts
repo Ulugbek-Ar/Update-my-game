@@ -4008,6 +4008,21 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "...dddddd...",
     "...dddddd...",
   ],
+  // Sovg'a qutisi (kunlik sovg'a): X — quti rangi, qizil lenta
+  gift: [
+    "..rr....rr..",
+    ".r..r..r..r.",
+    "..rrrrrrrr..",
+    "XXXXXrrXXXXX",
+    "XXXXXrrXXXXX",
+    "dddddrrddddd",
+    ".XXXXrrXXXX.",
+    ".XoXXrrXXXX.",
+    ".XoXXrrXXXX.",
+    ".XXXXrrXXXX.",
+    ".XXXXrrXXXX.",
+    ".ddddrrdddd.",
+  ],
   // Oltin tanga
   coin: [
     "....XXXX....",

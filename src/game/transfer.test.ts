@@ -22,6 +22,7 @@ import { loadRealmData } from "@/realm/data";
 import { RealmSim, INV_SLOTS, tileCenter } from "@/realm/sim";
 import type { RealmSave } from "@/realm/client";
 import { REALM_SAVE_KEY } from "./realmLink";
+import { giftStatus } from "./gift";
 
 const data = loadRealmData();
 
@@ -119,6 +120,7 @@ function fullProgress(fog: "none" | "walk" | "full" = "walk"): Record<string, st
     "pixel-rpg-tutorial-done": "1",
     "pixel-rpg-attempt": "57",
     "pixel-rpg-map-world": "3",
+    "pixel-rpg-gift": JSON.stringify({ date: "2026-10-30", day: 4 }),
     "pixel-rpg-save-version": String(SAVE_VERSION),
   };
   for (const h of ["", "-mage", "-hunter", "-gunner"]) {
@@ -188,6 +190,15 @@ describe("Progressni ko'chirish kodi", () => {
     for (const k of Object.keys(DEVICE)) expect(d.keys[k], k).toBeUndefined();
     expect(d.keys[SETTINGS_KEY]).toBeUndefined();
     expect(d.keys["pixel-rpg-gold"]).toBe("1234");
+  });
+
+  it("daily gift streak travels with the code", async () => {
+    fill(fullProgress("none"));
+    const d = await read(await exportCode());
+    localStorage.clear();
+    applyTransfer(d);
+    expect(giftStatus("2026-10-30")).toEqual({ claimed: true, day: 4, reward: 12 });
+    expect(giftStatus("2026-10-31")).toEqual({ claimed: false, day: 5, reward: 15 });
   });
 
   it("rejects a code with any single character changed", async () => {
