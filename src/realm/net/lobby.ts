@@ -12,6 +12,11 @@ import { ROOM_CAP, makeRoomCode, type JoinReply } from "./protocol";
 export const DAILY_LIMIT = 100_000;
 /** Shu chegaradan keyin yangi ulanish qabul qilinmaydi (zaxira — o'ynayotganlar uchun) */
 export const BUSY_AT = 90_000;
+/** Durable Object vaqti: bepul tarifda kuniga 13 000 GB-s (xona 128 MB, tick ishlagan vaqt) */
+export const GBS_LIMIT = 13_000;
+export const GBS_BUSY = 11_700;
+/** Bitta DO xotirasi (GB) — vaqt shu bilan hisoblanadi */
+const DO_GB = 0.128;
 /** Shuncha vaqt hisobot bermagan xona ro'yxatdan o'chadi (xonalar har daqiqada hisobot beradi) */
 export const STALE_MS = 5 * 60_000;
 
@@ -27,6 +32,7 @@ export interface LobbyState {
   rooms: [string, RoomInfo][];
   day: string;
   used: number;
+  gbs?: number;
 }
 
 /** UTC sana: Cloudflare limitlari shu bo'yicha nollanadi */
@@ -36,6 +42,8 @@ export class Lobby {
   rooms = new Map<string, RoomInfo>();
   day = "";
   used = 0;
+  /** bugun xonalar ishlagan vaqt (GB-s) */
+  gbs = 0;
 
   constructor(private rand: () => number = Math.random) {}
 
@@ -44,10 +52,11 @@ export class Lobby {
     this.rooms = new Map(s.rooms);
     this.day = s.day;
     this.used = s.used;
+    this.gbs = s.gbs ?? 0;
   }
 
   save(): LobbyState {
-    return { rooms: [...this.rooms], day: this.day, used: this.used };
+    return { rooms: [...this.rooms], day: this.day, used: this.used, gbs: this.gbs };
   }
 
   /** Taxminiy so'rovlar soni (n — so'rov birligida) */
@@ -56,13 +65,15 @@ export class Lobby {
     if (d !== this.day) {
       this.day = d;
       this.used = 0;
+      this.gbs = 0;
     }
     this.used += n;
   }
 
+  /** Kunlik so'rovlar yoki DO vaqti limitga yaqin */
   busy(now: number) {
     this.count(now, 0);
-    return this.used >= BUSY_AT;
+    return this.used >= BUSY_AT || this.gbs >= GBS_BUSY;
   }
 
   private prune(now: number) {
@@ -73,7 +84,7 @@ export class Lobby {
   assign(now: number, code: string | null): JoinReply {
     // /join so'rovi + lobbi chaqiruvi
     this.count(now, 2);
-    if (this.used >= BUSY_AT) return { ok: false, reason: "busy" };
+    if (this.busy(now)) return { ok: false, reason: "busy" };
     this.prune(now);
     if (code) {
       const r = this.rooms.get(code);
@@ -98,16 +109,17 @@ export class Lobby {
     return { ok: true, code: fresh };
   }
 
-  /** Xona hisoboti: haqiqiy o'yinchilar soni va shu orada sarflangan so'rovlar. */
-  report(now: number, code: string, n: number, used: number) {
+  /** Xona hisoboti: haqiqiy o'yinchilar soni, shu orada sarflangan so'rovlar va ishlagan soniyalar. */
+  report(now: number, code: string, n: number, used: number, secs = 0) {
     this.count(now, used + 1);
+    this.gbs += secs * DO_GB;
     const r = this.rooms.get(code);
     if (n <= 0) this.rooms.delete(code);
     else if (r) {
       r.n = n;
       r.at = now;
     } else this.rooms.set(code, { n, pub: false, at: now });
-    return { busy: this.used >= BUSY_AT };
+    return { busy: this.busy(now) };
   }
 
   stats(now: number) {
@@ -115,6 +127,13 @@ export class Lobby {
     this.count(now, 0);
     let online = 0;
     for (const r of this.rooms.values()) online += r.n;
-    return { rooms: this.rooms.size, online, used: Math.round(this.used), limit: DAILY_LIMIT };
+    return {
+      rooms: this.rooms.size,
+      online,
+      used: Math.round(this.used),
+      limit: DAILY_LIMIT,
+      gbs: Math.round(this.gbs),
+      gbsLimit: GBS_LIMIT,
+    };
   }
 }

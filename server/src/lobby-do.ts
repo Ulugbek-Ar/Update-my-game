@@ -29,8 +29,8 @@ export class LobbyDO extends DurableObject<Env> {
   }
 
   /** Xona hisoboti (o'yinchi kirdi/chiqdi va har daqiqada) */
-  report(code: string, n: number, used: number): { busy: boolean } {
-    const r = this.lobby.report(Date.now(), code, n, used);
+  report(code: string, n: number, used: number, secs = 0): { busy: boolean } {
+    const r = this.lobby.report(Date.now(), code, n, used, secs);
     this.persist();
     return r;
   }

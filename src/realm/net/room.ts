@@ -262,25 +262,26 @@ export class RealmRoom {
     };
   }
 
-  /** Do'st yoniga: atrofdagi bo'sh joy */
+  /** Do'st yoniga: avval yon tomonlar (ismlar ustma-ust tushmasin), keyin atrofdagi bo'sh joy */
   private placeNear(rp: RealmPlayer, host: RealmPlayer | undefined) {
     if (!host) return;
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 8) * Math.PI * 2,
-        r = 36 + Math.floor(i / 8) * 18;
-      const x = host.p.x + Math.cos(a) * r,
-        y = host.p.y + Math.sin(a) * r;
-      if (this.sim.boxBlocked(x, y, rp.p.size)) continue;
-      // boshqa o'yinchi turgan joyga emas (ismlar ustma-ust tushmasin)
-      let taken = false;
-      for (const o of this.sim.players.values())
-        if (o !== rp && Math.abs(o.p.x - x) < 28 && Math.abs(o.p.y - y) < 20) taken = true;
-      if (taken) continue;
-      rp.p.x = rp.px = x;
-      rp.p.y = rp.py = y;
-      this.sim.explore(rp);
-      return;
-    }
+    // sakkizdan bir aylana: o'ng, chap, pastki yonlar, past, yuqori yonlar, yuqori
+    const dirs = [0, 4, 1, 3, 2, 7, 5, 6];
+    for (const r of [48, 72, 96])
+      for (const d of dirs) {
+        const a = (d / 8) * Math.PI * 2;
+        const x = host.p.x + Math.cos(a) * r,
+          y = host.p.y + Math.sin(a) * r;
+        if (this.sim.boxBlocked(x, y, rp.p.size)) continue;
+        let taken = false;
+        for (const o of this.sim.players.values())
+          if (o !== rp && Math.abs(o.p.x - x) < 44 && Math.abs(o.p.y - y) < 24) taken = true;
+        if (taken) continue;
+        rp.p.x = rp.px = x;
+        rp.p.y = rp.py = y;
+        this.sim.explore(rp);
+        return;
+      }
   }
 
   /** Tezlik cheklovi (token bucket). false — xabar tashlandi. */

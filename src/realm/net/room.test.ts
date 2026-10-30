@@ -246,7 +246,11 @@ describe("RealmRoom", () => {
     host.x += 200;
     const b = join(rm, "2222", 0, { near: true });
     const g = rm.sim.players.get(b.id)!.p;
-    expect(Math.hypot(g.x - host.x, g.y - host.y)).toBeLessThan(60);
+    expect(Math.hypot(g.x - host.x, g.y - host.y)).toBeLessThan(80);
+    // ikkinchisi birinchisining ustiga emas
+    const c = join(rm, "3333", 0, { near: true });
+    const h = rm.sim.players.get(c.id)!.p;
+    expect(Math.abs(h.x - g.x) >= 44 || Math.abs(h.y - g.y) >= 24).toBe(true);
   });
 
   it("acks command batches so the client can reconcile its prediction", () => {
@@ -300,5 +304,16 @@ describe("Lobbi", () => {
     const next = Date.UTC(2026, 9, 31, 0, 1);
     expect(lb.assign(next, null).ok).toBe(true);
     expect(lb.stats(next).used).toBeLessThan(10);
+  });
+
+  it("also refuses new connections when room run time nears the free Durable Object limit", () => {
+    const lb = new Lobby();
+    const day = Date.UTC(2026, 9, 30, 12);
+    // 128 MB xona ~25 soat ishladi
+    lb.report(day, "ABCDEF", 3, 0, 25 * 3600);
+    expect(lb.stats(day).gbs).toBeGreaterThan(11_000);
+    expect(lb.assign(day, null).ok).toBe(true);
+    lb.report(day, "ABCDEF", 3, 0, 3 * 3600);
+    expect(lb.assign(day, null)).toEqual({ ok: false, reason: "busy" });
   });
 });

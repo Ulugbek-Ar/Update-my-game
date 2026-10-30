@@ -313,7 +313,7 @@ describe("Do'st bilan o'ynash", () => {
     });
     const hp = host.me.p,
       fp = friend.me.p;
-    expect(Math.hypot(hp.x - fp.x, hp.y - fp.y)).toBeLessThan(60);
+    expect(Math.hypot(hp.x - fp.x, hp.y - fp.y)).toBeLessThan(80);
     expect(friend.view.net.n).toBe(2);
     host.toggleChat();
     expect(host.view.chatOpen).toBe(true);

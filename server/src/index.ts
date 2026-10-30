@@ -53,7 +53,12 @@ export default {
           protocol: NET_VERSION,
           rooms: s.rooms,
           online: s.online,
-          today: { requests: s.used, limit: s.limit },
+          today: {
+            requests: s.used,
+            limit: s.limit,
+            durationGBs: s.gbs,
+            durationLimit: s.gbsLimit,
+          },
         });
       }
       case "/join": {

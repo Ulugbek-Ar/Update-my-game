@@ -48,6 +48,9 @@ export class RoomDO extends DurableObject<Env> {
   private saveAt = 0;
   /** lobbiga hali aytilmagan so'rovlar (yangi ulanishlar) */
   private used = 0;
+  /** tick ishlagan vaqt (DO vaqti limiti uchun) */
+  private activeMs = 0;
+  private activeAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -113,7 +116,7 @@ export class RoomDO extends DurableObject<Env> {
 
   private ensureTick() {
     if (this.timer || this.room.size === 0) return;
-    this.last = Date.now();
+    this.last = this.activeAt = Date.now();
     this.acc = 0;
     this.timer = setInterval(() => this.loop(), TICK_MS);
   }
@@ -136,7 +139,16 @@ export class RoomDO extends DurableObject<Env> {
     }
   }
 
+  /** Tick ishlagan vaqtni yig'ish */
+  private active() {
+    if (!this.timer) return;
+    const now = Date.now();
+    this.activeMs += now - this.activeAt;
+    this.activeAt = now;
+  }
+
   private stop() {
+    this.active();
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     void this.persist();
@@ -150,12 +162,14 @@ export class RoomDO extends DurableObject<Env> {
   private async report() {
     if (!this.code) return;
     this.reportAt = Date.now();
+    this.active();
     const used = this.used + this.room.inbound / 20;
-    this.used = 0;
+    const secs = this.activeMs / 1000;
+    this.used = this.activeMs = 0;
     this.room.inbound = 0;
     try {
       const lobby = this.env.LOBBY.get(this.env.LOBBY.idFromName("lobby"));
-      const r = await lobby.report(this.code, this.room.size, used);
+      const r = await lobby.report(this.code, this.room.size, used, secs);
       this.room.busy = r.busy;
     } catch (e) {
       console.error("lobbi hisoboti", e);

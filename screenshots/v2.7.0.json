@@ -1,0 +1,128 @@
+[
+  {
+    "title": "Abadiyat olami endi onlayn: boshqa o'yinchilar ismi va jon chizig'i bilan, o'ng yuqorida ONLAYN belgisi va ping",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{\"hero\": \"mage\", \"tag\": \"1357\", \"say\": 0}, {\"hero\": \"hunter\", \"tag\": \"2468\", \"walk\": true}]).then(() => { const r=window.__realm,s=r.sim,p=r.me.p,ox=p.x,oy=p.y; for (const [x,y] of [[30,96],[46,75],[46,88],[60,96],[75,95],[90,97]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=ox; p.y=oy; r.view.panel='none'; });"
+      },
+      {
+        "wait": 2600
+      }
+    ]
+  },
+  {
+    "title": "Do'stni chaqirish: pauza menyusida xona kodi va havola — Telegram'da yuboring yoki nusxalang",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{\"hero\": \"knight\", \"tag\": \"1357\"}]).then(() => { const r=window.__realm,s=r.sim,p=r.me.p,ox=p.x,oy=p.y; for (const [x,y] of [[30,96],[46,75],[46,88],[60,96],[75,95],[90,97]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=ox; p.y=oy; r.view.panel='none'; });"
+      },
+      {
+        "wait": 600
+      },
+      {
+        "eval": "const r=window.__realm; r.setPanel('pause'); r.openInvite(); r.view.share='telegram'; r.view.link='https://ulugbek-ar.github.io/Update-my-game/?xona='+r.view.net.code;"
+      },
+      {
+        "wait": 400
+      }
+    ]
+  },
+  {
+    "title": "Bosh menyuda XONAGA KIRISH: do'st yuborgan 6 belgili kodni yozing (havola orqali kod o'zi yoziladi)",
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "hunter",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "XONAGA KIRISH"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "const t=document.querySelector('input[aria-label=\"Xona kodi\"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(t,'K7QW2M'); t.dispatchEvent(new Event('input',{bubbles:true})); t.blur();"
+      },
+      {
+        "wait": 300
+      }
+    ]
+  },
+  {
+    "title": "Telefonda: CHAT tugmasi — tayyor iboralar (Salom!, Bu yoqqa!, Yordam bering!, Rahmat!), +DO'ST — chaqirish",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "hunter",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{\"hero\": \"mage\", \"tag\": \"1357\", \"say\": 1}, {\"hero\": \"knight\", \"tag\": \"7302\", \"say\": 3}]).then(() => { const r=window.__realm,s=r.sim,p=r.me.p,ox=p.x,oy=p.y; for (const [x,y] of [[30,96],[46,75],[46,88],[60,96],[75,95],[90,97]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=ox; p.y=oy; r.view.panel='none'; });"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "window.__realm.toggleChat();"
+      },
+      {
+        "wait": 300
+      }
+    ]
+  }
+]
