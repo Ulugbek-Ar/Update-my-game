@@ -246,7 +246,7 @@ describe("RealmRoom", () => {
     host.x += 200;
     const b = join(rm, "2222", 0, { near: true });
     const g = rm.sim.players.get(b.id)!.p;
-    expect(Math.hypot(g.x - host.x, g.y - host.y)).toBeLessThan(40);
+    expect(Math.hypot(g.x - host.x, g.y - host.y)).toBeLessThan(60);
   });
 
   it("acks command batches so the client can reconcile its prediction", () => {

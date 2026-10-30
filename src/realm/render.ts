@@ -7,6 +7,7 @@ import type { Effects } from "@/game/effects";
 import { HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
+import { PHRASES, ROOM_CAP } from "./net/protocol";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
@@ -19,7 +20,7 @@ export const VIEW_W = 320;
 export const VIEW_H = 240;
 const FONT = '"Press Start 2P", monospace';
 
-export type Panel = "none" | "journal" | "map" | "pause" | "intro";
+export type Panel = "none" | "journal" | "map" | "pause" | "intro" | "invite";
 
 export interface UiButton {
   x: number;
@@ -53,6 +54,14 @@ export interface RealmView {
   names: Map<string, string>;
   /** chat pufakchalari (id -> ibora, qolgan vaqt) */
   bubbles: Map<string, { text: string; t: number }>;
+  /** tayyor iboralar ro'yxati ochiq */
+  chatOpen: boolean;
+  /** do'st chaqirish havolasi (onlayn bo'lsa) */
+  link: string | null;
+  /** ulashish: Telegram oynasi yoki telefonning ulashish oynasi */
+  share: "telegram" | "share" | null;
+  /** server sozlangan (qayta ulanish mumkin) */
+  canConnect: boolean;
   alpha: number;
   time: number;
   fx: Effects;
@@ -78,6 +87,14 @@ export interface RealmView {
     exit(): void;
     /** Pauzadagi SOZLAMALAR */
     settings(): void;
+    /** DO'STNI CHAQIRISH oynasi, havolani nusxalash va ulashish */
+    invite(): void;
+    copy(): void;
+    share(): void;
+    /** tayyor iboralar: ro'yxatni ochish va ibora yuborish */
+    chat(): void;
+    say(i: number): void;
+    reconnect(): void;
   };
 }
 
@@ -873,6 +890,8 @@ export class RealmRenderer {
     }
     text(c, night ? "TUN" : "KUN", mx + 8, my + mh + 9, 5, night ? "#9fd0ef" : "#ffe14d");
     this.netBadge(c, v, VIEW_W - 4, my + mh + 19);
+    if (v.net.mode === "online" && v.panel === "none" && !me.ui)
+      this.netButtons(c, v, my + mh + 32);
 
     // inventar (8 slot)
     const sw = 17,
@@ -960,6 +979,29 @@ export class RealmRenderer {
     else text(c, "OFLAYN", x, y, 5, "#8a7a9a", "right");
   }
 
+  /** Onlayn: DO'ST (chaqirish) va CHAT tugmalari, ochiq bo'lsa — tayyor iboralar */
+  private netButtons(c: CanvasRenderingContext2D, v: RealmView, y: number) {
+    const btn = (label: string, x: number, w: number, act: () => void, on = false) => {
+      px(c, on ? "#7be07b" : "#5c4a6e", x, y, w, 12);
+      px(c, "#2b1c3e", x + 1, y + 1, w - 2, 10);
+      text(c, label, x + w / 2, y + 9, 5, on ? "#7be07b" : "#e0d6ee", "center");
+      v.buttons.push({ x, y, w, h: 12, act });
+    };
+    btn("CHAT", VIEW_W - 4 - 30, 30, () => v.act.chat(), v.chatOpen);
+    btn("+DO'ST", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.invite());
+    if (!v.chatOpen) return;
+    PHRASES.forEach((p, i) => {
+      const w = 76,
+        x = VIEW_W - 4 - w,
+        by = y + 16 + i * 14;
+      px(c, "#9fd0ef", x, by, w, 12);
+      px(c, "#1f1730", x + 1, by + 1, w - 2, 10);
+      const label = v.touch ? p : `${i + 1} ${p}`;
+      text(c, label, x + 4, by + 9, 5, "#e0d6ee");
+      v.buttons.push({ x, y: by, w, h: 12, act: () => v.act.say(i) });
+    });
+  }
+
   // ---------------- oynalar ----------------
 
   private overlays(c: CanvasRenderingContext2D, v: RealmView) {
@@ -976,6 +1018,7 @@ export class RealmRenderer {
     if (v.panel === "journal") return this.journal(c, v);
     if (v.panel === "map") return this.fullMap(c, v);
     if (v.panel === "pause") return this.pause(c, v);
+    if (v.panel === "invite") return this.invite(c, v);
     if (v.panel === "intro")
       return this.textBox(
         c,
@@ -1189,26 +1232,85 @@ export class RealmRenderer {
 
   private pause(c: CanvasRenderingContext2D, v: RealmView) {
     px(c, "rgba(0,0,0,0.6)", 0, 0, VIEW_W, VIEW_H);
-    panel(c, 80, 60, 160, 136, "#5c4a6e");
-    text(c, "PAUZA", VIEW_W / 2, 82, 8, "#ffe14d", "center");
+    panel(c, 80, 48, 160, 160, "#5c4a6e");
+    text(c, "PAUZA", VIEW_W / 2, 70, 8, "#ffe14d", "center");
     const btn = (label: string, y: number, act: () => void) => {
       px(c, "#5c4a6e", 100, y, 120, 18);
       px(c, "#2b1c3e", 101, y + 1, 118, 16);
       text(c, label, VIEW_W / 2, y + 12, 6, "#e0d6ee", "center");
       v.buttons.push({ x: 100, y, w: 120, h: 18, act });
     };
-    btn("DAVOM ETISH", 96, () => v.act.panel("none"));
-    btn("SOZLAMALAR", 120, () => v.act.settings());
-    btn("BOSH MENYU", 144, () => v.act.exit());
+    btn("DAVOM ETISH", 82, () => v.act.panel("none"));
+    btn("SOZLAMALAR", 104, () => v.act.settings());
+    btn("DO'STNI CHAQIRISH", 126, () => v.act.invite());
+    btn("BOSH MENYU", 148, () => v.act.exit());
     text(
       c,
-      v.net.mode === "online" ? "Onlayn olam pauzada ham davom etadi" : "Olam saqlanadi",
+      v.net.mode === "online" ? "Onlayn olam to'xtamaydi" : "Olam saqlanadi",
       VIEW_W / 2,
-      182,
+      190,
       5,
       "#8a7a9a",
       "center",
     );
+  }
+
+  /** DO'STNI CHAQIRISH: xona kodi, havola, nusxalash/ulashish; oflayn — qayta ulanish */
+  private invite(c: CanvasRenderingContext2D, v: RealmView) {
+    px(c, "rgba(0,0,0,0.6)", 0, 0, VIEW_W, VIEW_H);
+    const x0 = 36,
+      w = VIEW_W - 72,
+      y0 = 28,
+      h = 186;
+    panel(c, x0, y0, w, h, "#7be07b");
+    text(c, "DO'STNI CHAQIRISH", VIEW_W / 2, y0 + 18, 8, "#7be07b", "center");
+    const btn = (label: string, x: number, y: number, bw: number, act: () => void, hot = false) => {
+      px(c, hot ? "#7be07b" : "#5c4a6e", x, y, bw, 16);
+      px(c, "#2b1c3e", x + 1, y + 1, bw - 2, 14);
+      text(c, label, x + bw / 2, y + 11, 5, hot ? "#7be07b" : "#e0d6ee", "center");
+      v.buttons.push({ x, y, w: bw, h: 16, act });
+    };
+    const close = () => btn("YOPISH", VIEW_W / 2 - 30, y0 + h - 24, 60, () => v.act.close());
+    const code = v.net.mode === "online" ? v.net.code : null;
+    if (!code || !v.link) {
+      const lines = v.canConnect
+        ? [
+            "Do'st bilan o'ynash uchun onlayn bo'lish kerak.",
+            v.net.mode === "connecting"
+              ? "Serverga ulanmoqda..."
+              : "Internetni tekshiring va qayta ulaning.",
+          ]
+        : ["Bu versiyada onlayn o'yin yo'q."];
+      lines
+        .flatMap((l) => wrap(l, 40))
+        .forEach((l, i) => text(c, l, VIEW_W / 2, y0 + 50 + i * 10, 5, "#e0d6ee", "center"));
+      if (v.canConnect && v.net.mode === "offline")
+        btn("QAYTA ULANISH", VIEW_W / 2 - 50, y0 + 100, 100, () => v.act.reconnect(), true);
+      close();
+      return;
+    }
+    text(c, "XONA KODI", VIEW_W / 2, y0 + 36, 5, "#8a7a9a", "center");
+    text(c, code, VIEW_W / 2, y0 + 58, 16, "#ffe14d", "center");
+    text(c, `Xonada: ${v.net.n}/${ROOM_CAP}`, VIEW_W / 2, y0 + 72, 5, "#7be07b", "center");
+    wrap(
+      "Do'stingiz bosh menyuda XONAGA KIRISH ni bosib shu kodni yozsin yoki havolani ochsin.",
+      44,
+    ).forEach((l, i) => text(c, l, VIEW_W / 2, y0 + 88 + i * 9, 5, "#e0d6ee", "center"));
+    text(c, v.link.replace(/^https?:\/\//, ""), VIEW_W / 2, y0 + 116, 4, "#9fd0ef", "center");
+    const bw = 112;
+    // ulashish bo'lmasa — nusxalash markazda
+    const cx = v.share ? VIEW_W / 2 - bw - 3 : VIEW_W / 2 - bw / 2;
+    btn("HAVOLANI NUSXALASH", cx, y0 + 126, bw, () => v.act.copy(), !v.share);
+    if (v.share)
+      btn(
+        v.share === "telegram" ? "TELEGRAMDA YUBORISH" : "ULASHISH",
+        VIEW_W / 2 + 3,
+        y0 + 126,
+        bw,
+        () => v.act.share(),
+        true,
+      );
+    close();
   }
 }
 

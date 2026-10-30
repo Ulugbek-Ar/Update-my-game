@@ -6,7 +6,16 @@ import { Loopback } from "./loopback";
 import { RealmMirror } from "./mirror";
 import { Predictor } from "./predict";
 import { NetSession, MAX_RETRIES, type NetDeps } from "./session";
-import { HelloSchema, NET_VERSION, ROOM_CAP, type HelloMsg, type ServerMsg } from "./protocol";
+import {
+  HelloSchema,
+  NET_VERSION,
+  ROOM_CAP,
+  normalizeRoomCode,
+  type HelloMsg,
+  type ServerMsg,
+} from "./protocol";
+import { guestTag, inviteLink } from "./config";
+import { telegramShare } from "@/lib/telegram";
 
 const data = loadRealmData();
 const MS = TICK_DT * 1000;
@@ -260,5 +269,76 @@ describe("RealmClient onlayn/oflayn", () => {
     const tick0 = c.sim.tick;
     tick(c);
     expect(c.sim.tick).toBe(tick0 + 1);
+  });
+});
+
+describe("Do'st bilan o'ynash", () => {
+  const tick = (c: RealmClient) => (c as unknown as { tick(): void }).tick();
+
+  it("invite link carries the room code", () => {
+    const link = new URL(inviteLink("K7QW2M"));
+    expect(link.searchParams.get("xona")).toBe("K7QW2M");
+    expect(normalizeRoomCode(link.searchParams.get("xona"))).toBe("K7QW2M");
+  });
+
+  it("the invite window shows the room code online and a reconnect offer offline", async () => {
+    const lb = new Loopback(() => Date.now());
+    const c = new RealmClient(canvas(), "knight");
+    c.openInvite();
+    expect(c.view.panel).toBe("invite");
+    expect(c.view.link).toBeNull();
+    c.setPanel("invite");
+    c.connect(lb.deps(), null);
+    await vi.advanceTimersByTimeAsync(10);
+    c.setPanel("pause");
+    c.openInvite();
+    expect(c.view.link).toContain(`xona=${c.net!.code}`);
+    // pauzadan ochilgan oyna yopilsa — pauzaga qaytadi
+    c.setPanel("invite");
+    expect(c.view.panel).toBe("pause");
+  });
+
+  it("an invited friend joins the same room next to the host and sees chat phrases", async () => {
+    const lb = new Loopback(() => Date.now());
+    const host = new RealmClient(canvas(), "knight");
+    host.connect(lb.deps(), null);
+    await vi.advanceTimersByTimeAsync(10);
+    const friend = new RealmClient(canvas(), "mage", { room: host.net!.code });
+    friend.connect(lb.deps());
+    await vi.advanceTimersByTimeAsync(10);
+    expect(friend.net!.code).toBe(host.net!.code);
+    await run(lb, 6, () => {
+      tick(host);
+      tick(friend);
+    });
+    const hp = host.me.p,
+      fp = friend.me.p;
+    expect(Math.hypot(hp.x - fp.x, hp.y - fp.y)).toBeLessThan(60);
+    expect(friend.view.net.n).toBe(2);
+    host.toggleChat();
+    expect(host.view.chatOpen).toBe(true);
+    host.say(2);
+    expect(host.view.chatOpen).toBe(false);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(friend.view.bubbles.get(host.pid)?.text).toBe("Yordam bering!");
+    expect(
+      friend.view.toasts.some((t) => t.text === "Mehmon-" + guestTag() + ": Yordam bering!"),
+    ).toBe(true);
+  });
+
+  it("inside Telegram the invite goes through the Telegram share sheet", () => {
+    const open = vi.fn();
+    const w = window as unknown as { Telegram?: unknown };
+    w.Telegram = { WebApp: { initData: "query_id=1", openTelegramLink: open } };
+    try {
+      expect(telegramShare("https://x.uz/?xona=K7QW2M", "Birga o'ynaymiz")).toBe(true);
+      const url = new URL(open.mock.calls[0]![0] as string);
+      expect(url.origin + url.pathname).toBe("https://t.me/share/url");
+      expect(url.searchParams.get("url")).toBe("https://x.uz/?xona=K7QW2M");
+    } finally {
+      delete w.Telegram;
+    }
+    // Telegram'dan tashqarida — yo'q
+    expect(telegramShare("https://x.uz", "t")).toBe(false);
   });
 });

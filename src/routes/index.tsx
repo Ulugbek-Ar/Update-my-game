@@ -38,6 +38,9 @@ import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
 import { GIFT_REWARDS, claimGift, giftStatus, type GiftClaim } from "@/game/gift";
 import { RealmClient } from "@/realm/client";
+import { SERVER_URL } from "@/realm/net/config";
+import { normalizeRoomCode } from "@/realm/net/protocol";
+import { telegramStartParam } from "@/lib/telegram";
 import { isRealmUnlocked } from "@/game/realmLink";
 import { TouchControls } from "@/components/game/TouchControls";
 import { ControlsSettings, Toggle } from "@/components/game/ControlsSettings";
@@ -146,6 +149,11 @@ function Index() {
   const [realmClient, setRealmClient] = useState<RealmClient | null>(null);
   /** OLAM tugmasi: 1-dunyo Iblisi yengilgach ochiladi (dev rejimida — har doim) */
   const [realmOpen, setRealmOpen] = useState(false);
+  /** XONAGA KIRISH oynasi va unga yozilgan kod (do'st havolasi ?xona=KOD bilan to'ladi) */
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  /** olamga shu xona kodi bilan kiriladi (null — avtomatik xona) */
+  const realmRoomRef = useRef<string | null>(null);
   /** "Chiqishni xohlaysizmi?" oynasi (ilovada bosh menyuda "Orqaga") */
   const [exitOpen, setExitOpen] = useState(false);
   /** KUNLIK SOVG'A oynasi va bugungi sovg'a hali olinmaganmi (menyuda SOVG'A miltillaydi) */
@@ -206,10 +214,29 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
+    // do'st chaqiruvi: sayt havolasi ?xona=KOD — kod kiritish oynasi to'lib ochiladi
+    const invited = normalizeRoomCode(new URLSearchParams(location.search).get("xona"));
+    if (invited && SERVER_URL) {
+      setJoinCode(invited);
+      setJoinOpen(true);
+      // qayta yuklanganda oyna yana ochilmasin
+      const u = new URL(location.href);
+      u.searchParams.delete("xona");
+      history.replaceState(history.state, "", u.toString());
+    }
     // skript hali yuklanmagan bo'lsa — sahifa yuklangach (ilovada skript yo'q)
     if (IS_APP) return;
-    if (document.readyState === "complete") initTelegram();
-    else window.addEventListener("load", initTelegram, { once: true });
+    const onTelegram = () => {
+      initTelegram();
+      // Telegram Mini App havolasi: ...?startapp=KOD
+      const code = normalizeRoomCode(telegramStartParam()?.replace(/^xona_?/i, ""));
+      if (code && SERVER_URL && !invited) {
+        setJoinCode(code);
+        setJoinOpen(true);
+      }
+    };
+    if (document.readyState === "complete") onTelegram();
+    else window.addEventListener("load", onTelegram, { once: true });
   }, []);
 
   // Ertasi kuni ilova/sahifaga menyuda qaytilsa — yangi sovg'a
@@ -315,7 +342,8 @@ function Index() {
   // Abadiyat olami: o'sha canvas'da alohida klient (o'z saqlanishi bilan)
   useEffect(() => {
     if (!realm || !canvasRef.current) return;
-    const c = new RealmClient(canvasRef.current, hero);
+    const c = new RealmClient(canvasRef.current, hero, { room: realmRoomRef.current });
+    realmRoomRef.current = null;
     c.touch = touch;
     c.onSettings = () => setSettingsOpen(true);
     c.onExit = () => {
@@ -325,7 +353,13 @@ function Index() {
       setRealm(false);
     };
     setRealmClient(c);
-    if (import.meta.env.DEV) (window as unknown as { __realm?: RealmClient }).__realm = c;
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __realm?: RealmClient; __realmDemo?: unknown };
+      w.__realm = c;
+      // serversiz onlayn sinov: sahifa ichidagi xona va botlar (net/demo.ts)
+      w.__realmDemo = (bots?: import("@/realm/net/demo").DemoBot[]) =>
+        import("@/realm/net/demo").then((m) => m.startDemo(c, bots));
+    }
     c.start();
     return () => c.stop();
     // qahramon faqat menyuda o'zgaradi
@@ -338,6 +372,7 @@ function Index() {
   backRef.current = () => {
     const windows = [
       [exitOpen, () => setExitOpen(false)],
+      [joinOpen, () => setJoinOpen(false)],
       [coachOpen, () => setCoachOpen(false)],
       [
         shopOpen,
@@ -603,6 +638,18 @@ function Index() {
                 {!realmOpen && <LockIcon />}
                 OLAM (SINOV)
               </Button>
+              {/* do'stning onlayn xonasiga kod bilan (server bo'lmagan build'da yashirin) */}
+              {SERVER_URL && (
+                <Button
+                  onClick={() => setJoinOpen(true)}
+                  disabled={!ready}
+                  title="Do'st yuborgan 6 belgili xona kodini yozing"
+                  variant="pixelOutline"
+                  className="px-5 py-2 text-[10px] sm:text-xs"
+                >
+                  XONAGA KIRISH
+                </Button>
+              )}
             </div>
             <p className="max-w-sm text-muted-foreground text-[9px] sm:text-[10px] leading-5">
               {realmOpen
@@ -724,6 +771,21 @@ function Index() {
         />
       )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
+      {joinOpen && !started && !realm && (
+        <JoinRoomWindow
+          code={joinCode}
+          locked={!realmOpen}
+          onChange={setJoinCode}
+          onClose={() => setJoinOpen(false)}
+          onJoin={(code) => {
+            sfx.unlock();
+            if (touch) void enterLandscape();
+            realmRoomRef.current = code;
+            setJoinOpen(false);
+            setRealm(true);
+          }}
+        />
+      )}
       {giftOpen && !newsOpen && !started && !realm && (
         <GiftWindow
           onClose={() => setGiftOpen(false)}
@@ -1450,6 +1512,87 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
 }
 
 /** Ilovadan chiqish so'rovi (brauzerning confirm oynasi o'rniga o'yin uslubidagi oyna) */
+/** XONAGA KIRISH: do'st yuborgan 6 belgili kod bilan uning onlayn xonasiga */
+function JoinRoomWindow({
+  code,
+  locked,
+  onChange,
+  onClose,
+  onJoin,
+}: {
+  code: string;
+  locked: boolean;
+  onChange: (code: string) => void;
+  onClose: () => void;
+  onJoin: (code: string) => void;
+}) {
+  const [error, setError] = useState("");
+  const submit = () => {
+    const c = normalizeRoomCode(code);
+    if (!c) return setError("Kod — 6 ta harf va raqam (masalan, K7QW2M)");
+    onJoin(c);
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Xonaga kirish"
+        className="flex w-[min(92vw,380px)] flex-col items-center gap-3 border-4 border-border bg-card p-4 text-center text-[10px] sm:text-xs leading-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-primary">XONAGA KIRISH</h2>
+        <p className="text-muted-foreground">
+          Do'stingiz pauza menyusidagi DO'STNI CHAQIRISH oynasidan yuborgan xona kodini yozing.
+        </p>
+        <input
+          autoFocus
+          value={code}
+          maxLength={7}
+          autoCapitalize="characters"
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Xona kodi"
+          placeholder="K7QW2M"
+          onChange={(e) => {
+            setError("");
+            onChange(e.target.value.toUpperCase());
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !locked) submit();
+          }}
+          className={`w-44 border-2 border-border bg-background px-3 py-2 text-center text-base tracking-[0.3em] text-primary ${pixelFocus}`}
+        />
+        {error && <p className="text-[#ff4d6d]">{error}</p>}
+        {locked && (
+          <p className="text-[#ff9a3c]">Abadiyat olamiga kirish uchun avval Iblisni yeng.</p>
+        )}
+        <div className="flex flex-wrap justify-center gap-3">
+          <button
+            onClick={submit}
+            disabled={locked}
+            className={cn(
+              buttonVariants({ variant: "pixel", size: "none" }),
+              "px-4 py-2 disabled:opacity-50",
+            )}
+          >
+            KIRISH
+          </button>
+          <button
+            onClick={onClose}
+            className={cn(buttonVariants({ variant: "pixelOutline", size: "none" }), "px-4 py-2")}
+          >
+            BEKOR
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ExitWindow({ onClose }: { onClose: () => void }) {
   return (
     <div

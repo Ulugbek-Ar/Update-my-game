@@ -40,7 +40,8 @@ import {
 import { NetSession, browserDeps, type NetDeps, type NetStatus } from "./net/session";
 import { RealmMirror } from "./net/mirror";
 import { Predictor, SNAP_DIST } from "./net/predict";
-import { SERVER_URL, guestTag, onlineWanted } from "./net/config";
+import { SERVER_URL, guestTag, inviteLink, onlineWanted } from "./net/config";
+import { telegramApp, telegramShare } from "@/lib/telegram";
 
 export { REALM_SAVE_KEY };
 /** Oflayn o'yinchi id'si (onlayn — server beradi) */
@@ -99,6 +100,8 @@ export class RealmClient {
   private outbox: RealmCommand[] = [];
   private lastFlush = -99;
   private room: string | null;
+  /** "do'stni chaqirish" pauzadan ochilgan */
+  private inviteBack = false;
   fx = new Effects();
   touch = false;
   onExit: (() => void) | null = null;
@@ -167,6 +170,10 @@ export class RealmClient {
       net: { mode: "offline", n: 1, ping: 0, code: null },
       names: new Map(),
       bubbles: new Map(),
+      chatOpen: false,
+      link: null,
+      share: telegramApp() ? "telegram" : typeof navigator.share === "function" ? "share" : null,
+      canConnect: !!SERVER_URL,
       act: {
         choose: (i) => this.send({ type: "choose", index: i }),
         buy: (item) => this.send({ type: "buy", item }),
@@ -176,6 +183,12 @@ export class RealmClient {
         panel: (p) => this.setPanel(p),
         exit: () => this.exitToMenu(),
         settings: () => this.onSettings?.(),
+        invite: () => this.openInvite(),
+        copy: () => void this.copyInvite(),
+        share: () => void this.shareInvite(),
+        chat: () => this.toggleChat(),
+        say: (i) => this.say(i),
+        reconnect: () => this.connect(),
       },
     };
     // asosiy o'yindan kelgan buyumlar (masalan, Iblis shoxi)
@@ -305,8 +318,68 @@ export class RealmClient {
 
   /** Tayyor ibora (chat) */
   say(p: number) {
+    this.view.chatOpen = false;
     if (!this.net || !this.online) return;
     this.net.chat(p);
+  }
+
+  toggleChat() {
+    this.view.chatOpen = this.online && !this.view.chatOpen;
+  }
+
+  /** "DO'STNI CHAQIRISH" oynasi (pauza menyusi va olam HUD'idan) */
+  openInvite() {
+    const code = this.online ? this.view.net.code : null;
+    this.view.link = code ? inviteLink(code) : null;
+    this.view.chatOpen = false;
+    this.inviteBack = this.view.panel === "pause";
+    this.view.panel = "invite";
+    this.view.sel = 0;
+  }
+
+  private inviteText() {
+    return `Piksel Qal'a: Abadiyat olamida birga o'ynaymiz! Xona kodi: ${this.view.net.code}`;
+  }
+
+  /** Havolani nusxalash (bosish ichida — brauzer ruxsat beradi) */
+  private async copyInvite() {
+    const link = this.view.link;
+    if (!link) return;
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(link);
+      ok = true;
+    } catch {
+      // eski WebView: yashirin matn maydoni orqali
+      try {
+        const t = document.createElement("textarea");
+        t.value = link;
+        t.style.position = "fixed";
+        t.style.opacity = "0";
+        document.body.appendChild(t);
+        t.select();
+        ok = document.execCommand("copy");
+        t.remove();
+      } catch {
+        /* nusxalab bo'lmadi */
+      }
+    }
+    this.toast(
+      ok ? "Havola nusxalandi" : "Nusxalab bo'lmadi — kodni ayting",
+      ok ? "#7be07b" : "#ff9a3c",
+    );
+  }
+
+  /** Telegram ichida — Telegram ulashish oynasi, aks holda telefonning ulashish oynasi */
+  private async shareInvite() {
+    const link = this.view.link;
+    if (!link) return;
+    if (telegramShare(link, this.inviteText())) return;
+    try {
+      await navigator.share({ title: "Piksel Qal'a", text: this.inviteText(), url: link });
+    } catch {
+      /* bekor qilindi yoki qo'llanmaydi */
+    }
   }
 
   private onChat(pid: string, name: string, p: number) {
@@ -319,6 +392,12 @@ export class RealmClient {
 
   setPanel(p: Panel) {
     if (p === "pause") this.save();
+    // pauzadan ochilgan "do'stni chaqirish" yopilsa — pauzaga qaytadi
+    if (p === "invite" && this.view.panel === "invite" && this.inviteBack) {
+      this.view.panel = "pause";
+      this.view.sel = 0;
+      return;
+    }
     this.view.panel = this.view.panel === p ? "none" : p;
     if (this.view.panel === "none" && p === "intro") this.save();
     this.view.sel = 0;
@@ -524,9 +603,13 @@ export class RealmClient {
     const ui = this.me.ui;
     if (inp.consumePause()) {
       if (ui) this.closeTop();
+      else if (this.view.chatOpen) this.view.chatOpen = false;
       else this.setPanel(this.view.panel === "none" ? "pause" : this.view.panel);
     }
     if (inp.consumeKey("KeyQ") && this.view.panel === "pause") this.exitToMenu();
+    // T — tayyor iboralar (agar T boshqa amalga belgilanmagan bo'lsa)
+    if (!Object.values(inp.keyBinds).flat().includes("KeyT") && inp.consumeKey("KeyT"))
+      this.toggleChat();
     if (inp.consumeAction("journal")) this.toggleJournal();
     if (inp.consumeAction("map")) this.toggleMap();
     // Enter doim tasdiqlaydi; gaplashish tugmasi (asl E) qayta belgilanishi mumkin
@@ -539,7 +622,9 @@ export class RealmClient {
     }
     for (let i = 0; i < 8; i++)
       if (inp.consumeKey(`Digit${i + 1}`)) {
-        if (ui?.kind === "dialog") this.send({ type: "choose", index: i });
+        if (this.view.chatOpen && !ui) {
+          if (i < PHRASES.length) this.say(i);
+        } else if (ui?.kind === "dialog") this.send({ type: "choose", index: i });
         else if (ui?.kind === "shop") this.send({ type: "sell", slot: i });
         else if (!ui) this.send({ type: "use", slot: i });
       }
