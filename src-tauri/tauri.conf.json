@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Piksel Qala",
+  "mainBinaryName": "Piksel Qala",
+  "version": "2.8.0",
+  "identifier": "com.ulugbek.pikselqala",
+  "build": {
+    "frontendDist": "../dist/desktop",
+    "beforeBuildCommand": "npm run build:desktop"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Piksel Qal'a",
+        "width": 1280,
+        "height": 760,
+        "minWidth": 640,
+        "minHeight": 400,
+        "center": true,
+        "backgroundColor": "#1f1730"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "publisher": "Ulugbek",
+    "copyright": "Piksel Qal'a",
+    "category": "Game",
+    "shortDescription": "Piksel Qal'a — retro piksel RPG",
+    "longDescription": "Retro piksel RPG: dushmanlarni yeng, Bosslarni mag'lub et, Abadiyat olamida do'stlar bilan o'yna.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": false,
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://github.com/Ulugbek-Ar/Update-my-game/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

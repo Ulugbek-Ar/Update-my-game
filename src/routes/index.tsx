@@ -18,7 +18,7 @@ import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import { getCombatTip } from "@/lib/coach.functions";
 import { GAME_VERSION, CHANGELOG, SEEN_VERSION_KEY } from "@/game/version";
 import { getLatestVersion } from "@/lib/version.functions";
-import { HAS_SERVER, IS_APP } from "@/lib/platform";
+import { HAS_SERVER, IS_APP, IS_DESKTOP } from "@/lib/platform";
 import { backAction, exitApp, onAppActive, onBackButton } from "@/lib/native";
 import { sfx } from "@/game/audio";
 import { loadSettings, saveSettings, type Settings } from "@/game/settings";
@@ -79,8 +79,8 @@ function initTelegram() {
 
 /** BOSHLASH bosilganda (foydalanuvchi bosishi ichida): to'liq ekran va gorizontal qulf. iOS'da jim o'tadi. */
 async function enterLandscape() {
-  // Android ilova o'zi to'liq ekran va gorizontal (AndroidManifest)
-  if (IS_APP) return;
+  // Android ilova o'zi to'liq ekran va gorizontal (AndroidManifest); Windows dasturida — F11
+  if (IS_APP || IS_DESKTOP) return;
   try {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
   } catch {

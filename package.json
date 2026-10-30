@@ -10,6 +10,7 @@
     "build:app": "APP_BUILD=1 vite build",
     "build:portable": "node scripts/build-portable.mjs",
     "build:desktop": "node scripts/build-portable.mjs --desktop",
+    "tauri": "npx --yes @tauri-apps/cli@2.12.4",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",

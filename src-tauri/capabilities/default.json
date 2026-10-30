@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "O'yin oynasi: to'liq ekran (F11), tashqi havolalar, yangilanish",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen",
+    "opener:default",
+    "process:allow-restart",
+    "updater:default"
+  ]
+}
