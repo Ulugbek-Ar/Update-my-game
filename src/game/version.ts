@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.4.0";
+export const GAME_VERSION = "2.5.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.5.0",
+    date: "2026-10-30",
+    notes:
+      "Yangi: boshqaruv sozlamalari. Telefonda joystik va tugmalar o'lchamini, shaffofligini va joyini o'zingizga moslang. Suzuvchi joystik — barmoq qayerga tegsa o'sha yerda paydo bo'ladi. Chapaqaylar uchun rejim va tebranish. Kompyuterda tugmalarni qayta belgilash mumkin. Sozlamalarni o'yin ichida pauzadan ham ochsa bo'ladi. Tugma yozuvlari endi tugmaga sig'adi.",
+  },
   {
     version: "2.4.0",
     date: "2026-10-30",

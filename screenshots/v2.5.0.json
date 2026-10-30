@@ -1,0 +1,269 @@
+[
+  {
+    "title": "Yangi: SOZLAMALAR -> BOSHQARUV — joystik va tugmalar o'lchami, shaffoflik, jonli ko'rinish",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent === 'BOSHQARUV').click();"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Katta joystik va tugmalar (200%) — telefonda qulay",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-settings": {
+            "touch": {
+              "stickSize": 200,
+              "buttonSize": 150,
+              "stickMode": "fixed"
+            }
+          }
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 90
+        }
+      },
+      {
+        "wait": 1800
+      }
+    ]
+  },
+  {
+    "title": "Suzuvchi joystik — barmoq qayerga tegsa o'sha yerda paydo bo'ladi",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "hunter"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "wisp",
+          "count": 2,
+          "dx": 110
+        }
+      },
+      {
+        "wait": 1600
+      },
+      {
+        "eval": "const c = document.querySelector('.game-canvas'); const ev = (t, x, y) => c.dispatchEvent(new PointerEvent(t, { clientX: x, clientY: y, pointerId: 9, pointerType: 'touch', bubbles: true, isPrimary: true })); ev('pointerdown', 300, 170); ev('pointermove', 340, 150);"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Joylashuvni tahrirlash: joystik va har tugmani barmoq bilan surib joylashtiring",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-unlocked-heroes": ["gunner"]
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent === 'BOSHQARUV').click();"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "JOYLASHUVNI TAHRIRLASH"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Chapaqaylar uchun rejim: joystik o'ngda, tugmalar chapda",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-settings": {
+            "touch": {
+              "leftHanded": true,
+              "stickMode": "fixed"
+            }
+          }
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 100
+        }
+      },
+      {
+        "wait": 1800
+      }
+    ]
+  },
+  {
+    "title": "Kompyuterda tugmalarni qayta belgilash: \"Tugmani bosing...\" va ziddiyat ogohlantirishi",
+    "target": "page",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-settings": {
+            "keys": {
+              "attack": ["KeyL", "KeyJ"],
+              "journal": ["KeyM"]
+            }
+          }
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent === 'BOSHQARUV').click();"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "[...document.querySelectorAll('button')].find((b) => (b.getAttribute('aria-label') || '').startsWith('Gaplashish (olam): asosiy')).click(); document.querySelector('[role=alert]').scrollIntoView({ block: 'end' });"
+      },
+      {
+        "wait": 400
+      }
+    ]
+  },
+  {
+    "title": "Pauzada yangi SOZLAMALAR tugmasi — o'ynab turib boshqaruvni moslang",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 2,
+          "dx": 90
+        }
+      },
+      {
+        "wait": 800
+      },
+      {
+        "eval": "g.setPaused(true);"
+      },
+      {
+        "wait": 300
+      }
+    ]
+  },
+  {
+    "title": "Tugma yozuvlari endi tugmaga sig'adi, ko'rsatmalar — tugma nomlari bilan",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "wait": 700
+      }
+    ]
+  }
+]
