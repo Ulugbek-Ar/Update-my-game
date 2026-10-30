@@ -129,3 +129,20 @@ dastur o'zini yangilay olmaydi (havola ko'rsatadi).
   qoidalar: `src/lib/pcfiles.ts`). Telegram bot fayl chegarasi 50 MB — oshsa fayl o'rniga Release
   havolasi yuboriladi. Qo'lda: **Actions → Telegram post → Run workflow** → **"PC fayllarini
   yuborish"** ni belgilang.
+
+## Fon rasmlari (reklama uchun)
+
+`store/wallpapers/` — kod bilan chizilgan piksel uslubdagi ish stoli fon rasmlari, har biri
+1920x1080 va 1366x768 o'lchamda:
+
+| Fayl                         | Sahna                                    |
+| ---------------------------- | ---------------------------------------- |
+| `PikselQala-fon-qasr-*.png`  | qasr va oy fonida 4 qahramon             |
+| `PikselQala-fon-iblis-*.png` | Olovli zindonda Iblis bilan jang         |
+| `PikselQala-fon-olam-*.png`  | Abadiyat olami: qishloq, o'rmon va daryo |
+
+Har birida "PIKSEL QAL'A" logotipi, "O'ynab ko'r!" yozuvi va Telegram kanal (@piksel_qala) QR
+kodi bor (QR `src/lib/qr.ts` bilan, tashqi xizmatsiz yaratiladi). Matn va QR o'ng tomonda — ish
+stoli ikonkalari turadigan chap chetga tushmaydi. Fon rasmlari Windows workflow'ida Release'ga
+ham qo'shiladi. Qayta chizish: `bun run dev` dan keyin
+`PW_DIR=<playwright o'rnatilgan papka> node scripts/wallpapers.mjs`.

@@ -58,7 +58,7 @@ const STARS = Array.from({ length: 60 }, (_, i) => ({
 let still: HTMLCanvasElement | null = null;
 
 /** Qimirlamaydigan qism (osmon, oy, tepaliklar, qasr) bir marta chiziladi. */
-function background() {
+export function background() {
   if (still) return still;
   const cv = document.createElement("canvas");
   cv.width = SCENE_W;
