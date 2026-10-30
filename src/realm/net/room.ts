@@ -57,6 +57,8 @@ export const RATE_PER_SEC = 12;
 export const STRIKE_LIMIT = 40;
 /** Bir o'yinchining navbatdagi buyruq to'plamlari (ortig'i tashlanadi) */
 const QUEUE_MAX = 8;
+/** Buyruq to'plami klient vaqtiga moslash uchun ko'pi bilan shuncha tick kutadi */
+const MAX_HOLD = 3;
 /** Chat: 1.5 soniyada bitta ibora */
 const CHAT_GAP = 1.5;
 
@@ -300,14 +302,22 @@ export class RealmRoom {
     for (const m of this.members.values()) m.conn.send(s);
   }
 
-  /** Bitta qat'iy tick (1/20 s). Har o'yinchidan navbatdagi bitta buyruq to'plami qo'llanadi. */
+  /**
+   * Bitta qat'iy tick (1/20 s). Har o'yinchidan navbatdagi bitta buyruq to'plami qo'llanadi:
+   * to'plamlar orasidagi klient tick'lari saqlanadi (tarmoq ikkitasini birga keltirsa ham
+   * klient bashorati bilan bir xil bo'ladi), lekin ko'pi bilan MAX_HOLD tick kutiladi.
+   */
   step() {
     const cmds: PlayerCommand[] = [];
+    const tick = this.sim.tick + 1;
     for (const m of this.members.values()) {
-      const b = m.queue.shift();
+      const b = m.queue[0];
       if (!b) continue;
+      const wait = b.s - m.seq - (tick - m.seqTick);
+      if (m.seq > 0 && wait > 0 && wait <= MAX_HOLD) continue;
+      m.queue.shift();
       m.seq = b.s;
-      m.seqTick = this.sim.tick + 1;
+      m.seqTick = tick;
       for (const cmd of b.c) cmds.push({ pid: m.pid, cmd });
     }
     this.sim.step(cmds);

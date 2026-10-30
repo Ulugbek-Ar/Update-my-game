@@ -25,6 +25,8 @@ jobs:
         run: bun run build
         env:
           GH_PAGES: "1"
+          # Abadiyat olami multiplayer serveri (docs/server.md)
+          VITE_SERVER_URL: https://pikselqala-server.ulugbek2647.workers.dev
       - name: SPA uchun 404 sahifa
         run: |
           cp dist/client/index.html dist/client/404.html

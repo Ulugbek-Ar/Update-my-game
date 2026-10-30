@@ -83,11 +83,12 @@ jobs:
             H=$(curl -sf "$URL/health") && break
             sleep 5
           done
+          [ -z "$H" ] && H="javob yo'q"
           echo "Server: $URL"
           echo "/health: $H"
           echo "::notice title=Server::$URL — $H"
           {
             echo "### Piksel Qal'a serveri"
             echo "- Manzil: $URL"
-            echo "- /health: \`${H:-javob yo'q}\`"
+            echo "- /health: \`$H\`"
           } >> "$GITHUB_STEP_SUMMARY"

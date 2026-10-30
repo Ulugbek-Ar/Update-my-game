@@ -74,6 +74,9 @@ jobs:
 
       - name: Statik build (ilova uchun)
         run: bun run build:app
+        env:
+          # Abadiyat olami multiplayer serveri (docs/server.md)
+          VITE_SERVER_URL: https://pikselqala-server.ulugbek2647.workers.dev
 
       - name: Capacitor sync
         run: npx cap sync android

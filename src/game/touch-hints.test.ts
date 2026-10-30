@@ -130,6 +130,7 @@ describe("Olamda ko'rsatmalar", () => {
     const view = {
       buttons: [] as { act(): void }[],
       act: { settings: () => opened++, panel: () => {}, exit: () => {} },
+      net: { mode: "offline", n: 1, ping: 0, code: null },
     } as unknown as RealmView;
     (new RealmRenderer() as unknown as { pause(c: unknown, v: RealmView): void }).pause(ctx, view);
     expect(texts).toContain("SOZLAMALAR");

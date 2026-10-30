@@ -1,7 +1,11 @@
 /**
- * Olam klienti (brauzer): klaviatura/sichqoncha/sensor -> buyruqlar, qat'iy 20 Hz tick bilan RealmSim,
- * voqealar -> effekt va ovoz, chizish va saqlash. Kelajakda RealmSim serverga ko'chadi,
- * klient esa buyruqlarni tarmoq orqali yuboradi.
+ * Olam klienti (brauzer): klaviatura/sichqoncha/sensor -> buyruqlar, qat'iy 20 Hz tick,
+ * voqealar -> effekt va ovoz, chizish va saqlash.
+ *
+ * Oflayn: RealmSim shu yerda tick qilinadi (avvalgidek). Onlayn (server bo'lsa avtomatik):
+ * buyruqlar serverga ketadi, olam ko'zgusi (net/mirror.ts) server holatidan to'ladi, o'z qahramoni
+ * darhol ko'rsatiladi (net/predict.ts) va server bilan solishtirib tuzatiladi. Ulanish uzilsa —
+ * o'sha joydan oflayn davom etadi; progress (inventar, topshiriqlar, oltin) yo'qolmaydi.
  */
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
@@ -25,9 +29,31 @@ import {
 import { RARITY_COLOR } from "./icons";
 import { MOB_STATS } from "./mobs";
 import { RealmRenderer, VIEW_H, VIEW_W, type Panel, type RealmView } from "./render";
+import {
+  ANIMS,
+  NET_VERSION,
+  PHRASES,
+  SEND_HZ,
+  type HelloMsg,
+  type ServerMsg,
+} from "./net/protocol";
+import { NetSession, browserDeps, type NetDeps, type NetStatus } from "./net/session";
+import { RealmMirror } from "./net/mirror";
+import { Predictor, SNAP_DIST } from "./net/predict";
+import { SERVER_URL, guestTag, onlineWanted } from "./net/config";
 
 export { REALM_SAVE_KEY };
+/** Oflayn o'yinchi id'si (onlayn — server beradi) */
 const PID = "me";
+/** Klientda ham darhol qo'llanadigan buyruqlar (harakat bashorati); qolganlari — faqat serverda */
+const LOCAL_CMDS = new Set<RealmCommand["type"]>(["move", "attack", "ability", "reload", "aim"]);
+const BOSS_KEY_IDS = ["devil", "queen", "king"] as const;
+type BossKeyId = (typeof BOSS_KEY_IDS)[number];
+
+export interface RealmOptions {
+  /** do'st chaqiruvi: shu xona kodiga kirish */
+  room?: string | null;
+}
 /** Har shuncha soniyada avtomatik saqlash */
 const SAVE_EVERY = 10;
 
@@ -63,6 +89,16 @@ export class RealmClient {
   input = new Input();
   sim: RealmSim;
   me: RealmPlayer;
+  /** joriy o'yinchi id'si: oflayn "me", onlayn — server bergani */
+  pid = PID;
+  /** onlayn ulanish (server sozlanmagan yoki oflayn — null) */
+  net: NetSession | null = null;
+  private mirror: RealmMirror | null = null;
+  private pred = new Predictor();
+  /** serverga ketadigan buyruqlar (ko'pi bilan 10 Hz) */
+  private outbox: RealmCommand[] = [];
+  private lastFlush = -99;
+  private room: string | null;
   fx = new Effects();
   touch = false;
   onExit: (() => void) | null = null;
@@ -93,7 +129,9 @@ export class RealmClient {
   constructor(
     private canvas: HTMLCanvasElement,
     public hero: Hero,
+    opts: RealmOptions = {},
   ) {
+    this.room = opts.room ?? null;
     // olamda ham faqat ochilgan (sotib olingan) qahramon o'ynaydi
     hero = this.hero = playableHero(hero);
     this.ctx = canvas.getContext("2d")!;
@@ -106,7 +144,7 @@ export class RealmClient {
     this.sim = new RealmSim(loadRealmData());
     const save = loadRealmSave();
     if (save) this.sim.loadWorld(save.world);
-    this.me = this.sim.addPlayer(PID, hero, save?.player ?? null);
+    this.me = this.sim.addPlayer(this.pid, hero, save?.player ?? null);
     // oltin asosiy o'yin bilan umumiy: eski saqlanishdagi olam oltini bir marta hisobga qo'shiladi
     if (save && !save.sharedGold && save.player.gold > 0) addGold(save.player.gold);
     this.me.gold = this.gold = loadGold();
@@ -126,6 +164,9 @@ export class RealmClient {
       banner: { text: "", sub: "", t: 0, color: "#ffe14d" },
       shake: 0,
       buttons: [],
+      net: { mode: "offline", n: 1, ping: 0, code: null },
+      names: new Map(),
+      bubbles: new Map(),
       act: {
         choose: (i) => this.send({ type: "choose", index: i }),
         buy: (item) => this.send({ type: "buy", item }),
@@ -150,9 +191,130 @@ export class RealmClient {
     return this.me.p;
   }
 
-  /** Buyruq keyingi tickda yuboriladi (serverga yuborish ham shu yerda bo'ladi). */
+  /** Buyruq keyingi tickda qo'llanadi (onlayn — serverga yuboriladi). */
   send(cmd: RealmCommand) {
     this.pending.push(cmd);
+  }
+
+  /** Onlayn xonadami */
+  get online() {
+    return this.mirror !== null;
+  }
+
+  /** Server bilan ulanish (start'da avtomatik). deps — test/dev uchun boshqa tarmoq. */
+  connect(deps: NetDeps = browserDeps(SERVER_URL, NET_VERSION), room = this.room) {
+    this.net?.close();
+    this.goOffline();
+    this.room = room;
+    const net = new NetSession(deps, { code: room, hello: (near) => this.hello(near) });
+    this.net = net;
+    net.onMessage = (m) => this.onNet(m);
+    net.onStatus = (s) => this.onNetStatus(net, s);
+    this.view.net.mode = "connecting";
+    net.start();
+  }
+
+  /** Salomlashuv: joriy progress bilan (har ulanishda yangidan) */
+  private hello(near: boolean): HelloMsg {
+    return {
+      t: "hello",
+      v: NET_VERSION,
+      tag: guestTag(),
+      hero: this.hero,
+      save: this.sim.savePlayer(this.pid),
+      keys: this.me.keys.filter((k): k is BossKeyId =>
+        (BOSS_KEY_IDS as readonly string[]).includes(k),
+      ),
+      near,
+    };
+  }
+
+  private onNet(m: ServerMsg) {
+    if (m.t === "welcome") this.goOnline(m.pid, m.code, m.tick, m.n);
+    else if (m.t === "s") this.mirror?.apply(m, performance.now() / 1000);
+    else if (m.t === "chat") this.onChat(m.pid, m.name, m.p);
+  }
+
+  private onNetStatus(net: NetSession, s: NetStatus) {
+    if (net !== this.net) return;
+    const v = this.view.net;
+    if (s === "online") {
+      v.mode = "online";
+      return;
+    }
+    // uzildi yoki rad etildi: shu joydan oflayn davom etadi
+    this.goOffline();
+    if (s === "offline") {
+      v.mode = "offline";
+      if (net.notice) this.toast(net.notice, "#ff9a3c");
+      this.toast("Oflayn rejim", "#ff9a3c");
+    } else v.mode = "connecting";
+  }
+
+  /** Onlaynga o'tish: ko'zgu joriy progressdan quriladi, keyin server holati bilan to'ladi */
+  private goOnline(pid: string, code: string, tick: number, n: number) {
+    const keys = this.me.keys;
+    const mirror = new RealmMirror(
+      this.sim.data,
+      pid,
+      this.hero,
+      this.sim.savePlayer(this.pid),
+      tick,
+    );
+    mirror.me.keys = keys;
+    mirror.n = n;
+    this.mirror = mirror;
+    this.useSim(mirror.sim, mirror.me, pid);
+    this.view.names = mirror.names;
+    this.pred.reset();
+    Object.assign(this.view.net, { mode: "online", n, code });
+    const notice = this.net?.notice;
+    if (notice && this.net) this.net.notice = null;
+    this.toast(notice ?? `Onlayn: ${code} xonasi`, notice ? "#ff9a3c" : "#7be07b");
+  }
+
+  /** Oflaynga o'tish: ko'zgudagi dunyo va progress bilan mahalliy RealmSim */
+  private goOffline() {
+    if (!this.mirror) return;
+    const keys = this.me.keys;
+    const player = this.sim.savePlayer(this.pid);
+    const sim = new RealmSim(this.sim.data);
+    sim.loadWorld(this.sim.saveWorld());
+    const me = sim.addPlayer(PID, this.hero, player);
+    me.keys = keys;
+    this.mirror = null;
+    this.useSim(sim, me, PID);
+    this.view.names = new Map();
+    this.view.net.n = 1;
+  }
+
+  private useSim(sim: RealmSim, me: RealmPlayer, pid: string) {
+    this.sim = sim;
+    this.me = me;
+    this.pid = pid;
+    this.view.sim = sim;
+    this.view.me = me;
+    // server yangi o'yinchini to'xtab turgan holda boshlaydi — yo'nalish birinchi tick'da qayta
+    // yuboriladi (bu bashorat va server tick'larini darhol moslaydi)
+    this.axis = { x: NaN, y: NaN };
+    this.atkHeld = this.dashHeld = false;
+    this.outbox = [];
+    this.lastFlush = -99;
+    this.wardenStep.clear();
+  }
+
+  /** Tayyor ibora (chat) */
+  say(p: number) {
+    if (!this.net || !this.online) return;
+    this.net.chat(p);
+  }
+
+  private onChat(pid: string, name: string, p: number) {
+    const text = PHRASES[p];
+    if (!text) return;
+    this.view.bubbles.set(pid, { text, t: 3 });
+    this.toast(`${pid === this.pid ? "Siz" : name}: ${text}`, "#9fd0ef");
+    sfx.pickup();
   }
 
   setPanel(p: Panel) {
@@ -293,6 +455,8 @@ export class RealmClient {
     if (document.hidden) {
       this.save();
       if (this.view.panel === "none") this.setPanel("pause");
+      // onlayn olam to'xtamaydi: fonda qahramon joyida tursin
+      this.halt();
     }
   };
   private onBlur = () => {
@@ -310,6 +474,7 @@ export class RealmClient {
     this.canvas.addEventListener("mousemove", this.onMove);
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("blur", this.onBlur);
+    if (onlineWanted()) this.connect();
     this.last = performance.now();
     const loop = (now: number) => {
       const dt = Math.min(0.1, (now - this.last) / 1000);
@@ -323,6 +488,8 @@ export class RealmClient {
   stop() {
     cancelAnimationFrame(this.raf);
     this.save();
+    this.net?.close();
+    this.net = null;
     this.input.detach();
     this.offSettings?.();
     this.offSettings = null;
@@ -341,7 +508,7 @@ export class RealmClient {
   }
 
   save() {
-    const player = this.sim.savePlayer(PID);
+    const player = this.sim.savePlayer(this.pid);
     if (!player) return;
     writeRealmSave({
       v: 1,
@@ -387,19 +554,25 @@ export class RealmClient {
     this.time += dt;
     this.keys();
     const v = this.view;
-    if (!this.frozen) {
+    // onlayn olam pauzada ham yashaydi (boshqalar o'ynayapti) — faqat boshqaruv to'xtaydi
+    const still = this.frozen && !this.online;
+    if (!still) {
       this.acc += dt;
       while (this.acc >= TICK_DT) {
         this.acc -= TICK_DT;
         this.tick();
       }
     } else this.acc = 0;
+    this.mirror?.update(performance.now() / 1000, dt);
     this.input.endFrame();
     this.fx.update(dt);
     for (const t of v.toasts) t.t -= dt / 2.5;
     v.toasts = v.toasts.filter((t) => t.t > 0);
     if (v.banner.t > 0) v.banner.t -= dt / 2.5;
-    v.alpha = this.frozen ? 1 : this.acc / TICK_DT;
+    for (const [id, b] of v.bubbles) if ((b.t -= dt) <= 0) v.bubbles.delete(id);
+    v.net.ping = this.net?.rtt ?? 0;
+    if (this.mirror) v.net.n = this.mirror.n;
+    v.alpha = still ? 1 : this.acc / TICK_DT;
     v.time = this.time;
     v.touch = this.touch;
     v.keys = this.input.keyBinds;
@@ -408,7 +581,8 @@ export class RealmClient {
     this.renderer.render(this.ctx, v);
   }
 
-  private tick() {
+  /** Bu tick'dagi buyruqlar: kiritish holatidan (faqat o'zgarganda) va oynalardan */
+  private gather(): RealmCommand[] {
     const inp = this.input;
     const cmds: RealmCommand[] = this.pending;
     this.pending = [];
@@ -444,16 +618,29 @@ export class RealmClient {
       if (!dash) cmds.push({ type: "ability", down: false });
       this.releaseAbility = false;
     }
-    this.sim.step(cmds.map((cmd) => ({ pid: PID, cmd })));
-    // qayta tug'ilishda Player obyekti yangilanadi
-    this.me = this.sim.players.get(PID)!;
+    return cmds;
+  }
+
+  private tick() {
+    const cmds = this.gather();
+    let events: RealmEvent[];
+    if (this.mirror) {
+      this.tickOnline(cmds);
+      events = this.mirror.events;
+      this.mirror.events = [];
+    } else {
+      this.sim.step(cmds.map((cmd) => ({ pid: PID, cmd })));
+      // qayta tug'ilishda Player obyekti yangilanadi
+      this.me = this.view.me = this.sim.players.get(PID)!;
+      events = this.sim.events;
+    }
     if (this.me.gold !== this.gold) {
       // umumiy hisob: asosiy o'yindagi o'zgarishni ham saqlab, farqni qo'shamiz
       this.gold = Math.max(0, loadGold() + this.me.gold - this.gold);
       this.me.gold = this.gold;
       saveGold(this.gold);
     }
-    for (const e of this.sim.events) this.onEvent(e);
+    for (const e of events) this.onEvent(e);
     // Sardorning og'ir qadami: oyoq yerga tekkan kadrda chang va juda yengil silkinish
     // (silkinish sozlamada o'chirilgan bo'lsa view.shake 0 — ko'rinmaydi)
     for (const m of this.sim.mobs) {
@@ -480,6 +667,104 @@ export class RealmClient {
     }
   }
 
+  /** Onlayn tick: buyruqlar navbatga (ko'pi bilan 10 Hz serverga), o'z qahramoni bashorati */
+  private tickOnline(cmds: RealmCommand[]) {
+    for (const c of cmds) {
+      // yurish — faqat oxirgisi muhim
+      if (c.type === "move") this.outbox = this.outbox.filter((o) => o.type !== "move");
+      this.outbox.push(c);
+    }
+    const pred = this.pred;
+    pred.tick++;
+    if (pred.tick - this.lastFlush >= 20 / SEND_HZ) this.flush();
+    const me = this.me,
+      p0 = me.p;
+    me.px = p0.x;
+    me.py = p0.y;
+    // server holati: jon, o'lim, qayta tug'ilish va joy tuzatishi (silliq: px eski joyda qoladi)
+    if (this.mirror?.fresh) {
+      this.mirror.fresh = false;
+      this.reconcile();
+    }
+    const p = me.p;
+    if (p.dead) p.anim.update(TICK_DT);
+    else {
+      this.sim.movePlayer(me, TICK_DT);
+      // o'q, tuzoq, tutun va xabarlar serverdan keladi
+      p.bolts = [];
+      p.traps = [];
+      p.smokes = [];
+      p.teleportFrom = null;
+      p.trapDenied = p.smokeDenied = p.cutFree = false;
+      if (p.hidden && !this.sim.inSmoke(p)) p.hideT = 0;
+    }
+    pred.record(p.x, p.y);
+    if (pred.tick % 2 === 0) this.sim.explore(me);
+  }
+
+  /** Navbatdagi buyruqlarni serverga yuborish va o'zida ham qo'llash (shu tick raqami bilan) */
+  private flush() {
+    if (!this.outbox.length) return;
+    const batch = this.outbox.slice(-16);
+    this.outbox = [];
+    for (const c of batch) if (LOCAL_CMDS.has(c.type)) this.sim.command(this.me, c);
+    this.net?.sendCmds(this.pred.tick, batch);
+    this.lastFlush = this.pred.tick;
+  }
+
+  /** Fonga o'tganda (onlayn): qahramon darhol to'xtaydi */
+  private halt() {
+    if (!this.online) return;
+    this.axis = { x: 0, y: 0 };
+    this.atkHeld = this.dashHeld = false;
+    this.outbox.push(
+      { type: "move", x: 0, y: 0 },
+      { type: "attack", down: false },
+      { type: "ability", down: false },
+    );
+    this.flush();
+  }
+
+  /** Server holati bilan solishtirish */
+  private reconcile() {
+    const m = this.mirror;
+    const s = m?.self;
+    if (!m || !s) return;
+    const me = this.me;
+    let p = me.p;
+    const dead = ANIMS[s[9]] === "death";
+    if (p.dead && !dead) {
+      // qayta tug'ildi (qishloqda)
+      const old = p;
+      me.p = p = me.makePlayer(s[3], s[4]);
+      p.fx = old.fx;
+      p.fy = old.fy;
+      me.base = { maxHp: p.maxHp, damage: p.damage, speed: p.speed };
+      this.sim.applyBonuses(me);
+      p.hp = s[5];
+      me.px = p.x;
+      me.py = p.y;
+      this.pred.forget();
+      return;
+    }
+    // zarba: miltillash, ovoz va qisqa daxlsizlik o'zida; itarilishni joy tuzatishi beradi
+    if (s[5] < p.hp) p.takeHit(p.hp - s[5], p.x, p.y, 0);
+    p.hp = s[5];
+    if (dead && !p.dead) p.anim.set("death", true);
+    const c = this.pred.correction(m.ack + m.at, s[3], s[4]);
+    if (!c) return;
+    const nx = p.x + c.dx,
+      ny = p.y + c.dy;
+    if (Math.hypot(c.dx, c.dy) > SNAP_DIST || this.sim.boxBlocked(nx, ny, p.size)) {
+      p.x = me.px = s[3];
+      p.y = me.py = s[4];
+      this.pred.forget();
+    } else {
+      p.x = nx;
+      p.y = ny;
+    }
+  }
+
   private toast(text: string, color = "#e0d6ee") {
     this.view.toasts.push({ text, color, t: 1 });
     if (this.view.toasts.length > 4) this.view.toasts.shift();
@@ -490,7 +775,7 @@ export class RealmClient {
   }
 
   private updateMusic() {
-    const boss = this.sim.mobs.some((m) => m.kind === "warden" && m.target === PID && !m.dead);
+    const boss = this.sim.mobs.some((m) => m.kind === "warden" && m.target === this.pid && !m.dead);
     const track: MusicTrack = boss ? "boss" : this.sim.night ? "forest" : "normal";
     if (track !== this.music) {
       this.music = track;
@@ -500,7 +785,7 @@ export class RealmClient {
 
   private onEvent(e: RealmEvent) {
     const fx = this.fx;
-    const mine = !("pid" in e) || e.pid === PID;
+    const mine = !("pid" in e) || e.pid === this.pid;
     switch (e.type) {
       case "hit":
         if (e.kind === "wall") {
@@ -532,7 +817,7 @@ export class RealmClient {
         }
         return;
       case "mobHurtPlayer":
-        if (e.pid === PID) {
+        if (e.pid === this.pid) {
           fx.addShake(0.15);
           fx.burst(e.x, e.y, "#ff4d6d", 8, 60, 1);
           // telefonda qisqa tebranish; Sardor (boss) zarbasi — kuchliroq

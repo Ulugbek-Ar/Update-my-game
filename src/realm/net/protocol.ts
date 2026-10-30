@@ -57,7 +57,7 @@ const axis = num.min(-1).max(1);
 const id = z
   .string()
   .max(32)
-  .regex(/^[a-z0-9_]+$/);
+  .regex(/^[a-z0-9_-]+$/);
 const slot = z.number().int().min(0).max(7);
 
 export const CommandSchema = z.discriminatedUnion("type", [

@@ -35,9 +35,24 @@ export interface Toast {
   t: number;
 }
 
+/** Onlayn holat (HUD belgisi) */
+export interface NetView {
+  mode: "online" | "offline" | "connecting";
+  /** xonadagi o'yinchilar */
+  n: number;
+  /** ms */
+  ping: number;
+  code: string | null;
+}
+
 export interface RealmView {
   sim: RealmSim;
   me: RealmPlayer;
+  net: NetView;
+  /** boshqa o'yinchilar ismi (id -> "Mehmon-1234") */
+  names: Map<string, string>;
+  /** chat pufakchalari (id -> ibora, qolgan vaqt) */
+  bubbles: Map<string, { text: string; t: number }>;
   alpha: number;
   time: number;
   fx: Effects;
@@ -385,10 +400,12 @@ export class RealmRenderer {
       all.push({ y: foot, r: () => this.mob(c, v, m, x, y) });
     }
     // o'yinchilar (silliq: oldingi va joriy tick orasida)
+    const labels: (() => void)[] = [];
     for (const rp of sim.players.values()) {
       const p = rp.p;
       const x = rp === me ? ix : lerp(rp.px, p.x, v.alpha),
         y = rp === me ? iy : lerp(rp.py, p.y, v.alpha);
+      if (!inView(x, y, camX, camY, 48)) continue;
       all.push({
         y: y + p.size / 2,
         r: () => {
@@ -399,6 +416,10 @@ export class RealmRenderer {
           c.restore();
         },
       });
+      // boshqa o'yinchi: ismi va jon chizig'i; har kimning chat iborasi (hamma narsa ustida)
+      const name = rp === me ? null : v.names.get(rp.id);
+      const bubble = v.bubbles.get(rp.id);
+      if (name || bubble) labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text));
     }
     for (const i of occluders) {
       const tx = i % sim.map.w,
@@ -424,6 +445,7 @@ export class RealmRenderer {
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
     // belgining chegarasi mavjudotlar ustida ham ko'rinadi (katta Sardor doirani yopib qo'ymaydi)
     for (const k of sim.marks) if (inView(k.x, k.y, camX, camY, 160)) drawMark(c, k, v.time, true);
+    for (const l of labels) l();
 
     // Mergan tutun bombalari: sekin aylanuvchi kulrang tutun (yashiringan Mergan ustida)
     for (const sm of sim.smokes) {
@@ -850,6 +872,7 @@ export class RealmRenderer {
       px(c, "#fff2a8", mx + 1, my + mh + 5, 2, 2);
     }
     text(c, night ? "TUN" : "KUN", mx + 8, my + mh + 9, 5, night ? "#9fd0ef" : "#ffe14d");
+    this.netBadge(c, v, VIEW_W - 4, my + mh + 19);
 
     // inventar (8 slot)
     const sw = 17,
@@ -911,6 +934,30 @@ export class RealmRenderer {
       text(c, "HALOK BO'LDINGIZ", VIEW_W / 2, 114, 10, "#ff4d6d", "center");
       text(c, "Qishloqda o'zingizga kelasiz...", VIEW_W / 2, 128, 6, "#e0d6ee", "center");
     }
+  }
+
+  /** O'ng yuqorida: "ONLAYN: N" va ping yoki "OFLAYN" */
+  private netBadge(c: CanvasRenderingContext2D, v: RealmView, x: number, y: number) {
+    const n = v.net;
+    if (n.mode === "online") {
+      const label = `ONLAYN: ${n.n}`;
+      px(c, "#7be07b", x - label.length * 5 - 6, y - 5, 4, 4);
+      text(c, label, x, y, 5, "#7be07b", "right");
+      if (n.ping > 0) {
+        const ms = Math.round(n.ping);
+        text(c, `${ms} ms`, x, y + 8, 4, ms > 250 ? "#ff9a3c" : "#8a7a9a", "right");
+      }
+    } else if (n.mode === "connecting")
+      text(
+        c,
+        "ULANISH" + ".".repeat(1 + (Math.floor(v.time * 3) % 3)),
+        x,
+        y,
+        5,
+        "#c9a25a",
+        "right",
+      );
+    else text(c, "OFLAYN", x, y, 5, "#8a7a9a", "right");
   }
 
   // ---------------- oynalar ----------------
@@ -1153,12 +1200,52 @@ export class RealmRenderer {
     btn("DAVOM ETISH", 96, () => v.act.panel("none"));
     btn("SOZLAMALAR", 120, () => v.act.settings());
     btn("BOSH MENYU", 144, () => v.act.exit());
-    text(c, "Olam saqlanadi", VIEW_W / 2, 182, 5, "#8a7a9a", "center");
+    text(
+      c,
+      v.net.mode === "online" ? "Onlayn olam pauzada ham davom etadi" : "Olam saqlanadi",
+      VIEW_W / 2,
+      182,
+      5,
+      "#8a7a9a",
+      "center",
+    );
   }
 }
 
 function inView(x: number, y: number, camX: number, camY: number, pad = 32) {
   return x > camX - pad && y > camY - pad && x < camX + VIEW_W + pad && y < camY + VIEW_H + pad;
+}
+
+/** Boshqa o'yinchi ustida ism, jon chizig'i va chat iborasi */
+function playerLabel(
+  c: CanvasRenderingContext2D,
+  rp: RealmPlayer,
+  x: number,
+  y: number,
+  name: string | null,
+  say: string | undefined,
+) {
+  const p = rp.p;
+  let top = y - 20;
+  if (name && !p.dead && !p.hidden) {
+    text(c, name, x, top, 4, HERO_THEME[rp.hero].uiText, "center");
+    const w = 16;
+    px(c, "#000", x - w / 2 - 1, top + 2, w + 2, 3);
+    px(c, "#3b2a3a", x - w / 2, top + 3, w, 1);
+    px(c, "#ff4d6d", x - w / 2, top + 3, (w * Math.max(0, p.hp)) / p.maxHp, 1);
+    top -= 7;
+  }
+  if (say) {
+    c.font = `5px ${FONT}`;
+    const w = Math.ceil(c.measureText(say).width) + 6;
+    px(c, "#000", x - w / 2 - 1, top - 9, w + 2, 11);
+    px(c, "#f4efe6", x - w / 2, top - 8, w, 9);
+    px(c, "#f4efe6", x - 1, top + 1, 2, 2);
+    c.font = `5px ${FONT}`;
+    c.textAlign = "center";
+    c.fillStyle = "#1f1730";
+    c.fillText(say, Math.round(x), Math.round(top - 1));
+  }
 }
 
 function shadow(c: CanvasRenderingContext2D, x: number, y: number, w: number) {
