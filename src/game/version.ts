@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.7.0";
+export const GAME_VERSION = "2.8.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.8.0",
+    date: "2026-10-30",
+    notes:
+      "Piksel Qal'a endi kompyuterda! Windows uchun o'rnatishsiz ishlaydigan dastur. Har qanday kompyuterda internetsiz ochiladigan portativ versiya. Kompyuteringiz uchun 3 ta fon rasmi.",
+  },
   {
     version: "2.7.0",
     date: "2026-10-30",
