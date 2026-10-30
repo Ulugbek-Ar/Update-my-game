@@ -988,157 +988,165 @@ function ShopWindow({
     </button>
   );
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
+    // ekranga sig'adi (dvh'ni bilmaydigan eski WebView'da ham), sarlavha joyida, ichi aylanadi
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-2" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Do'kon"
-        className="flex w-[min(94vw,640px)] max-h-[90dvh] flex-col gap-3 overflow-y-auto border-4 border-border bg-card p-4 text-[9px] sm:text-[10px] leading-4"
+        className="fit-screen m-auto flex w-[min(94vw,640px)] flex-col overflow-hidden border-4 border-border bg-card text-[9px] sm:text-[10px] leading-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-primary text-xs sm:text-sm">DO'KON</h2>
-          <span className="inline-flex items-center gap-2 text-primary">
-            <PixelIcon id="coin" color="#ffcc33" size={16} />
-            {gold}
-          </span>
+        <div className="flex shrink-0 flex-col gap-3 px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-primary text-xs sm:text-sm">DO'KON</h2>
+            <span className="inline-flex items-center gap-2 text-primary">
+              <PixelIcon id="coin" color="#ffcc33" size={16} />
+              {gold}
+            </span>
+          </div>
+          <div role="tablist" aria-label="Do'kon bo'limlari" className="flex flex-wrap gap-2">
+            {tabBtn("upgrades", "KUCHAYTIRISHLAR")}
+            {tabBtn("heroes", "QAHRAMONLAR")}
+          </div>
         </div>
-        <div role="tablist" aria-label="Do'kon bo'limlari" className="flex flex-wrap gap-2">
-          {tabBtn("upgrades", "KUCHAYTIRISHLAR")}
-          {tabBtn("heroes", "QAHRAMONLAR")}
-        </div>
-        {tab === "upgrades" ? (
-          <>
-            <p className="text-muted-foreground">
-              Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
-            </p>
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {SHOP_ITEMS.map((item) => {
-                const lvl = levels[item.id];
-                const cost = nextCost(item, levels);
-                const canBuy = cost !== null && gold >= cost;
-                return (
-                  <li
-                    key={item.id}
-                    className="flex flex-col items-center gap-2 p-[2px]"
-                    style={{ background: canBuy ? item.color : "#5c4a6e" }}
-                  >
-                    <div className="flex w-full flex-1 flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
-                      <PixelIcon id={item.icon} color={item.color} size={36} />
-                      <span style={{ color: item.color }}>{item.name}</span>
-                      <span className="flex-1 text-foreground">{item.desc}</span>
-                      <span
-                        className="flex gap-1"
-                        aria-label={`Bosqich ${lvl}/${item.costs.length}`}
-                      >
-                        {item.costs.map((_, i) => (
-                          <span
-                            key={i}
-                            className="h-2 w-2"
-                            style={{ background: i < lvl ? item.color : "#3b2a3a" }}
-                          />
-                        ))}
-                      </span>
-                      <button
-                        onClick={() => purchase(item)}
-                        disabled={!canBuy}
-                        className={cn(
-                          buttonVariants({ variant: "pixel", size: "none" }),
-                          "w-full gap-1 px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
-                        )}
-                      >
-                        {cost === null ? (
-                          "TO'LIQ"
-                        ) : (
-                          <>
-                            <PixelIcon id="coin" color="#ffcc33" size={10} />
-                            {cost}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : (
-          <>
-            <p className="text-muted-foreground">
-              Dastlabki 3 qahramon bepul. 4-qahramondan boshlab har biri oltinga bir marta sotib
-              olinadi va doim ochiq qoladi.
-            </p>
-            {award && (
-              <p
-                role="status"
-                className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary"
-              >
-                <PixelIcon id="trophy" color="#ffcc33" size={12} />
-                YUTUQ OCHILDI: {award}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
+          {tab === "upgrades" ? (
+            <>
+              <p className="text-muted-foreground">
+                Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
               </p>
-            )}
-            <ul aria-label="Qahramonlar" className="grid gap-2 sm:grid-cols-2">
-              {HERO_LIST.map((h) => {
-                const open = unlocked.has(h.id);
-                const short = goldShort(h.id, gold);
-                const canBuy = !open && short === 0;
-                return (
-                  <li
-                    key={h.id}
-                    ref={h.id === focusHero ? focusRef : undefined}
-                    className="flex p-[2px]"
-                    style={{ background: open || canBuy ? h.theme.accent : "#5c4a6e" }}
-                  >
-                    <div className="flex w-full items-center gap-3 bg-[#1f1730] p-2">
-                      <HeroPreview hero={h.id} active showcase size={64} />
-                      <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        <span style={{ color: h.theme.uiText }}>{h.name}</span>
-                        <span className="text-foreground">{h.desc}</span>
-                        {open ? (
-                          <span
-                            className="self-start border-2 px-2 py-1"
-                            style={{ borderColor: h.theme.accent, color: h.theme.uiText }}
-                          >
-                            {h.price > 0 ? "OCHIQ" : "BEPUL · OCHIQ"}
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => purchaseHero(h.id)}
-                              disabled={!canBuy}
-                              className={cn(
-                                buttonVariants({ variant: "pixel", size: "none" }),
-                                "w-full gap-1 whitespace-normal px-2 py-1 text-[9px] sm:text-[10px] disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
-                              )}
-                            >
-                              SOTIB OLISH
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {SHOP_ITEMS.map((item) => {
+                  const lvl = levels[item.id];
+                  const cost = nextCost(item, levels);
+                  const canBuy = cost !== null && gold >= cost;
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-col items-center gap-2 p-[2px]"
+                      style={{ background: canBuy ? item.color : "#5c4a6e" }}
+                    >
+                      <div className="flex w-full flex-1 flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
+                        <PixelIcon id={item.icon} color={item.color} size={36} />
+                        <span style={{ color: item.color }}>{item.name}</span>
+                        {/* "Dash/teleport/sakrash/sirpanish" kartaga sig'sin: "/" dan keyin qator bo'linadi */}
+                        <span className="flex-1 text-foreground">
+                          {item.desc.replace(/\//g, "/\u200b")}
+                        </span>
+                        <span
+                          className="flex gap-1"
+                          aria-label={`Bosqich ${lvl}/${item.costs.length}`}
+                        >
+                          {item.costs.map((_, i) => (
+                            <span
+                              key={i}
+                              className="h-2 w-2"
+                              style={{ background: i < lvl ? item.color : "#3b2a3a" }}
+                            />
+                          ))}
+                        </span>
+                        <button
+                          onClick={() => purchase(item)}
+                          disabled={!canBuy}
+                          className={cn(
+                            buttonVariants({ variant: "pixel", size: "none" }),
+                            "w-full gap-1 px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
+                          )}
+                        >
+                          {cost === null ? (
+                            "TO'LIQ"
+                          ) : (
+                            <>
                               <PixelIcon id="coin" color="#ffcc33" size={10} />
-                              {h.price}
-                            </button>
-                            {short > 0 && (
-                              <span className="text-muted-foreground">
-                                Yana {short} oltin kerak
-                              </span>
-                            )}
-                          </>
-                        )}
+                              {cost}
+                            </>
+                          )}
+                        </button>
                       </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        )}
-        <button
-          onClick={onClose}
-          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
-        >
-          YOPISH
-        </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                Dastlabki 3 qahramon bepul. 4-qahramondan boshlab har biri oltinga bir marta sotib
+                olinadi va doim ochiq qoladi.
+              </p>
+              {award && (
+                <p
+                  role="status"
+                  className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary"
+                >
+                  <PixelIcon id="trophy" color="#ffcc33" size={12} />
+                  YUTUQ OCHILDI: {award}
+                </p>
+              )}
+              <ul aria-label="Qahramonlar" className="grid gap-2 sm:grid-cols-2">
+                {HERO_LIST.map((h) => {
+                  const open = unlocked.has(h.id);
+                  const short = goldShort(h.id, gold);
+                  const canBuy = !open && short === 0;
+                  return (
+                    <li
+                      key={h.id}
+                      ref={h.id === focusHero ? focusRef : undefined}
+                      className="flex p-[2px]"
+                      style={{ background: open || canBuy ? h.theme.accent : "#5c4a6e" }}
+                    >
+                      <div className="flex w-full items-center gap-3 bg-[#1f1730] p-2">
+                        <HeroPreview hero={h.id} active showcase size={64} />
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                          <span style={{ color: h.theme.uiText }}>{h.name}</span>
+                          <span className="text-foreground">{h.desc}</span>
+                          {open ? (
+                            <span
+                              className="self-start border-2 px-2 py-1"
+                              style={{ borderColor: h.theme.accent, color: h.theme.uiText }}
+                            >
+                              {h.price > 0 ? "OCHIQ" : "BEPUL · OCHIQ"}
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => purchaseHero(h.id)}
+                                disabled={!canBuy}
+                                className={cn(
+                                  buttonVariants({ variant: "pixel", size: "none" }),
+                                  "w-full gap-1 whitespace-normal px-2 py-1 text-[9px] sm:text-[10px] disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
+                                )}
+                              >
+                                SOTIB OLISH
+                                <PixelIcon id="coin" color="#ffcc33" size={10} />
+                                {h.price}
+                              </button>
+                              {short > 0 && (
+                                <span className="text-muted-foreground">
+                                  Yana {short} oltin kerak
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+          <button
+            onClick={onClose}
+            className={cn(
+              buttonVariants({ variant: "pixel", size: "none" }),
+              "self-start px-4 py-2",
+            )}
+          >
+            YOPISH
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1480,43 +1488,46 @@ function ExitWindow({ onClose }: { onClose: () => void }) {
 function AchievementsWindow({ onClose }: { onClose: () => void }) {
   const [got] = useState(loadAchievements);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
+    // ekranga sig'adi (dvh'ni bilmaydigan eski WebView'da ham), sarlavha joyida, ichi aylanadi
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-2" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Yutuqlar"
-        className="flex w-[min(94vw,520px)] max-h-[90dvh] flex-col gap-3 overflow-y-auto border-4 border-border bg-card p-4 text-[9px] sm:text-[10px] leading-4"
+        className="fit-screen m-auto flex w-[min(94vw,520px)] flex-col overflow-hidden border-4 border-border bg-card text-[9px] sm:text-[10px] leading-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary text-xs sm:text-sm">
+        <h2 className="shrink-0 px-4 pb-3 pt-4 text-primary text-xs sm:text-sm">
           YUTUQLAR {got.size}/{ACHIEVEMENTS.length}
         </h2>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {ACHIEVEMENTS.map((a) => {
-            const on = got.has(a.id);
-            return (
-              <li
-                key={a.id}
-                className={`flex items-center gap-2 border-2 p-2 ${on ? "border-primary" : "border-border opacity-60"}`}
-              >
-                <PixelIcon id="trophy" color={on ? "#ffcc33" : "#5c4a6e"} size={24} />
-                <span className="flex flex-col gap-1">
-                  <span className={on ? "text-primary" : "text-foreground"}>{a.name}</span>
-                  <span className="text-muted-foreground">{a.desc}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <button
-          onClick={onClose}
-          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
-        >
-          YOPISH
-        </button>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {ACHIEVEMENTS.map((a) => {
+              const on = got.has(a.id);
+              return (
+                <li
+                  key={a.id}
+                  className={`flex items-center gap-2 border-2 p-2 ${on ? "border-primary" : "border-border opacity-60"}`}
+                >
+                  <PixelIcon id="trophy" color={on ? "#ffcc33" : "#5c4a6e"} size={24} />
+                  <span className="flex flex-col gap-1">
+                    <span className={on ? "text-primary" : "text-foreground"}>{a.name}</span>
+                    <span className="text-muted-foreground">{a.desc}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            onClick={onClose}
+            className={cn(
+              buttonVariants({ variant: "pixel", size: "none" }),
+              "self-start px-4 py-2",
+            )}
+          >
+            YOPISH
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1598,48 +1609,51 @@ function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
     .map((l) => l.trim())
     .filter(Boolean);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
+    // ekranga sig'adi (dvh'ni bilmaydigan eski WebView'da ham), sarlavha joyida, ichi aylanadi
+    <div className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-2" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Yangiliklar"
-        className={`flex ${big ? "w-[min(94vw,720px)]" : "w-[min(92vw,480px)]"} max-h-[85dvh] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-4 text-[10px] sm:text-xs leading-5`}
+        className={`fit-screen m-auto flex ${big ? "w-[min(94vw,720px)]" : "w-[min(92vw,480px)]"} flex-col overflow-hidden border-4 border-primary bg-card text-[10px] sm:text-xs leading-5`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary">
+        <h2 className="shrink-0 px-4 pb-3 pt-4 text-primary">
           {big ? `PIKSEL QAL'A 2.0!` : "YANGILIKLAR"} · v{entry.version}
         </h2>
-        {big && (
-          <ul aria-label="Katta yangiliklar" className="grid gap-3 sm:grid-cols-3">
-            {NEWS_2_0.map((n) => (
-              <NewsCard
-                key={n.title}
-                title={n.title}
-                text={n.text}
-                width={n.width}
-                height={n.height}
-                draw={(c) => n.draw(c, hero)}
-              />
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
+          {big && (
+            <ul aria-label="Katta yangiliklar" className="grid gap-3 sm:grid-cols-3">
+              {NEWS_2_0.map((n) => (
+                <NewsCard
+                  key={n.title}
+                  title={n.title}
+                  text={n.text}
+                  width={n.width}
+                  height={n.height}
+                  draw={(c) => n.draw(c, hero)}
+                />
+              ))}
+            </ul>
+          )}
+          <ul className="flex flex-col gap-2 text-foreground">
+            {lines.map((l) => (
+              <li key={l} className="flex gap-2">
+                <span className="text-primary">▸</span>
+                <span>{l}</span>
+              </li>
             ))}
           </ul>
-        )}
-        <ul className="flex flex-col gap-2 text-foreground">
-          {lines.map((l) => (
-            <li key={l} className="flex gap-2">
-              <span className="text-primary">▸</span>
-              <span>{l}</span>
-            </li>
-          ))}
-        </ul>
-        <button
-          onClick={onClose}
-          className={cn(buttonVariants({ variant: "pixel", size: "none" }), "self-start px-4 py-2")}
-        >
-          O'YNASH
-        </button>
+          <button
+            onClick={onClose}
+            className={cn(
+              buttonVariants({ variant: "pixel", size: "none" }),
+              "self-start px-4 py-2",
+            )}
+          >
+            O'YNASH
+          </button>
+        </div>
       </div>
     </div>
   );
