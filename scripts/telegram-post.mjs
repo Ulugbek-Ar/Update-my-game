@@ -68,10 +68,15 @@ const apkNote =
   process.env.APK_COMING === "true"
     ? ["", "📲 <b>Android ilova (APK)</b> — keyingi xabarda, kanal tepasida qadalgan"]
     : [];
+const pcNote =
+  process.env.PC_COMING === "true"
+    ? ["", "💻 <b>Kompyuter versiyasi</b> (Windows .exe va portativ HTML) — keyingi xabarlarda"]
+    : [];
 const ask =
   "💬 Keyingi yangilanishda nima bo'lsin? Fikr va takliflaringizni izohlarda yozing — yoqqanlari o'yinga qo'shiladi!";
 const tail = [
   ...apkNote,
+  ...pcNote,
   "",
   ...(links.length ? [links.join("   "), ""] : []),
   ask,

@@ -1,0 +1,127 @@
+name: Windows
+
+# Har yangi versiyada (src/game/version.ts) va qo'lda ishga tushirganda kompyuter versiyasi
+# yig'iladi (docs/windows.md):
+# - PikselQala-Windows.zip — o'rnatishsiz "Piksel Qala.exe" (Tauri) + portativ HTML + O'QING.txt;
+# - PikselQala-portable.zip — bitta HTML fayl (har qanday kompyuter, brauzerda);
+# - PikselQala-v<V>-setup.exe (NSIS, adminsiz) va PikselQala-v<V>.msi — ixtiyoriy o'rnatuvchilar;
+# - store/wallpapers/*.png — reklama uchun fon rasmlari;
+# - latest.json — Tauri updater manifesti (TAURI_SIGNING_PRIVATE_KEY secret bo'lsa).
+# Fayllar GitHub Release'ga (teg v<VERSIYA>) va workflow artefaktiga yuklanadi.
+# telegram-post.yml ham shu workflow'ni chaqiradi (workflow_call) — kanalga PC fayllarini yuborish uchun.
+on:
+  push:
+    branches: [main]
+    paths: [src/game/version.ts]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      skip_release:
+        description: "Release'ga yuklamaslik (faqat artefakt)"
+        type: boolean
+        default: false
+    outputs:
+      version:
+        description: "Yig'ilgan versiya (GAME_VERSION)"
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: bun install --frozen-lockfile || bun install
+
+      - name: Versiya
+        id: v
+        run: |
+          V=$(node -p "/GAME_VERSION\\s*=\\s*\"([^\"]+)\"/.exec(require('fs').readFileSync('src/game/version.ts', 'utf8'))[1]")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Piksel Qal'a v$V"
+
+      - name: Portativ HTML
+        run: npm run build:portable
+        env:
+          # Abadiyat olami multiplayer serveri (docs/server.md)
+          VITE_SERVER_URL: https://pikselqala-server.ulugbek2647.workers.dev
+
+      # Tauri updater: imzo kaliti bo'lsa o'rnatuvchi imzolanadi va latest.json yaratiladi.
+      # Kalit bo'lmasa dastur o'zini yangilamaydi — bosh menyuda yuklab olish havolasi chiqadi.
+      - name: Updater kaliti
+        id: key
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -n "$TAURI_UPDATER_PUBKEY" ]; then
+            CONFIG=$(node -e 'console.log(JSON.stringify({version: process.env.V, bundle: {createUpdaterArtifacts: true}, plugins: {updater: {pubkey: process.env.TAURI_UPDATER_PUBKEY}}}))')
+            echo "updater=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Windows::Updater kaliti (TAURI_SIGNING_PRIVATE_KEY secret, TAURI_UPDATER_PUBKEY variable) topilmadi — dastur o'zini yangilamaydi, faqat havola ko'rsatadi. docs/windows.md ga qarang."
+            CONFIG=$(node -e 'console.log(JSON.stringify({version: process.env.V}))')
+            echo "updater=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "TAURI_CI_CONFIG=$CONFIG" >> "$GITHUB_ENV"
+          echo "$CONFIG"
+
+      - name: Windows dasturi (Tauri)
+        env:
+          VITE_SERVER_URL: https://pikselqala-server.ulugbek2647.workers.dev
+          PIKSELQALA_UPDATER: ${{ steps.key.outputs.updater == 'true' && '1' || '' }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ steps.key.outputs.updater == 'true' && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri -- build --ci --config "$TAURI_CI_CONFIG"
+
+      - name: Fayllarni yig'ish
+        env:
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          node --experimental-strip-types scripts/pack-windows.mjs
+          if ls store/wallpapers/*.png > /dev/null 2>&1; then cp store/wallpapers/*.png out/; fi
+          ls -la out
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows-v${{ steps.v.outputs.version }}
+          path: out/
+
+      - name: GitHub Release
+        if: ${{ !inputs.skip_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          TAG="v$V"
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            NOTES=$(node --experimental-strip-types -e "import('./src/game/version.ts').then((m) => console.log(m.CHANGELOG.find((c) => c.version === process.env.V)?.notes ?? ''))")
+            # android.yml ham shu Release'ni yaratishi mumkin — poyga bo'lsa mavjudiga yuklanadi
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Piksel Qal'a v$V" --notes "$NOTES" || gh release view "$TAG" > /dev/null
+          fi
+          gh release upload "$TAG" out/* --clobber

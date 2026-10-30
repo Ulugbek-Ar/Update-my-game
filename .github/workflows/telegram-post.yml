@@ -27,6 +27,10 @@ on:
         description: "APK yuborish: eng oxirgi versiya APK'sini kanalga yuborish (post yuborilmaydi)"
         type: boolean
         default: false
+      pc:
+        description: "PC fayllarini yuborish: eng oxirgi versiya Windows (.exe) va portativ HTML arxivlarini kanalga yuborish (post yuborilmaydi)"
+        type: boolean
+        default: false
 
 concurrency:
   group: telegram-post
@@ -34,7 +38,7 @@ concurrency:
 
 jobs:
   post:
-    if: ${{ !inputs.apk }}
+    if: ${{ !inputs.apk && !inputs.pc }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -159,6 +163,7 @@ jobs:
         run: |
           V="${{ steps.check.outputs.version }}"
           if [ "$HAS_KEYSTORE" = "true" ] && echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.0$'; then export APK_COMING=true; fi
+          if echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.0$'; then export PC_COMING=true; fi
           node --experimental-strip-types scripts/telegram-post.mjs
 
       - name: Versiyani "chiqdi" deb belgilash
@@ -250,3 +255,74 @@ jobs:
           APK_VERSION: ${{ needs.apk-build.outputs.version }}
           APK_FILE: apk/PikselQala-v${{ needs.apk-build.outputs.version }}.apk
         run: node --experimental-strip-types scripts/telegram-apk.mjs
+
+  # ── Kompyuter (PC) fayllari kanalga ───────────────────────────────────────────
+  # x.y.0 versiya posti bilan birga (APK'dan keyin) yoki qo'lda "PC fayllarini yuborish":
+  # PikselQala-Windows.zip (o'rnatishsiz .exe) va PikselQala-portable.zip (bitta HTML).
+  # 50 MB dan katta fayl o'rniga Release havolasi yuboriladi (scripts/telegram-pc.mjs).
+  pc-plan:
+    needs: post
+    if: ${{ !cancelled() && !inputs.seed && !inputs.test && !inputs.apk }}
+    runs-on: ubuntu-latest
+    outputs:
+      send: ${{ steps.plan.outputs.send }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: PC fayllari yuboriladimi?
+        id: plan
+        env:
+          MANUAL: ${{ inputs.pc }}
+          POST_RESULT: ${{ needs.post.result }}
+          POSTED: ${{ needs.post.outputs.posted }}
+          POST_VERSION: ${{ needs.post.outputs.version }}
+        run: |
+          V=$(grep -oP 'GAME_VERSION\s*=\s*"\K[^"]+' src/game/version.ts)
+          RELEASE=$(node --experimental-strip-types -e "import('./src/lib/pcfiles.ts').then((m) => console.log(m.isPcRelease(process.argv[1])))" "$V")
+          SEND=false
+          if [ "$MANUAL" = "true" ]; then
+            SEND=true
+          elif [ "$POST_RESULT" = "success" ] && [ "$POSTED" = "true" ] && [ "$POST_VERSION" = "$V" ]; then
+            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=PC::v$V — kichik tuzatish (x.y.z), PC fayllari yuborilmaydi"; fi
+          fi
+          echo "send=$SEND" >> "$GITHUB_OUTPUT"
+          echo "PC fayllari v$V yuboriladi: $SEND"
+
+  pc-build:
+    needs: pc-plan
+    if: ${{ !cancelled() && needs.pc-plan.outputs.send == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/windows.yml
+    with:
+      skip_release: true
+    secrets: inherit
+
+  pc-send:
+    # APK (qadalgan post) avval chiqsin — apk-send tugashini kutadi (o'tkazib yuborilgan bo'lsa ham)
+    needs: [pc-build, apk-send]
+    if: ${{ !cancelled() && needs.pc-build.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: windows-v${{ needs.pc-build.outputs.version }}
+          path: pc/
+
+      - name: PC fayllarini kanalga yuborish
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          PC_VERSION: ${{ needs.pc-build.outputs.version }}
+          PC_DIR: pc
+        run: node --experimental-strip-types scripts/telegram-pc.mjs

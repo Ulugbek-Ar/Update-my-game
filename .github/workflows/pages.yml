@@ -31,6 +31,13 @@ jobs:
         run: |
           cp dist/client/index.html dist/client/404.html
           touch dist/client/.nojekyll
+      # Oflayn build'lar (portativ HTML, Windows dasturi, Android ilova) yangi versiyani shu
+      # fayldan tekshiradi (src/lib/update.ts)
+      - name: version.json
+        run: |
+          V=$(grep -oP 'GAME_VERSION\s*=\s*"\K[^"]+' src/game/version.ts)
+          echo "{\"version\":\"$V\"}" > dist/client/version.json
+          cat dist/client/version.json
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

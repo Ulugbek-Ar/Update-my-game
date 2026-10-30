@@ -48,6 +48,8 @@ import { TransferPanel } from "@/components/game/TransferPanel";
 import { lockGameKeys } from "@/game/input";
 import { actionKey, actionKeys, moveLabel } from "@/game/keys";
 import { useSettings } from "@/components/game/useSettings";
+import { UpdateBanner } from "@/components/game/UpdateBanner";
+import { NEEDS_UPDATE_CHECK } from "@/lib/update";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -721,6 +723,8 @@ function Index() {
             <span className="absolute bottom-2 right-2 text-[8px] sm:text-[9px] text-foreground/50">
               v{GAME_VERSION}
             </span>
+            {/* portativ HTML, Windows dasturi va ilova o'zi yangilanmaydi — yangi versiya xabari */}
+            {NEEDS_UPDATE_CHECK && <UpdateBanner />}
           </div>
         )}
       </div>

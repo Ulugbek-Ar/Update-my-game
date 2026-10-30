@@ -57,3 +57,75 @@ npm run tauri build
 
 Natija: `src-tauri/target/release/Piksel Qala.exe` (portativ) va
 `src-tauri/target/release/bundle/{nsis,msi}/` (o'rnatuvchilar).
+
+## "Windows компьютер защищен" (SmartScreen) ogohlantirishi
+
+Dastur pullik kod-imzo sertifikati bilan imzolanmagan, shuning uchun birinchi ochilishda Windows
+ko'k oyna chiqarishi mumkin: **"Windows защитил ваш компьютер"** / **"Windows protected your PC"**
+(o'zbekcha: "Windows kompyuteringizni himoya qildi", "noma'lum dastur"). Bu dastur xavfli degani
+emas — Windows uni hali "tanimaydi", xolos. Ishga tushirish uchun:
+
+1. Oynadagi **"Подробнее"** / **"More info"** (**Batafsil**) yozuvini bosing.
+2. Pastda paydo bo'lgan **"Выполнить в любом случае"** / **"Run anyway"**
+   (**Baribir ishga tushirish**) tugmasini bosing.
+
+Bu faqat birinchi marta so'raladi. Agar "Batafsil" yozuvi umuman bo'lmasa — kompyuterda
+administrator noma'lum dasturlarni taqiqlagan (maktab kompyuterlarida bo'ladi). U holda
+**portativ HTML** versiyadan foydalaning: `PikselQala-Windows.zip` ichidagi `Piksel Qala.html`
+ni yoki `PikselQala-portable.zip` ni brauzerda oching — u hech qanday ruxsat so'ramaydi.
+
+Arxiv ichidan to'g'ridan-to'g'ri ochmang: avval **"Извлечь все"** / **"Extract all"** bilan
+papkaga chiqaring.
+
+## Yangi versiya haqida xabar va avtomatik yangilanish
+
+Portativ HTML, Windows dasturi va Android ilova o'zi yangilanmaydi, shuning uchun ochilganda
+(internet bo'lsa) GitHub Pages'dagi `version.json` ni tekshiradi
+(`https://ulugbek-ar.github.io/Update-my-game/version.json`, `.github/workflows/pages.yml` har
+deploy'da yozadi; kod: `src/lib/update.ts`, `src/components/game/UpdateBanner.tsx`). Yangi versiya
+bo'lsa bosh menyuning chap yuqori burchagida **"Yangi versiya vX.Y.Z chiqdi!"** chiqadi:
+
+- Windows dasturida (updater kaliti bilan yig'ilgan bo'lsa) — **YANGILASH**: yangi o'rnatuvchini
+  yuklab, o'rnatib, dasturni qayta ochadi (Tauri updater, `latest.json` Release'da);
+- portativ HTML'da (va kalitsiz Windows build'da) — **YUKLAB OLISH**: Release sahifasi;
+- Android ilovada — **YUKLAB OLISH**: Telegram kanal (APK).
+
+Internet bo'lmasa hech narsa chiqmaydi. Saqlanishlar yangilanishda o'chmaydi (AppData /
+brauzer `localStorage`).
+
+### Updater imzo kalitini yaratish (bir marta)
+
+Tauri yangilanishni faqat imzosi to'g'ri bo'lsa o'rnatadi. Kalitsiz ham hammasi yig'iladi, faqat
+dastur o'zini yangilay olmaydi (havola ko'rsatadi).
+
+1. Kompyuterda (Node o'rnatilgan) kalit yarating — parol so'raydi, uni eslab qoling:
+
+   ```bash
+   npx --yes @tauri-apps/cli@2.12.4 signer generate -w pikselqala-updater.key
+   ```
+
+   Ikki fayl paydo bo'ladi: `pikselqala-updater.key` (maxfiy) va `pikselqala-updater.key.pub`
+   (ochiq). Maxfiy kalitni **repoga qo'shmang** va **yo'qotmang** — yo'qolsa, eski dasturlar
+   yangilanishni qabul qilmaydi (qo'lda qayta yuklab olish kerak bo'ladi).
+
+2. GitHub → repo → **Settings → Secrets and variables → Actions**:
+   - **Secrets** bo'limida **New repository secret**:
+     - `TAURI_SIGNING_PRIVATE_KEY` — `pikselqala-updater.key` faylidagi butun matn;
+     - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — kalit paroli.
+   - **Variables** bo'limida **New repository variable**:
+     - `TAURI_UPDATER_PUBKEY` — `pikselqala-updater.key.pub` faylidagi butun matn.
+
+3. Tekshirish: **Actions → Windows → Run workflow**. Release'da `latest.json` paydo bo'lsa,
+   updater ishlayapti. Updater faqat shundan keyin yig'ilgan dasturlarda ishlaydi.
+
+## GitHub Actions va tarqatish
+
+- `.github/workflows/windows.yml` — `windows-latest` runner: portativ HTML, Tauri `.exe`, NSIS va
+  MSI o'rnatuvchilar, `store/wallpapers/*.png` fon rasmlari, `latest.json` (kalit bo'lsa) →
+  GitHub Release `v<versiya>`. Har versiyada (`src/game/version.ts` o'zgarsa) va qo'lda
+  (**Actions → Windows → Run workflow**).
+- `.github/workflows/telegram-post.yml` — x.y.0 versiyalarda post va APK'dan keyin kanalga
+  `PikselQala-Windows.zip` va `PikselQala-portable.zip` yuboriladi (`scripts/telegram-pc.mjs`,
+  qoidalar: `src/lib/pcfiles.ts`). Telegram bot fayl chegarasi 50 MB — oshsa fayl o'rniga Release
+  havolasi yuboriladi. Qo'lda: **Actions → Telegram post → Run workflow** → **"PC fayllarini
+  yuborish"** ni belgilang.
