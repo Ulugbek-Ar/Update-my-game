@@ -68,8 +68,16 @@ const apkNote =
   process.env.APK_COMING === "true"
     ? ["", "📲 <b>Android ilova (APK)</b> — keyingi xabarda, kanal tepasida qadalgan"]
     : [];
-const ask = "💬 Keyingi yangilanishda nima bo'lsin? Fikr va takliflaringizni izohlarda yozing — yoqqanlari o'yinga qo'shiladi!";
-const tail = [...apkNote, "", ...(links.length ? [links.join("   "), ""] : []), ask, "", "#yangilanish"];
+const ask =
+  "💬 Keyingi yangilanishda nima bo'lsin? Fikr va takliflaringizni izohlarda yozing — yoqqanlari o'yinga qo'shiladi!";
+const tail = [
+  ...apkNote,
+  "",
+  ...(links.length ? [links.join("   "), ""] : []),
+  ask,
+  "",
+  "#yangilanish",
+];
 const limit = shots.length ? 1024 : 4096;
 const allBullets = bullets.length;
 const more = () =>
@@ -150,7 +158,9 @@ for (const item of [...heroes, ...mobs]) {
       : `🏰 Piksel Qal'a v${esc(entry.version)} da paydo bo'ladi`,
     `🎮 <a href="${esc(playUrl)}">O'ynash</a>`,
     "",
-    hero ? "💬 Sizga yoqdimi? Izohlarda yozing!" : "💬 Bu dushmanni qanday yengdingiz? Izohlarda yozing!",
+    hero
+      ? "💬 Sizga yoqdimi? Izohlarda yozing!"
+      : "💬 Bu dushmanni qanday yengdingiz? Izohlarda yozing!",
     "",
     hero ? "#yangi_qahramon" : "#yangi_dushman",
   ].join("\n");
@@ -162,7 +172,9 @@ for (const item of [...heroes, ...mobs]) {
     ...(item.text ? [esc(item.text.slice(0, 700)) + (item.text.length > 700 ? "…" : ""), ""] : []),
     `🎮 <a href="${esc(playUrl)}">O'ynash</a>`,
     "",
-    hero ? "💬 Sizga yoqdimi? Izohlarda yozing!" : "💬 Bu dushmanni qanday yengdingiz? Izohlarda yozing!",
+    hero
+      ? "💬 Sizga yoqdimi? Izohlarda yozing!"
+      : "💬 Bu dushmanni qanday yengdingiz? Izohlarda yozing!",
     "",
     hero ? "#yangi_qahramon" : "#yangi_dushman",
   ].join("\n");
