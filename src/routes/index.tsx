@@ -1076,7 +1076,10 @@ function ShopWindow({
 }) {
   const [tab, setTab] = useState<ShopTab>(firstTab);
   const focusRef = useRef<HTMLLIElement>(null);
-  useEffect(() => focusRef.current?.scrollIntoView?.({ block: "nearest" }), []);
+  useEffect(() => {
+    // natijasi qaytarilmaydi: yangi brauzerlarda scrollIntoView Promise qaytaradi
+    focusRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, []);
   const [gold, setGold] = useState(loadGold);
   const [levels, setLevels] = useState(loadShop);
   const [unlocked, setUnlocked] = useState(loadUnlockedHeroes);

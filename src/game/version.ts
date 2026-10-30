@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.3.0";
+export const GAME_VERSION = "2.4.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.4.0",
+    date: "2026-10-30",
+    notes:
+      "Yangi qahramon: Mergan — chaqmoqtoshli to'pponchali o'qchi. Barabanda 6 o'q, bosib tursang barcha o'qlarni yelpig'ich qilib otadi. Sirpanish o'qni to'ldiradi, tutun bombasi dushmanlardan yashiradi. Do'konda yangi QAHRAMONLAR bo'limi: 4-qahramondan boshlab qahramonlar oltinga sotiladi. Merganning 11 ta o'z kuch kartasi, jumladan Katta baraban va Rikoshet. Olam qishlog'ida yangi NPC: Qari Mergan.",
+  },
   {
     version: "2.3.0",
     date: "2026-10-29",

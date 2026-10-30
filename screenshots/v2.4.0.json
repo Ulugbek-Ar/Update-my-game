@@ -1,0 +1,224 @@
+[
+  {
+    "title": "Mergan",
+    "text": "Yangi qahramon — Mergan: keng qirrali qora shlyapa, uzun jigarrang plash va qizil bo'yinbog'li o'qchi, qo'lida mis-jez chaqmoqtoshli to'pponcha. 5 yurak. Space — tez uchadigan o'q, barabanda 6 ta: tugasa o'zi qayta o'qlanadi, R — istalgan vaqtda. Bosib tursang barabandagi hamma o'qni yelpig'ich qilib otadi. Shift — oldinga sirpanish, oxirida barabanga 2 o'q; bosib tursang tutun bombasi: tutun ichida dushmanlar seni ko'rmaydi. O'z kuchlari: Katta baraban va Rikoshet. Do'konda 300 oltinga sotiladi.",
+    "hero": true,
+    "video": 6,
+    "range": 70,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"]
+        }
+      },
+      {
+        "click": "MERGAN"
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 120
+        }
+      }
+    ]
+  },
+  {
+    "title": "Barabanni bo'shatish: 6 ta o'q yelpig'ich bo'lib uchadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-hero": "gunner"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "px": 90,
+          "dx": 120,
+          "dy": -30
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null; for (const e of g.enemies) e.aiTimer = 99;"
+      },
+      {
+        "keys": [["Space", 700]]
+      },
+      {
+        "wait": 170
+      }
+    ]
+  },
+  {
+    "title": "Tutun bombasi: tutun ichida Merganni dushmanlar ko'rmaydi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-hero": "gunner"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "px": 140,
+          "dx": 90,
+          "dy": -30
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null;"
+      },
+      {
+        "keys": [["Shift", 500]]
+      },
+      {
+        "wait": 450
+      }
+    ]
+  },
+  {
+    "title": "Do'konda yangi QAHRAMONLAR bo'limi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-gold": "420"
+        }
+      },
+      {
+        "click": "MERGAN — qulflangan, 300 oltin"
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Bosh menyu: sotib olinmagan qahramon — qulf va narx",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-gold": "180"
+        }
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Merganning kuch kartalari: Katta baraban va Rikoshet",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-hero": "gunner"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "for (let i = 0; i < 400; i++) { g.clearWave(); const ids = g.choices.map((u) => u.id); if (ids.includes('drum') && ids.includes('ricochet')) break; } g.upgradeLock = 0; g.choiceIndex = 1;"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Olam qishlog'ida yangi NPC: Qari Mergan — Merganning ustozi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-realm-keys": ["devil"]
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r = window.__realm, s = r.sim, p = r.me.p; r.view.panel = 'none'; p.takeHit = () => false; const n = s.region.npcs.find((n) => n.id === 'oldgunner'); p.x = n.x * 16 + 8; p.y = (n.y + 1) * 16 + 8; p.fx = 0; p.fy = -1;"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "keys": ["e"]
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Telefonda: O'Q, SIRPANISH (bosib tursang — tutun) va qayta o'qlash tugmasi",
+    "target": "page",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-hero": "gunner"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "wisp",
+          "count": 2,
+          "dx": 100
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.chest = null; g.player.ammo = 3;"
+      },
+      {
+        "wait": 600
+      }
+    ]
+  }
+]

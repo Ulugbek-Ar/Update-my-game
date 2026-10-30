@@ -12,10 +12,13 @@ function step(p: Player, input: Input, seconds: number) {
   }
 }
 
-/** Dash/teleport/sakrashni boshlaydi (Ovchida qisqa bosish — qo'yib yuborilganda sakraydi). */
+/**
+ * Dash/teleport/sakrash/sirpanishni boshlaydi (Ovchi va Merganda qisqa bosish — qo'yib
+ * yuborilganda sakraydi/sirpanadi).
+ */
 function dash(p: Player, input: Input) {
   input.pressDash();
-  if (p.hunter) {
+  if (p.hunter || p.gunner) {
     input.setTouchDash(true);
     p.update(DT, input);
     input.endFrame();
@@ -33,7 +36,7 @@ function untilDashEnds(p: Player, input: Input) {
   }
 }
 
-const HEROES: Hero[] = ["knight", "mage", "hunter"];
+const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner"];
 
 describe("Dash himoya dumi", () => {
   for (const hero of HEROES) {
