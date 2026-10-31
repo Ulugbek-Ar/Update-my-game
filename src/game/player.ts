@@ -74,7 +74,7 @@ export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" |
  */
 export type Target = Pick<
   Player,
-  "x" | "y" | "size" | "fx" | "fy" | "chill" | "takeHit" | "ensnare" | "encase"
+  "x" | "y" | "size" | "fx" | "fy" | "chill" | "takeHit" | "ensnare" | "encase" | "evading"
 >;
 
 /** Sehrgarning sehrli shari */

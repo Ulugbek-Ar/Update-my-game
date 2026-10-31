@@ -1144,7 +1144,9 @@ export class ForestKing extends Boss {
       if (Math.abs(across - t.at) >= reach) continue;
       const fx = t.vertical ? t.at : p.x,
         fy = t.vertical ? p.y : t.at;
-      if (!p.takeHit(this.dmg(1), fx, fy, 160)) continue;
+      // dash bilan ichidan o'tib bo'ladi; boshqa paytda (daxlsiz bo'lsa ham) devor itaradi
+      p.takeHit(this.dmg(1), fx, fy, 160);
+      if (p.evading) continue;
       const side = across < t.at ? -1 : 1;
       if (t.vertical) p.x = t.at + side * (reach + 1);
       else p.y = t.at + side * (reach + 1);

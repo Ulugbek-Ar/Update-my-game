@@ -1866,6 +1866,7 @@ export class Game {
       takeHit: () => false,
       ensnare: () => false,
       encase: () => false,
+      evading: true,
     };
   }
 
