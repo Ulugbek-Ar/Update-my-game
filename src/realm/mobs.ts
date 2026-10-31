@@ -5,6 +5,7 @@
 import { Animator, applyHit, type Body } from "@/game/animation";
 import { phaseFor } from "@/game/bossPower";
 import type { Player } from "@/game/player";
+import { AGGRO_THREAT, ThreatTable } from "@/game/threat";
 import type { MobKind } from "./schema";
 import type { Rng } from "./rng";
 
@@ -204,6 +205,8 @@ export class RealmMob implements Body {
   move: "slam" | "charge" = "slam";
   /** shu hujumda allaqachon tekkan o'yinchilar */
   struck = new Set<string>();
+  /** Xavf jadvali: kim ko'proq zarar bersa (Paladin — 2x) yoki QASAM qilsa — nishon o'sha */
+  threat = new ThreatTable();
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.5, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -408,20 +411,30 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
   }
 
   const near = nearest(m, ctx);
+  const busy = m.state === "windup" || m.state === "attack" || m.state === "cast";
+  // xavf: QASAM qilgan yoki eng ko'p xavf tug'dirgan o'yinchiga o'tadi (hujum o'rtasida emas)
+  m.threat.update(dt);
+  if (m.target && !busy) {
+    const reach = m.stats.aggro * 2.4;
+    const cands = ctx.players.filter((t) => !t.p.dead && !t.hidden && dist(m, t.p) <= reach);
+    const best = m.threat.pick(cands, m.target);
+    if (best) m.target = best.id;
+  }
   const tgt = m.target
     ? ctx.players.find((t) => t.id === m.target && !t.p.dead && !t.hidden)
     : undefined;
   // leash: uydan juda uzoq yoki nishon qochib ketdi — qaytib ketadi
-  const busy = m.state === "windup" || m.state === "attack" || m.state === "cast";
   if (m.target && !busy) {
     if (!tgt || dist(m, home) > m.stats.leash || dist(m, tgt.p) > m.stats.aggro * 2.4) {
       m.target = null;
+      m.threat.clear();
       setState(m, "return");
       return;
     }
   }
   if (!m.target && near && near.d < m.stats.aggro) {
     m.target = near.t.id;
+    m.threat.add(near.t.id, AGGRO_THREAT, near.t.p.hero);
     if (m.state === "dormant") {
       setState(m, "wake", m.kind === "warden" ? 1 : SENTINEL_WAKE);
       ctx.event(

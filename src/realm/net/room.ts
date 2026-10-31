@@ -28,6 +28,7 @@ import {
   PF_DASH,
   PF_GUARD,
   PF_HIDDEN,
+  PF_VOW,
   ROOM_CAP,
   SNAPSHOT_EVERY,
   guestName,
@@ -416,7 +417,14 @@ export class RealmRoom {
     // o'qlar, belgilar, tuzoqlar, tutun — ro'yxat o'zgarsa to'liq
     const bolts: NetBolt[] = sim.projectiles
       .filter((p) => near(p.x, p.y))
-      .map((p) => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.size, p.bullet ? 2 : p.arrow ? 1 : 0]);
+      .map((p) => [
+        r1(p.x),
+        r1(p.y),
+        r1(p.vx),
+        r1(p.vy),
+        p.size,
+        p.wave ? 3 : p.bullet ? 2 : p.arrow ? 1 : 0,
+      ]);
     const bk = JSON.stringify(bolts);
     if (bk !== b.bolts) {
       b.bolts = bk;
@@ -519,7 +527,11 @@ const loopFrame = (state: string, frame: number) =>
 
 export function netPlayer(o: RealmPlayer, name: string): NetPlayer {
   const p = o.p;
-  const flags = (p.dashing ? PF_DASH : 0) | (p.guarded ? PF_GUARD : 0) | (p.hidden ? PF_HIDDEN : 0);
+  const flags =
+    (p.dashing ? PF_DASH : 0) |
+    (p.guarded ? PF_GUARD : 0) |
+    (p.hidden ? PF_HIDDEN : 0) |
+    (p.vowing ? PF_VOW : 0);
   return [
     o.id,
     o.hero,

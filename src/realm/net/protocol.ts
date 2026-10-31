@@ -13,7 +13,7 @@ import type { MobKind } from "../schema";
 import type { MobState } from "../mobs";
 
 /** Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi */
-export const NET_VERSION = 1;
+export const NET_VERSION = 2;
 /** Xona sig'imi: to'lsa — avtomatik keyingi xona */
 export const ROOM_CAP = 8;
 /** Klient buyruqlarni ko'pi bilan shu chastotada yuboradi (va faqat o'zgarganda) */
@@ -179,7 +179,9 @@ export const MOB_STATES: readonly MobState[] = [
 /** O'yinchi bayroqlari */
 export const PF_DASH = 1,
   PF_GUARD = 2,
-  PF_HIDDEN = 4;
+  PF_HIDDEN = 4,
+  /** Paladin QASAM qilmoqda (aura chiziladi) */
+  PF_VOW = 8;
 
 /** [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar, flash] */
 export type NetPlayer = [
@@ -219,7 +221,7 @@ export type NetMob = [
 ];
 /** [id, x, y, buyum (null — oltin), soni, oltin, miltillaydi] */
 export type NetItem = [number, number, number, string | null, number, number, number];
-/** [x, y, vx, vy, o'lcham, tur: 0 shar, 1 o'q-yoy, 2 o'q] */
+/** [x, y, vx, vy, o'lcham, tur: 0 shar, 1 o'q-yoy, 2 o'q, 3 Paladin zarb to'lqini] */
 export type NetBolt = [number, number, number, number, number, number];
 /** [tur: 0 doira, 1 chiziq, x, y, r, dx, dy, len, t, total, egasi, zarar] */
 export type NetMark = [

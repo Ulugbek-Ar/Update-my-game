@@ -3,7 +3,17 @@
  * O'yinchi harakatlari buyruq (RealmCommand) bo'lib kiradi, holat va voqealar (RealmEvent) chiqadi.
  * Keyin aynan shu klass serverda ishlaydi: bir xil buyruqlar -> bir xil holat.
  */
-import { Player, type Bolt, type PlayerInput } from "@/game/player";
+import {
+  AURA_RADIUS,
+  HAMLA_DMG,
+  Player,
+  SKY_RADIUS,
+  SKY_STUN,
+  VOW_RADIUS,
+  type Bolt,
+  type PlayerInput,
+} from "@/game/player";
+import { overlap, type Body } from "@/game/animation";
 import type { Hero } from "@/game/hero";
 import { RealmMap } from "./map";
 import { Rng } from "./rng";
@@ -96,7 +106,12 @@ export type RealmEvent =
   | { type: "rocks"; x: number; y: number; r: number }
   | { type: "heal"; pid: string; x: number; y: number }
   | { type: "shot"; x: number; y: number }
-  | { type: "smoke"; x: number; y: number };
+  | { type: "smoke"; x: number; y: number }
+  /** Paladin: SHANG zarbasi (yo'lak), OSMON HUKMI, QASAM va MUQADDAS AURA */
+  | { type: "shang"; pid: string; x: number; y: number; fx: number; fy: number; len: number }
+  | { type: "judgment"; pid: string; x: number; y: number; r: number }
+  | { type: "vow"; pid: string; x: number; y: number }
+  | { type: "aura"; pid: string; x: number; y: number };
 
 export interface Stack {
   item: string;
@@ -463,7 +478,10 @@ export class RealmSim {
   /** O'yinchi xonadan chiqdi: moblar uni quvlashni to'xtatadi, o'qlari so'nadi. */
   removePlayer(id: string) {
     if (!this.players.delete(id)) return;
-    for (const m of this.mobs) if (m.target === id) m.target = null;
+    for (const m of this.mobs) {
+      if (m.target === id) m.target = null;
+      m.threat.drop(id);
+    }
     this.projectiles = this.projectiles.filter((b) => b.owner !== id);
   }
 
@@ -1088,6 +1106,8 @@ export class RealmSim {
     const killed = damageMob(m, dmg, rp.p.x, rp.p.y, knock, this);
     if (!evading) this.events.push({ type: "hit", x: m.x, y: m.y - 6, dmg, kind: m.kind });
     if (!m.target && !m.evading && !m.dead) m.target = rp.id;
+    // zarar = xavf (Paladin — 2 baravar): boss eng xavfli o'yinchini quvadi
+    if (!evading && !m.dead) m.threat.add(rp.id, dmg, rp.hero);
     if (killed) this.killMob(m, rp);
     return true;
   }
@@ -1256,15 +1276,18 @@ export class RealmSim {
     }
     if (p.hidden && !this.inSmoke(p)) p.hideT = 0;
 
-    // yaqin jang: zarba qutisi moblarga va yoriq devorga
+    if (p.paladin) this.updatePaladin(rp);
+
+    // yaqin jang: zarba qutisi moblarga va yoriq devorga (Paladin SHANG — uzun yo'lak)
     const box = p.attackBox();
     if (box) {
       for (const m of this.mobs) {
         if (m.dead || p.hitSet.has(m)) continue;
-        const s = (box.size + m.size) / 2;
-        if (Math.abs(box.x - m.x) < s && Math.abs(box.y - m.y) < s) {
+        if (overlap(box, m)) {
           p.hitSet.add(m);
-          this.hit(rp, m, p.hitDamage, p.spinning ? 200 : 140);
+          // Paladin: OSMON HUKMI gangitadi, SHANG kuchli itaradi
+          if (p.paladin && p.spinning && !m.evading) m.stun = Math.max(m.stun, SKY_STUN);
+          this.hit(rp, m, p.hitDamage, p.paladin ? 260 : p.spinning ? 200 : 140);
         }
       }
       for (const w of this.secret("breakwall")) {
@@ -1272,8 +1295,7 @@ export class RealmSim {
         if (p.hitSet.has(tok)) continue;
         const cx = tileCenter(w.x),
           cy = tileCenter(w.y);
-        const s = (box.size + TILE) / 2;
-        if (Math.abs(box.x - cx) < s && Math.abs(box.y - cy) < s) {
+        if (overlap(box, { x: cx, y: cy, size: TILE } as Body)) {
           p.hitSet.add(tok);
           this.hitWall(rp, w);
         }
@@ -1291,6 +1313,61 @@ export class RealmSim {
     } else rp.regenT = 0;
   }
 
+  /**
+   * Paladin olamda: SHANG/OSMON HUKMI voqealari, QASAM — atrofdagi moblarni majburan o'ziga tortadi,
+   * MUQADDAS HAMLA yo'lidagilarni itaradi, MUQADDAS AURA yaqin do'stlarni ham davolaydi.
+   */
+  private updatePaladin(rp: RealmPlayer) {
+    const p = rp.p;
+    if (p.slammed) {
+      p.slammed = false;
+      this.events.push({
+        type: "shang",
+        pid: rp.id,
+        x: p.x,
+        y: p.y,
+        fx: p.fx,
+        fy: p.fy,
+        len: p.reach * 2,
+      });
+    }
+    if (p.judged) {
+      p.judged = false;
+      this.events.push({ type: "judgment", pid: rp.id, x: p.x, y: p.y, r: SKY_RADIUS });
+    }
+    if (p.vowed) {
+      p.vowed = false;
+      this.events.push({ type: "vow", pid: rp.id, x: p.x, y: p.y });
+      for (const m of this.mobs) {
+        if (m.dead || m.evading || m.spawnT > 0.3 || m.state === "dormant") continue;
+        if (dist(m, p) > VOW_RADIUS) continue;
+        m.threat.taunt(rp.id, p.vowT);
+        m.target = rp.id;
+      }
+    }
+    if (p.vowDenied) {
+      p.vowDenied = false;
+      this.events.push({ type: "toast", pid: rp.id, text: `Qasam: ${Math.ceil(p.vowCooldown)}s` });
+    }
+    p.absorbed = false;
+    if (p.auraPulse) {
+      p.auraPulse = false;
+      this.events.push({ type: "aura", pid: rp.id, x: p.x, y: p.y });
+      for (const o of this.players.values()) {
+        if (o === rp || o.p.dead || dist(o.p, p) > AURA_RADIUS) continue;
+        if (o.p.heal(1)) this.events.push({ type: "heal", pid: o.id, x: o.p.x, y: o.p.y });
+      }
+    }
+    if (p.dashing) {
+      const ram = { x: p.x + p.dashX * 4, y: p.y + p.dashY * 4, size: p.size + 8 } as Body;
+      for (const m of this.mobs) {
+        if (m.dead || p.rammed.has(m) || !overlap(ram, m)) continue;
+        p.rammed.add(m);
+        this.hit(rp, m, HAMLA_DMG * p.damage, 240);
+      }
+    }
+  }
+
   private respawn(rp: RealmPlayer) {
     const [sx, sy] = this.region.spawn;
     const old = rp.p;
@@ -1304,7 +1381,10 @@ export class RealmSim {
     rp.py = rp.p.y;
     rp.deadT = 0;
     rp.ui = null;
-    for (const m of this.mobs) if (m.target === rp.id) m.target = null;
+    for (const m of this.mobs) {
+      if (m.target === rp.id) m.target = null;
+      m.threat.drop(rp.id);
+    }
     this.events.push({ type: "respawn", pid: rp.id });
   }
 

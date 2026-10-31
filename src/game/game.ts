@@ -68,9 +68,12 @@ import { unlockAchievement, type Achievement, type AchievementId } from "./achie
 import { dailyRandoms, saveDaily } from "./daily";
 import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop } from "./shop";
 import { recordWorldWin } from "./progress";
+import { ThreatTable } from "./threat";
 import { HORN_ITEM, hornWanted, recordBossKey, sendToRealm } from "./realmLink";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
+/** Xavf jadvalidagi o'yinchi id'si (bir kishilik o'yin) */
+const PLAYER_ID = "me";
 /** Ritsar rekordlari (Sehrgarniki — hero.ts dagi bestKeys) */
 export const BEST_KEY = bestKeys("knight").best;
 /** Cheksiz rejim rekordi alohida saqlanadi */
@@ -400,6 +403,8 @@ export class Game {
   /** Paladin: SHANG yoriqlari va OSMON HUKMI zarb to'lqinlari (faqat chizish) */
   cracks: Crack[] = [];
   quakes: Quake[] = [];
+  /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
+  private threat = new ThreatTable();
   /** Paladin: shu SHANG zarbasida o'ldirilganlar ("SHANG!" yutug'i) */
   private slamKills = { id: 0, kills: 0 };
   /** O'rmon Shohi 3-fazasidagi qorong'ilik (0..1, asta kuchayadi) */
@@ -543,6 +548,7 @@ export class Game {
     this.hideAt = null;
     this.cracks = [];
     this.quakes = [];
+    this.threat.clear();
     this.darkness = 0;
     this.drops = [];
     this.coins = [];
@@ -1343,6 +1349,7 @@ export class Game {
   /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
   private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
     const p = this.player;
+    this.threat.add(PLAYER_ID, dmg, this.hero);
     if (t instanceof Boss) {
       // boss zarbadan to'xtamaydi; faza almashinuvida daxlsiz
       if (!t.takeDamage(dmg)) {
@@ -1491,6 +1498,7 @@ export class Game {
       this.fx.text(p.x, p.y - 16, `TUTUN ${Math.ceil(p.smokeCooldown)}s`, "#b8a8cc");
     }
     this.updateSmokes(dt);
+    this.threat.update(dt);
     if (p.paladin) this.updatePaladin(dt);
     if (this.hints.length) {
       if (p.attackTimer > 0) this.doneHint("attack");
@@ -1956,6 +1964,7 @@ export class Game {
       p.vowed = false;
       this.fx.burst(p.x, p.y, accent, 16, 90, 2);
       this.fx.text(p.x, p.y - 22, "QASAM!", accent);
+      this.threat.taunt(PLAYER_ID, p.vowT);
       // atrofdagilar Paladinga qarab buriladi (bir kishilik o'yinda ham nishon — Paladin)
       for (const e of this.enemies)
         if (e.active && Math.hypot(e.x - p.x, e.y - p.y) < VOW_RADIUS)
@@ -2003,7 +2012,9 @@ export class Game {
   private aiTarget(): Target {
     const p = this.player;
     const at = this.hideAt;
-    if (!p.hidden || !at) return p;
+    // xavf jadvali: nomzod bitta (o'yinchi); QASAM — majburiy nishon, tutun ham yashira olmaydi
+    const forced = this.threat.pick([{ id: PLAYER_ID }])?.id === this.threat.forced;
+    if (!p.hidden || !at || forced) return p;
     return {
       x: at.x,
       y: at.y,

@@ -4,7 +4,10 @@
  */
 import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
-import { HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
+import { HERO_ROLE, HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
+import { drawRoleIcon } from "@/game/roles";
+import { VOW_TIME } from "@/game/player";
+import { renderShockwave, renderVowAura } from "@/game/paladinFx";
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP } from "./net/protocol";
@@ -429,6 +432,8 @@ export class RealmRenderer {
           if (!p.dead && !(p.dashing && p.mage)) shadow(c, x, y + 12, 12);
           c.save();
           c.translate(Math.round(x - p.x), Math.round(y - p.y));
+          // Paladin QASAMi: to'q sariq aura (boshqalar ham ko'radi — tank bossni ushlab turibdi)
+          if (p.paladin && p.vowing && !p.dead) renderVowAura(c, p, v.time);
           p.render(c);
           c.restore();
         },
@@ -493,7 +498,8 @@ export class RealmRenderer {
 
     // o'q va sharlar
     for (const b of sim.projectiles) {
-      if (b.bullet) {
+      if (b.wave) renderShockwave(c, b);
+      else if (b.bullet) {
         // Mergan o'qi: yaltiroq mis o'q, orqasida qisqa iz
         const l = Math.hypot(b.vx, b.vy) || 1;
         for (let k = 2; k <= 5; k++)
@@ -857,6 +863,16 @@ export class RealmRenderer {
         px(c, "#000", 40, 21, p.ammoMax * 5 - 1, 2);
         px(c, t.glow, 41, 21, (p.ammoMax * 5 - 3) * rk, 1);
       }
+    }
+    if (p.paladin) {
+      // Paladin: QASAM chizig'i (faol — qolgan vaqt) chiziqlar yonida
+      const t = HERO_THEME.paladin;
+      const vk = p.vowing
+        ? p.vowT / VOW_TIME
+        : Math.max(0, Math.min(1, 1 - p.vowCooldown / p.vowCd));
+      px(c, "#000", 40, 14, 22, 3);
+      px(c, p.vowing ? t.glow : vk >= 1 ? t.accent : t.accentDark, 41, 15, 20 * vk, 1);
+      drawRoleIcon(c, "tank", 40, 18, vk >= 1 || p.vowing ? t.accent : t.accentDark);
     }
     coin(c, 4, 24);
     text(c, String(me.gold), 13, 30, 6, "#ffcc33");
@@ -1353,6 +1369,10 @@ function playerLabel(
   let top = y - 20;
   if (name && !p.dead && !p.hidden) {
     text(c, name, x, top, 4, HERO_THEME[rp.hero].uiText, "center");
+    // rol belgisi ism yonida (TANK, JANGCHI, SEHRGAR, UZOQDAN)
+    c.font = `4px ${FONT}`;
+    const nw = Math.ceil(c.measureText(name).width);
+    drawRoleIcon(c, HERO_ROLE[rp.hero], x - nw / 2 - 10, top - 6);
     const w = 16;
     px(c, "#000", x - w / 2 - 1, top + 2, w + 2, 3);
     px(c, "#3b2a3a", x - w / 2, top + 3, w, 1);

@@ -16,6 +16,7 @@ import {
   PF_DASH,
   PF_GUARD,
   PF_HIDDEN,
+  PF_VOW,
   type NetMe,
   type NetMob,
   type NetPlayer,
@@ -169,6 +170,7 @@ export class RealmMirror {
         hit: [],
         arrow: kind === 1,
         bullet: kind === 2,
+        wave: kind === 3,
         owner: "",
         life: 1,
         hitSet: new Set<number>(),
@@ -236,6 +238,7 @@ export class RealmMirror {
       p.dashTimer = a[11] & PF_DASH ? 1 : 0;
       p.guardAge = a[11] & PF_GUARD ? 0 : -1;
       p.hideT = a[11] & PF_HIDDEN ? 1 : 0;
+      p.vowT = a[11] & PF_VOW ? 1 : 0;
       p.flash = a[12];
     }
     for (const [id, list] of this.mobs) {

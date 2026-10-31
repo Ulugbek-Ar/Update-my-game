@@ -1028,6 +1028,40 @@ export class RealmClient {
         fx.burst(e.x, e.y, "#b8b0a4", 18, 70, 3);
         fx.burst(e.x, e.y, "#6e6860", 10, 40, 3);
         return;
+      case "shang": {
+        // Paladin SHANG: yo'lak bo'ylab to'q sariq uchqunlar, uchida kichik zarb
+        const t = HERO_THEME.paladin;
+        for (let i = 0; i <= 4; i++)
+          fx.burst(
+            e.x + e.fx * e.len * (i / 4),
+            e.y + 6 + e.fy * e.len * (i / 4),
+            i % 2 ? t.glow : t.accent,
+            3,
+            70,
+            1,
+          );
+        fx.text(e.x + e.fx * 18, e.y - 22, "SHANG!", t.glow);
+        fx.addShake(mine ? 0.3 : 0.1);
+        if (mine) sfx.shang();
+        return;
+      }
+      case "judgment":
+        fx.burst(e.x, e.y, HERO_THEME.paladin.glow, 24, 120, 2);
+        fx.burst(e.x, e.y, HERO_THEME.paladin.accent, 14, 80, 2);
+        fx.text(e.x, e.y - 26, "OSMON HUKMI!", HERO_THEME.paladin.glow);
+        fx.addShake(0.35);
+        if (!mine) sfx.judgment();
+        return;
+      case "vow":
+        fx.burst(e.x, e.y, HERO_THEME.paladin.accent, 16, 90, 2);
+        fx.text(e.x, e.y - 22, "QASAM!", HERO_THEME.paladin.accent);
+        if (mine) this.toast("Qasam: dushmanlar sizni nishonga oldi", HERO_THEME.paladin.accent);
+        else sfx.vow();
+        return;
+      case "aura":
+        fx.burst(e.x, e.y, HERO_THEME.paladin.glow, 12, 60, 1);
+        fx.text(e.x, e.y - 18, "AURA", HERO_THEME.paladin.glow);
+        return;
     }
   }
 }

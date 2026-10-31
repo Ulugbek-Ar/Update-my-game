@@ -11,7 +11,16 @@ import {
   renderMenuScene,
 } from "@/game/menuScene";
 import { loadPlayableHero, loadUnlockedHeroes, migrateSave, selectHero } from "@/game/save";
-import { HERO_LIST, HERO_THEME, bestKeys, withAlpha, type Hero } from "@/game/hero";
+import {
+  HERO_LIST,
+  HERO_ROLE,
+  HERO_THEME,
+  ROLE_INFO,
+  bestKeys,
+  withAlpha,
+  type Hero,
+} from "@/game/hero";
+import { drawRoleIcon } from "@/game/roles";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
@@ -486,6 +495,7 @@ function Index() {
                   >
                     <HeroPreview hero={h} active={hero === h} locked={locked} />
                     {name}
+                    <RoleBadge hero={h} />
                     {locked && (
                       <span className="inline-flex items-center gap-1 text-primary">
                         <LockIcon />
@@ -988,6 +998,35 @@ function HeroPreview({
 }
 
 /** Kuch kartalaridagi 12x12 piksel ikonka — kod bilan chiziladi. */
+/** Rol belgisi: kod bilan chizilgan ikonka va rol nomi (TANK, JANGCHI, SEHRGAR, UZOQDAN). */
+function RoleBadge({ hero, label = true }: { hero: Hero; label?: boolean }) {
+  const role = HERO_ROLE[hero];
+  const info = ROLE_INFO[role];
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (!c) return;
+    c.clearRect(0, 0, 9, 9);
+    drawRoleIcon(c, role, 1, 1);
+  }, [role]);
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[8px] sm:text-[9px]"
+      style={{ color: info.color }}
+      title={info.desc}
+    >
+      <canvas
+        ref={ref}
+        width={9}
+        height={9}
+        aria-hidden="true"
+        style={{ width: 11, height: 11, imageRendering: "pixelated" }}
+      />
+      {label ? info.name : <span className="sr-only">{info.name}</span>}
+    </span>
+  );
+}
+
 function PixelIcon({ id, color, size }: { id: string; color: string; size: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -1177,7 +1216,10 @@ function ShopWindow({
                       <div className="flex w-full items-center gap-3 bg-[#1f1730] p-2">
                         <HeroPreview hero={h.id} active showcase size={64} />
                         <div className="flex min-w-0 flex-1 flex-col gap-2">
-                          <span style={{ color: h.theme.uiText }}>{h.name}</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span style={{ color: h.theme.uiText }}>{h.name}</span>
+                            <RoleBadge hero={h.id} />
+                          </span>
                           <span className="text-foreground">{h.desc}</span>
                           {open ? (
                             <span

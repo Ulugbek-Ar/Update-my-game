@@ -61,6 +61,30 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
   },
 };
 
+/**
+ * Rollar (asosan onlayn): TANK dushmanni o'ziga tortadi va zarbani ko'taradi, JANGCHI yaqindan uradi,
+ * SEHRGAR sehr bilan katta zarar beradi, UZOQDAN — masofadan otadi.
+ */
+export type Role = "tank" | "warrior" | "caster" | "ranged";
+
+export interface RoleInfo {
+  name: string;
+  color: string;
+  /** Rol tavsifi (Yangiliklar va do'kon) */
+  desc: string;
+}
+
+export const ROLE_INFO: Record<Role, RoleInfo> = {
+  tank: {
+    name: "TANK",
+    color: "#ff8c1a",
+    desc: "Dushman va bossni o'ziga tortadi, zarbani ko'taradi",
+  },
+  warrior: { name: "JANGCHI", color: "#68cde4", desc: "Yaqin jangda tez va chaqqon uradi" },
+  caster: { name: "SEHRGAR", color: "#ff4d4d", desc: "Sehr bilan katta zarar beradi" },
+  ranged: { name: "UZOQDAN", color: "#a6f08e", desc: "Masofadan turib otadi" },
+};
+
 /** Qahramon metadatasi. price > 0 bo'lsa do'kondan sotib olinadi (save.ts: unlockedHeroes). */
 export interface HeroInfo {
   id: Hero;
@@ -69,6 +93,7 @@ export interface HeroInfo {
   price: number;
   /** Do'kon kartasidagi qisqa tavsif: hujumi va o'ziga xosligi */
   desc: string;
+  role: Role;
 }
 
 /** Menyudagi qahramon tanlash qatori shuncha kartaga mo'ljallangan */
@@ -98,6 +123,7 @@ export const PALADIN_PRICE = 450;
 export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
+    role: "warrior",
     name: "RITSAR",
     theme: HERO_THEME.knight,
     price: 0,
@@ -105,6 +131,7 @@ export const HERO_LIST: readonly HeroInfo[] = [
   },
   {
     id: "mage",
+    role: "caster",
     name: "SEHRGAR",
     theme: HERO_THEME.mage,
     price: 0,
@@ -112,6 +139,7 @@ export const HERO_LIST: readonly HeroInfo[] = [
   },
   {
     id: "hunter",
+    role: "ranged",
     name: "OVCHI",
     theme: HERO_THEME.hunter,
     price: 0,
@@ -119,6 +147,7 @@ export const HERO_LIST: readonly HeroInfo[] = [
   },
   {
     id: "gunner",
+    role: "ranged",
     name: "MERGAN",
     theme: HERO_THEME.gunner,
     price: GUNNER_PRICE,
@@ -126,6 +155,7 @@ export const HERO_LIST: readonly HeroInfo[] = [
   },
   {
     id: "paladin",
+    role: "tank",
     name: "PALADIN",
     theme: HERO_THEME.paladin,
     price: PALADIN_PRICE,
@@ -134,6 +164,10 @@ export const HERO_LIST: readonly HeroInfo[] = [
 ];
 
 export const HEROES: readonly Hero[] = HERO_LIST.map((h) => h.id);
+export const HERO_ROLE = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.role])) as Record<
+  Hero,
+  Role
+>;
 export const HERO_NAMES = Object.fromEntries(HERO_LIST.map((h) => [h.id, h.name])) as Record<
   Hero,
   string
