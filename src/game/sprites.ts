@@ -21,6 +21,7 @@ export type SpriteKind =
   | "treant"
   | "owl"
   | "king"
+  | "imp"
   | "boar"
   | "rat"
   | "sentinel"
@@ -180,6 +181,8 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   owl: ["#0a0810", "#3a2f4a", "#7a6a8a", "#c9b8a0", "#ffcc33"],
   // O'rmon Shohi: siyoh, to'q po'stloq, po'stloq, mox va barglar, yashil-sariq nur (ko'z va toj)
   king: ["#0a0805", "#2e1d10", "#5e3e22", "#4f8a3a", "#d8ff7a"],
+  // Olov imp (Iblis chaqiradi): siyoh, to'q qizil qanot va shox, olovrang tana, alanga, oqish o'zak
+  imp: ["#170809", "#6e1a12", "#d8452a", "#ffb02e", "#fff0b0"],
   // Abadiyat olami. Yovvoyi to'ng'iz: siyoh, to'q yol, jigarrang tana, fil suyagi qoziq, qizg'ish tumshuq
   boar: ["#120c08", "#3e2416", "#7a4a2a", "#efe2c4", "#e07a5a"],
   // Botqoq kalamushi: siyoh, to'q botqoq yungi, kulrang-yashil yung, pushti dum va quloq, sariq ko'z
@@ -1129,6 +1132,57 @@ function bat(p: Pixels, state: AnimState, frame: number) {
   p.rect(5, cx + 1, cy + 3, 1, state === "attack" ? 2 : 1);
   p.rect(2, cx - 2, cy + 6, 1, 2);
   p.rect(2, cx + 1, cy + 6, 1, 2);
+}
+
+/** Olov imp: ko'rshapalak qanotlari, kichik shoxlar, dumi uchida alanga; hujumda og'zi ochilib olov yig'adi. */
+function imp(p: Pixels, state: AnimState, frame: number) {
+  const f = batWings[state][frame] ?? batWings[state][0];
+  if (!f) return;
+  const cy = 15 + f.bob,
+    cx = 16 + f.tilt,
+    w = f.wing;
+  for (const side of [-1, 1]) {
+    const sx = (x: number) => cx + side * x;
+    p.polygon(2, [
+      [sx(3), cy - 3],
+      [sx(8), cy - 6 + w],
+      [sx(12), cy - 5 + w * 1.3],
+      [sx(10), cy - 1 + w],
+      [sx(7), cy + 1 + w * 0.5],
+      [sx(3), cy + 2],
+    ]);
+    p.line(3, [sx(4), cy - 2], [sx(11), cy - 4 + w * 1.2], 1);
+    // shoxlar
+    p.polygon(2, [
+      [sx(1), cy - 5],
+      [sx(4), cy - 10],
+      [sx(3), cy - 5],
+    ]);
+  }
+  // dum va uchidagi alanga
+  const tail = state === "walk" ? (frame % 2 ? 1 : -1) : 0;
+  p.line(2, [cx + 2, cy + 5], [cx + 6, cy + 9 + tail], 1);
+  p.ellipse(4, cx + 7, cy + 10 + tail, 1.8, 2);
+  p.rect(5, cx + 7, cy + 10 + tail, 1, 1);
+  // tana
+  p.ellipse(3, cx, cy + 1, 4, 4.5);
+  p.ellipse(4, cx, cy + 3, 2, 2);
+  if (state === "death" || state === "hurt") {
+    p.rect(1, cx - 3, cy - 1, 2, 1);
+    p.rect(1, cx + 1, cy - 1, 2, 1);
+  } else {
+    p.rect(5, cx - 3, cy - 1, 2, 1);
+    p.rect(5, cx + 1, cy - 1, 2, 1);
+  }
+  // og'iz: hujumda ochiladi, oldida olov yig'iladi
+  if (state === "attack") {
+    p.rect(1, cx - 1, cy + 1, 3, 1 + Math.min(frame, 1));
+    p.ellipse(4, cx, cy - 7 - frame, 1.5 + frame * 0.6, 1.5 + frame * 0.6);
+    p.rect(5, cx, cy - 7 - frame, 1, 1);
+  } else p.rect(1, cx - 1, cy + 1, 3, 1);
+  // oyoqlar
+  p.rect(2, cx - 2, cy + 5, 1, 2);
+  p.rect(2, cx + 1, cy + 5, 1, 2);
 }
 
 // ---------------- 2-dunyo: muz mavjudotlari ----------------
@@ -3201,6 +3255,10 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     bat(p, state, frame);
     return p.outlined();
   }
+  if (kind === "imp") {
+    imp(p, state, frame);
+    return p.outlined();
+  }
   if (kind === "archer" && state !== "death") {
     archer(p, state, frame);
     return p.outlined();
@@ -3314,6 +3372,7 @@ export function spriteSize(kind: SpriteKind) {
         ? 40
         : kind === "slime" ||
             kind === "bat" ||
+            kind === "imp" ||
             kind === "frost" ||
             kind === "iceblob" ||
             kind === "spider" ||

@@ -33,6 +33,7 @@ describe("Code-drawn character frames", () => {
     "treant",
     "owl",
     "king",
+    "imp",
   ] as SpriteKind[]) {
     for (const [state, count] of Object.entries(counts) as [AnimState, number][]) {
       it(`${kind} has ${count} distinct ${state} frames within five colors`, () => {

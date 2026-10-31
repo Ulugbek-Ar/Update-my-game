@@ -393,6 +393,12 @@ class SoundFX {
     [784, 1047, 1319].forEach((f, i) => this.tone(f, 0.1, "triangle", 0.08, undefined, i * 0.06));
   }
 
+  /** Boss hujumi ogohlantirishi: ikki marta ko'tariluvchi signal */
+  warn() {
+    this.tone(520, 0.08, "square", 0.05, 760);
+    this.tone(620, 0.1, "square", 0.05, 900, 0.1);
+  }
+
   /** Boss bo'kirishi */
   roar() {
     this.tone(140, 0.7, "sawtooth", 0.09, 45);

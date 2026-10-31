@@ -15,7 +15,8 @@ export type EnemyKind =
   | "spider"
   | "shroom"
   | "treant"
-  | "owl";
+  | "owl"
+  | "imp";
 
 const SPAWN_TIME = 1;
 export const ARCHER_RELOAD = 1.5;
@@ -107,6 +108,12 @@ export const OWL_RISE = 0.4;
 export const OWL_HIT = 12;
 const OWL_SPEED = 60;
 export type OwlPhase = "soar" | "mark" | "dive" | "rest" | "rise";
+/** Olov imp (Iblis chaqiradi): o'yinchi atrofida aylanib uchadi, yaltirab olov shari otadi */
+export const IMP_ORBIT = 58;
+export const IMP_CD = 2.6;
+export const IMP_WINDUP = 0.6;
+export const IMP_SHOT_SPEED = 90;
+const IMP_SPEED = 70;
 
 /** O'rgimchak yuradigan devor bo'yi to'rtburchagi */
 function track() {
@@ -169,6 +176,7 @@ export const ENEMY_HP: Record<EnemyKind, number> = {
   shroom: 3,
   treant: 8,
   owl: 2,
+  imp: 2,
 };
 
 /** Dushman turi -> sprite turi */
@@ -186,6 +194,7 @@ const SPRITE: Record<EnemyKind, SpriteKind> = {
   shroom: "shroom",
   treant: "treant",
   owl: "owl",
+  imp: "imp",
 };
 
 export interface Arrow {
@@ -207,6 +216,7 @@ export interface Arrow {
  * shroom – zaharli qo'ziqorin: harakatsiz, yaqinlashsa zaharli bulut chiqaradi
  * treant – daraxt odam: sekin, uzoqdan yerdan ildiz chiqarib ushlaydi
  * owl    – tungi boyo'g'li: tepadan sho'ng'iydi, soyasi oldindan ko'rinadi
+ * imp    – olov imp (Iblis chaqiradi): aylanib uchadi, yaltirab (ogohlantirish) olov shari otadi
  */
 export class Enemy implements Body {
   vx = 0;
@@ -281,6 +291,8 @@ export class Enemy implements Body {
   /** Boyo'g'li: balandlik, bosqich va sho'ng'ish nishoni */
   alt = 0;
   owlPhase: OwlPhase = "soar";
+  /** Olov imp: otish tayyorgarligi (0 — tayyorlanmayapti) */
+  impWindup = 0;
   markX = 0;
   markY = 0;
   private diveFrom = { x: 0, y: 0 };
@@ -333,6 +345,10 @@ export class Enemy implements Body {
     if (kind === "owl") {
       this.alt = OWL_ALT;
       this.aiTimer = OWL_SOAR * 0.6 + Math.random();
+    }
+    if (kind === "imp") {
+      this.size = 10;
+      this.aiTimer = 1.2 + Math.random();
     }
   }
 
@@ -408,6 +424,7 @@ export class Enemy implements Body {
     else if (this.kind === "shroom") this.updateShroom(dt, d);
     else if (this.kind === "treant") this.updateTreant(dt, p, dx, dy, d, m);
     else if (this.kind === "owl") this.updateOwl(dt, p, m);
+    else if (this.kind === "imp") this.updateImp(dt, p, dx, dy, d, m);
     else if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
     else if (this.kind === "golem") this.updateGolem(dt, p, dx, dy, d, m);
     else if (this.kind === "wolf") this.updateWolf(dt, dx, dy, d, m);
@@ -896,8 +913,48 @@ export class Enemy implements Body {
     this.anim.t = 0;
   }
 
+  /** Olov imp: o'yinchi atrofida aylanadi; to'xtab yaltiraydi, so'ng o'yinchiga olov shari otadi. */
+  private updateImp(dt: number, p: Target, dx: number, dy: number, d: number, m: number) {
+    if (this.impWindup > 0) {
+      this.impWindup -= dt;
+      this.anim.set("attack");
+      if (this.impWindup <= 0) {
+        this.shots.push({
+          x: this.x,
+          y: this.y,
+          vx: (dx / d) * IMP_SHOT_SPEED,
+          vy: (dy / d) * IMP_SHOT_SPEED,
+        });
+        this.aiTimer = IMP_CD + Math.random() * 0.6;
+      }
+      return;
+    }
+    this.aiTimer -= dt;
+    if (this.aiTimer <= 0) {
+      this.impWindup = IMP_WINDUP;
+      return;
+    }
+    // aylana bo'ylab: radial (masofani saqlash) + tangensial harakat, ozgina tebranish
+    const radial = (d - IMP_ORBIT) / IMP_ORBIT;
+    const tx = -dy / d,
+      ty = dx / d;
+    const wob = Math.sin(this.t * 6) * 0.4;
+    this.x += ((dx / d) * radial * 1.4 + tx * (0.8 + wob)) * IMP_SPEED * m * dt;
+    this.y += ((dy / d) * radial * 1.4 + ty * (0.8 + wob)) * IMP_SPEED * m * dt;
+    clampToRoom(this);
+    this.anim.set("walk");
+  }
+
   render(ctx: CanvasRenderingContext2D) {
     const { state, frame } = this.anim;
+    if (this.kind === "imp" && this.impWindup > 0 && !this.dead) {
+      // otishdan oldin olov yig'iladi: kattalashuvchi to'q sariq doira
+      const k = 1 - this.impWindup / IMP_WINDUP;
+      ctx.fillStyle = `rgba(255,140,40,${0.2 + 0.3 * k})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 6 + 6 * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (this.kind === "golem" && this.stompWindup > 0) {
       // yerga urish ogohlantirishi: qizil doira
       ctx.strokeStyle = `rgba(220,30,40,${0.6 + 0.35 * Math.sin(this.stompWindup * 30)})`;
@@ -923,7 +980,9 @@ export class Enemy implements Body {
         ? `rgba(140,215,255,${a})`
         : FOREST_KINDS.has(this.kind)
           ? `rgba(150,235,90,${a})`
-          : `rgba(200,120,255,${a})`;
+          : this.kind === "imp"
+            ? `rgba(255,120,40,${a})`
+            : `rgba(200,120,255,${a})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, 4 + 8 * k, 0, Math.PI * 2);

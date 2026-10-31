@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { bossHpFor } from "./bossPower";
 import { Game, WORLD1_WON_KEY } from "./game";
 import {
   Enemy,
@@ -92,7 +93,7 @@ describe("Har dunyoning o'z moblari", () => {
     g.enemies = [];
     gi.startWave(BOSS_WAVE + 5);
     expect(g.boss).toBeInstanceOf(Queen);
-    expect(g.boss!.maxHp).toBe(QUEEN_HP + 15);
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP + 15, 1));
     for (const e of g.enemies) expect(W2.has(e.kind)).toBe(true);
   });
 

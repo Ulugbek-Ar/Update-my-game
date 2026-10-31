@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { bossHpFor } from "./bossPower";
 import { CLOUD_LIFE, CLOUD_TICK, Game, WEB_SNARE } from "./game";
 import {
   Enemy,
@@ -99,7 +100,7 @@ describe("3-dunyo: faqat o'z moblari", () => {
       for (const e of g.enemies) expect(W3.has(e.kind)).toBe(true);
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
-    expect(g.boss!.maxHp).toBe(KING_HP);
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP));
     expect(KING_HP).toBe(50);
     expect(g.fx.snowOn).toBe(false);
   });
@@ -118,7 +119,9 @@ describe("3-dunyo: faqat o'z moblari", () => {
       for (const e of g.enemies) expect(W3.has(e.kind)).toBe(true);
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
-    expect(g.boss!.maxHp).toBe(KING_HP + 15);
+    // cheksizda har qaytishda kuchliroq: asosiy jon +15 va moslashuv +10%
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP + 15, 1));
+    expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(g.player, KING_HP));
   });
 
   it("the map path: beating the Queen unlocks world 3, beating the King records it", () => {
@@ -388,7 +391,7 @@ describe("O'rmon Shohi", () => {
     expect(maxSpiders).toBe(MAX_SPIDERS);
   });
 
-  it("darkens the room below half health, keeping light around the player", () => {
+  it("darkens the room in phase 3, keeping light around the player", () => {
     const { g, gi } = toForest();
     gi.startWave(BOSS_WAVE);
     g.enemies = [holdWave("spider")];
@@ -398,11 +401,17 @@ describe("O'rmon Shohi", () => {
     tick(g, 0.5);
     expect(k.dark).toBe(false);
     expect(g.darkness).toBe(0);
-    gi.damageTarget(k, KING_HP / 2 + 1);
+    // 2-faza (60%) hali yorug'
+    gi.damageTarget(k, k.maxHp * 0.45);
+    tick(g, 2);
+    expect(k.phase).toBe(2);
+    expect(k.dark).toBe(false);
+    gi.damageTarget(k, k.maxHp * 0.35);
     tick(g, 1.2);
+    expect(k.phase).toBe(3);
     expect(k.dark).toBe(true);
     expect(g.darkness).toBe(1);
-    expect(g.banner.title).toBe("G'AZAB!");
+    expect(g.banner.title).toBe("3-FAZA: ZULMAT");
   });
 
   it("raises a row of warned roots toward the player", () => {

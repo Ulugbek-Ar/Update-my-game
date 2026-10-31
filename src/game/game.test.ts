@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { bossHpFor } from "./bossPower";
 import { Game, BEST_KEY, ENDLESS_BEST_KEY, TUTORIAL_KEY } from "./game";
 import { Enemy } from "./enemy";
 import { BOSS_WAVE, UPGRADES } from "./waves";
@@ -83,7 +84,7 @@ describe("Cheksiz rejim", () => {
     gi.startEndless();
     g.enemies = [];
     gi.startWave(BOSS_WAVE + 5);
-    expect(g.boss!.maxHp).toBe(45);
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 45, 1));
     g.enemies = [];
     g.boss!.spawn = 0;
     gi.damageTarget(g.boss, 999);

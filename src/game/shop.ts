@@ -23,6 +23,7 @@ export const KILL_GOLD: Record<EnemyKind, number> = {
   shroom: 2,
   treant: 4,
   owl: 2,
+  imp: 1,
 };
 export const BOSS_GOLD = 25;
 

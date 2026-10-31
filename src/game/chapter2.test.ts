@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { bossHpFor } from "./bossPower";
 import { Game } from "./game";
 import { Enemy, FROST_CHILL, FROST_WINDUP } from "./enemy";
 import { Queen, QUEEN_HP, MAX_SPIRITS, summonCount } from "./boss";
@@ -81,7 +82,9 @@ describe("2-bob: o'tish", () => {
     expect(WAVES2.length).toBe(5);
     gi.startWave(BOSS_WAVE);
     expect(g.boss).toBeInstanceOf(Queen);
-    expect(g.boss!.maxHp).toBe(QUEEN_HP);
+    // joni o'yinchi kuchiga moslashadi, asosiy 40 — pastki chegara
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP));
+    expect(g.boss!.maxHp).toBeGreaterThanOrEqual(QUEEN_HP);
     expect(QUEEN_HP).toBe(40);
   });
 

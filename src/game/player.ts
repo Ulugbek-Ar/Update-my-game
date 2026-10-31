@@ -54,6 +54,8 @@ export const SLIDE_AMMO = 2;
 /** Tutun bombasi: Shift'ni bosib turish (Ovchi tuzog'idek), tutun ichida shuncha soniya ko'rinmaydi */
 export const SMOKE_CD = 6;
 export const SMOKE_HIDE = 2;
+/** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
+export const ENCASE_MAX = 3.5;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
 export const DASH_GUARD = 0.2;
 /** Dash oxirida dushman ichida qolsa — chiqquncha himoya, lekin shundan oshmaydi */
@@ -72,7 +74,7 @@ export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" |
  */
 export type Target = Pick<
   Player,
-  "x" | "y" | "size" | "fx" | "fy" | "chill" | "takeHit" | "ensnare"
+  "x" | "y" | "size" | "fx" | "fy" | "chill" | "takeHit" | "ensnare" | "encase"
 >;
 
 /** Sehrgarning sehrli shari */
@@ -157,6 +159,11 @@ export class Player implements Body {
   snare = 0;
   /** Shu kadrda to'r zarba bilan uzildi (Game effekt chiqaradi) */
   cutFree = false;
+  /** Muz qamoq: chiqish uchun yana shuncha bosish kerak (0 — qamoqda emas) va qolgan vaqt */
+  ice = 0;
+  iceT = 0;
+  /** Shu kadrda muz sindi (Game effekt chiqaradi) */
+  brokeIce = false;
   /** Zaharli bulut ichida o'tgan vaqt: har 1s da 1 zarar (Game hisoblaydi) */
   poison = 0;
   /** Shu kadrda otilgan sharlar — Game o'ziga oladi */
@@ -320,6 +327,21 @@ export class Player implements Body {
     return true;
   }
 
+  /** Muz ichida qotadi (Qor Malikasining nuri); dash paytida ta'sir qilmaydi. */
+  encase(taps: number) {
+    if (this.dead || this.evading) return false;
+    this.ice = Math.max(this.ice, taps);
+    this.iceT = ENCASE_MAX;
+    this.charge = 0;
+    this.attackTimer = 0;
+    return true;
+  }
+
+  /** Muz qamoqda */
+  get encased() {
+    return this.ice > 0;
+  }
+
   /** To'r yoki ildiz ushlaydi; dash paytida (va himoya dumida) ta'sir qilmaydi. */
   ensnare(t: number) {
     if (this.dead || this.evading) return false;
@@ -366,6 +388,19 @@ export class Player implements Body {
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.spinTimer > 0) this.spinTimer -= dt;
+
+    if (this.ice > 0) {
+      // muz qamoq: har bosish (hujum yoki dash, telefonda ham) muzni yoradi
+      this.iceT -= dt;
+      if (input.consumeAttack()) this.ice--;
+      if (input.consumeDash()) this.ice--;
+      if (this.ice <= 0 || this.iceT <= 0) {
+        this.ice = this.iceT = 0;
+        this.brokeIce = true;
+      }
+      if (this.anim.state !== "hurt" || this.anim.done) this.anim.set("idle");
+      return;
+    }
 
     const wantAttack = input.consumeAttack();
     const wantDash = input.consumeDash();

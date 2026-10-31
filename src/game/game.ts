@@ -10,9 +10,11 @@ import {
   Queen,
   QUEEN_HP,
   WIND_PUSH,
+  impSummonCount,
   spiderSummonCount,
   summonCount,
 } from "./boss";
+import { INTRO_TIME, bossHpFor } from "./bossPower";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings, onSettingsChange } from "./settings";
@@ -28,6 +30,7 @@ import {
   isBossWave,
   bossHp,
   endlessNumber,
+  ENDLESS_BOSS_EVERY,
   waveEnemies,
   waveSpeed,
   waveSpeed2,
@@ -68,6 +71,8 @@ interface Shot {
   size: number;
   /** Kamonchi o'qi (aks holda Boss olov shari) */
   arrow?: boolean;
+  /** Zarar (g'azabdagi boss sharlari +1) */
+  dmg?: number;
 }
 interface Drop {
   x: number;
@@ -161,6 +166,7 @@ const KILL_POINTS: Record<EnemyKind, number> = {
   shroom: 20,
   treant: 40,
   owl: 20,
+  imp: 15,
 };
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
@@ -176,6 +182,7 @@ const KILL_COLOR: Record<EnemyKind, string> = {
   shroom: "#a6f08e",
   treant: "#6b4a2a",
   owl: "#c9b8a0",
+  imp: "#ff6a2a",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -271,6 +278,29 @@ const COMBO_TIME = 2.5;
 const DROP_CHANCE = 0.15;
 const COIN_LIFE = 12;
 const TOTAL_WAVES = WAVES.length;
+/** Boss kirish kartochkasi: ismi, laqabi va rangi */
+const BOSS_CARDS = {
+  devil: { name: "IBLIS", nick: "OLOVLI ZINDON HUKMDORI", color: "#ff6a2a" },
+  queen: { name: "QOR MALIKASI", nick: "ABADIY MUZ BEKASI", color: "#7fe9ff" },
+  king: { name: "O'RMON SHOHI", nick: "ZULMAT O'RMONI QALBI", color: "#d8ff7a" },
+} as const;
+/** Faza almashganda banner: [2-faza, 3-faza] */
+const PHASE_BANNERS = {
+  devil: [
+    { title: "2-FAZA: OLOV YO'LAGI", sub: "Chiziqdan chetga qoch!" },
+    { title: "3-FAZA: YONAYOTGAN ARENA", sub: "Chetlardan uzoqlash!" },
+  ],
+  queen: [
+    { title: "2-FAZA: MUZ QAMOQ", sub: "Nurdan qoch, qotsang — tez bos!" },
+    { title: "3-FAZA: KO'ZGULAR", sub: "Soyasi borini ur!" },
+  ],
+  king: [
+    { title: "2-FAZA: HAYOT GULLARI", sub: "Gullarni yo'q qil!" },
+    { title: "3-FAZA: ZULMAT", sub: "Svetlyachoklarga qara!" },
+  ],
+} as const;
+/** Muz polda sirpanish: harakat shu tezlikda (1/s) yangi yo'nalishga moslashadi */
+const ICE_GRIP = 2.2;
 
 function load(key: string) {
   try {
@@ -346,8 +376,14 @@ export class Game {
   /** Mergan tutun bombalari va yashiringan joyi (dushmanlar shu nuqtani nishonga oladi) */
   smokes: Smoke[] = [];
   hideAt: { x: number; y: number } | null = null;
-  /** O'rmon Shohi g'azabidagi qorong'ilik (0..1, asta kuchayadi) */
+  /** O'rmon Shohi 3-fazasidagi qorong'ilik (0..1, asta kuchayadi) */
   darkness = 0;
+  /** Boss kirish sahnasi qolgan vaqti (kamera yaqinlashadi, nom kartochkasi) */
+  intro = 0;
+  /** Faza almashganda ekran chaqnashi */
+  phaseFlash = 0;
+  /** Muz polda sirpanish tezligi */
+  private slip = { vx: 0, vy: 0, on: false };
   drops: Drop[] = [];
   coins: Coin[] = [];
   chest: Chest | null = null;
@@ -621,6 +657,9 @@ export class Game {
     });
     this.fx.snowOn = ice;
     this.fx.wind = 0;
+    this.intro = 0;
+    this.phaseFlash = 0;
+    this.slip = { vx: 0, vy: 0, on: false };
     this.webs = [];
     this.clouds = [];
     this.traps = [];
@@ -629,12 +668,18 @@ export class Game {
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
     if (boss) {
+      // boss joni o'yinchining shu paytdagi kuchiga moslashadi (bossPower.ts)
+      const cycle = Math.floor(endless / ENDLESS_BOSS_EVERY);
+      const p = this.player;
       this.boss = forest
-        ? new ForestKing(bossHp(i, KING_HP))
+        ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle))
         : ice
-          ? new Queen(bossHp(i, QUEEN_HP))
-          : new Boss(bossHp(i));
-      this.boss.spawn = this.boss.spawnMax = 1.6;
+          ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle))
+          : new Boss(bossHpFor(p, bossHp(i), cycle));
+      // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
+      this.intro = INTRO_TIME;
+      this.boss.spawn = this.boss.spawnMax = INTRO_TIME + 0.4;
+      this.input.clearQueued();
       sfx.roar();
       this.fx.addShake(0.4);
     } else sfx.wave();
@@ -653,8 +698,41 @@ export class Game {
     );
   }
 
+  /** Kirish kartochkasi va faza bannerlari uchun boss turi. */
+  bossKind(b: Boss = this.boss!) {
+    return b instanceof ForestKing ? "king" : b instanceof Queen ? "queen" : "devil";
+  }
+
+  /** Kirish sahnasini o'tkazib yuborish (klaviatura, sensor yoki sichqoncha). */
+  skipIntro() {
+    this.intro = 0;
+    if (this.boss) this.boss.spawn = Math.min(this.boss.spawn, 0.3);
+  }
+
+  /** Iblis: 2-fazadan olov imp'lari (xonada ko'pi bilan 2 ta). */
+  private updateDevil(b: Boss) {
+    if (!b.wantSummon) return;
+    b.wantSummon = false;
+    const alive = this.enemies.filter((e) => e.kind === "imp" && !e.dead).length;
+    const n = impSummonCount(alive);
+    for (let k = 0; k < n; k++) {
+      const e = new Enemy("imp", b.x + (k ? 26 : -26), b.y - 10);
+      e.spawn = e.spawnMax = 0.8;
+      this.enemies.push(e);
+    }
+    if (n) this.fx.burst(b.x, b.y, "#ff6a2a", 16, 70, 2);
+  }
+
   /** O'rmon Shohi: ildiz ovozi va o'rgimchak chaqirish (xonada ko'pi bilan 3 ta). */
   private updateForestKing(k: ForestKing) {
+    for (const w of k.wilted) {
+      this.fx.burst(w.x, w.y - 8, "#e0679a", 14, 70, 2);
+      this.fx.burst(w.x, w.y - 8, "#a6f08e", 8, 50, 1);
+      this.fx.text(w.x, w.y - 20, "GUL SO'LDI", "#ffb3d0");
+      this.score += 50;
+      sfx.kill();
+    }
+    k.wilted = [];
     if (k.justRooted) {
       k.justRooted = false;
       sfx.root();
@@ -677,6 +755,12 @@ export class Game {
   /** Qor Malikasi: nayza ovozi, bo'ron o'yinchini suradi, yarim jondan pastda ruh chaqiradi. */
   private updateQueen(q: Queen, dt: number) {
     const p = this.player;
+    if (q.justEncased) {
+      q.justEncased = false;
+      sfx.iceSpike();
+      this.fx.burst(p.x, p.y, "#dceeff", 16, 60, 2);
+      this.fx.text(p.x, p.y - 20, this.touch ? "TEZ BOS!" : "TEZ BOS: HUJUM / DASH!", "#7fe9ff");
+    }
     if (q.justSpiked) {
       q.justSpiked = false;
       sfx.iceSpike();
@@ -977,6 +1061,7 @@ export class Game {
       else if (hit(this.quitBtn)) this.exitToMenu();
       return;
     }
+    if (this.intro > 0) return this.skipIntro();
     if (this.phase === "play" && this.stage === "upgrade") {
       if (this.upgradeLock > 0) return;
       for (let i = 0; i < this.choices.length; i++)
@@ -1230,7 +1315,16 @@ export class Game {
   /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
   private damageTarget(t: Enemy | Boss, dmg: number, knock = true) {
     const p = this.player;
-    applyHit(t, dmg, p.x, p.y, !knock ? 0 : t instanceof Boss ? 120 : 220);
+    if (t instanceof Boss) {
+      // boss zarbadan to'xtamaydi; faza almashinuvida daxlsiz
+      if (!t.takeDamage(dmg)) {
+        if (t.invulnerable && !t.dead) {
+          sfx.block();
+          this.fx.burst(t.x, t.y - 6, "#e0d6ee", 4, 40, 1);
+        }
+        return;
+      }
+    } else applyHit(t, dmg, p.x, p.y, knock ? 220 : 0);
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
     else {
@@ -1308,6 +1402,20 @@ export class Game {
       this.freeze -= dt;
       return;
     }
+    if (this.intro > 0) {
+      // boss kirishi: dunyo to'xtaydi, boss paydo bo'ladi; istalgan tugma — o'tkazib yuborish
+      const b = this.boss;
+      if (!b || b.spawn <= 0) this.intro = 0;
+      else {
+        this.intro -= dt;
+        b.update(dt, this.player);
+        const skip =
+          this.input.consumeEnter() || this.input.consumeAttack() || this.input.consumeDash();
+        if (skip || this.intro <= 0) this.skipIntro();
+        return;
+      }
+    }
+    if (this.phaseFlash > 0) this.phaseFlash -= dt;
     if (this.banner.timer > 0) this.banner.timer -= dt;
     if (this.comboTimer > 0) this.comboTimer -= dt;
     else this.combo = 0;
@@ -1315,7 +1423,16 @@ export class Game {
     const p = this.player;
     const hpBefore = p.hp;
     if (p.hunter) p.threat = this.nearestThreat();
+    const px0 = p.x,
+      py0 = p.y;
     p.update(dt, this.input);
+    this.applySlip(px0, py0, dt);
+    if (p.brokeIce) {
+      p.brokeIce = false;
+      sfx.block();
+      this.fx.burst(p.x, p.y, "#eef7ff", 18, 90, 2);
+      this.fx.text(p.x, p.y - 16, "MUZ SINDI!", "#eef7ff");
+    }
     if (p.traps.length) {
       for (const t of p.traps) this.traps.push({ ...t, life: TRAP_LIFE, snapT: -1 });
       p.traps = [];
@@ -1401,9 +1518,13 @@ export class Game {
         this.fx.burst(e.x, e.y + 8, "#d8ecf7", 10, 70, 1);
       }
       if (e.shots.length) {
-        for (const s of e.shots) this.shots.push({ ...s, size: 4, arrow: true });
+        // olov imp — kichik olov shari, kamonchi — o'q
+        const imp = e.kind === "imp";
+        for (const s of e.shots)
+          this.shots.push(imp ? { ...s, size: 5 } : { ...s, size: 4, arrow: true });
         e.shots = [];
-        sfx.arrow();
+        if (imp) sfx.fireball();
+        else sfx.arrow();
       }
       if (e.webs.length) {
         for (const w of e.webs)
@@ -1432,20 +1553,26 @@ export class Game {
     const boss = this.boss;
     if (boss) {
       boss.update(dt, target);
-      if (boss.justEnraged) {
-        boss.justEnraged = false;
-        this.banner = {
-          title: "G'AZAB!",
-          sub:
-            boss instanceof Queen
-              ? "Malika ruhlarni chaqiradi"
-              : boss instanceof ForestKing
-                ? "O'rmon qorong'ilashdi"
-                : "Iblis olov sochadi",
-          timer: 1.6,
-        };
+      if (boss.justPhased) {
+        // yangi faza: qisqa daxlsizlik, ekran chaqnaydi, sahna rangi o'zgaradi, yangi hujum
+        boss.justPhased = false;
+        const b = PHASE_BANNERS[this.bossKind(boss)][boss.phase - 2]!;
+        this.banner = { title: b.title, sub: b.sub, timer: 2 };
+        this.phaseFlash = 0.5;
+        this.shots = [];
+        sfx.roar();
+        this.fx.addShake(0.5);
+        this.fx.burst(boss.x, boss.y, BOSS_CARDS[this.bossKind(boss)].color, 30, 110, 2);
+      }
+      if (boss.justBerserk) {
+        boss.justBerserk = false;
+        this.banner = { title: "G'AZAB!", sub: "Boss tezlashdi, zarbalari kuchaydi!", timer: 2 };
         sfx.roar();
         this.fx.addShake(0.4);
+      }
+      if (boss.justWarned) {
+        boss.justWarned = false;
+        sfx.warn();
       }
       if (boss.justSlammed) {
         this.fx.addShake(0.2);
@@ -1453,8 +1580,9 @@ export class Game {
       }
       if (boss instanceof Queen) this.updateQueen(boss, dt);
       if (boss instanceof ForestKing) this.updateForestKing(boss);
+      if (!(boss instanceof Queen) && !(boss instanceof ForestKing)) this.updateDevil(boss);
       if (boss.shots.length) {
-        for (const s of boss.shots) this.shots.push({ ...s, size: 6 });
+        for (const s of boss.shots) this.shots.push({ ...s, size: 6, dmg: boss.dmg(1) });
         boss.shots = [];
         sfx.fireball();
       }
@@ -1481,7 +1609,7 @@ export class Game {
     this.updateClouds(dt);
     this.updateTraps(dt);
     this.updatePoison(dt);
-    // O'rmon Shohi g'azabida xona asta qorong'ilashadi
+    // O'rmon Shohi 3-fazasida xona asta qorong'ilashadi
     const dark = boss instanceof ForestKing && boss.dark;
     this.darkness = Math.max(0, Math.min(1, this.darkness + (dark ? dt : -dt * 2)));
 
@@ -1521,6 +1649,13 @@ export class Game {
         }
         if (!t && this.chest && this.chest.openT < 0 && overlap(body, this.chestBody())) {
           this.hitChest();
+          return false;
+        }
+        // Malikaning ko'zgu nusxasi sharni yutadi, Shohning hayot guli zarar oladi
+        const part = !t && boss?.active ? boss.partAt(body) : null;
+        if (part && !b.hit.includes(part)) {
+          this.strikePart(boss!, part, p.damage * (b.power ?? 1), b.x, b.y);
+          b.hit.push(part);
           return false;
         }
         if (t) {
@@ -1578,6 +1713,12 @@ export class Game {
           this.damageTarget(t, blocked ? 1 : p.hitDamage);
         }
       }
+      const part = boss?.active ? boss.partAt(box) : null;
+      if (part && !p.hitSet.has(part)) {
+        p.hitSet.add(part);
+        this.freeze = 0.03;
+        this.strikePart(boss!, part, p.hitDamage, part.x, part.y);
+      }
       const cb = this.chest && this.chest.openT < 0 ? this.chestBody() : null;
       if (cb && !p.hitSet.has(cb.ref) && overlap(box, cb)) {
         p.hitSet.add(cb.ref);
@@ -1609,10 +1750,10 @@ export class Game {
         if (e.active && overlap(p, e) && p.takeHit(1, e.x, e.y, 180) && e.kind === "iceblob")
           // muz slime tegsa sekinlashtiradi
           p.chill = Math.max(p.chill, ICEBLOB_CHILL);
-      if (boss?.active && overlap(p, boss)) p.takeHit(1, boss.x, boss.y, 220);
+      if (boss?.active && overlap(p, boss)) p.takeHit(boss.dmg(1), boss.x, boss.y, 220);
       this.shots = this.shots.filter((s) => {
         if (!overlap(p, s as unknown as Body)) return true;
-        return !p.takeHit(1, s.x, s.y, 160);
+        return !p.takeHit(s.dmg ?? 1, s.x, s.y, 160);
       });
     }
     if (p.hp < hpBefore) this.onPlayerHurt();
@@ -1724,7 +1865,43 @@ export class Game {
       chill: 0,
       takeHit: () => false,
       ensnare: () => false,
+      encase: () => false,
     };
+  }
+
+  /** Boss qismiga zarba: ko'zgu yutadi (zarar yo'q), gul zarar oladi. */
+  private strikePart(b: Boss, part: { x: number; y: number }, dmg: number, x: number, y: number) {
+    if (b.strikePart(part as Parameters<Boss["strikePart"]>[0], dmg)) {
+      sfx.hit();
+      this.fx.burst(x, y, "#e0679a", 6, 60, 1);
+      return;
+    }
+    sfx.block();
+    this.fx.burst(x, y, "#dceeff", 8, 70, 1);
+    this.fx.text(part.x, part.y - 26, "KO'ZGU!", "#a9cdee");
+  }
+
+  /**
+   * Malikaning muz poli: o'yinchi harakati darhol emas, asta yangi yo'nalishga o'tadi (sirpanchiq,
+   * to'xtash qiyin). Dash/teleport/sakrash/sirpanish va muz qamoq bunga kirmaydi.
+   */
+  private applySlip(x0: number, y0: number, dt: number) {
+    const p = this.player;
+    const q = this.boss;
+    const on = q instanceof Queen && q.onIce(p.x, p.y + 4) && !p.dashing && !p.dead && dt > 0;
+    if (!on) {
+      this.slip.on = false;
+      return;
+    }
+    const vx = (p.x - x0) / dt,
+      vy = (p.y - y0) / dt;
+    if (!this.slip.on) this.slip = { vx, vy, on: true };
+    const k = 1 - Math.exp(-ICE_GRIP * dt);
+    this.slip.vx += (vx - this.slip.vx) * k;
+    this.slip.vy += (vy - this.slip.vy) * k;
+    p.x = x0 + this.slip.vx * dt;
+    p.y = y0 + this.slip.vy * dt;
+    clampToRoom(p);
   }
 
   /** Tutun bulutlari: ichidagi dushmanlar sekinlashadi; tutundan chiqqan Mergan yana ko'rinadi. */
@@ -2306,7 +2483,21 @@ export class Game {
       const s = Math.min(1, this.fx.shake * 6) * 3;
       c.translate(Math.round((Math.random() - 0.5) * s), Math.round((Math.random() - 0.5) * s));
     }
+    if (this.intro > 0 && this.boss) {
+      // kirish: kamera bossga yaqinlashadi, oxirida qaytadi (faqat chizishda — xona o'zgarmaydi)
+      const t = INTRO_TIME - this.intro;
+      const k = Math.min(1, t / 0.5, this.intro / 0.4);
+      const z = 1 + 0.7 * k * k * (3 - 2 * k);
+      const bx = this.boss.x,
+        by = this.boss.y;
+      const cx = ROOM.w / 2 + (bx - ROOM.w / 2) * k,
+        cy = ROOM.h / 2 + (by - ROOM.h / 2) * k;
+      c.translate(ROOM.w / 2, ROOM.h / 2);
+      c.scale(z, z);
+      c.translate(-cx, -cy);
+    }
     this.renderRoom(c);
+    this.renderPhaseTint(c);
 
     // yurak tushumlari
     for (const d of this.drops) {
@@ -2323,8 +2514,8 @@ export class Game {
       this.coin(c, co.x - 3, y - 3, Math.floor(this.time * 6 + co.x) % 4);
     }
 
-    // Malikaning poldagi ogohlantirish doiralari va nayzalari, Shohning ildizlari
-    if (this.boss instanceof Queen || this.boss instanceof ForestKing) this.boss.renderFloor(c);
+    // bosslarning poldagi ogohlantirishlari: olov izi, muz, nur, nayzalar, ildizlar, gullar, tikanlar
+    this.boss?.renderFloor(c, this.time);
     // yerdagi to'rlar, ildiz yoriqlari va boyo'g'li soyalari
     for (const w of this.webs) if (!w.flying) this.renderWeb(c, w);
     for (const t of this.traps) if (t.snapT < 0) this.renderTrap(c, t);
@@ -2339,7 +2530,8 @@ export class Game {
           this.shadow(
             c,
             e.x,
-            e.y + (e.kind === "wisp" || e.kind === "frost" ? 11 : e.size / 2 + 1),
+            e.y +
+              (e.kind === "wisp" || e.kind === "frost" || e.kind === "imp" ? 11 : e.size / 2 + 1),
             // baland uchayotgan boyo'g'lining soyasi kichikroq
             e.kind === "owl" ? e.size * (1 - (e.alt / OWL_ALT) * 0.45) : e.size,
           );
@@ -2354,10 +2546,15 @@ export class Game {
         y: boss.y,
         r: () => {
           if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
+          // ko'zgular bor paytda haqiqiy Malikaning soyasi och muz polda ham aniq ko'rinsin
+          if (boss instanceof Queen && boss.mirrors.length) this.shadow(c, boss.x, boss.y + 24, 34);
           boss.render(c);
           if (boss.slow > 0 && !boss.dead && !p.gunner) this.frost(c, boss.x, boss.y, boss.size);
         },
       });
+    // ko'zgu nusxalari: soyasi yo'q — haqiqiy Malikani shundan ajratish mumkin
+    if (boss instanceof Queen)
+      for (const m of boss.mirrors) all.push({ y: m.y, r: () => boss.renderMirror(c, m) });
     const ch = this.chest;
     if (ch) all.push({ y: ch.y, r: () => this.renderChest(c, ch) });
     // yopilgan tuzoq dushman oyog'ida, uning ustida chiziladi
@@ -2371,6 +2568,7 @@ export class Game {
           p.render(c);
           // sovuq nafasdan sekinlashgan
           if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);
+          if (p.encased) this.renderIceBlock(c);
         },
       });
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
@@ -2426,7 +2624,10 @@ export class Game {
       g.addColorStop(1, `rgba(2,6,3,${0.88 * this.darkness})`);
       c.fillStyle = g;
       c.fillRect(0, 0, ROOM.w, ROOM.h);
-      if (boss instanceof ForestKing) boss.renderEyes(c);
+      if (boss instanceof ForestKing) {
+        boss.renderSwarm(c, this.time);
+        boss.renderEyes(c);
+      }
     }
     if (this.chapter === 3) this.renderFireflies(c);
     this.fx.renderSnow(c);
@@ -2442,6 +2643,10 @@ export class Game {
     v.addColorStop(1, "rgba(0,0,0,0.45)");
     c.fillStyle = v;
     c.fillRect(0, 0, ROOM.w, ROOM.h);
+    if (this.phaseFlash > 0) {
+      c.fillStyle = `rgba(255,255,255,${this.phaseFlash * 0.9})`;
+      c.fillRect(0, 0, ROOM.w, ROOM.h);
+    }
     // past HP — qizil chekka
     if (p.hp === 1 && !p.dead) {
       c.fillStyle = `rgba(200,0,30,${0.12 + 0.08 * Math.sin(this.time * 6)})`;
@@ -2449,10 +2654,82 @@ export class Game {
     }
     c.restore();
 
-    this.renderHud();
+    if (this.intro > 0) this.renderIntro();
+    else this.renderHud();
     this.renderOverlays();
     this.renderToast();
     c.restore();
+  }
+
+  /** Sahna o'zgarishi: boss fazasi oshgani sari xona rangi quyuqlashadi. */
+  private renderPhaseTint(c: CanvasRenderingContext2D) {
+    const b = this.boss;
+    if (!b || b.dead || b.phase < 2) return;
+    const kind = this.bossKind(b);
+    const a = b.phase === 2 ? 0.12 : 0.22;
+    const pulse = 0.04 * Math.sin(this.time * 3);
+    c.fillStyle =
+      kind === "devil"
+        ? `rgba(200,40,10,${a + pulse})`
+        : kind === "queen"
+          ? `rgba(60,140,255,${a + pulse})`
+          : `rgba(10,40,5,${a + pulse})`;
+    c.fillRect(0, 0, ROOM.w, ROOM.h);
+  }
+
+  /** Muz qamoq: o'yinchi atrofida muz bo'lagi, yorilish darajasi — qolgan bosishlar. */
+  private renderIceBlock(c: CanvasRenderingContext2D) {
+    const p = this.player;
+    const x = Math.round(p.x - 10),
+      y = Math.round(p.y - 13);
+    c.fillStyle = "rgba(169,205,238,0.55)";
+    c.fillRect(x, y, 20, 24);
+    c.strokeStyle = "#eef7ff";
+    c.lineWidth = 1;
+    c.strokeRect(x + 0.5, y + 0.5, 19, 23);
+    c.fillStyle = "#ffffff";
+    c.fillRect(x + 3, y + 3, 2, 6);
+    // yoriqlar: har bosish bittadan
+    c.strokeStyle = "#4a6fa5";
+    c.beginPath();
+    const cracks = 6 - Math.min(6, p.ice);
+    for (let i = 0; i < cracks; i++) {
+      const sx = x + 4 + ((i * 7) % 13),
+        sy = y + 4 + ((i * 11) % 17);
+      c.moveTo(sx, sy);
+      c.lineTo(sx + (i % 2 ? 4 : -3), sy + 5);
+    }
+    c.stroke();
+    if (Math.floor(this.time * 6) % 2)
+      this.text(this.touch ? "TEZ BOS!" : "HUJUM / DASH!", p.x, y - 4, 5, "#7fe9ff");
+  }
+
+  /** Boss kirishi: katta nom kartochkasi (ismi va laqabi). */
+  private renderIntro() {
+    const b = this.boss;
+    if (this.intro <= 0 || !b) return;
+    const c = this.ctx;
+    const card = BOSS_CARDS[this.bossKind(b)];
+    const t = INTRO_TIME - this.intro;
+    const a = Math.min(1, t / 0.3, this.intro / 0.3);
+    const slide = Math.round((1 - Math.min(1, t / 0.35)) * 60);
+    c.globalAlpha = a;
+    px(c, "rgba(0,0,0,0.85)", 0, 0, ROOM.w, 26);
+    px(c, "rgba(0,0,0,0.85)", 0, ROOM.h - 26, ROOM.w, 26);
+    px(c, "rgba(8,4,16,0.8)", 0, 150, ROOM.w, 46);
+    px(c, card.color, 0, 150, ROOM.w, 1);
+    px(c, card.color, 0, 195, ROOM.w, 1);
+    this.text(card.name, ROOM.w / 2 - slide, 176, 16, card.color);
+    this.text(card.nick, ROOM.w / 2 + slide, 189, 6, "#e0d6ee");
+    if (Math.floor(this.time * 3) % 2)
+      this.text(
+        this.touch ? "o'tkazish: ekranga bosing" : "o'tkazish: istalgan tugma",
+        ROOM.w / 2,
+        ROOM.h - 10,
+        5,
+        "#b8a8cc",
+      );
+    c.globalAlpha = 1;
   }
 
   /** Ovchi o'qi: jigarrang dasta, temir uch, yashil pat; kuchli o'q kattaroq va yashil nurli. */
@@ -2808,6 +3085,14 @@ export class Game {
         4,
       );
       px(c, "rgba(255,255,255,0.25)", bx, by + 1, (bw * Math.max(0, boss.hp)) / boss.maxHp, 1);
+      // faza chegaralari (60% va 30%) va daxlsizlik
+      px(c, "#000", bx + bw * 0.6, by + 1, 1, 4);
+      px(c, "#000", bx + bw * 0.3, by + 1, 1, 4);
+      if (boss.invulnerable) px(c, "rgba(255,255,255,0.5)", bx, by + 1, bw, 4);
+      for (let i = 0; i < 3; i++)
+        px(c, i < boss.phase ? "#ffcc33" : "#3b2a3a", bx + bw + 4 + i * 4, by + 1, 3, 4);
+      if (boss.berserk && Math.floor(this.time * 4) % 2)
+        this.text("G'AZAB", bx - 4, by + 5, 5, "#ff4d4d", "right");
     }
 
     if (this.hintsVisible()) this.renderHints();
