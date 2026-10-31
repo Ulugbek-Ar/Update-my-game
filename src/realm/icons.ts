@@ -430,6 +430,41 @@ export const ITEM_ICONS: Record<string, Icon> = {
       "............",
     ],
   },
+  // Kul qiroli luti
+  ashcrown: {
+    colors: { k: "#120403", d: "#4c3e3a", o: "#ff6a1a", y: "#ffe08a", w: "#fff6c8" },
+    rows: [
+      "............",
+      "..o..y..o...",
+      ".oyo.yy.oyo.",
+      ".oyookyoyyo.",
+      "kooyykyyoook",
+      "kddddddddddk",
+      "kdoddyddoddk",
+      "kddddddddddk",
+      ".kkkkkkkkkk.",
+      "............",
+      "............",
+      "............",
+    ],
+  },
+  kingblade: {
+    colors: { k: "#120403", d: "#4c3e3a", o: "#ff6a1a", y: "#ffe08a", w: "#fff6c8" },
+    rows: [
+      "..........kk",
+      ".........kyk",
+      "........kyok",
+      ".......kyok.",
+      "......kyok..",
+      ".....kyok...",
+      "..k.kyok....",
+      "..kkyok.....",
+      "...kok......",
+      "..kdkkk.....",
+      ".kdk..k.....",
+      ".kk.........",
+    ],
+  },
 };
 
 const cache = new Map<string, HTMLCanvasElement>();

@@ -1017,6 +1017,16 @@
       ],
       "gold": 35,
       "hidden": true
+    },
+    {
+      "type": "arena",
+      "id": "arena-king",
+      "x": 82,
+      "y": 162,
+      "w": 34,
+      "h": 24,
+      "boss": "ashking",
+      "entry": [98, 157]
     }
   ],
   "secrets": [

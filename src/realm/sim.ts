@@ -28,6 +28,7 @@ import type {
   SecretDef,
 } from "./schema";
 import { CRACKED, LAVA, SOLID, TILE, TILE_IDS, WATER } from "./tiles";
+import { AshKingRaid, KING_RESPAWN } from "./raid";
 import {
   FIREBALL_LIFE,
   FIREBALL_R,
@@ -122,6 +123,38 @@ export type RealmEvent =
   | { type: "burn"; pid: string; x: number; y: number }
   /** bosim plitasi bosildi (yolg'iz) */
   | { type: "plate"; pid: string; x: number; y: number }
+  /**
+   * Reyd (Kul qiroli): start — kirish sahnasi, wipe/reset — boss tiklandi, win — yengildi, phase,
+   * lava/flood — zal yarmi lavaga to'lmoqda/to'ldi (side), spirits, storm/stormhit (n — doiradagilar),
+   * cone — olov konusi (dx, dy), enrage — g'azab
+   */
+  | {
+      type: "raid";
+      what:
+        | "start"
+        | "wipe"
+        | "reset"
+        | "win"
+        | "phase"
+        | "lava"
+        | "flood"
+        | "spirits"
+        | "storm"
+        | "stormhit"
+        | "cone"
+        | "enrage";
+      x: number;
+      y: number;
+      phase?: number;
+      side?: number;
+      n?: number;
+      dx?: number;
+      dy?: number;
+    }
+  /** yangi unvon (birinchi g'alaba) */
+  | { type: "title"; pid: string; title: string }
+  /** osmondan meteor tushdi */
+  | { type: "meteor"; x: number; y: number; r: number }
   /** Paladin: SHANG zarbasi (yo'lak), OSMON HUKMI, QASAM va MUQADDAS AURA */
   | { type: "shang"; pid: string; x: number; y: number; fx: number; fy: number; len: number }
   | { type: "judgment"; pid: string; x: number; y: number; r: number }
@@ -192,6 +225,8 @@ export interface RealmPlayerSave {
   /** o'rganilgan plitkalar (bitset, base64) */
   explored: string;
   starNight: number;
+  /** unvonlar (masalan, "ashking" — Kul qirolini yenggan) */
+  titles?: string[];
 }
 
 export interface RealmWorldSave {
@@ -279,6 +314,10 @@ export class RealmPlayer {
   lavaT = 0;
   /** lava kuyish oralig'iga qo'shimcha (Kul plashi) */
   fire = 0;
+  /** unvonlar (birinchi g'alabalar) — onlayn ism ostida ko'rinadi */
+  titles: string[] = [];
+  /** reyd jangida halok bo'ldi: 10 s dan keyin zal kirishida tug'iladi */
+  raidRespawn = false;
   base: { maxHp: number; damage: number; speed: number };
 
   constructor(
@@ -349,8 +388,10 @@ export class RealmSim {
   traps: Trap[] = [];
   /** Mergan tutun bombalari: ichidagi moblar sekinlashadi, Mergan ko'rinmaydi */
   smokes: { x: number; y: number; life: number }[] = [];
-  /** moblarning olov sharlari (lava qurti) */
+  /** moblarning olov sharlari (lava qurti, kul ruhi) */
   fireballs: Fireball[] = [];
+  /** reyd boss zali (Kul qiroli) — hududda bo'lsa */
+  raid: AshKingRaid | null = null;
   /** dunyo o'zgarishlari: buzilgan devor, ochilgan zinapoya (plitka indeksi -> plitka) */
   overrides = new Map<number, number>();
   doors = new Set<string>();
@@ -382,6 +423,31 @@ export class RealmSim {
       }
       for (let n = 0; n < z.count; n++) this.spawnInZone(i);
     });
+    const arena = this.region.objects.find((o) => o.type === "arena");
+    if (arena?.type === "arena") {
+      this.raid = new AshKingRaid(arena);
+      this.raid.spawnBoss(this);
+    }
+  }
+
+  /** Yangi mob (zonasiz) — reyd boss va u chaqiradiganlar */
+  addMob(kind: MobKind, x: number, y: number) {
+    const m = new RealmMob(this.nextId++, kind, x, y, "");
+    this.mobs.push(m);
+    return m;
+  }
+
+  /** Buyumni o'yinchiga berish (sig'masa — oyog'i ostiga) */
+  giveItem(rp: RealmPlayer, item: string, n: number, x: number, y: number) {
+    this.give(rp, item, n, x, y);
+  }
+
+  /** O'yinchiga zarar (daxlsizlikni hisobga oladi): true — tegdi */
+  hurtPlayer(rp: RealmPlayer, dmg: number, fromX: number, fromY: number, force: number) {
+    if (rp.p.dead || !rp.p.takeHit(dmg, fromX, fromY, force)) return false;
+    rp.lastHurt = this.tick;
+    this.events.push({ type: "mobHurtPlayer", pid: rp.id, x: rp.p.x, y: rp.p.y });
+    return true;
   }
 
   // ---------- vaqt ----------
@@ -504,6 +570,7 @@ export class RealmSim {
       rp.landmarks = [...save.landmarks];
       rp.kills = save.kills;
       rp.starNight = save.starNight;
+      rp.titles = [...(save.titles ?? [])];
       fromB64(save.explored, rp.explored);
       // devor ichida qolgan bo'lsa — qishloqqa
       if (this.boxBlocked(rp.p.x, rp.p.y, rp.p.size)) {
@@ -521,6 +588,7 @@ export class RealmSim {
   /** O'yinchi xonadan chiqdi: moblar uni quvlashni to'xtatadi, o'qlari so'nadi. */
   removePlayer(id: string) {
     if (!this.players.delete(id)) return;
+    this.raid?.leave(id);
     for (const m of this.mobs) {
       if (m.target === id) m.target = null;
       m.threat.drop(id);
@@ -547,6 +615,7 @@ export class RealmSim {
       kills: rp.kills,
       explored: toB64(rp.explored),
       starNight: rp.starNight,
+      titles: [...rp.titles],
     };
   }
 
@@ -569,6 +638,11 @@ export class RealmSim {
     this.wallHits = { ...w.wallHits };
     this.fireballs = [];
     this.lastNight = this.night;
+    if (this.raid) {
+      // saqlangan dunyo: boss taxtida, jang yo'q (raid.update uni qayta chaqiradi)
+      const def = this.raid.def;
+      this.raid = new AshKingRaid(def);
+    }
     // vaqtga mos moblar
     this.mobs = [];
     this.region.mobZones.forEach((z, i) => {
@@ -955,7 +1029,8 @@ export class RealmSim {
     for (const n of this.region.npcs)
       consider("npc", n.id, tileCenter(n.x), tileCenter(n.y), INTERACT_R);
     for (const o of this.region.objects) {
-      if (o.type === "lamp" || o.type === "plate" || !this.visible(rp, o)) continue;
+      if (o.type === "lamp" || o.type === "plate" || o.type === "arena" || !this.visible(rp, o))
+        continue;
       if (o.type === "chest" && rp.opened.includes(o.id)) continue;
       if (o.type === "door" && this.doors.has(o.id)) continue;
       if (o.type === "torch" && this.torchLit(rp, o.id)) continue;
@@ -1190,6 +1265,7 @@ export class RealmSim {
     }
     if (!rp) return;
     if (m.kind === "warden") return this.wardenLoot(m, rp);
+    if (m.kind === "ashking") return this.raid?.victory(this, m, rp);
     rp.kills++;
     this.events.push({ type: "kill", x: m.x, y: m.y, kind: m.kind, pid: rp.id });
     const d = this.data.drops[m.kind];
@@ -1231,7 +1307,7 @@ export class RealmSim {
   private hit(rp: RealmPlayer, m: RealmMob, dmg: number, knock: number) {
     if (m.dead || m.under || m.spawnT > 0.3) return false;
     const evading = m.evading;
-    if (m.kind === "warden") m.hitters.add(rp.id);
+    if (m.kind === "warden" || m.kind === "ashking") m.hitters.add(rp.id);
     const killed = damageMob(m, dmg, rp.p.x, rp.p.y, knock, this);
     if (!evading) this.events.push({ type: "hit", x: m.x, y: m.y - 6, dmg, kind: m.kind });
     if (!m.target && !m.evading && !m.dead) m.target = rp.id;
@@ -1241,7 +1317,7 @@ export class RealmSim {
     return true;
   }
 
-  event(e: MobEvent) {
+  event(e: RealmEvent) {
     this.events.push(e);
   }
 
@@ -1267,6 +1343,7 @@ export class RealmSim {
 
     for (const rp of this.players.values()) this.updatePlayer(rp, dt);
     this.updateMobs(dt);
+    this.raid?.update(this, dt);
     this.updateProjectiles(dt);
     this.updateFireballs(dt);
     this.updatePlates();
@@ -1362,7 +1439,7 @@ export class RealmSim {
     if (p.dead) {
       p.anim.update(dt);
       rp.deadT += dt;
-      if (rp.deadT >= RESPAWN_TIME) this.respawn(rp);
+      if (rp.deadT >= (rp.raidRespawn ? KING_RESPAWN : RESPAWN_TIME)) this.respawn(rp);
       return;
     }
     const hpBefore = p.hp;
@@ -1418,7 +1495,7 @@ export class RealmSim {
         if (overlap(box, m)) {
           p.hitSet.add(m);
           // Paladin: OSMON HUKMI gangitadi, SHANG kuchli itaradi
-          if (p.paladin && p.spinning && !m.evading) {
+          if (p.paladin && p.spinning && !m.evading && m.kind !== "ashking") {
             m.stun = Math.max(m.stun, SKY_STUN);
             m.holy = true;
           }
@@ -1454,7 +1531,7 @@ export class RealmSim {
    */
   private updateLava(rp: RealmPlayer, dt: number) {
     const p = rp.p;
-    if (p.dead || !this.onLava(p.x, p.y)) {
+    if (p.dead || !(this.onLava(p.x, p.y) || this.raid?.lavaAt(p.x, p.y + 4))) {
       rp.lavaT = 0;
       return;
     }
@@ -1533,7 +1610,10 @@ export class RealmSim {
     const [sx, sy] = this.respawnPoint(rp);
     const area = this.areaAt(rp.p.x, rp.p.y);
     const old = rp.p;
-    rp.p = rp.makePlayer(tileCenter(sx), tileCenter(sy));
+    // reyd jangida halok bo'lgan — zal kirishida
+    const entry = rp.raidRespawn && this.raid ? this.raid.entry : null;
+    rp.raidRespawn = false;
+    rp.p = entry ? rp.makePlayer(entry.x, entry.y) : rp.makePlayer(tileCenter(sx), tileCenter(sy));
     rp.p.fx = old.fx;
     rp.p.fy = old.fy;
     rp.base = { maxHp: rp.p.maxHp, damage: rp.p.damage, speed: rp.p.speed };
@@ -1617,6 +1697,8 @@ export class RealmSim {
     ctx.night = this.night;
     ctx.players = targets;
     for (const m of this.mobs) {
+      // Kul qirolini reyd (raid.ts) boshqaradi
+      if (m.kind === "ashking") continue;
       const before = new Map(targets.map((t) => [t.id, t.p.hp]));
       updateMob(m, ctx);
       for (const t of targets)
@@ -1704,7 +1786,12 @@ export class RealmSim {
       if (t.life <= 0) return false;
       const m = this.mobs.find(
         (m) =>
-          !m.dead && !m.ghost && !m.under && Math.abs(m.x - t.x) < 10 && Math.abs(m.y - t.y) < 10,
+          !m.dead &&
+          !m.ghost &&
+          !m.under &&
+          m.kind !== "ashking" &&
+          Math.abs(m.x - t.x) < 10 &&
+          Math.abs(m.y - t.y) < 10,
       );
       if (m) {
         m.stun = Math.max(m.stun, m.kind === "warden" ? 1 : 2.5);
@@ -1737,6 +1824,13 @@ export class RealmSim {
     this.marks = this.marks.filter((k) => {
       const m = live.get(k.owner);
       if (!m) return false;
+      if (k.kind === "stack") {
+        // Kul bo'roni: vaqti tugaganda doiradagilar zararni bo'lishadi
+        k.t -= dt;
+        if (k.t > 0) return true;
+        this.raid?.resolveStorm(this, k);
+        return false;
+      }
       if (!k.dmg) {
         // hujum ogohlantirishi: aynan tayyorgarlik (windup) davomida, mob bilan birga siljiydi
         if (m.state !== "windup") return false;
@@ -1750,7 +1844,12 @@ export class RealmSim {
       k.t -= dt;
       if (k.t > 0) return true;
       if (k.dmg) {
-        this.events.push({ type: "rocks", x: k.x, y: k.y, r: k.r });
+        this.events.push({
+          type: k.kind === "meteor" ? "meteor" : "rocks",
+          x: k.x,
+          y: k.y,
+          r: k.r,
+        });
         for (const rp of this.players.values()) {
           const p = rp.p;
           if (!p.dead && dist(p, k) < k.r + p.size / 2 && p.takeHit(k.dmg, k.x, k.y, 160)) {
@@ -1869,6 +1968,7 @@ export class RealmSim {
       mobs: this.mobs.map((m) => [m.id, m.kind, r(m.x), r(m.y), m.hp, m.state]),
       items: this.items.map((i) => [i.item, i.n, i.gold, r(i.x), r(i.y)]),
       fireballs: this.fireballs.map((f) => [r(f.x), r(f.y), f.owner]),
+      raid: this.raid?.net() ?? null,
       overrides: [...this.overrides],
     });
   }

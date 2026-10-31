@@ -10,7 +10,8 @@ import type { Hero } from "@/game/hero";
 import type { AnimState } from "@/game/animation";
 import type { RealmCommand, RealmEvent, RealmUi, QuestProgress, Stack } from "../sim";
 import type { MobKind } from "../schema";
-import type { MobState } from "../mobs";
+import type { Mark, MobState } from "../mobs";
+import type { RaidNet } from "../raid";
 
 /** Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi (v3: Kul tog'i, olov sharlari) */
 export const NET_VERSION = 3;
@@ -108,6 +109,8 @@ export const SaveSchema = z.object({
   kills: z.number().int().min(0).max(10_000_000),
   explored: z.string().max(24_000),
   starNight: z.number().int().min(-1).max(10_000_000),
+  /** unvonlar (eski saqlashda yo'q) */
+  titles: list.optional(),
 });
 
 export const HelloSchema = z.object({
@@ -176,6 +179,16 @@ export const MOB_STATES: readonly MobState[] = [
   "fade",
 ];
 
+/** Ogohlantirish belgilari turi (NetMark[0]) */
+export const MARK_KINDS: readonly Mark["kind"][] = [
+  "circle",
+  "line",
+  "crack",
+  "cone",
+  "stack",
+  "meteor",
+];
+
 /** O'yinchi bayroqlari */
 export const PF_DASH = 1,
   PF_GUARD = 2,
@@ -183,7 +196,10 @@ export const PF_DASH = 1,
   /** Paladin QASAM qilmoqda (aura chiziladi) */
   PF_VOW = 8;
 
-/** [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar, flash] */
+/**
+ * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,
+ * flash, unvon ("" — yo'q)]
+ */
 export type NetPlayer = [
   string,
   Hero,
@@ -198,6 +214,7 @@ export type NetPlayer = [
   number,
   number,
   number,
+  string,
 ];
 /**
  * [id, tur, x, y, jon, max, holat, anim, kadr, yuz, dirX, dirY, flash, stun (1 — gangigan,
@@ -256,6 +273,7 @@ export interface NetMe {
   kills: number;
   ui: RealmUi | null;
   starNight: number;
+  titles: string[];
 }
 
 /** Delta holat: maydon bo'lmasa — o'zgarmagan */
@@ -276,6 +294,8 @@ export interface SnapshotMsg {
   b?: NetBolt[];
   /** moblarning olov sharlari */
   fb?: NetFireball[];
+  /** reyd (Kul qiroli) holati */
+  rd?: RaidNet;
   k?: NetMark[];
   tr?: [number, number][];
   sm?: [number, number, number][];

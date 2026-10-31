@@ -17,6 +17,7 @@ import {
   PF_GUARD,
   PF_HIDDEN,
   PF_VOW,
+  MARK_KINDS,
   type NetMe,
   type NetMob,
   type NetPlayer,
@@ -179,7 +180,7 @@ export class RealmMirror {
     if (m.k)
       sim.marks = m.k.map(([kind, x, y, r, dx, dy, len, t, total, owner, dmg]) => {
         const k: Mark = {
-          kind: kind === 2 ? "crack" : kind ? "line" : "circle",
+          kind: MARK_KINDS[kind] ?? "circle",
           x,
           y,
           r,
@@ -200,6 +201,7 @@ export class RealmMirror {
       sim.mapVersion++;
     }
     if (m.d) sim.doors = new Set(m.d);
+    if (m.rd) sim.raid?.applyNet(m.rd);
     if (m.me) this.applyMe(m.me);
     if (m.ev) {
       this.events.push(...m.ev);
@@ -222,6 +224,7 @@ export class RealmMirror {
     me.kills = n.kills;
     me.ui = n.ui;
     me.starNight = n.starNight;
+    me.titles = n.titles ?? [];
     // jon, zarar, tezlik va yorug'lik inventardan (serverdagi bilan bir xil hisob)
     this.sim.applyBonuses(me);
   }
@@ -252,6 +255,7 @@ export class RealmMirror {
       p.hideT = a[11] & PF_HIDDEN ? 1 : 0;
       p.vowT = a[11] & PF_VOW ? 1 : 0;
       p.flash = a[12];
+      rp.titles = a[13] ? [a[13]] : [];
     }
     for (const [id, list] of this.mobs) {
       const { a, b, k } = at(list, rt);

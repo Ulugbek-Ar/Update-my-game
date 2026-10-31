@@ -27,6 +27,7 @@ import { CHUNK, CHUNK_PX, LAVA, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from 
 import { TILE_COLOR, drawTile } from "./tileArt";
 import { drawItemIcon, RARITY_COLOR, RARITY_NAME } from "./icons";
 import { MOB_STATS, RING_MAX, RING_W, WARDEN_SHIELD_ARC, type Mark, type RealmMob } from "./mobs";
+import { KING_ENRAGE, KING_RESPAWN, PHASE_TEXT, TITLE_TEXT } from "./raid";
 import type { GameObjectDef, RealmArea } from "./schema";
 
 export const VIEW_W = 320;
@@ -88,6 +89,10 @@ export interface RealmView {
   /** Paladin SHANG yoriqlari va zarb to'lqinlari (faqat chizish, klient voqealardan to'ldiradi) */
   cracks: Crack[];
   quakes: Quake[];
+  /** reyd boss kirish sahnasi (nom kartochkasi): qolgan ulush 0..1 */
+  intro: number;
+  /** o'z qahramoni halok bo'lgan vaqt (reydda qayta tug'ilish hisobi) */
+  deadAt: number;
   toasts: Toast[];
   banner: { text: string; sub: string; t: number; color: string };
   shake: number;
@@ -400,6 +405,34 @@ export class RealmRenderer {
     // Paladin: SHANG yoriqlari va zarb to'lqinlari (oq yadro, oltin chekka)
     for (const k of v.cracks) if (inView(k.x, k.y, camX, camY, 80)) renderCrack(c, k);
     for (const q of v.quakes) if (inView(q.x, q.y, camX, camY, 80)) renderQuake(c, q);
+    // reyd zali: yarmi lavaga to'lmoqda (ogohlantirish — miltillovchi yoriqlar) yoki to'lgan
+    const raid = sim.raid;
+    if (raid && raid.lava >= 0) {
+      const mid = (raid.x0 + raid.x1) / 2;
+      const x0 = raid.lava === 0 ? raid.x0 : mid,
+        x1 = raid.lava === 0 ? mid : raid.x1;
+      if (raid.lavaWarn) {
+        const blink = Math.floor(v.time * 6) % 2 === 0;
+        c.globalAlpha = blink ? 0.32 : 0.18;
+        px(c, "#ff3b1a", x0, raid.y0, x1 - x0, raid.y1 - raid.y0);
+        c.globalAlpha = 1;
+        for (let x = x0 + 8; x < x1; x += 24)
+          for (let y = raid.y0 + 8; y < raid.y1; y += 20) {
+            px(c, "#2a0a04", x, y, 6, 1);
+            px(c, blink ? "#ffd36a" : "#ff5a1a", x + 1, y, 3, 1);
+          }
+        px(c, "#ffd36a", mid - 1, raid.y0, 2, raid.y1 - raid.y0);
+      } else {
+        px(c, "#d8451a", x0, raid.y0, x1 - x0, raid.y1 - raid.y0);
+        for (let y = raid.y0; y < raid.y1; y += 6)
+          for (let x = x0 + ((y / 6) % 2) * 6; x < x1; x += 12) {
+            const k = Math.floor(v.time * 3 + x * 0.07 + y * 0.11) % 5;
+            px(c, k < 2 ? "#ffb02e" : "#8a1e10", x + k, y + 2, 5, 1);
+            if (k === 0) px(c, "#ffd36a", x + 3, y, 2, 2);
+          }
+        px(c, "#2a0a04", raid.lava === 0 ? mid - 1 : mid, raid.y0, 2, raid.y1 - raid.y0);
+      }
+    }
     // tuzoqlar
     for (const t of sim.traps) {
       px(c, "#5a3e24", t.x - 5, t.y - 1, 10, 2);
@@ -470,6 +503,7 @@ export class RealmRenderer {
       if (!inView(x, y, camX, camY, 48)) continue;
       const foot = y + m.size / 2;
       if (m.kind === "warden") occlude(x, y - 48, 56, foot);
+      else if (m.kind === "ashking") occlude(x, y - 80, 90, foot);
       else if (m.kind === "sentinel" || m.kind === "obsguard") occlude(x, y - 16, 26, foot);
       all.push({ y: foot, r: () => this.mob(c, v, m, x, y) });
     }
@@ -862,7 +896,8 @@ export class RealmRenderer {
     // yer — to'qnashuv qutisining pastki cheti: oyoq uchlari aynan soya ustida (faqat ruh havoda uchadi)
     const wisp = m.kind === "wisp";
     const ground = wisp ? y + 12 : y + m.size / 2;
-    if (!m.dead) shadow(c, x, ground, m.kind === "warden" ? 30 : m.size);
+    if (!m.dead)
+      shadow(c, x, ground, m.kind === "warden" ? 30 : m.kind === "ashking" ? 52 : m.size);
     c.globalAlpha = Math.max(0.15, fade) * (m.evading ? 0.6 : 1);
     const sy = wisp
       ? y + Math.round(Math.sin(v.time * 3 + m.id) * 2) - 4
@@ -905,7 +940,7 @@ export class RealmRenderer {
         px(c, "#ffe14d", x + Math.cos(a) * 7, y - m.size / 2 - 8 + Math.sin(a) * 2, 2, 2);
       }
     // kichik jon chizig'i (Sardordan tashqari — uniki pastda)
-    if (!m.dead && m.hp < m.maxHp && m.kind !== "warden") {
+    if (!m.dead && m.hp < m.maxHp && m.kind !== "warden" && m.kind !== "ashking") {
       const w = 14;
       px(c, "#000", x - w / 2 - 1, y - m.size / 2 - 7, w + 2, 3);
       px(c, "#ff4d6d", x - w / 2, y - m.size / 2 - 6, (w * m.hp) / m.maxHp, 1);
@@ -1171,6 +1206,38 @@ export class RealmRenderer {
       v.buttons.push({ x, y: y0, w: sw - 1, h: sw - 1, act: () => v.act.use(i) });
     }
 
+    // Kul qiroli: katta jon chizig'i, faza belgilari va g'azab taymeri (jangda yoki zalda bo'lsa)
+    const king = sim.mobs.find((m) => m.kind === "ashking" && !m.dead);
+    const raid = sim.raid;
+    const inRaid = !!king && !!raid?.active && (raid.inArena(p.x, p.y) || p.dead);
+    if (inRaid && king && raid && v.intro <= 0) {
+      const bw = 200,
+        bx = (VIEW_W - bw) / 2,
+        by = VIEW_H - 36;
+      const name = `${MOB_STATS.ashking.name} · ${PHASE_TEXT[king.phase] ?? ""}`;
+      text(c, name, VIEW_W / 2, by - 3, 6, raid.enraged ? "#ff3b1a" : "#ffb02e", "center");
+      px(c, "#000", bx - 1, by, bw + 2, 7);
+      px(c, "#3b1a14", bx, by + 1, bw, 5);
+      const hpCol = raid.enraged && Math.floor(v.time * 6) % 2 ? "#ffd36a" : "#ff5a1a";
+      px(c, hpCol, bx, by + 1, (bw * king.hp) / king.maxHp, 5);
+      // faza chegaralari (60% va 30%)
+      px(c, "#ffffff", bx + bw * 0.6, by + 1, 1, 5);
+      px(c, "#ffffff", bx + bw * 0.3, by + 1, 1, 5);
+      // g'azab taymeri va jamoa
+      const left = Math.max(0, KING_ENRAGE - raid.elapsed);
+      const mm = Math.floor(left / 60),
+        ss = Math.floor(left % 60);
+      text(
+        c,
+        raid.enraged ? "G'AZAB!" : `G'AZAB ${mm}:${String(ss).padStart(2, "0")}`,
+        bx + bw,
+        by + 15,
+        5,
+        raid.enraged || left < 30 ? "#ff3b1a" : "#e0d6ee",
+        "right",
+      );
+      text(c, `JAMOA: ${raid.party}`, bx, by + 15, 5, "#e0d6ee");
+    }
     // Sardor jon chizig'i
     const boss = sim.mobs.find((m) => m.kind === "warden" && m.target === me.id && !m.dead);
     if (boss) {
@@ -1194,7 +1261,7 @@ export class RealmRenderer {
 
     // xabarlar
     v.toasts.slice(-3).forEach((t, i, arr) => {
-      const y = VIEW_H - 44 - (arr.length - 1 - i) * 9 - (boss ? 14 : 0);
+      const y = VIEW_H - 44 - (arr.length - 1 - i) * 9 - (boss ? 14 : inRaid ? 18 : 0);
       c.globalAlpha = Math.min(1, t.t);
       text(c, t.text, VIEW_W / 2, y, 6, t.color, "center");
       c.globalAlpha = 1;
@@ -1210,11 +1277,14 @@ export class RealmRenderer {
     if (p.dead) {
       px(c, "rgba(0,0,0,0.5)", 0, 96, VIEW_W, 40);
       text(c, "HALOK BO'LDINGIZ", VIEW_W / 2, 114, 10, "#ff4d6d", "center");
+      const wait = Math.max(0, Math.ceil(KING_RESPAWN - (v.time - v.deadAt)));
       text(
         c,
-        this.area?.id === "ashmount"
-          ? "Kul darvozasi yonida o'zingizga kelasiz..."
-          : "Qishloqda o'zingizga kelasiz...",
+        inRaid
+          ? `Zal kirishida qayta tug'ilasiz: ${wait} s — jang davom etmoqda`
+          : this.area?.id === "ashmount"
+            ? "Kul darvozasi yonida o'zingizga kelasiz..."
+            : "Qishloqda o'zingizga kelasiz...",
         VIEW_W / 2,
         128,
         6,
@@ -1273,7 +1343,45 @@ export class RealmRenderer {
 
   // ---------------- oynalar ----------------
 
+  /** Reyd boss kirish sahnasi: kino qatorlari, olovli chiziq, katta nom va boss surati. */
+  private raidIntro(c: CanvasRenderingContext2D, v: RealmView) {
+    const k = v.intro;
+    if (k <= 0) return;
+    const t = 1 - k;
+    const a = Math.min(1, t / 0.12, k / 0.15);
+    const slide = Math.round((1 - Math.min(1, t / 0.18)) * 70);
+    c.globalAlpha = a;
+    px(c, "rgba(0,0,0,0.88)", 0, 0, VIEW_W, 26);
+    px(c, "rgba(0,0,0,0.88)", 0, VIEW_H - 26, VIEW_W, 26);
+    px(c, "rgba(18,4,3,0.85)", 0, 142, VIEW_W, 56);
+    px(c, "#ff6a1a", 0, 142, VIEW_W, 1);
+    px(c, "#ffe08a", 0, 143, VIEW_W, 1);
+    px(c, "#ff6a1a", 0, 197, VIEW_W, 1);
+    renderSprite(c, "ashking", "attack", 2, 46 - slide, 150, false);
+    text(c, MOB_STATS.ashking.name, VIEW_W / 2 + 22 - slide, 170, 14, "#ff6a1a", "center");
+    text(
+      c,
+      "Iblisning otasi — lava va olov hukmdori",
+      VIEW_W / 2 + 22 + slide,
+      184,
+      5,
+      "#e0d6ee",
+      "center",
+    );
+    text(
+      c,
+      "REYD · 2–4 O'YINCHI · TANK KERAK",
+      VIEW_W / 2 + 22 + slide,
+      193,
+      4,
+      "#ffb02e",
+      "center",
+    );
+    c.globalAlpha = 1;
+  }
+
   private overlays(c: CanvasRenderingContext2D, v: RealmView) {
+    this.raidIntro(c, v);
     const { sim, me } = v;
     const ui = me.ui;
     if (ui?.kind === "dialog") return this.dialog(c, v, ui.npc, ui.node);
@@ -1474,6 +1582,9 @@ export class RealmRenderer {
     }
     text(c, `Kashfiyotlar: ${me.secrets.length}/?`, 24, 212, 5, "#c9a25a");
     text(c, `Joylar: ${me.landmarks.length}`, 150, 212, 5, "#c9a25a");
+    // unvonlar (birinchi g'alabalar) — onlayn ism ostida ham ko'rinadi
+    const titles = me.titles.map((t) => TITLE_TEXT[t]).filter(Boolean);
+    if (titles.length) text(c, `UNVON: ${titles.join(", ")}`, 24, 203, 5, "#ffb02e");
     this.closeBtn(c, v, 248, 204, v.touch ? "YOPISH" : `[${actionKey(v.keys, "journal")}] YOPISH`);
   }
 
@@ -1631,6 +1742,12 @@ function playerLabel(
   const p = rp.p;
   let top = y - 20;
   if (name && !p.dead && !p.hidden) {
+    // unvon (masalan, "Kul qirolini yenggan") ism ostida
+    const title = rp.titles[0] ? TITLE_TEXT[rp.titles[0]] : undefined;
+    if (title) {
+      text(c, title, x, top, 4, "#ffb02e", "center");
+      top -= 6;
+    }
     text(c, name, x, top, 4, HERO_THEME[rp.hero].uiText, "center");
     // rol belgisi ism yonida (TANK, JANGCHI, SEHRGAR, UZOQDAN)
     c.font = `4px ${FONT}`;
@@ -1676,7 +1793,19 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
     c.globalAlpha = 0.55;
     c.strokeStyle = edge;
     c.lineWidth = 1;
-    if (k.kind === "circle" || k.kind === "crack") {
+    if (k.kind === "cone") {
+      const a = Math.atan2(k.dy, k.dx);
+      c.beginPath();
+      c.moveTo(k.x, k.y);
+      c.arc(k.x, k.y, k.r, a - k.len, a + k.len);
+      c.closePath();
+      c.stroke();
+    } else if (
+      k.kind === "circle" ||
+      k.kind === "crack" ||
+      k.kind === "meteor" ||
+      k.kind === "stack"
+    ) {
       c.beginPath();
       c.arc(k.x, k.y, k.r - 0.5, 0, Math.PI * 2);
       c.stroke();
@@ -1688,7 +1817,81 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
     c.restore();
     return;
   }
-  if (k.kind === "crack") {
+  if (k.kind === "cone") {
+    // olov konusi: boss yo'nalishida yelpig'ich, chetlari qizil, ichi asta to'ladi
+    const a = Math.atan2(k.dy, k.dx);
+    c.globalAlpha = 0.2;
+    c.fillStyle = "#ff3b1a";
+    c.beginPath();
+    c.moveTo(k.x, k.y);
+    c.arc(k.x, k.y, k.r, a - k.len, a + k.len);
+    c.closePath();
+    c.fill();
+    c.globalAlpha = 0.4;
+    c.fillStyle = "#ff8a2a";
+    c.beginPath();
+    c.moveTo(k.x, k.y);
+    c.arc(k.x, k.y, k.r * prog, a - k.len, a + k.len);
+    c.closePath();
+    c.fill();
+    c.globalAlpha = 0.95;
+    c.strokeStyle = edge;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(k.x, k.y);
+    c.arc(k.x, k.y, k.r, a - k.len, a + k.len);
+    c.closePath();
+    c.stroke();
+  } else if (k.kind === "stack") {
+    // KUL BO'RONI: oltin-oq yig'ilish doirasi, ichiga o'qlar — "hamma shu yerga"
+    const pulse = 0.5 + 0.5 * Math.sin(time * 10);
+    c.globalAlpha = 0.18 + 0.12 * pulse;
+    c.fillStyle = "#ffe08a";
+    c.beginPath();
+    c.arc(k.x, k.y, k.r, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 0.9;
+    c.strokeStyle = hot ? "#ffffff" : "#ffb02e";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(k.x, k.y, k.r - 1, 0, Math.PI * 2);
+    c.stroke();
+    c.strokeStyle = "#ffe08a";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.arc(k.x, k.y, k.r * (1 - prog), 0, Math.PI * 2);
+    c.stroke();
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2 + time;
+      const r = k.r + 10 - ((time * 20) % 10);
+      const ax = k.x + Math.cos(a) * r,
+        ay = k.y + Math.sin(a) * r;
+      px(c, "#ffe08a", ax - 1, ay - 1, 3, 3);
+    }
+  } else if (k.kind === "meteor") {
+    // meteor: yerda qizil doira, osmondan tushayotgan olov shari (yaqinlashgani sari pastlaydi)
+    c.globalAlpha = 0.25;
+    c.fillStyle = "#ff3b3b";
+    c.beginPath();
+    c.arc(k.x, k.y, k.r, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 0.45;
+    c.fillStyle = "#e01a1a";
+    c.beginPath();
+    c.arc(k.x, k.y, k.r * prog, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 0.95;
+    c.strokeStyle = edge;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.arc(k.x, k.y, k.r - 0.5, 0, Math.PI * 2);
+    c.stroke();
+    const fall = (1 - prog) * 140;
+    c.globalAlpha = 1;
+    px(c, "#ff5a1a", k.x - 4 + fall * 0.3, k.y - 4 - fall, 8, 8);
+    px(c, "#ffd36a", k.x - 2 + fall * 0.3, k.y - 2 - fall, 4, 4);
+    px(c, "#ff8a2a", k.x + 4 + fall * 0.3, k.y - 8 - fall, 3, 3);
+  } else if (k.kind === "crack") {
     // yer yorilmoqda: markazdan o'sib boruvchi yoriqlar, ichida lava; chetida xavf doirasi
     c.globalAlpha = 0.18 + 0.2 * prog;
     c.fillStyle = "#ff3b3b";

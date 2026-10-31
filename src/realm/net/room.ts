@@ -18,6 +18,7 @@ import {
   type PlayerCommand,
 } from "../sim";
 import type { RealmMob } from "../mobs";
+import { TITLE_TEXT } from "../raid";
 import type { RealmData } from "../schema";
 import { TILE } from "../tiles";
 import {
@@ -29,6 +30,7 @@ import {
   PF_GUARD,
   PF_HIDDEN,
   PF_VOW,
+  MARK_KINDS,
   ROOM_CAP,
   SNAPSHOT_EVERY,
   guestName,
@@ -66,6 +68,7 @@ const CHAT_GAP = 1.5;
 
 /** Faqat egasiga yuboriladigan voqealar */
 const PERSONAL = new Set<RealmEvent["type"]>([
+  "title",
   "pickup",
   "gold",
   "secret",
@@ -82,6 +85,7 @@ interface Baseline {
   items: Map<number, string>;
   bolts: string;
   fireballs: string;
+  raid: string;
   marks: string;
   traps: string;
   smokes: string;
@@ -96,6 +100,7 @@ const newBaseline = (): Baseline => ({
   items: new Map(),
   bolts: "[]",
   fireballs: "[]",
+  raid: "",
   marks: "[]",
   traps: "[]",
   smokes: "[]",
@@ -263,6 +268,8 @@ export class RealmRoom {
       y: Math.max(8, Math.min(H - 8, s.y)),
       inv,
       quests,
+      // faqat ma'lum unvonlar
+      titles: (s.titles ?? []).filter((t) => t in TITLE_TEXT),
     };
   }
 
@@ -441,10 +448,18 @@ export class RealmRoom {
       b.fireballs = fk;
       msg.fb = fireballs;
     }
+    if (sim.raid) {
+      const rd = sim.raid.net();
+      const rk = JSON.stringify(rd);
+      if (rk !== b.raid) {
+        b.raid = rk;
+        msg.rd = rd;
+      }
+    }
     const marks: NetMark[] = sim.marks
       .filter((k) => near(k.x, k.y))
       .map((k) => [
-        k.kind === "line" ? 1 : k.kind === "crack" ? 2 : 0,
+        Math.max(0, MARK_KINDS.indexOf(k.kind)),
         r1(k.x),
         r1(k.y),
         k.r,
@@ -505,6 +520,7 @@ export class RealmRoom {
       kills: rp.kills,
       ui: rp.ui,
       starNight: rp.starNight,
+      titles: rp.titles,
     };
     const mk = JSON.stringify(me);
     if (mk !== b.me) {
@@ -557,6 +573,7 @@ export function netPlayer(o: RealmPlayer, name: string): NetPlayer {
     loopFrame(p.anim.state, p.anim.frame),
     flags,
     p.flash > 0 ? r2(p.flash) : 0,
+    o.titles[0] ?? "",
   ];
 }
 

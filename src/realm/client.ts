@@ -29,6 +29,7 @@ import {
 } from "./sim";
 import { RARITY_COLOR } from "./icons";
 import { MOB_STATS } from "./mobs";
+import { KING_INTRO, TITLE_TEXT } from "./raid";
 import { RealmRenderer, VIEW_H, VIEW_W, type Panel, type RealmView } from "./render";
 import {
   ANIMS,
@@ -168,6 +169,8 @@ export class RealmClient {
       hover: null,
       cracks: [],
       quakes: [],
+      intro: 0,
+      deadAt: -99,
       toasts: [],
       banner: { text: "", sub: "", t: 0, color: "#ffe14d" },
       shake: 0,
@@ -660,6 +663,10 @@ export class RealmClient {
     v.cracks = v.cracks.filter((k) => k.life > 0);
     for (const q of v.quakes) q.life -= dt;
     v.quakes = v.quakes.filter((q) => q.life > 0);
+    if (v.intro > 0) v.intro = Math.max(0, v.intro - dt / KING_INTRO);
+    // halok bo'lgan vaqt (reydda qayta tug'ilish hisobi uchun)
+    if (!this.me.p.dead) v.deadAt = -99;
+    else if (v.deadAt < 0) v.deadAt = this.time;
     for (const t of v.toasts) t.t -= dt / 2.5;
     v.toasts = v.toasts.filter((t) => t.t > 0);
     if (v.banner.t > 0) v.banner.t -= dt / 2.5;
@@ -870,11 +877,100 @@ export class RealmClient {
 
   private updateMusic() {
     const boss = this.sim.mobs.some((m) => m.kind === "warden" && m.target === this.pid && !m.dead);
-    const ash = this.sim.areaAt(this.me.p.x, this.me.p.y)?.id === "ashmount";
-    const track: MusicTrack = boss ? "boss" : ash ? "ash" : this.sim.night ? "forest" : "normal";
+    const p = this.me.p;
+    const raid = this.sim.raid;
+    const king = !!raid?.active && (raid.inArena(p.x, p.y) || p.dead);
+    const ash = this.sim.areaAt(p.x, p.y)?.id === "ashmount";
+    const track: MusicTrack = king
+      ? "ashking"
+      : boss
+        ? "boss"
+        : ash
+          ? "ash"
+          : this.sim.night
+            ? "forest"
+            : "normal";
     if (track !== this.music) {
       this.music = track;
       sfx.playMusic(track);
+    }
+  }
+
+  /** Kul qiroli reydi voqealari: kirish sahnasi, fazalar, ogohlantirishlar, g'alaba va tiklanish */
+  private onRaid(e: Extract<RealmEvent, { type: "raid" }>) {
+    const fx = this.fx;
+    const near = Math.hypot(e.x - this.me.p.x, e.y - this.me.p.y) < 420 || this.me.p.dead;
+    if (!near) return;
+    switch (e.what) {
+      case "start":
+        this.view.intro = 1;
+        fx.addShake(0.4);
+        fx.burst(e.x, e.y - 30, "#ff6a1a", 30, 120, 2);
+        sfx.roar();
+        return;
+      case "phase":
+        if (e.phase === 2)
+          this.banner(
+            "LAVA TOSHQINI!",
+            "Zal yarmi lavaga to'ladi · kul ruhlarini uzoqdan uring",
+            "#ff5a1a",
+          );
+        else this.banner("KUL BO'RONI!", "Bo'ron oldidan hamma bitta doiraga yig'ilsin", "#ffb02e");
+        fx.burst(e.x, e.y - 30, "#ff6a1a", 24, 110, 2);
+        fx.addShake(0.35);
+        sfx.roar();
+        return;
+      case "lava":
+        this.toast(
+          e.side === 0
+            ? "Chap tomon lavaga to'lmoqda — o'ngga o'ting!"
+            : "O'ng tomon lavaga to'lmoqda — chapga o'ting!",
+          "#ff5a1a",
+        );
+        sfx.warn();
+        return;
+      case "flood":
+        fx.addShake(0.2);
+        sfx.stomp();
+        return;
+      case "spirits":
+        this.toast("Kul ruhlari! Uzoqdan otuvchilar — ularni yo'q qiling", "#b8b0aa");
+        return;
+      case "storm":
+        this.banner("KUL BO'RONI!", "Oltin doiraga yig'iling — zarar bo'linadi", "#ffb02e");
+        sfx.warn();
+        return;
+      case "stormhit":
+        fx.burst(e.x, e.y, "#b8b0aa", 40, 140, 2);
+        fx.burst(e.x, e.y, "#ffe08a", 16, 90, 1);
+        fx.addShake(0.4);
+        sfx.stomp();
+        return;
+      case "cone": {
+        const dx = e.dx ?? 1,
+          dy = e.dy ?? 0;
+        for (let i = 1; i <= 6; i++)
+          fx.burst(e.x + dx * i * 18, e.y + dy * i * 18, i % 2 ? "#ff8a2a" : "#ffd36a", 4, 50, 2);
+        fx.addShake(0.25);
+        sfx.fireball();
+        return;
+      }
+      case "enrage":
+        this.banner("G'AZAB!", "Kul qiroli hammani yondiradi — tezroq!", "#ff3b1a");
+        fx.addShake(0.5);
+        sfx.roar();
+        return;
+      case "win":
+        this.banner("KUL QIROLI YENGILDI!", "Lut har bir jangchiga alohida", "#ffb02e");
+        fx.burst(e.x, e.y - 30, "#ffe08a", 40, 140, 2);
+        sfx.victory();
+        return;
+      case "wipe":
+        this.banner("JAMOA HALOK BO'LDI", "Kul qiroli to'liq tiklandi", "#ff4d6d");
+        return;
+      case "reset":
+        this.toast("Kul qiroli taxtiga qaytdi", "#e0d6ee");
+        return;
     }
   }
 
@@ -992,6 +1088,19 @@ export class RealmClient {
         fx.burst(e.x, e.y, "#9a8ac8", 8, 40, 1);
         sfx.block();
         return;
+      case "meteor":
+        fx.burst(e.x, e.y, "#ff5a1a", 16, 90, 2);
+        fx.burst(e.x, e.y, "#ffd36a", 6, 50, 1);
+        fx.addShake(0.15);
+        sfx.stomp();
+        return;
+      case "title":
+        if (!mine) return;
+        this.banner("YANGI UNVON!", TITLE_TEXT[e.title] ?? e.title, "#ffb02e");
+        sfx.victory();
+        return;
+      case "raid":
+        return this.onRaid(e);
       case "roar":
         this.banner(MOB_STATS.warden.name, "Qadimiy qo'riqchi uyg'ondi!", "#ff7a2a");
         fx.addShake(0.3);
@@ -1068,9 +1177,11 @@ export class RealmClient {
       case "respawn":
         if (mine)
           this.toast(
-            e.area === "ashmount"
-              ? "Kul darvozasi yonida o'zingizga keldingiz"
-              : "Qishloqda o'zingizga keldingiz",
+            this.sim.raid?.active && this.sim.raid.inArena(this.me.p.x, this.me.p.y + 64)
+              ? "Zal kirishida tug'ildingiz — jangga qayting!"
+              : e.area === "ashmount"
+                ? "Kul darvozasi yonida o'zingizga keldingiz"
+                : "Qishloqda o'zingizga keldingiz",
             "#9fd0ef",
           );
         return;

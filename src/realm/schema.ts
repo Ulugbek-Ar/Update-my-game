@@ -19,6 +19,9 @@ export const MOB_KINDS = [
   "ashhound",
   "lavaworm",
   "obsguard",
+  // reyd boss va u chaqiradigan kul ruhlari
+  "ashking",
+  "ashspirit",
 ] as const;
 export type MobKind = (typeof MOB_KINDS)[number];
 export const NPC_SPRITES = ["elder", "merchant", "oldgunner", "monk"] as const;
@@ -122,6 +125,17 @@ const GameObject = z.discriminatedUnion("type", [
   }),
   /** Bosim plitasi (sir): ustida o'yinchi turganda bosiladi */
   z.object({ type: z.literal("plate"), id: z.string(), x: int, y: int }),
+  /** Reyd boss zali: x, y — chap-yuqori plitka, w x h maydon; entry — zal kirishi (qayta tug'ilish) */
+  z.object({
+    type: z.literal("arena"),
+    id: z.string(),
+    x: int,
+    y: int,
+    w: int.positive(),
+    h: int.positive(),
+    boss: z.enum(["ashking"]),
+    entry: Pt,
+  }),
 ]);
 export type GameObjectDef = z.infer<typeof GameObject>;
 
@@ -295,7 +309,14 @@ export function mergeRegions(home: RegionDef, extra: readonly RegionDef[]): Regi
     landmarks: all.flatMap((r) => r.landmarks.map((l) => shift(l, r))),
     npcs: all.flatMap((r) => r.npcs.map((n) => shift(n, r))),
     mobZones: all.flatMap((r) => r.mobZones.map((z) => shift(z, r))),
-    objects: all.flatMap((r) => r.objects.map((o) => shift(o, r))),
+    objects: all.flatMap((r) =>
+      r.objects.map((o) => {
+        const s = shift(o, r);
+        if (s.type !== "arena") return s;
+        const e = shift({ x: s.entry[0], y: s.entry[1] }, r);
+        return { ...s, entry: [e.x, e.y] as [number, number] };
+      }),
+    ),
     secrets: all.flatMap((r) => r.secrets.map((s) => secret(s, r))),
   };
 }

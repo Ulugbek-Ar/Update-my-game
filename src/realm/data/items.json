@@ -223,5 +223,28 @@
       "maxHp": 1,
       "damage": 1
     }
+  },
+  "ashcrown": {
+    "name": "KUL TOJI",
+    "rarity": "legendary",
+    "desc": "Kul qirolining alangali toji. Inventarda: +2 yurak.",
+    "icon": "ashcrown",
+    "stack": 1,
+    "sell": 120,
+    "bonus": {
+      "maxHp": 2
+    }
+  },
+  "kingblade": {
+    "name": "QIROL TIG'I",
+    "rarity": "legendary",
+    "desc": "Kul qirolining olovli tig'i. Inventarda: +1 zarar, lava sekinroq kuydiradi.",
+    "icon": "kingblade",
+    "stack": 1,
+    "sell": 120,
+    "bonus": {
+      "damage": 1,
+      "fire": 1
+    }
   }
 }

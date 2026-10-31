@@ -64,7 +64,29 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     heavy: true,
     name: "OBSIDIAN QO'RIQCHI",
   },
+  // Reyd boss (raid.ts boshqaradi) va u chaqiradigan kul ruhlari
+  ashking: {
+    hp: 360,
+    speed: 34,
+    size: 40,
+    aggro: 0,
+    leash: 9999,
+    heavy: true,
+    name: "KUL QIROLI",
+  },
+  ashspirit: {
+    hp: 6,
+    speed: 34,
+    size: 14,
+    aggro: 420,
+    leash: 700,
+    ghost: true,
+    name: "KUL RUHI",
+  },
 };
+
+/** Kul ruhi: masofa saqlab olov shari otadi */
+export const SPIRIT_SHOT_EVERY = 2.2;
 
 /** Kul iti: to'da bo'lib yuguradi, yerga cho'kib (ogohlantirish) qisqa tashlanadi */
 export const HOUND_WINDUP = 0.45;
@@ -154,7 +176,8 @@ export type MobState =
 
 /** Ogohlantiruvchi belgi (yerdagi doira, chiziq yoki lava qurti chiqadigan yoriq) — faqat chizish uchun. */
 export interface Mark {
-  kind: "circle" | "line" | "crack";
+  /** cone — olov konusi (r — masofa, len — yarim burchak), stack — kul bo'roni (yig'ilish), meteor */
+  kind: "circle" | "line" | "crack" | "cone" | "stack" | "meteor";
   x: number;
   y: number;
   r: number;
@@ -563,7 +586,46 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
       return worm(m, target, ctx);
     case "obsguard":
       return guard(m, target, ctx);
+    case "ashspirit":
+      return spirit(m, target, ctx);
+    case "ashking":
+      return; // raid.ts boshqaradi
   }
+}
+
+/**
+ * Kul ruhi (Kul qiroli chaqiradi): havoda suzadi, nishondan 80–140 px masofani saqlab olov shari
+ * otadi, yaqinlashsangiz qochadi va uyidan (zal burchagi) uzoqlashmaydi — uzoqdan otuvchilar uradi.
+ */
+function spirit(m: RealmMob, t: MobTarget, ctx: MobCtx) {
+  m.state = "chase";
+  const d = dist(m, t.p);
+  if (m.cd <= 0 && d < 240) {
+    aimAt(m, t.p);
+    ctx.shoot?.(
+      m.x + m.dirX * 6,
+      m.y + m.dirY * 6,
+      m.dirX * FIREBALL_SPEED,
+      m.dirY * FIREBALL_SPEED,
+      m.id,
+    );
+    m.cd = SPIRIT_SHOT_EVERY;
+    m.anim.set("attack", true);
+    return;
+  }
+  m.t += ctx.dt;
+  const ux = (t.p.x - m.x) / (d || 1),
+    uy = (t.p.y - m.y) / (d || 1);
+  const want = d < 80 ? -1 : d > 140 ? 1 : 0;
+  const side = Math.sin(m.t * 1.3 + m.id) * 18;
+  let x = m.x + ux * want * 20 - uy * side,
+    y = m.y + uy * want * 20 + ux * side;
+  // uyidan (zal burchagi) uzoqlashmaydi
+  if (Math.hypot(x - m.homeX, y - m.homeY) > 110) {
+    x = m.x + (m.homeX - m.x) * 0.5;
+    y = m.y + (m.homeY - m.y) * 0.5;
+  }
+  if (m.anim.state !== "attack" || m.anim.done) walkToward(m, x, y, m.stats.speed, ctx);
 }
 
 function idle(m: RealmMob, ctx: MobCtx) {
