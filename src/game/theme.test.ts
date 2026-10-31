@@ -69,7 +69,7 @@ describe("HERO_THEME", () => {
   });
 
   it("hero list keeps metadata and fits the 10-card menu row", () => {
-    expect(HERO_LIST.map((h) => h.id)).toEqual(["knight", "mage", "hunter", "gunner"]);
+    expect(HERO_LIST.map((h) => h.id)).toEqual(["knight", "mage", "hunter", "gunner", "paladin"]);
     expect(new Set(HEROES).size).toBe(HEROES.length);
     expect(HERO_LIST.length).toBeLessThanOrEqual(MAX_HEROES);
     HERO_LIST.forEach((h, i) => {

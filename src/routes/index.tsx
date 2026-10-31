@@ -944,6 +944,8 @@ function HeroPreview({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [frame, setFrame] = useState(0);
+  // Paladinning ulkan qilichi 32 px kartaga sig'maydi — kattaroq ko'rinish (tana biroz kichrayadi)
+  const view = hero === "paladin" ? 48 : 32;
   useEffect(() => {
     if (!active) return setFrame(0);
     const id = window.setInterval(() => setFrame((f) => f + 1), showcase ? 160 : 500);
@@ -952,17 +954,17 @@ function HeroPreview({
   useEffect(() => {
     const c = ref.current?.getContext("2d");
     if (!c) return;
-    c.clearRect(0, 0, 32, 32);
+    c.clearRect(0, 0, view, view);
     const [state, f] = showcase
       ? SHOWCASE[frame % SHOWCASE.length]!
       : (["idle", frame % 2] as const);
-    renderSprite(c, hero, state, f, 16, 16, false);
-  }, [hero, frame, showcase]);
+    renderSprite(c, hero, state, f, view / 2, view / 2, false);
+  }, [hero, frame, showcase, view]);
   return (
     <canvas
       ref={ref}
-      width={32}
-      height={32}
+      width={view}
+      height={view}
       aria-hidden="true"
       style={{
         width: size,

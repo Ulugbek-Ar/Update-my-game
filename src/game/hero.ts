@@ -1,5 +1,5 @@
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage" | "hunter" | "gunner";
+export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -50,6 +50,15 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     uiText: "#d9a441",
     empty: "#2e2820",
   },
+  // Paladin: to'q sariq (apelsin) va oltin
+  paladin: {
+    accent: "#ff8c1a",
+    accentDark: "#a8500f",
+    glow: "#ffd27a",
+    trail: "rgba(255,140,26,0.8)",
+    uiText: "#ff8c1a",
+    empty: "#3a2410",
+  },
 };
 
 /** Qahramon metadatasi. price > 0 bo'lsa do'kondan sotib olinadi (save.ts: unlockedHeroes). */
@@ -77,6 +86,14 @@ export const FREE_HEROES = 3;
  * 300 oltin ≈ 4.5–5.5 ta to'liq o'yin.
  */
 export const GUNNER_PRICE = 300;
+
+/**
+ * Paladin narxi: Merganning 1.5 baravari. 1-dunyoning to'liq o'yini ≈ 55–67 oltin, 2- va 3-dunyo
+ * bilan (Malika 40, Shoh 50 va ko'proq dushman) uch dunyoli o'yin ≈ 180–220 oltin. Mergandan keyin
+ * do'kon kuchaytirishlari (jami ≈ 600) ham olinadi — 450 oltin ≈ 7–8 ta 1-dunyo yoki 2–3 ta to'liq
+ * uch dunyoli o'yin: Merganni sotib olgan o'yinchi uchun keyingi katta maqsad.
+ */
+export const PALADIN_PRICE = 450;
 
 export const HERO_LIST: readonly HeroInfo[] = [
   {
@@ -106,6 +123,13 @@ export const HERO_LIST: readonly HeroInfo[] = [
     theme: HERO_THEME.gunner,
     price: GUNNER_PRICE,
     desc: "Chaqmoqtoshli to'pponcha: barabanda 6 o'q, bosib tursang hammasini yelpig'ich qilib otadi. Sirpanish va tutun bombasi.",
+  },
+  {
+    id: "paladin",
+    name: "PALADIN",
+    theme: HERO_THEME.paladin,
+    price: PALADIN_PRICE,
+    desc: "Qalqonsiz tank: ikki metrlik ulkan qilich. SHANG — yo'lak bo'ylab zarba, Osmon hukmi gangitadi, Qasam dushmanlarni o'ziga tortadi. 8 yurak.",
   },
 ];
 
