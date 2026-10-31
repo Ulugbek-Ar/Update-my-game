@@ -41,7 +41,46 @@ export const TILE_COLOR: Record<TileName, string> = {
   window: "#b89a6a",
   pool: "#2a5a8a",
   pillar: "#8a8692",
+  ash: "#5a5450",
+  ash2: "#4c4744",
+  basalt: "#2e2a2c",
+  lava: "#e0521e",
+  crag: "#1e1a1c",
+  obsidian: "#2a2236",
+  obsfloor: "#3a3048",
+  deadtree: "#2a201c",
+  tfloor: "#5a2a2e",
+  twall: "#3a1a1e",
+  cinder: "#4a2e24",
+  opillar: "#4a3f66",
+  cobs: "#2a2236",
 };
+
+/** Kul tog'i: kul bilan qoplangan yer (dark — to'qroq dog'lar) */
+function ash(c: Ctx, x: number, y: number, r: (i: number) => number, dark = false) {
+  px(c, dark ? "#4c4744" : "#5a5450", x, y, TILE, TILE);
+  for (let i = 0; i < 6; i++)
+    px(
+      c,
+      i % 2 ? (dark ? "#423d3a" : "#4c4744") : dark ? "#585350" : "#6e6862",
+      x + Math.floor(r(i) * 15),
+      y + Math.floor(r(i + 10) * 15),
+      i % 3 ? 1 : 2,
+      1,
+    );
+  // kul ostida so'nmagan cho'g'
+  if (r(30) < 0.06) px(c, "#a8452a", x + Math.floor(r(31) * 14), y + Math.floor(r(32) * 14));
+}
+
+/** Obsidian blok: shishadek qora-binafsha, qiya yaltiroq. */
+function obsidianBlock(c: Ctx, x: number, y: number, r: (i: number) => number) {
+  px(c, "#0e0b14", x, y, TILE, TILE);
+  px(c, "#1c1626", x + 1, y + 1, 14, 13);
+  for (let i = 0; i < 6; i++) px(c, "#2e2640", x + 2 + i, y + 9 - i, 2, 1);
+  px(c, "#4a3f66", x + 3, y + 3, 3, 1);
+  if (r(2) < 0.5) px(c, "#8a7ab8", x + 4, y + 2);
+  px(c, "#07060a", x, y + 14, TILE, 2);
+}
 
 function grass(c: Ctx, x: number, y: number, r: (i: number) => number, dark = false) {
   px(c, dark ? "#46753a" : "#4a7a3a", x, y, TILE, TILE);
@@ -330,5 +369,130 @@ export function drawTile(
       px(c, "#b3adb9", x + 4, y + 3, 4, 2);
       px(c, "#57535c", x + 3, y + 12, 10, 1);
       return;
+    // ---------- Kul tog'i ----------
+    case "ash":
+      return ash(c, x, y, r);
+    case "ash2":
+      return ash(c, x, y, r, true);
+    case "basalt": {
+      // qora vulqon toshi: notekis yassi toshlar, orasida qora yoriqlar
+      px(c, "#2e2a2c", x, y, TILE, TILE);
+      const o = Math.floor(r(1) * 4);
+      px(c, "#1c191a", x, y + 5 + o, TILE, 1);
+      px(c, "#1c191a", x + 4 + o, y, 1, 5 + o);
+      px(c, "#1c191a", x + 9 - o, y + 6 + o, 1, 10 - o);
+      px(c, "#3e383a", x + 1, y + 1, 3 + o, 1);
+      px(c, "#3e383a", x + 6 + o, y + 7 + o, 5, 1);
+      if (r(5) < 0.3) px(c, "#4a4446", x + Math.floor(r(6) * 13), y + Math.floor(r(7) * 13), 2, 1);
+      return;
+    }
+    case "lava": {
+      // qizil lava: qorayayotgan qobiq dog'lari va yorqin oqim chiziqlari (jonli nur render'da)
+      px(c, "#d8451a", x, y, TILE, TILE);
+      px(c, "#b8321a", x, y + 10 + Math.floor(r(1) * 4), TILE, 2);
+      for (let i = 0; i < 2; i++)
+        px(c, "#8a1e10", x + Math.floor(r(2 + i) * 11), y + Math.floor(r(4 + i) * 12), 4, 2);
+      for (let i = 0; i < 3; i++)
+        px(c, "#ff8a2a", x + Math.floor(r(10 + i) * 12), y + 2 + Math.floor(r(14 + i) * 11), 3, 1);
+      if (r(20) < 0.5) px(c, "#ffd36a", x + Math.floor(r(21) * 14), y + Math.floor(r(22) * 14));
+      return;
+    }
+    case "cinder": {
+      // lava bo'yidagi qizigan yer: qora qobiqda har xil shakldagi cho'g' yoriqlar
+      px(c, "#3a2a26", x, y, TILE, TILE);
+      px(c, "#4a3630", x + Math.floor(r(3) * 12), y + Math.floor(r(4) * 12), 3, 2);
+      if (r(9) < 0.25) return;
+      let cx = x + 2 + Math.floor(r(1) * 10),
+        cy = y + 2 + Math.floor(r(2) * 6);
+      for (let i = 0; i < 4; i++) {
+        const dx = r(10 + i) < 0.5 ? 0 : r(20 + i) < 0.5 ? -1 : 1;
+        const len = 1 + Math.floor(r(30 + i) * 3);
+        px(c, "#a8321a", cx, cy, dx ? len : 1, dx ? 1 : len);
+        cx = Math.max(x, Math.min(x + 15, cx + dx * len));
+        cy = Math.min(y + 15, cy + (dx ? 0 : len));
+      }
+      if (r(5) < 0.5) px(c, "#ff5a1a", cx, Math.min(y + 15, cy), 1, 1);
+      return;
+    }
+    case "crag": {
+      // qora vulqon qoyasi: qatlamli bo'rtiqlar, ba'zida qizil yoriq
+      px(c, "#211d1f", x, y, TILE, TILE);
+      px(c, "#151213", x, y + 6, TILE, 1);
+      px(c, "#151213", x, y + 13, TILE, 1);
+      px(c, "#3a3335", x + Math.floor(r(1) * 8), y + 1, 6, 2);
+      px(c, "#2e2829", x + Math.floor(r(2) * 8), y + 8, 7, 2);
+      if (r(3) < 0.12) px(c, "#6e2a1a", x + Math.floor(r(4) * 12), y + 10, 3, 1);
+      return;
+    }
+    case "obsidian":
+      return obsidianBlock(c, x, y, r);
+    case "cobs":
+      obsidianBlock(c, x, y, r);
+      // yoriq obsidian — sinchkov o'yinchi ko'radi
+      px(c, "#5a4a7a", x + 7, y + 2, 1, 3);
+      px(c, "#5a4a7a", x + 8, y + 5, 1, 3);
+      px(c, "#5a4a7a", x + 7, y + 8, 1, 2);
+      px(c, "#5a4a7a", x + 9, y + 10, 1, 2);
+      return;
+    case "obsfloor": {
+      // obsidian xaroba poli: katta plitalar, orasida qora tirqish
+      px(c, "#2a2236", x, y, TILE, TILE);
+      px(c, "#1a1424", x, y + 7, TILE, 1);
+      px(c, "#1a1424", x + (((ty % 2) * 8 + 3) % 16), y, 1, 7);
+      px(c, "#1a1424", x + (((ty % 2) * 8 + 11) % 16), y + 8, 1, 8);
+      px(c, "#3a3048", x + 1, y + 1, 5, 1);
+      px(c, "#3a3048", x + 9, y + 9, 5, 1);
+      if (r(5) < 0.2) px(c, "#4e2a3a", x + Math.floor(r(6) * 12), y + Math.floor(r(7) * 12), 2, 1);
+      return;
+    }
+    case "opillar":
+      px(c, "#2a2236", x, y, TILE, TILE);
+      px(c, "#07060a", x + 2, y + 1, 12, 15);
+      px(c, "#1c1626", x + 3, y + 1, 10, 13);
+      px(c, "#4a3f66", x + 4, y + 2, 2, 10);
+      px(c, "#8a7ab8", x + 4, y + 2, 1, 3);
+      px(c, "#07060a", x + 3, y + 6 + Math.floor(r(1) * 4), 10, 1);
+      return;
+    case "deadtree": {
+      // kuygan daraxt: qora tana, singan shoxlar, uchida cho'g' (ostidagi kul — atrofiga moslab)
+      const dark = [at(-1, 0), at(1, 0), at(0, -1), at(0, 1)].filter((t) => t === TILE_IDS.ash2);
+      ash(c, x, y, r, dark.length >= 2);
+      px(c, "rgba(0,0,0,0.25)", x + 3, y + 13, 10, 2);
+      px(c, "#0e0a09", x + 6, y + 3, 4, 12);
+      px(c, "#2a201c", x + 7, y + 3, 2, 11);
+      px(c, "#0e0a09", x + 2, y + 4, 5, 2);
+      px(c, "#0e0a09", x + 2, y + 1, 2, 4);
+      px(c, "#0e0a09", x + 9, y + 6, 5, 2);
+      px(c, "#0e0a09", x + 12, y + 2, 2, 5);
+      if (r(2) < 0.5) px(c, "#ff6a2a", x + 2, y + 1);
+      if (r(3) < 0.4) px(c, "#ff6a2a", x + 12, y + 2);
+      return;
+    }
+    case "tfloor": {
+      // ibodatxona poli: to'q qizil tosh, ba'zida oltin naqsh
+      px(c, "#4a2226", x, y, TILE, TILE);
+      px(c, "#2e1418", x, y + 15, TILE, 1);
+      px(c, "#2e1418", x + 15, y, 1, TILE);
+      px(c, "#5e2c30", x, y, 15, 1);
+      px(c, "#5e2c30", x, y, 1, 15);
+      if (r(1) < 0.12) {
+        px(c, "#7a3a2a", x + 6, y + 6, 4, 4);
+        px(c, "#c9a25a", x + 7, y + 7, 2, 2);
+      }
+      return;
+    }
+    case "twall": {
+      // ibodatxona devori: qora-qizil g'isht, tepada qorong'i qirra
+      px(c, "#3a1a1e", x, y, TILE, TILE);
+      px(c, "#24100f", x, y + 5, TILE, 1);
+      px(c, "#24100f", x, y + 10, TILE, 1);
+      px(c, "#24100f", x + (ty % 2 ? 4 : 10), y, 1, 5);
+      px(c, "#24100f", x + (ty % 2 ? 11 : 3), y + 6, 1, 4);
+      px(c, "#24100f", x + (ty % 2 ? 6 : 13), y + 11, 1, 5);
+      px(c, "#56282c", x + 1, y + 1, 6, 1);
+      px(c, "#56282c", x + 9, y + 7, 5, 1);
+      px(c, "#160909", x, y + 14, TILE, 2);
+      return;
+    }
   }
 }

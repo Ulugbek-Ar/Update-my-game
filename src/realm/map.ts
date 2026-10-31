@@ -123,22 +123,40 @@ export function buildChunk(region: RegionDef, cx: number, cy: number) {
   return data;
 }
 
-/** Hududning asosiy (o'zgarmas) plitkalari; chunk'lar birinchi so'ralganda quriladi. */
+/**
+ * Olamning asosiy (o'zgarmas) plitkalari; chunk'lar birinchi so'ralganda quriladi.
+ * parts — olamni tashkil etuvchi hududlar: har chunk o'zi tushgan hududning JSON'idan (o'z
+ * koordinatalarida) quriladi; hech qaysi hududga tushmagan chunk — qoya.
+ */
 export class RealmMap {
   readonly w: number;
   readonly h: number;
   private chunks = new Map<number, Uint8Array>();
+  private parts: readonly RegionDef[];
 
-  constructor(public region: RegionDef) {
+  constructor(
+    public region: RegionDef,
+    parts?: readonly RegionDef[],
+  ) {
     this.w = region.chunks.w * CHUNK;
     this.h = region.chunks.h * CHUNK;
+    this.parts = parts ?? [region];
   }
 
   chunk(cx: number, cy: number) {
     const key = cy * 1024 + cx;
     let c = this.chunks.get(key);
     if (!c) {
-      c = buildChunk(this.region, cx, cy);
+      const r = this.parts.find(
+        (r) =>
+          cx >= r.origin.cx &&
+          cy >= r.origin.cy &&
+          cx < r.origin.cx + r.chunks.w &&
+          cy < r.origin.cy + r.chunks.h,
+      );
+      c = r
+        ? buildChunk(r, cx - r.origin.cx, cy - r.origin.cy)
+        : new Uint8Array(CHUNK * CHUNK).fill(TILE_IDS.cliff);
       this.chunks.set(key, c);
     }
     return c;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import valley from "./data/regions/valley.json";
+import ashmount from "./data/regions/ashmount.json";
 import dialogs from "./data/dialogs.json";
 import quests from "./data/quests.json";
 import items from "./data/items.json";
@@ -9,24 +10,25 @@ import { RegionSchema, parseRealmData } from "./schema";
 import { buildChunk, RealmMap } from "./map";
 import { CHUNK } from "./tiles";
 
-const raw = { region: valley, dialogs, quests, items, drops, shops };
+const raw = { region: valley, regions: [ashmount], dialogs, quests, items, drops, shops };
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 describe("JSON hudud validatsiyasi", () => {
   it("Boshlang'ich vodiy passes the schema and cross-reference checks", () => {
     const d = parseRealmData(raw);
-    expect(d.region.name).toBe("BOSHLANG'ICH VODIY");
-    expect(d.region.chunks).toEqual({ w: 6, h: 6 });
-    expect(d.region.npcs.map((n) => n.id)).toEqual(["elder", "merchant", "oldgunner"]);
+    const v = d.regions[0]!;
+    expect(v.name).toBe("BOSHLANG'ICH VODIY");
+    expect(v.chunks).toEqual({ w: 6, h: 6 });
+    expect(v.npcs.map((n) => n.id)).toEqual(["elder", "merchant", "oldgunner"]);
     // qishloq, o'rmon cheti, ko'prik, xarobalar, g'or
     for (const id of ["village", "stones", "bridge", "ruins", "cave"])
-      expect(d.region.landmarks.some((l) => l.id === id)).toBe(true);
-    expect(d.region.secrets.length).toBeGreaterThanOrEqual(5);
+      expect(v.landmarks.some((l) => l.id === id)).toBe(true);
+    expect(v.secrets.length).toBeGreaterThanOrEqual(5);
   });
 
   it("rejects an unknown tile, out-of-bounds NPC and broken secret references", () => {
     const bad = clone(valley) as Record<string, unknown> & typeof valley;
-    (bad.terrain as { base: string }).base = "lava";
+    (bad.terrain as { base: string }).base = "plazma";
     expect(RegionSchema.safeParse(bad).success).toBe(false);
 
     const far = clone(valley);

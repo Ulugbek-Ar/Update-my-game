@@ -12,16 +12,16 @@ import type { RealmCommand, RealmEvent, RealmUi, QuestProgress, Stack } from "..
 import type { MobKind } from "../schema";
 import type { MobState } from "../mobs";
 
-/** Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi */
-export const NET_VERSION = 2;
+/** Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi (v3: Kul tog'i, olov sharlari) */
+export const NET_VERSION = 3;
 /** Xona sig'imi: to'lsa — avtomatik keyingi xona */
 export const ROOM_CAP = 8;
 /** Klient buyruqlarni ko'pi bilan shu chastotada yuboradi (va faqat o'zgarganda) */
 export const SEND_HZ = 10;
 /** Server holatni har shuncha tickda yuboradi (20 Hz / 2 = 10 Hz) */
 export const SNAPSHOT_EVERY = 2;
-/** Bitta xabarning eng katta hajmi (salomlashuvdagi saqlanish ham sig'adi) */
-export const MAX_MSG = 16_384;
+/** Bitta xabarning eng katta hajmi (salomlashuvdagi saqlanish ham sig'adi: olam 2 hududli) */
+export const MAX_MSG = 32_768;
 /** Ping (va DO uyg'oqligi) — shuncha soniyada bir */
 export const PING_EVERY = 4;
 /** Holatlar yuboriladigan masofa (px): uzoqdagi moblar va lut yuborilmaydi */
@@ -106,7 +106,7 @@ export const SaveSchema = z.object({
   torchStep: z.number().int().min(0).max(32),
   landmarks: list,
   kills: z.number().int().min(0).max(10_000_000),
-  explored: z.string().max(12_000),
+  explored: z.string().max(24_000),
   starNight: z.number().int().min(-1).max(10_000_000),
 });
 
@@ -222,11 +222,13 @@ export type NetMob = [
   string | null,
   number,
 ];
+/** Olov shari: [x, y, vx, vy] */
+export type NetFireball = [number, number, number, number];
 /** [id, x, y, buyum (null — oltin), soni, oltin, miltillaydi] */
 export type NetItem = [number, number, number, string | null, number, number, number];
 /** [x, y, vx, vy, o'lcham, tur: 0 shar, 1 o'q-yoy, 2 o'q, 3 Paladin zarb to'lqini] */
 export type NetBolt = [number, number, number, number, number, number];
-/** [tur: 0 doira, 1 chiziq, x, y, r, dx, dy, len, t, total, egasi, zarar] */
+/** [tur: 0 doira, 1 chiziq, 2 yoriq (lava qurti), x, y, r, dx, dy, len, t, total, egasi, zarar] */
 export type NetMark = [
   number,
   number,
@@ -272,6 +274,8 @@ export interface SnapshotMsg {
   i?: NetItem[];
   ir?: number[];
   b?: NetBolt[];
+  /** moblarning olov sharlari */
+  fb?: NetFireball[];
   k?: NetMark[];
   tr?: [number, number][];
   sm?: [number, number, number][];

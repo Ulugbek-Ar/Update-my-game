@@ -23,11 +23,11 @@ import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP } from "./net/protocol";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
-import { CHUNK, CHUNK_PX, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
+import { CHUNK, CHUNK_PX, LAVA, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
 import { TILE_COLOR, drawTile } from "./tileArt";
 import { drawItemIcon, RARITY_COLOR, RARITY_NAME } from "./icons";
 import { MOB_STATS, RING_MAX, RING_W, WARDEN_SHIELD_ARC, type Mark, type RealmMob } from "./mobs";
-import type { GameObjectDef } from "./schema";
+import type { GameObjectDef, RealmArea } from "./schema";
 
 export const VIEW_W = 320;
 export const VIEW_H = 240;
@@ -193,12 +193,25 @@ function panel(
   px(c, "#1f1730", x + 2, y + 2, w - 4, h - 4);
 }
 
+/** Kul tog'i havosi: yog'ayotgan kul va ko'tarilayotgan cho'g' (ekran koordinatasida, faqat bezak) */
+interface Flake {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ember: boolean;
+}
+
 export class RealmRenderer {
   private chunks = new Map<number, HTMLCanvasElement>();
   private chunkVer = -1;
   private light: HTMLCanvasElement | null = null;
   private mapCanvas: HTMLCanvasElement | null = null;
   private mapT = -1;
+  /** joriy kadrdagi hudud (kamera, xarita va havo shunga qarab) */
+  private area: RealmArea | undefined;
+  private flakes: Flake[] = [];
+  private lastT = 0;
 
   private chunk(sim: RealmSim, cx: number, cy: number) {
     if (sim.mapVersion !== this.chunkVer) {
@@ -279,10 +292,14 @@ export class RealmRenderer {
 
     const ix = lerp(me.px, me.p.x, v.alpha),
       iy = lerp(me.py, me.p.y, v.alpha);
-    const maxX = sim.map.w * TILE - VIEW_W,
-      maxY = sim.map.h * TILE - VIEW_H;
-    let camX = Math.round(Math.max(0, Math.min(maxX, ix - VIEW_W / 2)));
-    let camY = Math.round(Math.max(0, Math.min(maxY, iy - VIEW_H / 2)));
+    // kamera joriy hudud ichida qoladi: qo'shni hudud (vodiy/Kul tog'i) ko'rinib qolmaydi
+    const area = (this.area = sim.areaAt(me.p.x, me.p.y));
+    const ax = (area?.x ?? 0) * TILE,
+      ay = (area?.y ?? 0) * TILE;
+    const maxX = ax + (area?.w ?? sim.map.w) * TILE - VIEW_W,
+      maxY = ay + (area?.h ?? sim.map.h) * TILE - VIEW_H;
+    let camX = Math.round(Math.max(ax, Math.min(maxX, ix - VIEW_W / 2)));
+    let camY = Math.round(Math.max(ay, Math.min(maxY, iy - VIEW_H / 2)));
     if (v.shake > 0) {
       const s = Math.min(1, v.shake * 6) * 3;
       camX += Math.round((Math.random() - 0.5) * s);
@@ -293,6 +310,11 @@ export class RealmRenderer {
     c.translate(-camX, -camY);
     this.world(c, v, camX, camY, ix, iy);
     c.restore();
+    if (area?.id === "ashmount") {
+      this.heatHaze(c, v, camX, camY, scale);
+      this.ashFall(c, v);
+    } else this.flakes = [];
+    this.lastT = v.time;
     this.night(c, v, camX, camY, ix, iy);
     c.save();
     c.translate(-camX, -camY);
@@ -340,6 +362,19 @@ export class RealmRenderer {
         const ph = Math.floor(v.time * 2 + tx * 0.7 + ty * 1.3) % 4;
         px(c, "#4a8ac0", tx * TILE + ((ph * 4 + ty * 3) % 12), ty * TILE + 4 + ph * 2, 4, 1);
       }
+    // lava oqimi: siljiyotgan yorqin chiziqlar va pufakchalar (jonli)
+    for (let ty = ty0; ty <= ty1; ty++)
+      for (let tx = tx0; tx <= tx1; tx++) {
+        if (!LAVA[sim.tileAt(tx, ty)]) continue;
+        const k = Math.floor(v.time * 3 + tx * 0.9 + ty * 1.7) % 6;
+        px(c, "#ffb02e", tx * TILE + ((k * 5 + ty * 3) % 12), ty * TILE + 2 + (k % 3) * 5, 4, 1);
+        const b = (v.time * 0.7 + ((tx * 13 + ty * 7) % 10) / 10) % 1;
+        if (b < 0.25) {
+          const bx = tx * TILE + ((tx * 7 + ty * 3) % 11) + 2,
+            by = ty * TILE + ((tx * 5 + ty) % 9) + 3;
+          px(c, b < 0.18 ? "#ffd36a" : "#8a1e10", bx, by, 2, 2);
+        }
+      }
     // yashirin sandiq ustida vaqti-vaqti bilan pufakchalar (yagona ishora)
     for (const s of sim.region.secrets) {
       if (s.type !== "riverchest") continue;
@@ -349,9 +384,11 @@ export class RealmRenderer {
         y = tileCenter(o.y);
       if (!inView(x, y, camX, camY)) continue;
       const k = (v.time % 3.2) / 3.2;
+      // lava ostidagi sandiq — olovli pufakchalar
+      const bub = LAVA[sim.tileAt(o.x, o.y)] ? "#ffd36a" : "#9fd0ef";
       if (k < 0.35) {
-        px(c, "#9fd0ef", x - 2 + Math.sin(v.time * 9) * 2, y - k * 20, 2, 2);
-        px(c, "#9fd0ef", x + 3, y + 2 - k * 14, 1, 1);
+        px(c, bub, x - 2 + Math.sin(v.time * 9) * 2, y - k * 20, 2, 2);
+        px(c, bub, x + 3, y + 2 - k * 14, 1, 1);
       }
     }
 
@@ -407,6 +444,7 @@ export class RealmRenderer {
             const def = sim.data.items[it.item];
             if (!def) return;
             const col = RARITY_COLOR[def.rarity];
+            if (def.rarity === "legendary") legendaryRays(c, it.x, it.y + bob, v.time + it.id);
             c.globalAlpha = 0.35 + 0.2 * Math.sin(v.time * 5 + it.id);
             px(c, col, it.x - 7, it.y - 7 + bob, 14, 14);
             c.globalAlpha = 1;
@@ -432,7 +470,7 @@ export class RealmRenderer {
       if (!inView(x, y, camX, camY, 48)) continue;
       const foot = y + m.size / 2;
       if (m.kind === "warden") occlude(x, y - 48, 56, foot);
-      else if (m.kind === "sentinel") occlude(x, y - 16, 26, foot);
+      else if (m.kind === "sentinel" || m.kind === "obsguard") occlude(x, y - 16, 26, foot);
       all.push({ y: foot, r: () => this.mob(c, v, m, x, y) });
     }
     // o'yinchilar (silliq: oldingi va joriy tick orasida)
@@ -546,7 +584,93 @@ export class RealmRenderer {
         px(c, "#ffffff", b.x - 1, b.y - 1, 2, 2);
       }
     }
+    // lava qurtining olov sharlari: qora chekka, qizil-sariq o'zak va iz
+    for (const f of sim.fireballs) {
+      if (!inView(f.x, f.y, camX, camY)) continue;
+      const l = Math.hypot(f.vx, f.vy) || 1;
+      for (let k = 1; k <= 4; k++)
+        px(
+          c,
+          k < 3 ? "#ff8a2a" : "#8a1e10",
+          f.x - (f.vx / l) * k * 2 - 1,
+          f.y - (f.vy / l) * k * 2 - 1,
+          2,
+          2,
+        );
+      px(c, "#120604", f.x - 3, f.y - 3, 6, 6);
+      px(c, "#ff5a1a", f.x - 2, f.y - 2, 4, 4);
+      px(c, "#ffd36a", f.x - 1, f.y - 1, 2, 2);
+    }
     v.fx.renderParticles(c);
+  }
+
+  /**
+   * Issiq havo titrashi: lava ustidagi va undan biroz yuqoridagi qatorlar sekin to'lqinlanadi —
+   * kanvasning ingichka bo'laklari yonga siljiydi (faqat ko'rinish).
+   */
+  private heatHaze(
+    c: CanvasRenderingContext2D,
+    v: RealmView,
+    camX: number,
+    camY: number,
+    scale: number,
+  ) {
+    const sim = v.sim;
+    const tx0 = Math.floor(camX / TILE),
+      ty0 = Math.floor(camY / TILE);
+    const rows = Math.ceil(VIEW_H / TILE) + 5;
+    const hot: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      let n = 0;
+      for (let tx = tx0; tx <= tx0 + VIEW_W / TILE + 1; tx++)
+        if (LAVA[sim.tileAt(tx, ty0 + r)]) n++;
+      hot.push(Math.min(1, n / 4));
+    }
+    const m = c.getTransform();
+    for (let y = 0; y < VIEW_H; y += 2) {
+      const r = Math.floor((y + camY) / TILE) - ty0;
+      // issiqlik yuqoriga ko'tariladi: pastdagi 3 qatorgacha lava ham ta'sir qiladi
+      let heat = 0;
+      for (let d = 0; d <= 3; d++) heat = Math.max(heat, (hot[r + d] ?? 0) * (1 - d * 0.22));
+      if (heat <= 0.05) continue;
+      const off = Math.sin(v.time * 6 + (y + camY) * 0.35) * heat * 1.2;
+      if (Math.abs(off) < 0.25) continue;
+      c.drawImage(c.canvas, m.e, m.f + y * m.d, VIEW_W * scale, 2 * m.d, off, y, VIEW_W, 2);
+    }
+  }
+
+  /** Kul tog'i havosi: sekin yog'ayotgan kul parchalari va pastdan ko'tarilayotgan cho'g'lar. */
+  private ashFall(c: CanvasRenderingContext2D, v: RealmView) {
+    const dt = Math.min(0.1, Math.max(0, v.time - this.lastT));
+    const f = this.flakes;
+    const fresh = f.length === 0;
+    while (f.length < 48) {
+      const ember = Math.random() < 0.2;
+      f.push({
+        x: Math.random() * VIEW_W,
+        y: fresh ? Math.random() * VIEW_H : ember ? VIEW_H + 4 : -4,
+        vx: (Math.random() - 0.5) * 8 - 3,
+        vy: ember ? -(14 + Math.random() * 18) : 9 + Math.random() * 10,
+        ember,
+      });
+    }
+    for (let i = f.length - 1; i >= 0; i--) {
+      const p = f[i]!;
+      p.x += (p.vx + Math.sin(v.time * 1.5 + p.y * 0.06) * 5) * dt;
+      p.y += p.vy * dt;
+      if (p.y > VIEW_H + 6 || p.y < -8 || p.x < -8 || p.x > VIEW_W + 8) {
+        f.splice(i, 1);
+        continue;
+      }
+      if (p.ember) {
+        const on = Math.floor(v.time * 8 + i) % 3 !== 0;
+        px(c, on ? "#ff8a2a" : "#ffd36a", p.x, p.y, 1, 1);
+      } else {
+        c.globalAlpha = 0.75;
+        px(c, i % 3 ? "#b8b0aa" : "#8e8680", p.x, p.y, i % 4 ? 1 : 2, 1);
+        c.globalAlpha = 1;
+      }
+    }
   }
 
   private object(
@@ -572,6 +696,20 @@ export class RealmRenderer {
         px(c, "#5a4026", x - 4, y - 6, 9, 1);
         px(c, "#5a4026", x - 4, y - 4, 7, 1);
         return;
+      case "plate": {
+        // bosim plitasi: ustida o'yinchi tursa (yoki sir ochilgan bo'lsa) cho'kadi va runasi yonadi
+        const done = sim.region.secrets.some(
+          (s) => s.type === "plates" && s.plates.includes(o.id) && me.secrets.includes(s.id),
+        );
+        const down = done || !!sim.plateBy(o.id);
+        px(c, "#07060a", x - 7, y - 6, 14, 12);
+        px(c, down ? "#2a2236" : "#463a66", x - 6, y - (down ? 4 : 5), 12, down ? 9 : 10);
+        px(c, down ? "#1c1626" : "#9a8ac8", x - 6, y - (down ? 4 : 5), 12, 1);
+        const rune = down ? (Math.floor(v.time * 4) % 2 ? "#ffd36a" : "#ff8a2a") : "#221a30";
+        px(c, rune, x - 1, y - 3, 2, 6);
+        px(c, rune, x - 3, y - 1, 6, 2);
+        return;
+      }
       case "torch": {
         const lit = sim.torchLit(me, o.id);
         px(c, "#2a2830", x - 3, y - 2, 7, 9);
@@ -586,9 +724,24 @@ export class RealmRenderer {
           px(c, m, x - 1, y + 1, 3, 3);
           px(c, m, x, y, 1, 1);
           px(c, m, x, y + 4, 1, 1);
-        } else {
+        } else if (o.mark === "star") {
           px(c, m, x, y, 1, 5);
           px(c, m, x - 2, y + 2, 5, 1);
+        } else if (o.mark === "flame") {
+          px(c, m, x - 1, y + 2, 3, 2);
+          px(c, m, x, y, 1, 2);
+          px(c, m, x - 1, y + 1, 1, 1);
+        } else if (o.mark === "skull") {
+          px(c, m, x - 1, y, 3, 3);
+          px(c, "#2a2830", x - 1, y + 1, 1, 1);
+          px(c, "#2a2830", x + 1, y + 1, 1, 1);
+          px(c, m, x, y + 3, 1, 1);
+        } else {
+          // toj
+          px(c, m, x - 2, y + 2, 5, 2);
+          px(c, m, x - 2, y, 1, 2);
+          px(c, m, x, y + 1, 1, 1);
+          px(c, m, x + 2, y, 1, 2);
         }
         px(c, "#2a2830", x - 4, y - 5, 9, 4);
         px(c, "#45414d", x - 3, y - 4, 7, 2);
@@ -648,11 +801,13 @@ export class RealmRenderer {
           px(c, "#c9a25a", x + 1, y - 8, 1, 4);
           px(c, "#c9a25a", x - 2, y - 8, 4, 1);
         }
-        // tepadagi belgi: dunyo rangida
+        // tepadagi belgi: dunyo rangida; ochiq darvoza qaysi hududga olib borishini yozadi
         px(c, col.mid, x - 2, y - 20, 4, 3);
+        const dest = o.to ? sim.object(o.to) : undefined;
+        const where = dest ? sim.areaAt(tileCenter(dest.x), tileCenter(dest.y))?.name : undefined;
         text(
           c,
-          open ? "TEZ ORADA" : "QULFLANGAN",
+          open ? (where ?? "TEZ ORADA") : "QULFLANGAN",
           x,
           y - 26,
           4,
@@ -674,6 +829,15 @@ export class RealmRenderer {
   }
 
   private mob(c: CanvasRenderingContext2D, v: RealmView, m: RealmMob, x: number, y: number) {
+    if (m.under) {
+      // yer ostidagi lava qurti ko'rinmaydi; uyidagisi — qizigan do'nglik (shu yerda qurt bor)
+      if (m.state === "dormant") {
+        px(c, "#2a1810", x - 6, y + 3, 12, 3);
+        px(c, "#3a1810", x - 4, y + 1, 8, 3);
+        if (Math.floor(v.time * 2 + m.id) % 3 === 0) px(c, "#ff5a1a", x - 1, y + 2, 2, 1);
+      }
+      return;
+    }
     const fade = m.spawnT > 0 ? 1 - m.spawnT / 0.5 : 1;
     // hamla: orqada so'nib boruvchi tezlik chiziqlari (chang izi klientda zarrachalar bilan)
     if (m.state === "attack" && (m.kind === "warden" || m.kind === "boar") && !m.dead) {
@@ -704,10 +868,14 @@ export class RealmRenderer {
       ? y + Math.round(Math.sin(v.time * 3 + m.id) * 2) - 4
       : ground - spriteFootOffset(m.kind, m.anim.state, m.anim.frame);
     // haykal holatidagi qo'riqchi: tosh (runa so'ngan); qo'riqchi moxli tusini saqlaydi
-    const dormant = m.state === "dormant" && (m.kind === "sentinel" || m.kind === "warden");
+    const dormant = m.state === "dormant" && m.statue;
     if (dormant)
       c.filter =
-        m.kind === "warden" ? "grayscale(1) brightness(0.85)" : "grayscale(0.4) brightness(0.8)";
+        m.kind === "warden"
+          ? "grayscale(1) brightness(0.85)"
+          : m.kind === "obsguard"
+            ? "grayscale(0.6) brightness(0.7)"
+            : "grayscale(0.4) brightness(0.8)";
     renderSprite(
       c,
       m.kind,
@@ -833,6 +1001,12 @@ export class RealmRenderer {
         if (sim.tileAt(tx, ty) === TILE_IDS.window) hole(tileCenter(tx), tileCenter(ty) + 6, 22);
     for (const m of sim.mobs) if (m.kind === "wisp" && !m.dead) hole(m.x, m.y, 26);
     for (const b of sim.projectiles) if (!b.arrow && !b.bullet) hole(b.x, b.y, 18);
+    // Kul tog'i: lava, olov sharlari va yer ustidagi lava qurtlari yoritadi
+    for (let ty = ty0; ty < ty0 + VIEW_H / TILE + 4; ty += 2)
+      for (let tx = tx0 - (tx0 % 2); tx < tx0 + VIEW_W / TILE + 4; tx += 2)
+        if (LAVA[sim.tileAt(tx, ty)]) hole(tileCenter(tx), tileCenter(ty), 26);
+    for (const f of sim.fireballs) hole(f.x, f.y, 16);
+    for (const m of sim.mobs) if (m.kind === "lavaworm" && !m.under && !m.dead) hole(m.x, m.y, 22);
     l.globalCompositeOperation = "source-over";
     c.drawImage(this.light, 0, 0);
     // iliq nur: yorug'lik doiralari ustida sarg'ish tus
@@ -933,8 +1107,11 @@ export class RealmRenderer {
     const map = this.exploredMap(v);
     const ptx = Math.floor(p.x / TILE),
       pty = Math.floor(p.y / TILE);
-    const sx = Math.max(0, Math.min(sim.map.w - mw, ptx - mw / 2)),
-      sy = Math.max(0, Math.min(sim.map.h - mh, pty - mh / 2));
+    const ar = this.area;
+    const ax = ar?.x ?? 0,
+      ay = ar?.y ?? 0;
+    const sx = Math.max(ax, Math.min(ax + (ar?.w ?? sim.map.w) - mw, ptx - mw / 2)),
+      sy = Math.max(ay, Math.min(ay + (ar?.h ?? sim.map.h) - mh, pty - mh / 2));
     px(c, "#000", mx - 2, my - 2, mw + 4, mh + 4);
     px(c, "#5c4a6e", mx - 1, my - 1, mw + 2, mh + 2);
     c.drawImage(map, sx, sy, mw, mh, mx, my, mw, mh);
@@ -968,6 +1145,24 @@ export class RealmRenderer {
       px(c, "#000", x, y0, sw - 1, sw - 1);
       px(c, def ? RARITY_COLOR[def.rarity] : "#3b2a3a", x + 1, y0 + 1, sw - 3, sw - 3);
       px(c, "#1f1730", x + 2, y0 + 2, sw - 5, sw - 5);
+      if (def?.rarity === "legendary") {
+        // afsonaviy: chekka bo'ylab yugurayotgan yorqin nuqta va ichki porlash
+        const per = (sw - 3) * 4,
+          k = Math.floor(v.time * 24 + i * 5) % per,
+          e = sw - 3;
+        const [gx, gy] =
+          k < e
+            ? [k, 0]
+            : k < e * 2
+              ? [e - 1, k - e]
+              : k < e * 3
+                ? [e * 3 - k - 1, e - 1]
+                : [0, per - k - 1];
+        px(c, "#fff2c0", x + 1 + gx, y0 + 1 + gy, 1, 1);
+        c.globalAlpha = 0.18 + 0.12 * Math.sin(v.time * 5 + i);
+        px(c, "#ffb02e", x + 2, y0 + 2, sw - 5, sw - 5);
+        c.globalAlpha = 1;
+      }
       if (def && s) {
         drawItemIcon(c, def.icon, x + 2, y0 + 2);
         if (s.n > 1) text(c, String(s.n), x + sw - 3, y0 + sw - 3, 5, "#ffffff", "right");
@@ -1015,7 +1210,17 @@ export class RealmRenderer {
     if (p.dead) {
       px(c, "rgba(0,0,0,0.5)", 0, 96, VIEW_W, 40);
       text(c, "HALOK BO'LDINGIZ", VIEW_W / 2, 114, 10, "#ff4d6d", "center");
-      text(c, "Qishloqda o'zingizga kelasiz...", VIEW_W / 2, 128, 6, "#e0d6ee", "center");
+      text(
+        c,
+        this.area?.id === "ashmount"
+          ? "Kul darvozasi yonida o'zingizga kelasiz..."
+          : "Qishloqda o'zingizga kelasiz...",
+        VIEW_W / 2,
+        128,
+        6,
+        "#e0d6ee",
+        "center",
+      );
     }
   }
 
@@ -1276,21 +1481,33 @@ export class RealmRenderer {
     const { sim, me } = v;
     px(c, "rgba(0,0,0,0.85)", 0, 0, VIEW_W, VIEW_H);
     const map = this.exploredMap(v);
-    const s = Math.min((VIEW_H - 30) / sim.map.h, (VIEW_W - 20) / sim.map.w);
-    const w = sim.map.w * s,
-      h = sim.map.h * s;
+    // faqat o'yinchi turgan hudud (vodiy yoki Kul tog'i)
+    const a = this.area ?? { x: 0, y: 0, w: sim.map.w, h: sim.map.h, name: sim.region.name };
+    const inA = (tx: number, ty: number) =>
+      tx >= a.x && ty >= a.y && tx < a.x + a.w && ty < a.y + a.h;
+    const s = Math.min((VIEW_H - 30) / a.h, (VIEW_W - 20) / a.w);
+    const w = a.w * s,
+      h = a.h * s;
     const x0 = Math.round((VIEW_W - w) / 2),
       y0 = 20;
     px(c, "#5c4a6e", x0 - 2, y0 - 2, w + 4, h + 4);
-    c.drawImage(map, x0, y0, w, h);
-    text(c, sim.region.name, VIEW_W / 2, 13, 7, "#ffe14d", "center");
+    c.drawImage(map, a.x, a.y, a.w, a.h, x0, y0, w, h);
+    text(c, a.name, VIEW_W / 2, 13, 7, "#ffe14d", "center");
     for (const l of sim.region.landmarks)
-      if (me.landmarks.includes(l.id))
-        text(c, l.name, x0 + l.x * s, y0 + l.y * s, 4, "#ffffff", "center");
+      if (me.landmarks.includes(l.id) && inA(l.x, l.y))
+        text(c, l.name, x0 + (l.x - a.x) * s, y0 + (l.y - a.y) * s, 4, "#ffffff", "center");
     for (const n of sim.region.npcs)
-      if (sim.isExplored(me, n.x, n.y)) px(c, "#ffe14d", x0 + n.x * s - 1, y0 + n.y * s - 1, 3, 3);
+      if (sim.isExplored(me, n.x, n.y) && inA(n.x, n.y))
+        px(c, "#ffe14d", x0 + (n.x - a.x) * s - 1, y0 + (n.y - a.y) * s - 1, 3, 3);
     if (Math.floor(v.time * 3) % 2)
-      px(c, "#ff4d6d", x0 + (me.p.x / TILE) * s - 2, y0 + (me.p.y / TILE) * s - 2, 4, 4);
+      px(
+        c,
+        "#ff4d6d",
+        x0 + (me.p.x / TILE - a.x) * s - 2,
+        y0 + (me.p.y / TILE - a.y) * s - 2,
+        4,
+        4,
+      );
     v.buttons.push({ x: 0, y: 0, w: VIEW_W, h: VIEW_H, act: () => v.act.panel("none") });
   }
 
@@ -1378,6 +1595,26 @@ export class RealmRenderer {
   }
 }
 
+/** Afsonaviy buyum porlashi: sekin aylanuvchi nurlar va miltillovchi yadro (yerda va inventarda). */
+export function legendaryRays(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  c.save();
+  c.translate(Math.round(x), Math.round(y));
+  c.globalAlpha = 0.5 + 0.25 * Math.sin(t * 4);
+  c.fillStyle = "#fff2c0";
+  for (let i = 0; i < 8; i++) {
+    c.save();
+    c.rotate(t * 0.9 + (i * Math.PI) / 4);
+    c.fillRect(-1, -(i % 2 ? 12 : 15), 2, i % 2 ? 4 : 6);
+    c.restore();
+  }
+  c.globalAlpha = 0.25 + 0.15 * Math.sin(t * 6);
+  c.fillStyle = "#ffb02e";
+  c.beginPath();
+  c.arc(0, 0, 10, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+}
+
 function inView(x: number, y: number, camX: number, camY: number, pad = 32) {
   return x > camX - pad && y > camY - pad && x < camX + VIEW_W + pad && y < camY + VIEW_H + pad;
 }
@@ -1439,7 +1676,7 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
     c.globalAlpha = 0.55;
     c.strokeStyle = edge;
     c.lineWidth = 1;
-    if (k.kind === "circle") {
+    if (k.kind === "circle" || k.kind === "crack") {
       c.beginPath();
       c.arc(k.x, k.y, k.r - 0.5, 0, Math.PI * 2);
       c.stroke();
@@ -1451,7 +1688,43 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
     c.restore();
     return;
   }
-  if (k.kind === "circle") {
+  if (k.kind === "crack") {
+    // yer yorilmoqda: markazdan o'sib boruvchi yoriqlar, ichida lava; chetida xavf doirasi
+    c.globalAlpha = 0.18 + 0.2 * prog;
+    c.fillStyle = "#ff3b3b";
+    c.beginPath();
+    c.arc(k.x, k.y, k.r, 0, Math.PI * 2);
+    c.fill();
+    c.globalAlpha = 1;
+    for (let i = 0; i < 6; i++) {
+      const a = (i * Math.PI) / 3 + (k.owner % 7) * 0.4;
+      const len = k.r * (0.25 + 0.75 * prog);
+      let x0 = k.x,
+        y0 = k.y;
+      for (let s = 1; s <= 3; s++) {
+        const bend = (s % 2 ? 0.35 : -0.35) * (i % 2 ? 1 : -1);
+        const x1 = k.x + (Math.cos(a + bend * 0.3) * (len * s)) / 3,
+          y1 = k.y + (Math.sin(a + bend * 0.3) * (len * s)) / 3;
+        c.strokeStyle = "#2a0a04";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(x0, y0);
+        c.lineTo(x1, y1);
+        c.stroke();
+        c.strokeStyle = hot ? "#ffd36a" : "#ff5a1a";
+        c.lineWidth = 1;
+        c.stroke();
+        x0 = x1;
+        y0 = y1;
+      }
+    }
+    c.globalAlpha = 0.9;
+    c.strokeStyle = edge;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.arc(k.x, k.y, k.r - 0.5, 0, Math.PI * 2);
+    c.stroke();
+  } else if (k.kind === "circle") {
     c.globalAlpha = 0.2;
     c.fillStyle = "#ff3b3b";
     c.beginPath();

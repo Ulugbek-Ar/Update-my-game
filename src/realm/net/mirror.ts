@@ -175,9 +175,21 @@ export class RealmMirror {
         life: 1,
         hitSet: new Set<number>(),
       }));
+    if (m.fb) sim.fireballs = m.fb.map(([x, y, vx, vy]) => ({ x, y, vx, vy, life: 1, owner: 0 }));
     if (m.k)
       sim.marks = m.k.map(([kind, x, y, r, dx, dy, len, t, total, owner, dmg]) => {
-        const k: Mark = { kind: kind ? "line" : "circle", x, y, r, dx, dy, len, t, total, owner };
+        const k: Mark = {
+          kind: kind === 2 ? "crack" : kind ? "line" : "circle",
+          x,
+          y,
+          r,
+          dx,
+          dy,
+          len,
+          t,
+          total,
+          owner,
+        };
         if (dmg) k.dmg = dmg;
         return k;
       });
@@ -270,6 +282,10 @@ export class RealmMirror {
     for (const b of sim.projectiles) {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+    }
+    for (const f of sim.fireballs) {
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
     }
     for (const s of sim.smokes) s.life -= dt;
     sim.smokes = sim.smokes.filter((s) => s.life > 0);

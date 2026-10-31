@@ -1,0 +1,1075 @@
+{
+  "id": "ashmount",
+  "name": "KUL TOG'I",
+  "seed": 31031,
+  "origin": {
+    "cx": 0,
+    "cy": 6
+  },
+  "chunks": {
+    "w": 6,
+    "h": 6
+  },
+  "terrain": {
+    "base": "ash",
+    "layers": [
+      {
+        "tile": "ash2",
+        "scale": 0.12,
+        "threshold": 0.55
+      },
+      {
+        "tile": "basalt",
+        "scale": 0.21,
+        "threshold": 0.8,
+        "on": ["ash"]
+      },
+      {
+        "tile": "crag",
+        "scale": 0.1,
+        "threshold": 0.72,
+        "area": [104, 8, 82, 26]
+      },
+      {
+        "tile": "crag",
+        "scale": 0.1,
+        "threshold": 0.74,
+        "area": [6, 160, 60, 26]
+      }
+    ]
+  },
+  "features": [
+    {
+      "type": "rect",
+      "tile": "crag",
+      "x": 0,
+      "y": 0,
+      "w": 192,
+      "h": 192,
+      "border": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 10,
+      "y": 4,
+      "rx": 9,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 60,
+      "y": 3,
+      "rx": 14,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 120,
+      "y": 4,
+      "rx": 18,
+      "ry": 5
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 178,
+      "y": 8,
+      "rx": 10,
+      "ry": 7
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 186,
+      "y": 60,
+      "rx": 5,
+      "ry": 12
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 186,
+      "y": 150,
+      "rx": 6,
+      "ry": 14
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 150,
+      "y": 188,
+      "rx": 20,
+      "ry": 5
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 40,
+      "y": 188,
+      "rx": 16,
+      "ry": 5
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 4,
+      "y": 70,
+      "rx": 5,
+      "ry": 10
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 4,
+      "y": 160,
+      "rx": 6,
+      "ry": 12
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 96,
+      "y": 4,
+      "rx": 8,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 110,
+      "y": 30,
+      "rx": 6,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 124,
+      "y": 20,
+      "rx": 5,
+      "ry": 3
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 78,
+      "y": 36,
+      "rx": 4,
+      "ry": 3
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 176,
+      "y": 108,
+      "rx": 5,
+      "ry": 7
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 20,
+      "y": 120,
+      "rx": 4,
+      "ry": 3
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 60,
+      "y": 160,
+      "rx": 4,
+      "ry": 3
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 136,
+      "y": 176,
+      "rx": 6,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 176,
+      "y": 176,
+      "rx": 5,
+      "ry": 5
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 12,
+      "y": 176,
+      "rx": 4,
+      "ry": 4
+    },
+    {
+      "type": "ellipse",
+      "tile": "crag",
+      "x": 166,
+      "y": 84,
+      "rx": 4,
+      "ry": 3
+    },
+    {
+      "type": "scatter",
+      "tile": "deadtree",
+      "x": 8,
+      "y": 28,
+      "w": 80,
+      "h": 66,
+      "density": 0.045,
+      "on": ["ash", "ash2"]
+    },
+    {
+      "type": "scatter",
+      "tile": "deadtree",
+      "x": 8,
+      "y": 112,
+      "w": 64,
+      "h": 72,
+      "density": 0.04,
+      "on": ["ash", "ash2"]
+    },
+    {
+      "type": "scatter",
+      "tile": "deadtree",
+      "x": 104,
+      "y": 66,
+      "w": 50,
+      "h": 18,
+      "density": 0.03,
+      "on": ["ash", "ash2"]
+    },
+    {
+      "type": "ellipse",
+      "tile": "basalt",
+      "x": 23,
+      "y": 14,
+      "rx": 9,
+      "ry": 6
+    },
+    {
+      "type": "ellipse",
+      "tile": "basalt",
+      "x": 40,
+      "y": 23,
+      "rx": 7,
+      "ry": 5
+    },
+    {
+      "type": "rect",
+      "tile": "basalt",
+      "x": 34,
+      "y": 18,
+      "w": 12,
+      "h": 3
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 35,
+      "y": 19,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 45,
+      "y": 19,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "path",
+      "tile": "cinder",
+      "points": [
+        [188, 92],
+        [166, 98],
+        [140, 96],
+        [118, 102],
+        [97, 104],
+        [76, 98],
+        [52, 106],
+        [30, 100],
+        [3, 104]
+      ],
+      "width": 9
+    },
+    {
+      "type": "path",
+      "tile": "lava",
+      "points": [
+        [188, 92],
+        [166, 98],
+        [140, 96],
+        [118, 102],
+        [97, 104],
+        [76, 98],
+        [52, 106],
+        [30, 100],
+        [3, 104]
+      ],
+      "width": 4.5
+    },
+    {
+      "type": "ellipse",
+      "tile": "cinder",
+      "x": 150,
+      "y": 48,
+      "rx": 22,
+      "ry": 15
+    },
+    {
+      "type": "ellipse",
+      "tile": "lava",
+      "x": 150,
+      "y": 48,
+      "rx": 18,
+      "ry": 11
+    },
+    {
+      "type": "ellipse",
+      "tile": "basalt",
+      "x": 154,
+      "y": 47,
+      "rx": 2.5,
+      "ry": 2
+    },
+    {
+      "type": "ellipse",
+      "tile": "cinder",
+      "x": 32,
+      "y": 150,
+      "rx": 6.5,
+      "ry": 5
+    },
+    {
+      "type": "ellipse",
+      "tile": "lava",
+      "x": 32,
+      "y": 150,
+      "rx": 4,
+      "ry": 3
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [23, 17],
+        [30, 22],
+        [44, 26],
+        [56, 40],
+        [66, 56],
+        [82, 66],
+        [94, 80],
+        [97, 92],
+        [97, 112],
+        [98, 122],
+        [98, 131]
+      ],
+      "width": 3
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [40, 94],
+        [41, 113]
+      ],
+      "width": 3
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [150, 88],
+        [150, 110]
+      ],
+      "width": 3
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [82, 66],
+        [110, 70],
+        [132, 64]
+      ],
+      "width": 2.5
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [150, 110],
+        [152, 119]
+      ],
+      "width": 3
+    },
+    {
+      "type": "path",
+      "tile": "basalt",
+      "points": [
+        [41, 113],
+        [40, 132],
+        [36, 144]
+      ],
+      "width": 2.5
+    },
+    {
+      "type": "rect",
+      "tile": "obsfloor",
+      "x": 130,
+      "y": 120,
+      "w": 46,
+      "h": 36
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 130,
+      "y": 120,
+      "w": 14,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 148,
+      "y": 120,
+      "w": 10,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 162,
+      "y": 120,
+      "w": 14,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 130,
+      "y": 155,
+      "w": 18,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 153,
+      "y": 155,
+      "w": 23,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 130,
+      "y": 120,
+      "w": 1,
+      "h": 14
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 130,
+      "y": 140,
+      "w": 1,
+      "h": 16
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 175,
+      "y": 120,
+      "w": 1,
+      "h": 36
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 136,
+      "y": 126,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 144,
+      "y": 126,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 158,
+      "y": 126,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 166,
+      "y": 126,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 136,
+      "y": 149,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 166,
+      "y": 149,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 142,
+      "y": 137,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "opillar",
+      "x": 160,
+      "y": 137,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 146,
+      "y": 123,
+      "w": 11,
+      "h": 7,
+      "border": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsfloor",
+      "x": 150,
+      "y": 129,
+      "w": 3,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsidian",
+      "x": 175,
+      "y": 134,
+      "w": 5,
+      "h": 7,
+      "border": 1
+    },
+    {
+      "type": "rect",
+      "tile": "obsfloor",
+      "x": 176,
+      "y": 135,
+      "w": 3,
+      "h": 5
+    },
+    {
+      "type": "rect",
+      "tile": "cobs",
+      "x": 175,
+      "y": 137,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "ellipse",
+      "tile": "basalt",
+      "x": 98,
+      "y": 132,
+      "rx": 30,
+      "ry": 8
+    },
+    {
+      "type": "rect",
+      "tile": "tfloor",
+      "x": 78,
+      "y": 128,
+      "w": 42,
+      "h": 21
+    },
+    {
+      "type": "rect",
+      "tile": "crag",
+      "x": 74,
+      "y": 128,
+      "w": 4,
+      "h": 21
+    },
+    {
+      "type": "rect",
+      "tile": "crag",
+      "x": 120,
+      "y": 128,
+      "w": 4,
+      "h": 21
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 80,
+      "y": 150,
+      "w": 38,
+      "h": 38,
+      "border": 2
+    },
+    {
+      "type": "rect",
+      "tile": "tfloor",
+      "x": 82,
+      "y": 152,
+      "w": 34,
+      "h": 34
+    },
+    {
+      "type": "rect",
+      "tile": "tfloor",
+      "x": 97,
+      "y": 150,
+      "w": 4,
+      "h": 2
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 82,
+      "y": 160,
+      "w": 34,
+      "h": 2
+    },
+    {
+      "type": "rect",
+      "tile": "tfloor",
+      "x": 97,
+      "y": 160,
+      "w": 4,
+      "h": 2
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 86,
+      "y": 154,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 86,
+      "y": 157,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 111,
+      "y": 154,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "twall",
+      "x": 111,
+      "y": 157,
+      "w": 1,
+      "h": 1
+    },
+    {
+      "type": "rect",
+      "tile": "cinder",
+      "x": 82,
+      "y": 184,
+      "w": 34,
+      "h": 2
+    }
+  ],
+  "spawn": [23, 16],
+  "landmarks": [
+    {
+      "id": "ashgate",
+      "name": "KUL DARVOZASI",
+      "x": 23,
+      "y": 14,
+      "r": 7
+    },
+    {
+      "id": "camp",
+      "name": "ROHIB QO'NOG'I",
+      "x": 40,
+      "y": 23,
+      "r": 6
+    },
+    {
+      "id": "ashfields",
+      "name": "KUL DALASI",
+      "x": 40,
+      "y": 62,
+      "r": 18
+    },
+    {
+      "id": "lavalake",
+      "name": "LAVA KO'LI",
+      "x": 150,
+      "y": 48,
+      "r": 22
+    },
+    {
+      "id": "blackbridge",
+      "name": "QORA KO'PRIK",
+      "x": 97,
+      "y": 103,
+      "r": 5
+    },
+    {
+      "id": "obsruins",
+      "name": "OBSIDIAN XAROBALAR",
+      "x": 152,
+      "y": 138,
+      "r": 22
+    },
+    {
+      "id": "temple",
+      "name": "IBLIS IBODATXONASI",
+      "x": 98,
+      "y": 150,
+      "r": 22
+    },
+    {
+      "id": "kinghall",
+      "name": "KUL QIROLI ZALI",
+      "x": 98,
+      "y": 173,
+      "r": 13
+    }
+  ],
+  "npcs": [
+    {
+      "id": "monk",
+      "name": "SURGUN QILINGAN ROHIB",
+      "sprite": "monk",
+      "x": 40,
+      "y": 22,
+      "dialog": "monk"
+    }
+  ],
+  "mobZones": [
+    {
+      "id": "hounds1",
+      "mob": "ashhound",
+      "x": 40,
+      "y": 62,
+      "r": 10,
+      "count": 4,
+      "respawn": 35
+    },
+    {
+      "id": "hounds2",
+      "mob": "ashhound",
+      "x": 54,
+      "y": 140,
+      "r": 10,
+      "count": 4,
+      "respawn": 35
+    },
+    {
+      "id": "hounds3",
+      "mob": "ashhound",
+      "x": 120,
+      "y": 78,
+      "r": 8,
+      "count": 3,
+      "respawn": 40
+    },
+    {
+      "id": "worms1",
+      "mob": "lavaworm",
+      "x": 150,
+      "y": 66,
+      "r": 9,
+      "count": 3,
+      "respawn": 30
+    },
+    {
+      "id": "worms2",
+      "mob": "lavaworm",
+      "x": 66,
+      "y": 113,
+      "r": 6,
+      "count": 2,
+      "respawn": 30
+    },
+    {
+      "id": "guards1",
+      "mob": "obsguard",
+      "x": 152,
+      "y": 146,
+      "r": 5,
+      "count": 3,
+      "respawn": 50
+    },
+    {
+      "id": "guards2",
+      "mob": "obsguard",
+      "x": 98,
+      "y": 145,
+      "r": 2,
+      "count": 2,
+      "respawn": 60
+    }
+  ],
+  "objects": [
+    {
+      "type": "gate",
+      "id": "gate-ash",
+      "x": 23,
+      "y": 11,
+      "key": "devil",
+      "name": "VODIY DARVOZASI",
+      "to": "gate-devil"
+    },
+    {
+      "type": "sign",
+      "id": "sign-ash",
+      "x": 30,
+      "y": 18,
+      "text": [
+        "KUL TOG'I.",
+        "Qizil daryo — lava: ustidan yursang kuyasan.",
+        "Rohib qo'nog'i shu yaqinda, yo'l bo'yida."
+      ]
+    },
+    {
+      "type": "lamp",
+      "id": "lamp-camp",
+      "x": 43,
+      "y": 21
+    },
+    {
+      "type": "chest",
+      "id": "chest-fields",
+      "x": 12,
+      "y": 88,
+      "loot": [
+        {
+          "item": "potion",
+          "n": 1
+        }
+      ],
+      "gold": 15
+    },
+    {
+      "type": "chest",
+      "id": "chest-lava",
+      "x": 32,
+      "y": 150,
+      "loot": [
+        {
+          "item": "phoenix",
+          "n": 1
+        }
+      ],
+      "gold": 20,
+      "submerged": true
+    },
+    {
+      "type": "fragment",
+      "id": "frag-ash1",
+      "x": 14,
+      "y": 44
+    },
+    {
+      "type": "fragment",
+      "id": "frag-ash2",
+      "x": 154,
+      "y": 47
+    },
+    {
+      "type": "fragment",
+      "id": "frag-ash3",
+      "x": 84,
+      "y": 153
+    },
+    {
+      "type": "plate",
+      "id": "plate-west",
+      "x": 136,
+      "y": 140
+    },
+    {
+      "type": "plate",
+      "id": "plate-east",
+      "x": 166,
+      "y": 140
+    },
+    {
+      "type": "sign",
+      "id": "sign-plates",
+      "x": 150,
+      "y": 157,
+      "text": ["Ikki plita — ikki jon.", "Yolg'iz yo'lchiga qurbongoh ochilmas."]
+    },
+    {
+      "type": "chest",
+      "id": "chest-vault",
+      "x": 151,
+      "y": 125,
+      "loot": [
+        {
+          "item": "twinheart",
+          "n": 1
+        }
+      ],
+      "gold": 40,
+      "hidden": true
+    },
+    {
+      "type": "chest",
+      "id": "chest-niche-ash",
+      "x": 177,
+      "y": 137,
+      "loot": [
+        {
+          "item": "obsblade",
+          "n": 1
+        }
+      ],
+      "gold": 25
+    },
+    {
+      "type": "torch",
+      "id": "brazier-skull",
+      "x": 86,
+      "y": 134,
+      "mark": "skull"
+    },
+    {
+      "type": "torch",
+      "id": "brazier-flame",
+      "x": 98,
+      "y": 133,
+      "mark": "flame"
+    },
+    {
+      "type": "torch",
+      "id": "brazier-crown",
+      "x": 110,
+      "y": 134,
+      "mark": "crown"
+    },
+    {
+      "type": "sign",
+      "id": "sign-temple",
+      "x": 104,
+      "y": 146,
+      "text": [
+        "Uch mangal, uch belgi.",
+        "Avval qirolning toji yondi,",
+        "so'ng bosh suyaklar sochildi,",
+        "oxirida olov abadiy qoldi."
+      ]
+    },
+    {
+      "type": "chest",
+      "id": "chest-brazier",
+      "x": 92,
+      "y": 130,
+      "loot": [
+        {
+          "item": "ashcloak",
+          "n": 1
+        },
+        {
+          "item": "potion",
+          "n": 1
+        }
+      ],
+      "gold": 35,
+      "hidden": true
+    }
+  ],
+  "secrets": [
+    {
+      "type": "plates",
+      "id": "s-ash-plates",
+      "plates": ["plate-west", "plate-east"],
+      "reveal": ["chest-vault"],
+      "tiles": [
+        {
+          "x": 151,
+          "y": 128,
+          "tile": "stairs"
+        }
+      ]
+    },
+    {
+      "type": "tablet",
+      "id": "s-ash-tablet",
+      "fragments": ["frag-ash1", "frag-ash2", "frag-ash3"],
+      "lore": [
+        "KUL BITIKLARI",
+        "Olovli tub — Kul tog'ining qa'ri. U yerda Kul qiroli hukm surardi: lava va olovdan yasalgan ulkan jangchi.",
+        "Qirol yolg'iz edi. U o'z kulidan o'g'il yasab, unga olov yuragini berdi. Bu o'g'il — Iblis edi.",
+        "Iblis otasidan ham ochko'z chiqdi va olam qal'asini yondirmoqchi bo'ldi. Qirol uni to'xtatmadi: \"Olov hammasini tozalaydi\", dedi.",
+        "Quyosh ritsarlari qirolni ibodatxonaning ichki zaliga zanjirband qildi. Zanjirlar Iblis o'tiga bog'langan: Iblis yengilgan kuni ular bo'shaydi..."
+      ]
+    },
+    {
+      "type": "breakwall",
+      "id": "s-ash-wall",
+      "x": 175,
+      "y": 137,
+      "hits": 4,
+      "into": "obsfloor"
+    },
+    {
+      "type": "riverchest",
+      "id": "s-ash-lava",
+      "chest": "chest-lava"
+    },
+    {
+      "type": "torches",
+      "id": "s-ash-braziers",
+      "order": ["brazier-crown", "brazier-skull", "brazier-flame"],
+      "reveal": ["chest-brazier"],
+      "tiles": [
+        {
+          "x": 92,
+          "y": 129,
+          "tile": "stairs"
+        }
+      ]
+    }
+  ]
+}

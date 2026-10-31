@@ -36,6 +36,7 @@ import {
   type ErrReason,
   type HelloMsg,
   type NetBolt,
+  type NetFireball,
   type NetItem,
   type NetMark,
   type NetMe,
@@ -80,6 +81,7 @@ interface Baseline {
   mobs: Map<number, string>;
   items: Map<number, string>;
   bolts: string;
+  fireballs: string;
   marks: string;
   traps: string;
   smokes: string;
@@ -93,6 +95,7 @@ const newBaseline = (): Baseline => ({
   mobs: new Map(),
   items: new Map(),
   bolts: "[]",
+  fireballs: "[]",
   marks: "[]",
   traps: "[]",
   smokes: "[]",
@@ -430,10 +433,18 @@ export class RealmRoom {
       b.bolts = bk;
       msg.b = bolts;
     }
+    const fireballs: NetFireball[] = sim.fireballs
+      .filter((f) => near(f.x, f.y))
+      .map((f) => [r1(f.x), r1(f.y), r1(f.vx), r1(f.vy)]);
+    const fk = JSON.stringify(fireballs);
+    if (fk !== b.fireballs) {
+      b.fireballs = fk;
+      msg.fb = fireballs;
+    }
     const marks: NetMark[] = sim.marks
       .filter((k) => near(k.x, k.y))
       .map((k) => [
-        k.kind === "line" ? 1 : 0,
+        k.kind === "line" ? 1 : k.kind === "crack" ? 2 : 0,
         r1(k.x),
         r1(k.y),
         k.r,

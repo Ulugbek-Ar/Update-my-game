@@ -99,5 +99,85 @@
         }
       ]
     }
+  },
+  "ashhounds": {
+    "name": "KUL ITLARI",
+    "giver": "monk",
+    "desc": "Kul itlari to'dasi rohib qo'nog'ini o'rab olgan. Dala bo'ylab 6 tasini yeng.",
+    "back": "Rohibga qayt",
+    "steps": [
+      {
+        "type": "kill",
+        "mob": "ashhound",
+        "count": 6,
+        "text": "Kul itlarini yeng"
+      }
+    ],
+    "reward": {
+      "gold": 40,
+      "items": [
+        {
+          "item": "beads",
+          "n": 1
+        }
+      ]
+    }
+  },
+  "obsidian": {
+    "name": "OBSIDIAN QO'RIQCHILAR",
+    "giver": "monk",
+    "desc": "Rohib ibodatxona qo'riqchilari nega uyg'onganini bilmoqchi. Obsidian xarobalarni top va 3 ta obsidian parchasi olib kel.",
+    "back": "Rohibga qayt",
+    "steps": [
+      {
+        "type": "find",
+        "landmark": "obsruins",
+        "text": "Obsidian xarobalarni top"
+      },
+      {
+        "type": "deliver",
+        "item": "obsshard",
+        "count": 3,
+        "npc": "monk",
+        "text": "Obsidian parchalarini rohibga olib bor"
+      }
+    ],
+    "reward": {
+      "gold": 50,
+      "items": [
+        {
+          "item": "cinderheart",
+          "n": 1
+        }
+      ]
+    }
+  },
+  "temple": {
+    "name": "IBODATXONA ESHIGI",
+    "giver": "monk",
+    "desc": "Iblis ibodatxonasida Kul qiroli uyg'onmoqda. Ibodatxonani top va yo'ldagi lava qurtlarini haydab kel.",
+    "back": "Rohibga qayt",
+    "steps": [
+      {
+        "type": "find",
+        "landmark": "temple",
+        "text": "Iblis ibodatxonasini top"
+      },
+      {
+        "type": "kill",
+        "mob": "lavaworm",
+        "count": 3,
+        "text": "Lava qurtlarini yeng"
+      }
+    ],
+    "reward": {
+      "gold": 80,
+      "items": [
+        {
+          "item": "potion",
+          "n": 2
+        }
+      ]
+    }
   }
 }

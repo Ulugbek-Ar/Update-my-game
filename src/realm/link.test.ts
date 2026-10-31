@@ -70,10 +70,10 @@ describe("Darvoza kalitlari", () => {
     expect(isRealmUnlocked()).toBe(false);
   });
 
-  it("gates say 'coming soon' with the key and stay locked without it", () => {
+  it("the Queen's gate says 'coming soon' with the key and stays locked without it", () => {
     const s = new RealmSim(loadRealmData());
     const rp = s.addPlayer("p1", "knight");
-    const gate = s.region.objects.find((o) => o.type === "gate" && o.key === "devil")!;
+    const gate = s.region.objects.find((o) => o.type === "gate" && o.key === "queen")!;
     const look = () => {
       rp.ui = null;
       rp.p.x = tileCenter(gate.x);
@@ -85,7 +85,7 @@ describe("Darvoza kalitlari", () => {
       return ui?.kind === "sign" ? ui.text.join(" ") : "";
     };
     expect(look()).toContain("qulflangan");
-    rp.keys = ["devil"];
+    rp.keys = ["queen"];
     expect(look()).toContain("TEZ ORADA");
   });
 });

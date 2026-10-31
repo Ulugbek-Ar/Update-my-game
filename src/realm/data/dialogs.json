@@ -496,5 +496,457 @@
         ]
       }
     }
+  },
+  "monk": {
+    "start": "hello",
+    "heroStart": {
+      "paladin": "paladin"
+    },
+    "nodes": {
+      "hello": {
+        "text": [
+          "Yo'lchi... Bu tog'ga tirik odam kelmaganiga ko'p yil bo'ldi.",
+          "Men — surgun qilingan rohibman. Kul tog'idagi ibodatxona menga ishonib topshirilgan edi."
+        ],
+        "choices": [
+          {
+            "text": "Senga qanday yordam bera olaman?",
+            "next": "hounds-offer",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["none"]
+            }
+          },
+          {
+            "text": "Kul itlarini yengdim.",
+            "next": "hounds-done",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "ashhounds"
+              }
+            ]
+          },
+          {
+            "text": "Kul itlari haqida...",
+            "next": "hounds-wait",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Yana ish bormi?",
+            "next": "obs-offer",
+            "if": [
+              {
+                "quest": "ashhounds",
+                "state": ["done"]
+              },
+              {
+                "quest": "obsidian",
+                "state": ["none"]
+              }
+            ]
+          },
+          {
+            "text": "Obsidian parchalarini olib keldim.",
+            "next": "obs-done",
+            "if": {
+              "quest": "obsidian",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "obsidian"
+              }
+            ]
+          },
+          {
+            "text": "Qo'riqchilar haqida...",
+            "next": "obs-wait",
+            "if": {
+              "quest": "obsidian",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Yana ish bormi?",
+            "next": "temple-offer",
+            "if": [
+              {
+                "quest": "obsidian",
+                "state": ["done"]
+              },
+              {
+                "quest": "temple",
+                "state": ["none"]
+              }
+            ]
+          },
+          {
+            "text": "Ibodatxonani ko'rdim.",
+            "next": "temple-done",
+            "if": {
+              "quest": "temple",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "temple"
+              }
+            ]
+          },
+          {
+            "text": "Ibodatxona haqida...",
+            "next": "temple-wait",
+            "if": {
+              "quest": "temple",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Nega seni surgun qilishdi?",
+            "next": "exile"
+          },
+          {
+            "text": "Iblis qayerdan kelgan?",
+            "next": "origin"
+          },
+          {
+            "text": "Non va damlama bormi?",
+            "do": [
+              {
+                "shop": true
+              }
+            ]
+          },
+          {
+            "text": "Xayr."
+          }
+        ]
+      },
+      "paladin": {
+        "text": [
+          "Bu nur... Zirhing oltindek porlaydi. Sen Quyosh qasamini ichgan ritsarlardansan!",
+          "Ko'p yillar oldin sizning ordeningiz Kul qirolini ibodatxonaga zanjirband qilgan edi. Endi zanjirlar bo'shamoqda."
+        ],
+        "choices": [
+          {
+            "text": "Senga qanday yordam bera olaman?",
+            "next": "hounds-offer",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["none"]
+            }
+          },
+          {
+            "text": "Kul itlarini yengdim.",
+            "next": "hounds-done",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "ashhounds"
+              }
+            ]
+          },
+          {
+            "text": "Kul itlari haqida...",
+            "next": "hounds-wait",
+            "if": {
+              "quest": "ashhounds",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Yana ish bormi?",
+            "next": "obs-offer",
+            "if": [
+              {
+                "quest": "ashhounds",
+                "state": ["done"]
+              },
+              {
+                "quest": "obsidian",
+                "state": ["none"]
+              }
+            ]
+          },
+          {
+            "text": "Obsidian parchalarini olib keldim.",
+            "next": "obs-done",
+            "if": {
+              "quest": "obsidian",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "obsidian"
+              }
+            ]
+          },
+          {
+            "text": "Qo'riqchilar haqida...",
+            "next": "obs-wait",
+            "if": {
+              "quest": "obsidian",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Yana ish bormi?",
+            "next": "temple-offer-paladin",
+            "if": [
+              {
+                "quest": "obsidian",
+                "state": ["done"]
+              },
+              {
+                "quest": "temple",
+                "state": ["none"]
+              }
+            ]
+          },
+          {
+            "text": "Ibodatxonani ko'rdim.",
+            "next": "temple-done-paladin",
+            "if": {
+              "quest": "temple",
+              "state": ["ready"]
+            },
+            "do": [
+              {
+                "completeQuest": "temple"
+              }
+            ]
+          },
+          {
+            "text": "Ibodatxona haqida...",
+            "next": "temple-wait",
+            "if": {
+              "quest": "temple",
+              "state": ["active"]
+            }
+          },
+          {
+            "text": "Quyosh qasami haqida gapir.",
+            "next": "oath"
+          },
+          {
+            "text": "Nega seni surgun qilishdi?",
+            "next": "exile"
+          },
+          {
+            "text": "Iblis qayerdan kelgan?",
+            "next": "origin"
+          },
+          {
+            "text": "Non va damlama bormi?",
+            "do": [
+              {
+                "shop": true
+              }
+            ]
+          },
+          {
+            "text": "Xayr."
+          }
+        ]
+      },
+      "hounds-offer": {
+        "text": [
+          "Kul itlari to'da bo'lib yuradi: biri seni ko'rsa — hammasi yuguradi.",
+          "Dalada 6 tasini yeng. Tashlanishidan oldin yerga cho'kadi — shu payt chetga o't."
+        ],
+        "choices": [
+          {
+            "text": "Mayli, qilaman.",
+            "do": [
+              {
+                "startQuest": "ashhounds"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
+        ]
+      },
+      "hounds-wait": {
+        "text": [
+          "Itlar g'arbdagi kul dalasida. O'rab olishlariga yo'l qo'yma — orqangni devorga ber."
+        ],
+        "choices": [
+          {
+            "text": "Tushundim."
+          }
+        ]
+      },
+      "hounds-done": {
+        "text": ["Rahmat, yo'lchi. Bu tasbeh ustozimdan qolgan — tunda yo'lingni yoritadi."],
+        "choices": [
+          {
+            "text": "Rahmat.",
+            "next": "hello"
+          }
+        ]
+      },
+      "obs-offer": {
+        "text": [
+          "Sharqdagi obsidian xarobalarda tosh qo'riqchilar uyg'ondi. Ularni rohiblar ibodatxonani qo'riqlash uchun yasagan.",
+          "Xarobani top va menga 3 ta obsidian parchasi olib kel. Qalqoni oldidan zarbani to'sadi, bolg'asi esa ikki yurak oladi."
+        ],
+        "choices": [
+          {
+            "text": "Boraman.",
+            "do": [
+              {
+                "startQuest": "obsidian"
+              }
+            ]
+          },
+          {
+            "text": "Hozir emas."
+          }
+        ]
+      },
+      "obs-wait": {
+        "text": [
+          "Qo'riqchi sekin buriladi — orqasiga o't. Bolg'asini ko'targanda doiradan chiq, urgandan keyin qalqoni tushadi."
+        ],
+        "choices": [
+          {
+            "text": "Yaxshi."
+          }
+        ]
+      },
+      "obs-done": {
+        "text": [
+          "Parchalar iliq... Demak, ularni qirolning olovi uyg'otgan.",
+          "Ol, bu cho'g' yurak senga kuch beradi."
+        ],
+        "choices": [
+          {
+            "text": "Rahmat.",
+            "next": "hello"
+          }
+        ]
+      },
+      "temple-offer": {
+        "text": [
+          "Endi bilaman: Kul qiroli uyg'onmoqda. Iblis yengilgan kuni uning zanjirlari bo'shadi.",
+          "Janubdagi Iblis ibodatxonasini top va yo'ldagi lava qurtlarini haydab kel. Qirolga yolg'iz borma — do'stlaring bilan bor."
+        ],
+        "choices": [
+          {
+            "text": "Boraman.",
+            "do": [
+              {
+                "startQuest": "temple"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
+        ]
+      },
+      "temple-offer-paladin": {
+        "text": [
+          "Quyosh ritsari! Sening ordening Kul qirolini bir bor yenggan.",
+          "Qirol eng xavfli dushmanni quvadi. Sen QASAM bilan uni o'zingga tortasan — do'stlaring esa orqasidan uradi.",
+          "Ibodatxonani top va lava qurtlarini haydab kel. Qirolni sen ushlab turasan."
+        ],
+        "choices": [
+          {
+            "text": "Qasamim — qalqonim. Boraman.",
+            "do": [
+              {
+                "startQuest": "temple"
+              }
+            ]
+          },
+          {
+            "text": "Keyinroq."
+          }
+        ]
+      },
+      "temple-wait": {
+        "text": [
+          "Ibodatxona janubda, olovli daryodan o'tgach. Qurtlar yer ostidan chiqadi — yer yorilsa, darhol qoch."
+        ],
+        "choices": [
+          {
+            "text": "Tushundim."
+          }
+        ]
+      },
+      "temple-done": {
+        "text": [
+          "Ichki zalga yo'l ochiq. Kul qiroli o'sha yerda.",
+          "Mana damlamalar — ular senga kerak bo'ladi. Do'stlaringni olib bor."
+        ],
+        "choices": [
+          {
+            "text": "Rahmat.",
+            "next": "hello"
+          }
+        ]
+      },
+      "temple-done-paladin": {
+        "text": [
+          "Quyosh nuri seni asrasin, ritsar. Qirol seni ko'rsa, o'g'lining qotilini taniydi.",
+          "Do'stlaringni yig' va zalga kir. Damlamalarni ol — tankka jon ko'p kerak."
+        ],
+        "choices": [
+          {
+            "text": "Qasamim mustahkam.",
+            "next": "paladin"
+          }
+        ]
+      },
+      "exile": {
+        "text": [
+          "Qirolni bog'lagan zanjirlar uchun men javobgar edim.",
+          "Iblis qochib, olam qal'asini yondirmoqchi bo'lganda, rohiblar meni aybladi va tog' etagiga haydadi."
+        ],
+        "choices": [
+          {
+            "text": "Achinarli.",
+            "next": "hello"
+          }
+        ]
+      },
+      "origin": {
+        "text": [
+          "Iblis shu tog'da tug'ilgan. Kul qiroli uni o'z kulidan yasab, olov yuragini bergan.",
+          "Ibodatxona atrofida qadimiy bitiklar bo'laklari sochilgan. Ularni topsang — hammasini bilasan."
+        ],
+        "choices": [
+          {
+            "text": "Qiziq.",
+            "next": "hello"
+          }
+        ]
+      },
+      "oath": {
+        "text": [
+          "Quyosh qasami: \"Zaiflarni o'zimga tortaman, zarbani o'zim ko'taraman.\"",
+          "Ordeningiz qasam ichib, qirolni zanjirlagan. Endi navbat senda, ritsar."
+        ],
+        "choices": [
+          {
+            "text": "Men tayyorman.",
+            "next": "paladin"
+          }
+        ]
+      }
+    }
   }
 }

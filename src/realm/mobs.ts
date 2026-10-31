@@ -44,7 +44,49 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     heavy: true,
     name: "XAROBA SARDORI",
   },
+  // Kul tog'i
+  ashhound: { hp: 3, speed: 72, size: 14, aggro: 96, leash: 210, name: "KUL ITI" },
+  lavaworm: {
+    hp: 4,
+    speed: 0,
+    size: 14,
+    aggro: 110,
+    leash: 200,
+    heavy: true,
+    name: "LAVA QURTI",
+  },
+  obsguard: {
+    hp: 10,
+    speed: 26,
+    size: 18,
+    aggro: 60,
+    leash: 140,
+    heavy: true,
+    name: "OBSIDIAN QO'RIQCHI",
+  },
 };
+
+/** Kul iti: to'da bo'lib yuguradi, yerga cho'kib (ogohlantirish) qisqa tashlanadi */
+export const HOUND_WINDUP = 0.45;
+export const HOUND_LUNGE_SPEED = 190;
+export const HOUND_LUNGE_TIME = 0.28;
+/** Bir it nishonni ko'rsa, shu masofadagi to'dasi ham hujumga o'tadi */
+export const HOUND_PACK_R = 150;
+/** Lava qurti: chiqishdan oldin yer yoriladi; yer ustida turib olov sharlari otadi */
+export const WORM_WARN = 0.9;
+export const WORM_ERUPT_R = 14;
+export const WORM_UP = 2.6;
+export const WORM_SPIT_EVERY = 0.85;
+export const WORM_BURROW = 0.5;
+export const FIREBALL_SPEED = 115;
+export const FIREBALL_LIFE = 1.8;
+export const FIREBALL_R = 4;
+/** Obsidian qo'riqchi: sekin, oldidan qalqon, zarbasi 2 yurak */
+export const GUARD_WAKE = 0.8;
+export const GUARD_WINDUP = 0.9;
+export const GUARD_SMASH_R = 22;
+export const GUARD_DMG = 2;
+export const GUARD_TURN = 1.6;
 
 /** To'ng'iz */
 export const BOAR_PAW = 0.7;
@@ -110,9 +152,9 @@ export type MobState =
   | "cast"
   | "fade";
 
-/** Ogohlantiruvchi belgi (yerdagi doira yoki chiziq) — faqat chizish uchun. */
+/** Ogohlantiruvchi belgi (yerdagi doira, chiziq yoki lava qurti chiqadigan yoriq) — faqat chizish uchun. */
 export interface Mark {
-  kind: "circle" | "line";
+  kind: "circle" | "line" | "crack";
   x: number;
   y: number;
   r: number;
@@ -140,7 +182,13 @@ export type MobEvent =
   | { type: "rage"; x: number; y: number; phase?: number }
   | { type: "roar"; x: number; y: number }
   | { type: "block"; x: number; y: number }
-  | { type: "ring"; x: number; y: number };
+  | { type: "ring"; x: number; y: number }
+  /** Lava qurti yerdan otilib chiqdi */
+  | { type: "erupt"; x: number; y: number }
+  /** olov shari tegdi */
+  | { type: "fire"; x: number; y: number }
+  /** Kul iti to'dasini chaqirdi (uvladi) */
+  | { type: "howl"; x: number; y: number };
 
 export interface MobTarget {
   id: string;
@@ -161,6 +209,12 @@ export interface MobCtx {
   /** Sardor: to'lqin halqasi va tosh qo'riqchilarni uyg'otish (RealmSim beradi) */
   ring?(x: number, y: number): void;
   summon?(kind: MobKind, x: number, y: number, from: RealmMob): void;
+  /** Lava qurti: olov shari (RealmSim beradi) */
+  shoot?(x: number, y: number, vx: number, vy: number, owner: number): void;
+  /** Kul iti: to'dasidagilarni shu nishonga chaqiradi */
+  alert?(m: RealmMob, target: string): void;
+  /** shu joyda mob turishi mumkinmi (devor emas) */
+  free?(x: number, y: number, size: number): boolean;
 }
 
 export class RealmMob implements Body {
@@ -233,11 +287,24 @@ export class RealmMob implements Body {
     this.hp = this.maxHp = this.stats.hp;
     if (this.stats.heavy) this.heavy = true;
     if (this.stats.ghost) this.ghost = true;
-    if (kind === "sentinel" || kind === "warden") this.state = "dormant";
+    if (kind === "sentinel" || kind === "warden" || kind === "obsguard" || kind === "lavaworm")
+      this.state = "dormant";
   }
 
   get dead() {
     return this.anim.state === "death";
+  }
+
+  /** Lava qurti yer ostida: ko'rinmaydi, unga zarba va o'q tegmaydi (faqat yer ustida uriladi) */
+  get under() {
+    return (
+      this.kind === "lavaworm" && !this.dead && this.state !== "cast" && this.state !== "recover"
+    );
+  }
+
+  /** Haykal bo'lib uxlaydigan qo'riqchilar */
+  get statue() {
+    return this.kind === "sentinel" || this.kind === "warden" || this.kind === "obsguard";
   }
 
   /** Qaytib ketayotgan mob zarar olmaydi (MMO "evade"). */
@@ -249,9 +316,13 @@ export class RealmMob implements Body {
     return this.kind === "warden" && this.phase >= 2;
   }
 
-  /** Sardor qalqoni ko'tarilgan: uyquda, uyg'onayotganda, hamladan keyin va esankiraganda tushadi */
+  /**
+   * Qalqon ko'tarilgan (Sardor va Obsidian qo'riqchi): uyquda, uyg'onayotganda, zarbadan/hamladan
+   * keyin va esankiraganda tushadi
+   */
   get shieldUp() {
-    if (this.kind !== "warden" || this.dead || this.stun > 0) return false;
+    if ((this.kind !== "warden" && this.kind !== "obsguard") || this.dead || this.stun > 0)
+      return false;
     return !["dormant", "wake", "recover", "return"].includes(this.state);
   }
 
@@ -339,8 +410,12 @@ export function damageMob(
   if (busy && !m.dead) m.anim.set(m.state === "windup" ? "attack" : "walk", true);
   if (m.dead) return true;
   if (m.kind === "rat") setState(m, "flee", 0.5);
-  if ((m.kind === "sentinel" || m.kind === "warden") && m.state === "dormant") {
-    setState(m, "wake", m.kind === "warden" ? 1 : SENTINEL_WAKE);
+  if (m.statue && m.state === "dormant") {
+    setState(
+      m,
+      "wake",
+      m.kind === "warden" ? 1 : m.kind === "obsguard" ? GUARD_WAKE : SENTINEL_WAKE,
+    );
     ctx.event(
       m.kind === "warden"
         ? { type: "roar", x: m.x, y: m.y }
@@ -395,6 +470,15 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
   }
 
   const home = { x: m.homeX, y: m.homeY };
+  if (m.state === "return" && m.kind === "lavaworm") {
+    // qurt yer ostidan uyiga qaytadi: joni to'ladi, yana poylab yotadi
+    m.x = m.px = home.x;
+    m.y = m.py = home.y;
+    m.hp = m.maxHp;
+    setState(m, "dormant", 1);
+    m.anim.set("idle");
+    return;
+  }
   if (m.state === "return") {
     const blocked = walkToward(m, home.x, home.y, m.stats.speed * 1.7, ctx);
     // uyiga yetdi (yoki to'siqqa tirandi, lekin yaqin) — joni to'ladi
@@ -407,7 +491,7 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
       }
       m.hp = m.maxHp;
       m.phase = 1;
-      setState(m, m.kind === "sentinel" || m.kind === "warden" ? "dormant" : "idle", 1);
+      setState(m, m.statue ? "dormant" : "idle", 1);
       m.anim.set("idle");
     }
     return;
@@ -438,14 +522,26 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
   if (!m.target && near && near.d < m.stats.aggro) {
     m.target = near.t.id;
     m.threat.add(near.t.id, AGGRO_THREAT, near.t.p.hero);
-    if (m.state === "dormant") {
-      setState(m, "wake", m.kind === "warden" ? 1 : SENTINEL_WAKE);
+    if (m.state === "dormant" && m.kind === "lavaworm") {
+      // yer ostida o'ljaga suzib boradi
+      setState(m, "chase", 0.3);
+    } else if (m.state === "dormant") {
+      setState(
+        m,
+        "wake",
+        m.kind === "warden" ? 1 : m.kind === "obsguard" ? GUARD_WAKE : SENTINEL_WAKE,
+      );
       ctx.event(
         m.kind === "warden"
           ? { type: "roar", x: m.x, y: m.y }
           : { type: "wake", x: m.x, y: m.y, kind: m.kind },
       );
     } else if (m.state === "idle" || m.state === "wander") setState(m, "chase");
+    // kul iti uvlaydi — to'dasi ham yuguradi
+    if (m.kind === "ashhound" && ctx.alert) {
+      ctx.alert(m, near.t.id);
+      ctx.event({ type: "howl", x: m.x, y: m.y });
+    }
   }
   const target = m.target ? ctx.players.find((t) => t.id === m.target) : undefined;
 
@@ -461,6 +557,12 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
       return wisp(m, target, ctx);
     case "warden":
       return warden(m, target, ctx);
+    case "ashhound":
+      return hound(m, target, ctx);
+    case "lavaworm":
+      return worm(m, target, ctx);
+    case "obsguard":
+      return guard(m, target, ctx);
   }
 }
 
@@ -863,13 +965,13 @@ function warden(m: RealmMob, t: MobTarget, ctx: MobCtx) {
 }
 
 /** Qalqon (dirX/dirY) o'yinchi tomon asta buriladi — tez aylanib orqasiga o'tish mumkin. */
-function turnToward(m: RealmMob, p: Player, dt: number) {
+function turnToward(m: RealmMob, p: Player, dt: number, rate = WARDEN_TURN) {
   const want = Math.atan2(p.y - m.y, p.x - m.x);
   const cur = Math.atan2(m.dirY, m.dirX);
   let diff = want - cur;
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
-  const a = cur + Math.sign(diff) * Math.min(Math.abs(diff), WARDEN_TURN * dt);
+  const a = cur + Math.sign(diff) * Math.min(Math.abs(diff), rate * dt);
   m.dirX = Math.cos(a);
   m.dirY = Math.sin(a);
 }
@@ -883,4 +985,213 @@ function partyScale(m: RealmMob, ctx: MobCtx) {
   m.party = n;
   m.maxHp = wardenHp(n);
   m.hp = Math.max(1, Math.round(m.maxHp * k));
+}
+
+/**
+ * Kul iti: to'da bo'lib yuguradi — har biri nishon atrofida o'z tomonidan (id bo'yicha) yaqinlashadi,
+ * yerga cho'kib (chiziq belgisi) qisqa tashlanadi va tishlab, orqaga sakraydi.
+ */
+function hound(m: RealmMob, t: MobTarget, ctx: MobCtx) {
+  const d = dist(m, t.p);
+  switch (m.state) {
+    case "windup":
+      m.t -= ctx.dt;
+      m.anim.set("attack");
+      if (m.t <= 0) setState(m, "attack", HOUND_LUNGE_TIME);
+      return;
+    case "attack": {
+      m.t -= ctx.dt;
+      m.anim.set("walk");
+      const blocked = ctx.move(
+        m,
+        m.dirX * HOUND_LUNGE_SPEED * ctx.dt,
+        m.dirY * HOUND_LUNGE_SPEED * ctx.dt,
+      );
+      if (overlaps(m, t.p, 1)) hurt(m, t, 1, 170, ctx);
+      if (blocked || m.t <= 0) {
+        setState(m, "recover", 0.55);
+        m.cd = 1.1 + (m.id % 3) * 0.2;
+      }
+      return;
+    }
+    case "recover": {
+      // tishlab, chetga sakraydi: nishon atrofida aylanadi
+      m.t -= ctx.dt;
+      const a = Math.atan2(m.y - t.p.y, m.x - t.p.x) + (m.id % 2 ? 0.9 : -0.9);
+      walkToward(m, t.p.x + Math.cos(a) * 40, t.p.y + Math.sin(a) * 40, m.stats.speed, ctx);
+      if (m.t <= 0) setState(m, "chase");
+      return;
+    }
+    default: {
+      m.state = "chase";
+      if (d < 46 && m.cd <= 0) {
+        aimAt(m, t.p);
+        setState(m, "windup", HOUND_WINDUP);
+        ctx.mark({
+          kind: "line",
+          x: m.x,
+          y: m.y,
+          r: m.size / 2,
+          dx: m.dirX,
+          dy: m.dirY,
+          len: HOUND_LUNGE_SPEED * HOUND_LUNGE_TIME,
+          t: HOUND_WINDUP,
+          total: HOUND_WINDUP,
+          owner: m.id,
+        });
+        return;
+      }
+      // to'da: har it nishonning o'z tomoniga (chap, o'ng, orqa) intiladi — o'rab oladi
+      const side = ((m.id % 3) - 1) * 1.1;
+      const a = Math.atan2(m.y - t.p.y, m.x - t.p.x) + side * 0.5;
+      const ring = d > 70 ? 0 : 30;
+      walkToward(m, t.p.x + Math.cos(a) * ring, t.p.y + Math.sin(a) * ring, m.stats.speed, ctx);
+    }
+  }
+}
+
+/**
+ * Lava qurti: yer ostida o'ljaga suzib boradi (ko'rinmaydi), nishon oyog'i ostida yer yoriladi
+ * (yoriq belgisi), so'ng otilib chiqadi — ustida turgan kuyadi. Yer ustida olov sharlarini otadi,
+ * keyin yana yerga kiradi. Faqat yer ustidaligida uriladi.
+ */
+function worm(m: RealmMob, t: MobTarget, ctx: MobCtx) {
+  switch (m.state) {
+    case "chase": {
+      m.t -= ctx.dt;
+      m.anim.set("idle");
+      if (m.t > 0) return;
+      // chiqish joyi: nishon oyog'i ostida yoki yonida (devor bo'lmasa)
+      let x = t.p.x,
+        y = t.p.y;
+      const a = ctx.rng.next() * Math.PI * 2,
+        r = ctx.rng.range(0, 10);
+      const nx = x + Math.cos(a) * r,
+        ny = y + Math.sin(a) * r;
+      if (!ctx.free || ctx.free(nx, ny, m.size)) {
+        x = nx;
+        y = ny;
+      }
+      if (ctx.free && !ctx.free(x, y, m.size)) {
+        x = t.p.x;
+        y = t.p.y;
+      }
+      m.x = m.px = x;
+      m.y = m.py = y;
+      aimAt(m, t.p);
+      setState(m, "windup", WORM_WARN);
+      ctx.mark({
+        kind: "crack",
+        x,
+        y,
+        r: WORM_ERUPT_R,
+        dx: 0,
+        dy: 0,
+        len: 0,
+        t: WORM_WARN,
+        total: WORM_WARN,
+        owner: m.id,
+      });
+      return;
+    }
+    case "windup":
+      m.t -= ctx.dt;
+      if (m.t <= 0) {
+        // otilib chiqadi: ustida turganlar kuyadi va itariladi
+        ctx.event({ type: "erupt", x: m.x, y: m.y });
+        for (const p of ctx.players)
+          if (!p.p.dead && dist(p.p, m) < WORM_ERUPT_R + p.p.size / 2) hurt(m, p, 1, 200, ctx);
+        setState(m, "cast", WORM_UP);
+        m.spawnT = 0;
+        m.cd = 0.5;
+        m.anim.set("attack", true);
+      }
+      return;
+    case "cast":
+      m.t -= ctx.dt;
+      aimAt(m, t.p);
+      if (m.cd <= 0 && m.t > 0.35) {
+        ctx.shoot?.(
+          m.x + m.dirX * 6,
+          m.y - 6 + m.dirY * 6,
+          m.dirX * FIREBALL_SPEED,
+          m.dirY * FIREBALL_SPEED,
+          m.id,
+        );
+        m.anim.set("attack", true);
+        m.cd = WORM_SPIT_EVERY;
+      } else if (m.anim.done || (m.anim.state !== "attack" && m.anim.state !== "hurt"))
+        m.anim.set("idle");
+      if (m.t <= 0) setState(m, "recover", WORM_BURROW);
+      return;
+    case "recover":
+      // yerga kirib ketmoqda (shu payt hali uriladi)
+      m.t -= ctx.dt;
+      m.anim.set("walk");
+      if (m.t <= 0) setState(m, "chase", ctx.rng.range(0.9, 1.5));
+      return;
+    default:
+      setState(m, "chase", 0.3);
+  }
+}
+
+/**
+ * Obsidian qo'riqchi: haykal bo'lib turadi, yaqinlashsa uyg'onadi. Sekin yuradi, oldidan qalqon bilan
+ * to'sadi (asta buriladi — orqasiga o'tish kerak). Bolg'asini ko'tarib (doira belgisi) yerga uradi:
+ * 2 yurak; zarbadan keyin qalqoni tushadi.
+ */
+function guard(m: RealmMob, t: MobTarget, ctx: MobCtx) {
+  const d = dist(m, t.p);
+  switch (m.state) {
+    case "dormant":
+    case "wake":
+      m.t -= ctx.dt;
+      m.anim.set("idle");
+      if (m.state === "dormant") setState(m, "wake", GUARD_WAKE);
+      else if (m.t <= 0) setState(m, "chase");
+      return;
+    case "windup":
+      m.t -= ctx.dt;
+      m.anim.set("attack");
+      if (m.t <= 0) {
+        const cx = m.x + m.dirX * 16,
+          cy = m.y + m.dirY * 16;
+        ctx.event({ type: "slam", x: cx, y: cy, r: GUARD_SMASH_R });
+        for (const p of ctx.players)
+          if (!p.p.dead && dist(p.p, { x: cx, y: cy }) < GUARD_SMASH_R + p.p.size / 2)
+            hurt(m, p, GUARD_DMG, 250, ctx);
+        setState(m, "recover", 1);
+        m.cd = 1.8;
+      }
+      return;
+    case "recover":
+      m.t -= ctx.dt;
+      m.anim.set("idle");
+      if (m.t <= 0) setState(m, "chase");
+      return;
+    default:
+      m.state = "chase";
+      if (m.state === "chase" && overlaps(m, t.p)) hurt(m, t, 1, 160, ctx);
+      if (d < 34 && m.cd <= 0) {
+        // qalqon tomon emas, aynan o'yinchiga uradi
+        aimAt(m, t.p);
+        setState(m, "windup", GUARD_WINDUP);
+        ctx.mark({
+          kind: "circle",
+          x: m.x + m.dirX * 16,
+          y: m.y + m.dirY * 16,
+          r: GUARD_SMASH_R,
+          dx: 0,
+          dy: 0,
+          len: 0,
+          t: GUARD_WINDUP,
+          total: GUARD_WINDUP,
+          owner: m.id,
+        });
+        return;
+      }
+      turnToward(m, t.p, ctx.dt, GUARD_TURN);
+      if (d > 20) walkToward(m, t.p.x, t.p.y, m.stats.speed, ctx);
+      else m.anim.set("idle");
+  }
 }

@@ -1,7 +1,7 @@
 /** Ovoz o'chirilganmi — qurilmaga xos (ko'chirish kodiga kirmaydi) */
 export const MUTE_KEY = "pixel-rpg-muted";
 
-export type MusicTrack = "normal" | "boss" | "ice" | "queen" | "forest" | "king";
+export type MusicTrack = "normal" | "boss" | "ice" | "queen" | "forest" | "king" | "ash";
 
 /** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
 export interface Track {
@@ -106,6 +106,21 @@ export const TRACKS: Record<MusicTrack, Track> = {
     leadWave: "square",
     bassWave: "sawtooth",
     kick: 2,
+  },
+  // Kul tog'i: mi frigiy lad — sekin, og'ir arra bas va "issiq" xromatik kuy, uzoqdan baraban
+  ash: {
+    step: 60 / 92 / 2,
+    lead: [
+      64, null, 65, null, 67, 65, 64, null, 62, null, 64, null, 65, null, null, null,
+      64, null, 65, 68, 67, null, 65, 64, 65, null, 64, 62, 64, null, null, null,
+    ],
+    bass: [
+      40, null, null, 40, 41, null, null, 41, 40, null, null, 40, 38, null, 40, null,
+      40, null, null, 40, 41, null, null, 43, 41, null, 40, null, 40, null, null, null,
+    ],
+    leadWave: "triangle",
+    bassWave: "sawtooth",
+    kick: 4,
   },
 };
 

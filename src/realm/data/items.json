@@ -134,5 +134,94 @@
     "bonus": {
       "speed": 6
     }
+  },
+  "ashfang": {
+    "name": "KUL ITI TISHI",
+    "rarity": "common",
+    "desc": "Hali ham issiq. Savdogar yaxshi narx beradi.",
+    "icon": "ashfang",
+    "sell": 3
+  },
+  "magma": {
+    "name": "MAGMA TOSHI",
+    "rarity": "common",
+    "desc": "Qo'lda sekin qizarib turadi.",
+    "icon": "magma",
+    "sell": 5
+  },
+  "obsshard": {
+    "name": "OBSIDIAN PARCHASI",
+    "rarity": "common",
+    "desc": "Qora oyna kabi yaltiraydi.",
+    "icon": "obsshard",
+    "sell": 4
+  },
+  "beads": {
+    "name": "ROHIB TASBEHI",
+    "rarity": "rare",
+    "desc": "Inventarda: tunda keng yorug'lik.",
+    "icon": "beads",
+    "stack": 1,
+    "sell": 12,
+    "bonus": {
+      "light": 1
+    }
+  },
+  "cinderheart": {
+    "name": "CHO'G' YURAK",
+    "rarity": "rare",
+    "desc": "Inventarda: +1 yurak.",
+    "icon": "cinderheart",
+    "stack": 1,
+    "sell": 18,
+    "bonus": {
+      "maxHp": 1
+    }
+  },
+  "ashcloak": {
+    "name": "KUL PLASHI",
+    "rarity": "rare",
+    "desc": "Inventarda: lava ikki baravar sekin kuydiradi.",
+    "icon": "ashcloak",
+    "stack": 1,
+    "sell": 20,
+    "bonus": {
+      "fire": 1
+    }
+  },
+  "obsblade": {
+    "name": "OBSIDIAN XANJAR",
+    "rarity": "rare",
+    "desc": "Inventarda: +1 zarar.",
+    "icon": "obsblade",
+    "stack": 1,
+    "sell": 25,
+    "bonus": {
+      "damage": 1
+    }
+  },
+  "phoenix": {
+    "name": "QAQNUS PATI",
+    "rarity": "legendary",
+    "desc": "Lava qa'ridan. Inventarda: +1 yurak va tez yurish.",
+    "icon": "phoenix",
+    "stack": 1,
+    "sell": 70,
+    "bonus": {
+      "maxHp": 1,
+      "speed": 8
+    }
+  },
+  "twinheart": {
+    "name": "EGIZAK JON TUMORI",
+    "rarity": "legendary",
+    "desc": "Ikki do'st birga topgan. Inventarda: +1 yurak, +1 zarar.",
+    "icon": "twinheart",
+    "stack": 1,
+    "sell": 90,
+    "bonus": {
+      "maxHp": 1,
+      "damage": 1
+    }
   }
 }

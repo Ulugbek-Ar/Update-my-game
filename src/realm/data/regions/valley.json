@@ -985,7 +985,8 @@
       "x": 7,
       "y": 86,
       "key": "devil",
-      "name": "IBLIS DARVOZASI"
+      "name": "IBLIS DARVOZASI",
+      "to": "gate-ash"
     },
     {
       "type": "gate",

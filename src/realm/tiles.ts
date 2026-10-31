@@ -34,6 +34,20 @@ export const TILE_IDS = {
   window: 27,
   pool: 28,
   pillar: 29,
+  // Kul tog'i (v3.1): yangi plitkalar oxiriga qo'shiladi — saqlangan dunyo o'zgarishlari (id) buzilmaydi
+  ash: 30,
+  ash2: 31,
+  basalt: 32,
+  lava: 33,
+  crag: 34,
+  obsidian: 35,
+  obsfloor: 36,
+  deadtree: 37,
+  tfloor: 38,
+  twall: 39,
+  cinder: 40,
+  opillar: 41,
+  cobs: 42,
 } as const;
 
 export type TileName = keyof typeof TILE_IDS;
@@ -58,8 +72,18 @@ const SOLID_NAMES: readonly TileName[] = [
   "window",
   "pool",
   "pillar",
+  "crag",
+  "obsidian",
+  "deadtree",
+  "twall",
+  "opillar",
+  "cobs",
 ];
 /** id -> devor/suv/daraxt (yurib bo'lmaydi) */
 export const SOLID: boolean[] = TILE_BY_ID.map((n) => SOLID_NAMES.includes(n));
 /** Suv: o'q ustidan uchib o'tadi, odam o'tolmaydi */
 export const WATER: boolean[] = TILE_BY_ID.map((n) => n === "water" || n === "pool");
+/** Lava: yurish mumkin, lekin ustida turgan o'yinchi kuyadi (har soniyada 1 zarar) */
+export const LAVA: boolean[] = TILE_BY_ID.map((n) => n === "lava");
+/** Yoriq devor (sir): zarbadan buziladi — vodiyda tosh, Kul tog'ida obsidian */
+export const CRACKED: boolean[] = TILE_BY_ID.map((n) => n === "cracked" || n === "cobs");

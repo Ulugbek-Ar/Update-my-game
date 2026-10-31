@@ -30,7 +30,11 @@ export type SpriteKind =
   | "warden"
   | "elder"
   | "merchant"
-  | "oldgunner";
+  | "oldgunner"
+  | "ashhound"
+  | "lavaworm"
+  | "obsguard"
+  | "monk";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -205,6 +209,14 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Qari Mergan: siyoh, eski jigarrang (shlyapa, etik, miltiq qo'ndog'i), rangi o'chgan plash,
   // oq soqol-mo'ylov va qosh, yuz va miltiqning mis halqalari
   oldgunner: ["#0d0b09", "#4a3020", "#7a7564", "#e8e2d6", "#d8a46a"],
+  // Kul tog'i. Kul iti: siyoh, ko'mir-qora yol, kul rang tana, cho'g' (ko'z, yoriqlar), qizigan uchqun
+  ashhound: ["#0b0807", "#2a2422", "#8e8680", "#ff5a1a", "#ffc85a"],
+  // Lava qurti: siyoh, to'q qobiq, qobiq, lava choklari, oq-sariq qaynoq o'zak
+  lavaworm: ["#120604", "#3a1810", "#6a2c1a", "#ff5a1a", "#ffd36a"],
+  // Obsidian qo'riqchi: siyoh, to'q obsidian, obsidian, binafsha yaltiroq, magma (ko'z va yoriq)
+  obsguard: ["#07060a", "#221a30", "#463a66", "#9a8ac8", "#ff6a2a"],
+  // Surgun qilingan rohib: siyoh, to'q kapyushon va hassa, kul rang to'n, qizil belbog' va tasbeh, teri
+  monk: ["#0d0907", "#3a3436", "#7a7272", "#9a2a22", "#e0b88a"],
 };
 
 /**
@@ -3388,7 +3400,7 @@ function oldGunner(p: Pixels, pose: Pose) {
 }
 
 /** NPC'lar yiqilmaydi, lekin holat mashinasi to'liq bo'lishi uchun: o'tirib qoladi. */
-function npcFallen(p: Pixels, kind: "elder" | "merchant" | "oldgunner", frame: number) {
+function npcFallen(p: Pixels, kind: "elder" | "merchant" | "oldgunner" | "monk", frame: number) {
   const pose: Pose = {
     bob: 2 + frame * 2,
     lean: -frame,
@@ -3400,7 +3412,383 @@ function npcFallen(p: Pixels, kind: "elder" | "merchant" | "oldgunner", frame: n
   };
   if (kind === "elder") elder(p, pose);
   else if (kind === "oldgunner") oldGunner(p, pose);
+  else if (kind === "monk") monk(p, pose);
   else merchant(p, pose);
+}
+
+// ---------------- Kul tog'i: Kul iti, Lava qurti, Obsidian qo'riqchi va Surgun qilingan rohib ----------------
+
+/** Kul iti kadri (yon ko'rinish, o'ngga qaragan) */
+interface HoundFrame {
+  by: number;
+  hy: number;
+  hx?: number;
+  tail: number;
+  /** oyoq uchlari: old-yaqin, old-uzoq, orqa-yaqin, orqa-uzoq */
+  legs: readonly [number, number, number, number];
+  feet?: readonly [number, number];
+  /** jag' ochiq (ichida cho'g') */
+  open?: boolean;
+  blink?: boolean;
+  /** yondagi cho'g' yoriqlar miltillashi */
+  glow?: boolean;
+}
+
+const houndFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly HoundFrame[]> = {
+  idle: [
+    { by: 0, hy: 0, tail: 1, legs: [0, 0, 0, 0] },
+    { by: 1, hy: 1, tail: -1, legs: [0, 0, 0, 0], glow: true },
+  ],
+  walk: [
+    { by: 0, hy: 0, tail: 2, legs: [3, -3, -3, 3] },
+    { by: -2, hy: -1, tail: 0, legs: [1, -1, -1, 1], glow: true },
+    { by: 0, hy: 0, tail: -2, legs: [-3, 3, 3, -3] },
+    { by: 1, hy: 1, tail: 0, legs: [-1, 1, 1, -1], glow: true },
+  ],
+  // 0 — yerga cho'kdi (ogohlantirish), 1 — tashlandi (jag' ochiq), 2 — tishladi
+  attack: [
+    { by: 3, hy: 5, hx: 1, tail: 4, legs: [-2, -1, 2, 1], glow: true },
+    { by: -3, hy: -1, hx: 2, tail: -3, legs: [6, 5, -6, -5], feet: [23, 25], open: true },
+    { by: 0, hy: 2, hx: 1, tail: 2, legs: [2, 1, -2, -1], glow: true },
+  ],
+  hurt: [{ by: 0, hy: -2, hx: -1, tail: 5, legs: [-1, -1, 1, 1], blink: true }],
+};
+
+/** Kul iti: oriq, ko'mir-qora tikanli yol, yonida cho'g' yoriqlar, ko'zlari yonadi. */
+function ashHound(p: Pixels, f: HoundFrame) {
+  const { by, hy } = f;
+  const hx = f.hx ?? 0;
+  const [frontY, backY] = f.feet ?? [28, 28];
+  // uzoqdagi oyoqlar to'qroq
+  p.line(2, [22, 20 + by], [22 + f.legs[1], frontY], 2);
+  p.line(2, [10, 20 + by], [10 + f.legs[3], backY], 2);
+  // ingichka dum, uchida cho'g'
+  p.line(2, [7, 16 + by], [3, 13 + by + f.tail], 2);
+  p.rect(4, 2, 12 + by + f.tail, 2, 2);
+  p.rect(5, 2, 12 + by + f.tail, 1, 1);
+  // oriq gavda: kul rang qorin, ko'mir-qora orqa va tikanli yol
+  p.ellipse(3, 15, 18 + by, 8.5, 3.4);
+  p.rect(2, 9, 14 + by, 12, 2);
+  for (const sx of [9, 12, 15, 18]) p.rect(2, sx, 12 + by + (sx % 2), 2, 2);
+  // qovurg'alar va yondagi cho'g' yoriqlar
+  p.rect(2, 13, 20 + by, 1, 1);
+  p.rect(2, 15, 20 + by, 1, 1);
+  p.rect(4, 12, 17 + by, 3, 1);
+  p.rect(4, 15, 18 + by, 3, 1);
+  if (f.glow) p.rect(5, 13, 17 + by, 1, 1);
+  // yaqin oyoqlar, qora panjalar
+  p.line(3, [20, 20 + by], [20 + f.legs[0], frontY], 2);
+  p.line(3, [12, 20 + by], [12 + f.legs[2], backY], 2);
+  p.rect(2, 20 + f.legs[0] - 1, frontY, 3, 1);
+  p.rect(2, 12 + f.legs[2] - 1, backY, 3, 1);
+  // bo'yin va cho'zinchoq bosh
+  const x = 24 + hx,
+    y = 14 + hy;
+  p.line(3, [20, 16 + by], [x - 1, y + 1], 3);
+  p.ellipse(3, x, y, 3.5, 3);
+  p.rect(2, x - 3, y - 3, 4, 2);
+  p.polygon(2, [
+    [x - 3, y - 2],
+    [x - 1, y - 7],
+    [x + 1, y - 2],
+  ]);
+  // uzun tumshuq va burun
+  p.rect(3, x + 2, y, 5, 2);
+  p.rect(1, x + 7, y, 1, 1);
+  if (f.open) {
+    // ochiq jag': ichida cho'g', pastki jag' tushgan
+    p.rect(4, x + 2, y + 2, 4, 1);
+    p.rect(3, x + 2, y + 3, 5, 1);
+    p.rect(5, x + 6, y + 2, 1, 1);
+  } else p.rect(2, x + 2, y + 2, 5, 1);
+  // yonib turgan ko'z
+  p.rect(f.blink ? 2 : 4, x, y - 1, 2, 1);
+  if (!f.blink) p.rect(5, x + 1, y - 1, 1, 1);
+}
+
+/** Kul iti yiqilishi: cho'kadi, yonboshlaydi, so'ng kul uyumiga aylanadi. */
+function houndFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    ashHound(p, { by: 4, hy: 7, hx: 1, tail: 5, legs: [-3, -3, 3, 3], blink: true });
+    return;
+  }
+  if (frame === 1) {
+    p.line(2, [9, 24], [4, 27], 2);
+    p.ellipse(3, 15, 24, 8, 3);
+    p.rect(2, 9, 21, 12, 2);
+    p.line(3, [12, 26], [10, 29], 2);
+    p.line(3, [19, 26], [22, 29], 2);
+    p.ellipse(3, 25, 25, 3.5, 2.5);
+    p.rect(4, 13, 23, 4, 1);
+    p.rect(2, 25, 24, 2, 1);
+    return;
+  }
+  // kul uyumi: so'nayotgan cho'g'lar
+  p.ellipse(3, 16, 27, 9, 2.5);
+  p.ellipse(2, 15, 26, 5, 1.5);
+  p.rect(4, 12, 27, 2, 1);
+  p.rect(4, 19, 26, 2, 1);
+  p.rect(5, 16, 27, 1, 1);
+}
+
+/** Lava qurti kadri (old ko'rinish: yerdagi teshikdan ko'tarilgan) */
+interface WormFrame {
+  /** bo'g'inlarning chayqalishi */
+  sway: number;
+  /** qanchalik ko'tarilgan (1 — to'liq, 0 — yer ostida) */
+  rise: number;
+  /** og'iz ochiqligi: 0 yopiq, 1 ochilmoqda, 2 keng (otmoqda) */
+  open: number;
+  /** boshining orqaga tortilishi */
+  lean?: number;
+  shut?: boolean;
+}
+
+const wormFrames: Record<"idle" | "walk" | "attack" | "hurt", readonly WormFrame[]> = {
+  idle: [
+    { sway: -1, rise: 1, open: 0 },
+    { sway: 1, rise: 1, open: 0 },
+  ],
+  // yerga kirib ketmoqda (pastga cho'kadi)
+  walk: [
+    { sway: 1, rise: 0.8, open: 0 },
+    { sway: -1, rise: 0.6, open: 0 },
+    { sway: 1, rise: 0.4, open: 0, shut: true },
+    { sway: 0, rise: 0.25, open: 0, shut: true },
+  ],
+  // 0 — orqaga tortildi, 1 — olov shari otdi, 2 — qaytdi
+  attack: [
+    { sway: 0, rise: 1, open: 1, lean: -2 },
+    { sway: 0, rise: 1, open: 2, lean: 2 },
+    { sway: 1, rise: 1, open: 1, lean: 1 },
+  ],
+  hurt: [{ sway: -2, rise: 0.9, open: 0, shut: true }],
+};
+
+/** Lava qurti: qora qobiqli bo'g'inlar, orasida lava choklari, tishli dumaloq og'iz. */
+function lavaWorm(p: Pixels, f: WormFrame) {
+  // teshik: qizigan chekka va qora og'iz
+  p.ellipse(2, 16, 28, 8, 2.4);
+  p.ellipse(4, 16, 28, 6, 1.6);
+  p.ellipse(1, 16, 28, 4.5, 1.1);
+  const top = 28 - Math.round(20 * f.rise);
+  const lean = f.lean ?? 0;
+  // bo'g'inlar pastdan yuqoriga
+  const segs = 4;
+  for (let i = 0; i < segs; i++) {
+    const k = i / (segs - 1);
+    const cy = 27 - (27 - (top + 5)) * k;
+    if (cy > 27.5) continue;
+    const cx = 16 + Math.round(f.sway * Math.sin(k * 3) + lean * k);
+    const r = 5 - k * 0.8;
+    p.ellipse(2, cx, cy, r + 0.4, 3);
+    p.ellipse(3, cx, cy - 1, r - 0.6, 2);
+    // bo'g'in choki: lava
+    p.rect(4, cx - Math.round(r) + 1, Math.round(cy) + 2, Math.round(r * 2) - 1, 1);
+  }
+  if (f.rise < 0.5) return;
+  // bosh
+  const hx = 16 + f.sway + lean,
+    hy = top + 2;
+  p.ellipse(2, hx, hy, 5, 4.5);
+  p.ellipse(3, hx, hy - 1, 4, 3.5);
+  // ko'zlar
+  p.rect(f.shut ? 2 : 5, hx - 3, hy - 3, 1, 1);
+  p.rect(f.shut ? 2 : 5, hx + 2, hy - 3, 1, 1);
+  // og'iz: lava to'la, chetida tishlar
+  if (f.open === 0) {
+    p.rect(1, hx - 2, hy + 1, 5, 1);
+    p.rect(4, hx - 1, hy + 1, 3, 1);
+  } else {
+    const r = f.open === 2 ? 3 : 2;
+    p.ellipse(1, hx, hy + 1, r + 0.5, r);
+    p.ellipse(4, hx, hy + 1, r - 0.5, r - 1);
+    p.rect(5, hx - 1, hy + 1, 2, 1);
+    p.rect(5, hx - r, hy - 1, 1, 1);
+    p.rect(5, hx + r, hy - 1, 1, 1);
+    p.rect(5, hx - r, hy + 2, 1, 1);
+    p.rect(5, hx + r, hy + 2, 1, 1);
+    if (f.open === 2) {
+      // otilgan olov parchasi
+      p.rect(4, hx - 1, hy - 7, 3, 3);
+      p.rect(5, hx, hy - 6, 1, 1);
+    }
+  }
+}
+
+/** Lava qurti yiqilishi: qotib, qora tosh bo'laklariga aylanadi. */
+function wormFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    lavaWorm(p, { sway: -3, rise: 0.75, open: 0, shut: true });
+    return;
+  }
+  p.ellipse(2, 16, 28, 8, 2.4);
+  p.ellipse(1, 16, 28, 4.5, 1.1);
+  const s = frame === 1 ? 0 : 3;
+  p.ellipse(2, 11 - s, 25, 3.5, 2.5);
+  p.ellipse(3, 11 - s, 24, 2.5, 1.5);
+  p.ellipse(2, 21 + s, 25, 3.5, 2.5);
+  p.ellipse(3, 21 + s, 24, 2.5, 1.5);
+  p.ellipse(2, 16, 22 + s, 3, 2.5);
+  p.rect(frame === 1 ? 4 : 1, 15, 22 + s, 2, 1);
+}
+
+/** Obsidian qo'riqchi hujum kadrlari: qalqon (old qo'l) va bolg'a (orqa qo'l) */
+const guardArms: readonly { maul: Point; hand: Point; shield: number }[] = [
+  // 0 — bolg'a bosh ustida (ogohlantirish), qalqon oldinda
+  { hand: [12, 6], maul: [15, 4], shield: 0 },
+  // 1 — yerga urdi: bolg'a oldinda yerda, qalqon chetga surilgan
+  { hand: [22, 18], maul: [28, 27], shield: 3 },
+  // 2 — ko'tarilmoqda
+  { hand: [16, 14], maul: [22, 9], shield: 1 },
+];
+
+/**
+ * Obsidian qo'riqchi: shishadek qora-binafsha bloklardan yasalgan og'ir jangchi. Old qo'lida baland
+ * qalqon (oldidan zarbani to'sadi), orqa qo'lida obsidian bolg'a; ko'krak yorig'ida va ko'zida magma.
+ */
+function obsGuard(p: Pixels, pose: Pose, attackFrame: number | null) {
+  const { bob: b, lean: l } = pose;
+  const arm = attackFrame === null ? null : (guardArms[attackFrame] ?? guardArms[0]!);
+  // og'ir oyoqlar
+  p.line(2, [12, 21 + b], pose.leftFoot, 5);
+  p.line(2, [20, 21 + b], pose.rightFoot, 5);
+  p.rect(3, pose.leftFoot[0] - 3, pose.leftFoot[1], 6, 2);
+  p.rect(3, pose.rightFoot[0] - 2, pose.rightFoot[1], 6, 2);
+  // orqa qo'l va bolg'a: turganda yelkada (tana orqasida), hujumda — hammasining ustida
+  const hand = arm ? arm.hand : ([8, 15 + b] as Point);
+  const maul = arm ? arm.maul : ([4, 6 + b] as Point);
+  const drawMaul = () => {
+    p.line(2, [10 + l, 13 + b], hand, 4);
+    p.line(1, hand, maul, 2);
+    p.rect(2, maul[0] - 3, maul[1] - 3, 7, 6);
+    p.rect(3, maul[0] - 2, maul[1] - 2, 5, 4);
+    p.rect(4, maul[0] - 2, maul[1] - 2, 2, 1);
+  };
+  if (!arm) drawMaul();
+  // tana: yassi bloklar, o'rtada magma yorig'i
+  p.rect(2, 9 + l, 11 + b, 14, 12);
+  p.rect(3, 10 + l, 12 + b, 12, 10);
+  p.rect(4, 11 + l, 12 + b, 3, 2);
+  p.line(5, [15 + l, 14 + b], [17 + l, 18 + b], 1);
+  p.rect(5, 17 + l, 18 + b, 1, 2);
+  // yelkalar
+  p.rect(2, 6 + l, 10 + b, 6, 4);
+  p.rect(3, 7 + l, 10 + b, 4, 2);
+  // bosh: tishli dubulg'a, ko'z tirqishida magma
+  p.rect(2, 11 + l, 2 + b, 10, 9);
+  p.rect(3, 12 + l, 3 + b, 8, 6);
+  p.rect(4, 12 + l, 3 + b, 3, 1);
+  p.rect(1, 12 + l, 6 + b, 8, 2);
+  p.rect(5, 14 + l, 6 + b, 2, 1);
+  p.rect(5, 18 + l, 6 + b, 2, 1);
+  p.rect(2, 13 + l, 0 + b, 2, 2);
+  p.rect(2, 17 + l, 0 + b, 2, 2);
+  // old qo'l va baland qalqon (oldidan to'sadi)
+  const sh = arm ? arm.shield : 0;
+  const sx = 21 + l + sh,
+    sy = 8 + b + sh;
+  p.line(2, [22 + l, 13 + b], [sx, sy + 7], 4);
+  p.rect(1, sx - 1, sy - 1, 9, 18);
+  p.rect(2, sx, sy, 7, 16);
+  p.rect(3, sx + 1, sy + 1, 5, 14);
+  p.rect(4, sx + 1, sy + 1, 1, 9);
+  p.rect(5, sx + 3, sy + 6, 1, 3);
+  p.rect(5, sx + 2, sy + 7, 3, 1);
+  if (arm) drawMaul();
+}
+
+/** Obsidian qo'riqchi yiqilishi: tiz cho'kadi, so'ng qora shisha parchalariga bo'linadi. */
+function obsGuardFallen(p: Pixels, frame: number) {
+  if (frame === 0) {
+    obsGuard(
+      p,
+      {
+        bob: 4,
+        lean: -2,
+        leftFoot: [11, 28],
+        rightFoot: [22, 28],
+        hand: [24, 25],
+        tip: [28, 28],
+        otherHand: [7, 24],
+      },
+      null,
+    );
+    return;
+  }
+  const s = frame === 1 ? 2 : 5;
+  p.rect(2, 8 - s, 20, 8, 7);
+  p.rect(3, 9 - s, 21, 6, 5);
+  p.rect(2, 17 + s, 21, 7, 6);
+  p.rect(3, 18 + s, 22, 5, 4);
+  p.rect(2, 12, 25, 8, 4);
+  p.rect(4, 9 - s, 21, 2, 1);
+  p.rect(4, 18 + s, 22, 2, 1);
+  p.rect(frame === 1 ? 5 : 1, 15, 26, 2, 1);
+  p.polygon(2, [
+    [3, 29],
+    [6, 24],
+    [8, 29],
+  ]);
+  p.polygon(3, [
+    [24, 29],
+    [27, 25],
+    [29, 29],
+  ]);
+}
+
+/** Surgun qilingan rohib: kapyushonli kul rang to'n, qizil belbog' va tasbeh, fonarli hassa. */
+function monk(p: Pixels, pose: Pose) {
+  const { bob: b, lean: l } = pose;
+  const [hx, hy] = pose.hand;
+  // hassa: tepasida osilgan fonar
+  p.line(2, [hx + 1, hy - 12], [hx + 1, 29], 1);
+  p.line(2, [hx + 1, hy - 12], [hx + 4, hy - 12], 1);
+  p.rect(1, hx + 3, hy - 11, 4, 5);
+  p.rect(5, hx + 4, hy - 10, 2, 3);
+  p.rect(4, hx + 3, hy - 11, 4, 1);
+  // to'n (oyoqlar etak ostidan)
+  p.rect(1, pose.leftFoot[0] - 2, pose.leftFoot[1], 4, 2);
+  p.rect(1, pose.rightFoot[0] - 1, pose.rightFoot[1], 4, 2);
+  p.polygon(3, [
+    [11 + l, 12 + b],
+    [21 + l, 12 + b],
+    [24, 28],
+    [8, 28],
+  ]);
+  // yirtiq etak va burmalar
+  p.rect(2, 8, 27, 16, 1);
+  p.rect(2, 12, 18 + b, 1, 9);
+  p.rect(2, 19, 19 + b, 1, 8);
+  // belbog'
+  p.rect(4, 10 + l, 18 + b, 12, 2);
+  p.rect(4, 13 + l, 20 + b, 2, 4);
+  // yenglar va qo'llar
+  p.line(3, [11 + l, 14 + b], pose.otherHand, 3);
+  p.line(3, [21 + l, 14 + b], pose.hand, 3);
+  p.rect(5, hx - 1, hy - 1, 3, 2);
+  p.rect(5, pose.otherHand[0] - 1, pose.otherHand[1] - 1, 2, 2);
+  // kapyushon: yuz soyada, kulrang soqol
+  p.ellipse(2, 16 + l, 7 + b, 5.5, 5.5);
+  p.rect(2, 11 + l, 9 + b, 11, 4);
+  p.ellipse(5, 16 + l, 9 + b, 3, 3);
+  p.rect(1, 14 + l, 8 + b, 1, 1);
+  p.rect(1, 17 + l, 8 + b, 1, 1);
+  p.polygon(3, [
+    [13 + l, 11 + b],
+    [19 + l, 11 + b],
+    [17 + l, 15 + b],
+    [15 + l, 15 + b],
+  ]);
+  // bo'ynida qizil tasbeh
+  for (const [bx, byy] of [
+    [12, 13],
+    [14, 15],
+    [16, 16],
+    [18, 15],
+    [20, 13],
+  ] as const)
+    p.rect(4, bx + l, byy + b, 1, 1);
 }
 
 function poseOf(kind: SpriteKind, state: Exclude<AnimState, "death">, frame: number) {
@@ -3409,7 +3797,15 @@ function poseOf(kind: SpriteKind, state: Exclude<AnimState, "death">, frame: num
 }
 
 /** Oyoqli olam personajlari: oyog'i pozadan aniqlanadi (qilich uchi oyoqdan pastga tushsa ham). */
-const POSED: readonly SpriteKind[] = ["sentinel", "warden", "elder", "merchant", "oldgunner"];
+const POSED: readonly SpriteKind[] = [
+  "sentinel",
+  "warden",
+  "elder",
+  "merchant",
+  "oldgunner",
+  "obsguard",
+  "monk",
+];
 
 /**
  * Sprite markazidan oyoq tagigacha (chizilgan piksellarda): `renderSprite(.., y)` da y = yer - shu qiymat
@@ -3443,6 +3839,22 @@ export function spriteGrid(kind: SpriteKind) {
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   if (kind === "paladin") return paladinPixels(state, frame, back);
   const p = new Pixels();
+  if (kind === "ashhound" || kind === "lavaworm") {
+    const f = Math.min(2, Math.max(0, frame));
+    if (state === "death") {
+      if (kind === "ashhound") houndFallen(p, f);
+      else wormFallen(p, f);
+    } else if (kind === "ashhound")
+      ashHound(p, houndFrames[state][frame] ?? houndFrames[state][0]!);
+    else lavaWorm(p, wormFrames[state][frame] ?? wormFrames[state][0]!);
+    return p.outlined();
+  }
+  if (kind === "obsguard") {
+    const f = Math.min(2, Math.max(0, frame));
+    if (state === "death") obsGuardFallen(p, f);
+    else obsGuard(p, poseOf(kind, state, frame), state === "attack" ? f : null);
+    return p.outlined();
+  }
   if (kind === "boar" || kind === "rat" || kind === "wisp") {
     const f = Math.min(2, Math.max(0, frame));
     if (state === "death") {
@@ -3459,7 +3871,8 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     kind === "warden" ||
     kind === "elder" ||
     kind === "merchant" ||
-    kind === "oldgunner"
+    kind === "oldgunner" ||
+    kind === "monk"
   ) {
     const f = Math.min(2, Math.max(0, frame));
     if (state === "death") {
@@ -3474,6 +3887,7 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     else if (kind === "warden") warden(p, pose, atk);
     else if (kind === "elder") elder(p, pose);
     else if (kind === "oldgunner") oldGunner(p, pose);
+    else if (kind === "monk") monk(p, pose);
     else merchant(p, pose);
     return p.outlined();
   }
@@ -3600,6 +4014,10 @@ const REALM_SIZES: Partial<Record<SpriteKind, number>> = {
   elder: 32,
   merchant: 32,
   oldgunner: 32,
+  ashhound: 26,
+  lavaworm: 28,
+  obsguard: 32,
+  monk: 32,
 };
 
 export function renderSprite(

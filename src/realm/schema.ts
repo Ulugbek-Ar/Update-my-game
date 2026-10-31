@@ -9,9 +9,19 @@ const int = z.number().int();
 const Pt = z.tuple([int, int]);
 const Tile = z.enum(TILE_NAMES);
 
-export const MOB_KINDS = ["boar", "rat", "sentinel", "wisp", "warden"] as const;
+export const MOB_KINDS = [
+  "boar",
+  "rat",
+  "sentinel",
+  "wisp",
+  "warden",
+  // Kul tog'i (v3.1)
+  "ashhound",
+  "lavaworm",
+  "obsguard",
+] as const;
 export type MobKind = (typeof MOB_KINDS)[number];
-export const NPC_SPRITES = ["elder", "merchant", "oldgunner"] as const;
+export const NPC_SPRITES = ["elder", "merchant", "oldgunner", "monk"] as const;
 
 const Feature = z.discriminatedUnion("type", [
   z.object({
@@ -90,13 +100,17 @@ const GameObject = z.discriminatedUnion("type", [
     id: z.string(),
     x: int,
     y: int,
-    mark: z.enum(["moon", "sun", "star"]),
+    /** tagidagi belgi (vodiyda oy/quyosh/yulduz, Kul tog'i mangallarida olov/bosh suyak/toj) */
+    mark: z.enum(["moon", "sun", "star", "flame", "skull", "crown"]),
   }),
   z.object({ type: z.literal("sign"), id: z.string(), x: int, y: int, text: z.array(z.string()) }),
   z.object({ type: z.literal("fragment"), id: z.string(), x: int, y: int }),
   z.object({ type: z.literal("door"), id: z.string(), x: int, y: int, night: z.boolean() }),
   z.object({ type: z.literal("lamp"), id: z.string(), x: int, y: int }),
-  /** Asosiy dunyolarga darvoza: kaliti shu bossni yenggan o'yinchida bo'ladi */
+  /**
+   * Asosiy dunyolarga darvoza: kaliti shu bossni yenggan o'yinchida bo'ladi. `to` — boshqa hududdagi
+   * darvoza (id): kalit bo'lsa o'yinchi o'sha darvoza oldiga o'tadi; ko'rsatilmasa — "tez orada".
+   */
   z.object({
     type: z.literal("gate"),
     id: z.string(),
@@ -104,12 +118,23 @@ const GameObject = z.discriminatedUnion("type", [
     y: int,
     key: z.enum(["devil", "queen", "king"]),
     name: z.string(),
+    to: z.string().optional(),
   }),
+  /** Bosim plitasi (sir): ustida o'yinchi turganda bosiladi */
+  z.object({ type: z.literal("plate"), id: z.string(), x: int, y: int }),
 ]);
 export type GameObjectDef = z.infer<typeof GameObject>;
 
 const Secret = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("breakwall"), id: z.string(), x: int, y: int, hits: int.positive() }),
+  z.object({
+    type: z.literal("breakwall"),
+    id: z.string(),
+    x: int,
+    y: int,
+    hits: int.positive(),
+    /** buzilgach o'rniga (vodiyda — tosh uyumi) */
+    into: Tile.optional(),
+  }),
   z.object({ type: z.literal("nightdoor"), id: z.string(), door: z.string() }),
   z.object({
     type: z.literal("tablet"),
@@ -122,6 +147,17 @@ const Secret = z.discriminatedUnion("type", [
     type: z.literal("torches"),
     id: z.string(),
     order: z.array(z.string()).min(2),
+    reveal: z.array(z.string()),
+    tiles: z.array(z.object({ x: int, y: int, tile: Tile })).default([]),
+  }),
+  /**
+   * Jamoaviy sir: barcha plitalar bir vaqtda turli o'yinchilar tomonidan bosilishi kerak
+   * (bir kishi uddalay olmaydi). Ochilgach yashirin sandiq ko'rinadi va plitkalar o'zgaradi.
+   */
+  z.object({
+    type: z.literal("plates"),
+    id: z.string(),
+    plates: z.array(z.string()).min(2),
     reveal: z.array(z.string()),
     tiles: z.array(z.object({ x: int, y: int, tile: Tile })).default([]),
   }),
@@ -207,9 +243,79 @@ export const RegionSchema = z
         });
       }
       if (s.type === "breakwall") inside(s.x, s.y, ["secrets", i]);
+      if (s.type === "plates") {
+        s.plates.forEach((t) => need(t, "plate", ["secrets", i]));
+        s.reveal.forEach((id) => {
+          if (!ids.has(id))
+            ctx.addIssue({ code: "custom", path: ["secrets", i], message: `topilmadi: ${id}` });
+        });
+      }
     }
   });
 export type RegionDef = z.infer<typeof RegionSchema>;
+
+/** Olamdagi hudud chegarasi (plitkalarda, global) va unda qayta tug'ilish joyi */
+export interface RealmArea {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  spawn: [number, number];
+}
+
+/**
+ * Hududlarni bitta olamga birlashtiradi: har hudud o'z `origin` (chunk) joyiga suriladi, NPC, mob,
+ * obyekt, joy va sirlar global plitka koordinatasiga o'tadi. Relyef esa har hududdan alohida quriladi
+ * (RealmMap). Asosiy hudud (vodiy) nomi, seed'i va boshlang'ich joyi saqlanadi.
+ */
+export function mergeRegions(home: RegionDef, extra: readonly RegionDef[]): RegionDef {
+  if (!extra.length) return home;
+  const all = [home, ...extra];
+  const shift = <T extends { x: number; y: number }>(o: T, r: RegionDef): T => ({
+    ...o,
+    x: o.x + r.origin.cx * CHUNK,
+    y: o.y + r.origin.cy * CHUNK,
+  });
+  const secret = (s: SecretDef, r: RegionDef): SecretDef => {
+    if (s.type === "breakwall") return shift(s, r);
+    if (s.type === "torches" || s.type === "plates")
+      return { ...s, tiles: s.tiles.map((t) => shift(t, r)) };
+    return s;
+  };
+  const [sx, sy] = home.spawn;
+  return {
+    ...home,
+    chunks: {
+      w: Math.max(...all.map((r) => r.origin.cx + r.chunks.w)),
+      h: Math.max(...all.map((r) => r.origin.cy + r.chunks.h)),
+    },
+    spawn: [sx + home.origin.cx * CHUNK, sy + home.origin.cy * CHUNK],
+    landmarks: all.flatMap((r) => r.landmarks.map((l) => shift(l, r))),
+    npcs: all.flatMap((r) => r.npcs.map((n) => shift(n, r))),
+    mobZones: all.flatMap((r) => r.mobZones.map((z) => shift(z, r))),
+    objects: all.flatMap((r) => r.objects.map((o) => shift(o, r))),
+    secrets: all.flatMap((r) => r.secrets.map((s) => secret(s, r))),
+  };
+}
+
+/** Har hududning global chegarasi va qayta tug'ilish joyi */
+export function regionAreas(regions: readonly RegionDef[]): RealmArea[] {
+  return regions.map((r) => {
+    const x = r.origin.cx * CHUNK,
+      y = r.origin.cy * CHUNK;
+    return {
+      id: r.id,
+      name: r.name,
+      x,
+      y,
+      w: r.chunks.w * CHUNK,
+      h: r.chunks.h * CHUNK,
+      spawn: [r.spawn[0] + x, r.spawn[1] + y],
+    };
+  });
+}
 
 const Cond = z.object({
   quest: z.string(),
@@ -298,6 +404,8 @@ export const ItemsSchema = z.record(
         maxHp: int.optional(),
         speed: z.number().optional(),
         light: z.number().optional(),
+        /** lava sekinroq kuydiradi: kuyish oralig'iga shuncha soniya qo'shiladi */
+        fire: z.number().optional(),
       })
       .optional(),
   }),
@@ -318,7 +426,11 @@ export type DropsDef = z.infer<typeof DropsSchema>;
 export const ShopSchema = z.record(z.string(), z.array(z.string()));
 
 export interface RealmData {
+  /** butun olam: barcha hududlar birlashtirilgan (global plitka koordinatalarida) */
   region: RegionDef;
+  /** alohida hududlar (relyef o'z koordinatalarida quriladi); birinchisi — asosiy (vodiy) */
+  regions: RegionDef[];
+  areas: RealmArea[];
   dialogs: DialogsDef;
   quests: QuestsDef;
   items: ItemsDef;
@@ -333,14 +445,21 @@ export interface RealmData {
  */
 export function parseRealmData(raw: {
   region: unknown;
+  /** qo'shimcha hududlar (masalan, Kul tog'i) — o'z `origin` joyiga qo'yiladi */
+  regions?: unknown[];
   dialogs: unknown;
   quests: unknown;
   items: unknown;
   drops: unknown;
   shops: unknown;
 }): RealmData {
+  const home = RegionSchema.parse(raw.region);
+  const extra = (raw.regions ?? []).map((r) => RegionSchema.parse(r));
+  const regions = [home, ...extra];
   const data: RealmData = {
-    region: RegionSchema.parse(raw.region),
+    region: mergeRegions(home, extra),
+    regions,
+    areas: regionAreas(regions),
     dialogs: DialogsSchema.parse(raw.dialogs),
     quests: QuestsSchema.parse(raw.quests),
     items: ItemsSchema.parse(raw.items),
@@ -349,6 +468,32 @@ export function parseRealmData(raw: {
   };
   const errors: string[] = [];
   const { region, dialogs, quests, items } = data;
+  // hududlar bir-birining ustiga tushmaydi, id'lar butun olamda yagona
+  data.areas.forEach((a, i) =>
+    data.areas.slice(i + 1).forEach((b) => {
+      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)
+        errors.push(`hududlar ustma-ust: ${a.id} va ${b.id}`);
+    }),
+  );
+  if (new Set(regions.map((r) => r.id)).size !== regions.length) errors.push("takror hudud id");
+  const unique = (kind: string, list: { id: string }[]) => {
+    const seen = new Set<string>();
+    for (const o of list) {
+      if (seen.has(o.id)) errors.push(`takror ${kind} id: ${o.id}`);
+      seen.add(o.id);
+    }
+  };
+  unique("obyekt", region.objects);
+  unique("NPC", region.npcs);
+  unique("joy", region.landmarks);
+  unique("sir", region.secrets);
+  unique("mob zonasi", region.mobZones);
+  // darvoza boshqa hududdagi darvozaga olib boradi
+  for (const o of region.objects)
+    if (o.type === "gate" && o.to) {
+      const t = region.objects.find((x) => x.id === o.to);
+      if (!t || t.type !== "gate") errors.push(`darvoza ${o.id}: "${o.to}" darvozasi yo'q`);
+    }
   const npcs = new Set(region.npcs.map((n) => n.id));
   const item = (id: string, where: string) => {
     if (!items[id]) errors.push(`${where}: buyum topilmadi "${id}"`);

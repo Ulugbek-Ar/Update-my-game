@@ -90,10 +90,14 @@ describe("RealmSim determinizmi", () => {
 });
 
 describe("Xarita va to'qnashuv", () => {
-  it("spawn is walkable and the map is 6x6 chunks", () => {
+  it("spawn is walkable; the valley is 6x6 chunks and Ash Mountain lies south of it", () => {
     const { s, rp } = sim();
+    // olam: vodiy (6x6 chunk) + janubida Kul tog'i (6x6) — kenglik o'zgarmaydi (eski saqlashlar buziladi emas)
     expect(s.map.w).toBe(192);
-    expect(s.map.h).toBe(192);
+    expect(s.map.h).toBe(384);
+    const valley = s.data.areas.find((a) => a.id === "valley")!;
+    expect([valley.x, valley.y, valley.w, valley.h]).toEqual([0, 0, 192, 192]);
+    expect(s.areaAt(rp.p.x, rp.p.y)?.id).toBe("valley");
     expect(s.boxBlocked(rp.p.x, rp.p.y, rp.p.size)).toBe(false);
   });
 
@@ -275,8 +279,8 @@ describe("Sirlar", () => {
     expect(s.tileAt(147, 86)).toBe(TILE_IDS.stairs);
   });
 
-  it("all five secrets count as discoveries", () => {
-    expect(data.region.secrets.map((x) => x.type).sort()).toEqual(
+  it("all five valley secrets count as discoveries", () => {
+    expect(data.regions[0]!.secrets.map((x) => x.type).sort()).toEqual(
       ["breakwall", "nightdoor", "riverchest", "tablet", "torches"].sort(),
     );
   });
@@ -397,12 +401,11 @@ describe("Saqlash", () => {
 });
 
 describe("Xarita o'tish mumkinligi", () => {
-  /** Qishloqdan yurib boriladigan plitkalar (BFS) */
+  /** Qishloqdan (va darvoza orqali — Kul darvozasidan) yurib boriladigan plitkalar (BFS) */
   function reachable(s: RealmSim) {
     const seen = new Uint8Array(s.map.w * s.map.h);
-    const [sx, sy] = s.region.spawn;
-    const q = [[sx, sy] as const];
-    seen[sy * s.map.w + sx] = 1;
+    const q: (readonly [number, number])[] = s.data.areas.map((a) => a.spawn);
+    for (const [sx, sy] of q) seen[sy * s.map.w + sx] = 1;
     while (q.length) {
       const [x, y] = q.pop()!;
       for (const [dx, dy] of [

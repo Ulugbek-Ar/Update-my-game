@@ -129,6 +129,8 @@ export class RealmClient {
   private gold = 0;
   /** Sardor yurish kadri (qadam — chang) */
   private wardenStep = new Map<number, number>();
+  /** darvozadan o'tgan vaqt: shu zahoti joy nomi e'loni hudud e'lonini yopmasin */
+  private portalT = -99;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -868,7 +870,8 @@ export class RealmClient {
 
   private updateMusic() {
     const boss = this.sim.mobs.some((m) => m.kind === "warden" && m.target === this.pid && !m.dead);
-    const track: MusicTrack = boss ? "boss" : this.sim.night ? "forest" : "normal";
+    const ash = this.sim.areaAt(this.me.p.x, this.me.p.y)?.id === "ashmount";
+    const track: MusicTrack = boss ? "boss" : ash ? "ash" : this.sim.night ? "forest" : "normal";
     if (track !== this.music) {
       this.music = track;
       sfx.playMusic(track);
@@ -897,7 +900,13 @@ export class RealmClient {
             ? "#45b8e0"
             : e.kind === "sentinel" || e.kind === "warden"
               ? "#8a8692"
-              : "#a8323a",
+              : e.kind === "ashhound"
+                ? "#8e8680"
+                : e.kind === "lavaworm"
+                  ? "#ff5a1a"
+                  : e.kind === "obsguard"
+                    ? "#463a66"
+                    : "#a8323a",
           14,
           80,
           2,
@@ -941,7 +950,46 @@ export class RealmClient {
         sfx.fireball();
         return;
       case "wake":
-        fx.burst(e.x, e.y - 10, "#5fe0c8", 6, 40, 1);
+        fx.burst(e.x, e.y - 10, e.kind === "obsguard" ? "#ff6a2a" : "#5fe0c8", 6, 40, 1);
+        sfx.block();
+        return;
+      case "erupt":
+        // lava qurti yerdan otilib chiqdi
+        fx.burst(e.x, e.y, "#ff5a1a", 18, 90, 2);
+        fx.burst(e.x, e.y, "#3a1810", 10, 60, 2);
+        fx.addShake(0.12);
+        sfx.stomp();
+        return;
+      case "fire":
+        fx.burst(e.x, e.y, "#ff8a2a", 8, 60, 1);
+        sfx.fireball();
+        return;
+      case "howl":
+        fx.text(e.x, e.y - 12, "UVV!", "#b8b0aa");
+        sfx.warn();
+        return;
+      case "portal": {
+        fx.burst(e.x, e.y - 10, "#ff7a2a", 24, 100, 2);
+        fx.burst(e.x, e.y - 10, "#3a0a10", 14, 60, 3);
+        if (!mine) return;
+        const a = this.sim.data.areas.find((x) => x.id === e.area);
+        this.portalT = this.time;
+        this.banner(
+          a?.name ?? "",
+          e.area === "ashmount" ? "Iblis tug'ilgan tog'" : "Boshlang'ich vodiy",
+          "#ff7a2a",
+        );
+        fx.addShake(0.2);
+        sfx.chestOpen();
+        return;
+      }
+      case "burn":
+        fx.burst(e.x, e.y + 4, "#ff5a1a", 6, 40, 1);
+        fx.burst(e.x, e.y + 2, "#ffd36a", 3, 30, 1);
+        if (mine) fx.text(e.x, e.y - 14, "KUYDI", "#ff7a2a");
+        return;
+      case "plate":
+        fx.burst(e.x, e.y, "#9a8ac8", 8, 40, 1);
         sfx.block();
         return;
       case "roar":
@@ -997,7 +1045,9 @@ export class RealmClient {
         sfx.upgrade();
         return;
       case "landmark":
-        if (mine) this.banner(e.name);
+        // darvozadan endigina o'tgan bo'lsa — hudud e'loni ustidan yozilmaydi
+        if (mine && this.time - this.portalT < 2.5) this.toast(e.name, "#ffe14d");
+        else if (mine) this.banner(e.name);
         return;
       case "torch":
         fx.burst(e.x, e.y - 8, e.lit ? "#ff9a3c" : "#6e6a72", 10, 50, 1);
@@ -1016,7 +1066,13 @@ export class RealmClient {
         fx.addShake(0.1);
         return;
       case "respawn":
-        if (mine) this.toast("Qishloqda o'zingizga keldingiz", "#9fd0ef");
+        if (mine)
+          this.toast(
+            e.area === "ashmount"
+              ? "Kul darvozasi yonida o'zingizga keldingiz"
+              : "Qishloqda o'zingizga keldingiz",
+            "#9fd0ef",
+          );
         return;
       case "teleport":
         fx.burst(e.fromX, e.fromY, "#1a1118", 14, 30, 3);
