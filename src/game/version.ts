@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.8.0";
+export const GAME_VERSION = "2.9.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.9.0",
+    date: "2026-10-31",
+    notes:
+      "Bosslar qayta tug'ildi — endi ancha qiyin. Har bossda 3 ta faza va yangi hujumlar. Boss kuchi sizning kuchingizga moslashadi. Iblis olov yo'lagi va torayuvchi olov arenasi bilan. Qor Malikasi muz qamoq va ko'zgu nusxalari bilan. O'rmon Shohi hayot gullari va to'liq qorong'ulik bilan. Har boss katta kirish sahnasi bilan chiqadi.",
+  },
   {
     version: "2.8.0",
     date: "2026-10-30",

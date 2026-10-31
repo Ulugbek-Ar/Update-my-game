@@ -1012,15 +1012,15 @@ export const KING_LIGHT = 62;
 export const FLOWER_COUNT = 3;
 export const FLOWER_GROW = 1.2;
 /** Har gul har soniyada maxHp ning shuncha ulushini tiklaydi (oldingi fazaga qaytarmaydi) */
-export const FLOWER_HEAL = 0.004;
+export const FLOWER_HEAL = 0.003;
 export const FLOWER_SPOTS: readonly (readonly [number, number])[] = [
   [56, 64],
   [264, 64],
   [160, 206],
 ];
-/** Gul joni: Shoh jonining ~3.5% i (o'yinchi kuchiga moslashadi), kamida 4 */
+/** Gul joni: Shoh jonining 3% i (o'yinchi kuchiga moslashadi), kamida 4 */
 export function flowerHp(maxHp: number) {
-  return Math.max(4, Math.ceil(maxHp * 0.035));
+  return Math.max(4, Math.ceil(maxHp * 0.03));
 }
 /** Tikanli devor: arenani bo'laklarga bo'ladi, bitta tor o'tish joyi bor */
 export const THORN_EVERY = 11;

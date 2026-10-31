@@ -1,0 +1,102 @@
+[
+  {
+    "title": "Iblis — katta kirish sahnasi",
+    "steps": [
+      { "start": true },
+      { "eval": "g.enemies = []; g.hints = []; g.startWave(4);" },
+      { "wait": 1200 }
+    ]
+  },
+  {
+    "title": "Iblis: olov yo'lagi va torayuvchi olov arenasi",
+    "steps": [
+      { "start": true },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.startWave(4); g.skipIntro(); g.enemies = []; const p = g.player; p.takeHit = () => false; p.x = 240; p.y = 170; const b = g.boss; b.spawn = 0; b.x = 80; b.y = 80; b.hp = b.maxHp * 0.28;"
+      },
+      { "wait": 1900 },
+      {
+        "eval": "const b = g.boss; g.enemies = []; b.edge = { stage: 'grow', t: 2, m: 30 }; b.slamTimer = 9; b.rushTimer = 0; g.player.x = 240; g.player.y = 170;"
+      },
+      { "wait": 1700 }
+    ]
+  },
+  {
+    "title": "Olov imp",
+    "text": "Iblis 2-fazada chaqiradigan kichik uchar jin. O'yinchi atrofida aylanib uchadi, to'xtab yaltirasa — olov shari otadi: yaltirashni ko'rib, chetga qoch. Joni 2, bitta-ikkita zarba bilan yengiladi. Xonada ko'pi bilan 2 ta.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      { "start": true },
+      { "wave": 0 },
+      { "spawn": { "kind": "imp", "dx": 70, "count": 2 } },
+      { "focus": { "x": 120, "y": 120, "w": 250 } }
+    ]
+  },
+  {
+    "title": "Qor Malikasi — kirish sahnasi",
+    "steps": [
+      { "start": true },
+      { "eval": "g.enemies = []; g.hints = []; g.chapter = 2; g.startWave(4);" },
+      { "wait": 1200 }
+    ]
+  },
+  {
+    "title": "Qor Malikasi: muz qamoq nuri va muz pol",
+    "steps": [
+      { "start": true },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.chapter = 2; g.startWave(4); g.skipIntro(); g.enemies = []; const p = g.player; p.takeHit = () => false; p.x = 200; p.y = 160; const b = g.boss; b.spawn = 0; b.x = 90; b.y = 80; b.hp = b.maxHp * 0.5;"
+      },
+      { "wait": 2600 },
+      {
+        "eval": "const b = g.boss, p = g.player; g.enemies = []; b.castTimer = 9; p.x = 200; p.y = 160; p.encase(6); const dx = p.x - b.x, dy = p.y - b.y, l = Math.hypot(dx, dy); b.beam = { x: b.x, y: b.y, dx: dx / l, dy: dy / l, warn: 0.7, show: 0 };"
+      },
+      { "wait": 250 }
+    ]
+  },
+  {
+    "title": "Qor Malikasi: ko'zgu nusxalari (haqiqiysining soyasi bor)",
+    "steps": [
+      { "start": true },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.chapter = 2; g.startWave(4); g.skipIntro(); g.enemies = []; const p = g.player; p.takeHit = () => false; p.x = 160; p.y = 190; const b = g.boss; b.spawn = 0; b.x = 160; b.y = 60; b.hp = b.maxHp * 0.25;"
+      },
+      { "wait": 1900 },
+      { "eval": "g.enemies = [];" },
+      { "wait": 200 }
+    ]
+  },
+  {
+    "title": "O'rmon Shohi — kirish sahnasi",
+    "steps": [
+      { "start": true },
+      { "eval": "g.enemies = []; g.hints = []; g.chapter = 3; g.startWave(4);" },
+      { "wait": 1200 }
+    ]
+  },
+  {
+    "title": "O'rmon Shohi: hayot gullari va tikanli devor",
+    "steps": [
+      { "start": true },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.chapter = 3; g.startWave(4); g.skipIntro(); g.enemies = []; const p = g.player; p.takeHit = () => false; p.x = 200; p.y = 150; const b = g.boss; b.spawn = 0; b.x = 110; b.y = 110; b.hp = b.maxHp * 0.5;"
+      },
+      { "wait": 4500 },
+      { "eval": "g.enemies = [];" },
+      { "wait": 100 }
+    ]
+  },
+  {
+    "title": "O'rmon Shohi: to'liq zulmat va svetlyachoklar",
+    "steps": [
+      { "start": true },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.chapter = 3; g.startWave(4); g.skipIntro(); g.enemies = []; const p = g.player; p.takeHit = () => false; p.x = 210; p.y = 150; const b = g.boss; b.spawn = 0; b.x = 110; b.y = 110; b.hp = b.maxHp * 0.25;"
+      },
+      { "wait": 1900 },
+      { "eval": "g.enemies = []; g.boss.castTimer = 0;" },
+      { "wait": 450 }
+    ]
+  }
+]
