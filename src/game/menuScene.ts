@@ -9,9 +9,11 @@ const GROUND = 150;
 
 /** Sahnadagi qahramonlar (chapda, o'ngga qaragan) va moblar (o'ngda, chapga qaragan) */
 const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; phase: number }[] = [
-  { kind: "knight", x: 34, y: GROUND - 14, flip: false, phase: 0 },
-  { kind: "mage", x: 60, y: GROUND - 12, flip: false, phase: 0.3 },
-  { kind: "hunter", x: 86, y: GROUND - 14, flip: false, phase: 0.6 },
+  // 3.0: Paladin chetda — ulkan qilichi yelkasida orqaga qaraydi, menyu tugmalari ostiga tushmaydi
+  { kind: "paladin", x: 24, y: GROUND - 14, flip: false, phase: 0.85 },
+  { kind: "knight", x: 45, y: GROUND - 14, flip: false, phase: 0 },
+  { kind: "mage", x: 64, y: GROUND - 12, flip: false, phase: 0.3 },
+  { kind: "hunter", x: 83, y: GROUND - 14, flip: false, phase: 0.6 },
   { kind: "skeleton", x: 226, y: GROUND - 14, flip: true, phase: 0.2 },
   { kind: "slime", x: 247, y: GROUND - 8, flip: true, phase: 0.5 },
   { kind: "wolf", x: 268, y: GROUND - 13, flip: true, phase: 0.1 },
@@ -23,9 +25,10 @@ const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; ph
  * figuralar kichrayib, ekran chetlariga suriladi (tugmalar ustiga tushmaydi).
  */
 const CAST_COMPACT: readonly { x: number; scale: number }[] = [
-  { x: 12, scale: 0.62 },
-  { x: 27, scale: 0.62 },
-  { x: 42, scale: 0.62 },
+  { x: 15, scale: 0.62 },
+  { x: 29, scale: 0.62 },
+  { x: 43, scale: 0.62 },
+  { x: 57, scale: 0.62 },
   { x: 271, scale: 0.62 },
   { x: 283, scale: 0.62 },
   { x: 295, scale: 0.62 },
@@ -249,4 +252,70 @@ export function drawHunterCard(c: CanvasRenderingContext2D) {
     px(c, "#e8e8f0", 106 + k, 101, 1, 2);
     px(c, "#e8e8f0", 106 + k, 106, 1, 2);
   }
+}
+
+/** 3.0 e'loni: Paladin SHANG zarbasi — ulkan qilich yerga tushgan, yo'lak bo'ylab yoriq va uchqunlar. */
+export function drawPaladinCard(c: CanvasRenderingContext2D) {
+  c.imageSmoothingEnabled = false;
+  const bands = ["#1a0f08", "#24140a", "#2e1a0c", "#38200e"];
+  bands.forEach((col, i) => px(c, col, 0, i * 30, 160, 30));
+  px(c, "#2a1d12", 0, 100, 160, 20);
+  px(c, "#4a3018", 0, 100, 160, 2);
+  // yoriq: qilich uchidan oldinga
+  for (let x = 92; x < 150; x++) {
+    const y = 103 + Math.round(Math.sin(x * 0.7) * 1.2);
+    px(c, "#140a04", x, y, 2, 2);
+    if (x % 2 === 0) px(c, "#ff8c1a", x, y, 1, 1);
+  }
+  for (let k = 0; k < 9; k++)
+    px(c, k % 2 ? "#ffd27a" : "#ff8c1a", 96 + k * 6, 92 - (k % 3) * 4, 2, 2);
+  c.save();
+  c.translate(46, 70);
+  c.scale(2, 2);
+  renderSprite(c, "paladin", "attack", 2, 0, 0, false);
+  c.restore();
+  // "SHANG!" yozuvi o'rniga oltin chaqnash
+  c.fillStyle = "rgba(255,210,122,0.3)";
+  c.fillRect(70, 84, 84, 18);
+}
+
+/** 3.0 e'loni: rollar — to'rt rol belgisi va qahramonlar. */
+export function drawRolesCard(c: CanvasRenderingContext2D) {
+  c.imageSmoothingEnabled = false;
+  px(c, "#141022", 0, 0, 160, 120);
+  px(c, "#1f1730", 0, 92, 160, 28);
+  const heroes: [SpriteKind, string][] = [
+    ["paladin", "#ff8c1a"],
+    ["knight", "#68cde4"],
+    ["mage", "#ff4d4d"],
+    ["hunter", "#a6f08e"],
+  ];
+  heroes.forEach(([kind, col], i) => {
+    const x = 26 + i * 36;
+    px(c, col, x - 12, 96, 24, 2);
+    renderSprite(c, kind, "idle", 0, x, 76, false);
+  });
+}
+
+/** 3.0 e'loni: tank bossni ushlab turadi — QASAM aurasi, Sardor tankka qaragan, do'stlar orqada. */
+export function drawTankCard(c: CanvasRenderingContext2D) {
+  c.imageSmoothingEnabled = false;
+  px(c, "#1b2420", 0, 0, 160, 120);
+  px(c, "#24302a", 0, 80, 160, 40);
+  // aura
+  c.strokeStyle = "rgba(255,140,26,0.8)";
+  c.lineWidth = 2;
+  c.beginPath();
+  c.ellipse(70, 92, 18, 9, 0, 0, Math.PI * 2);
+  c.stroke();
+  c.strokeStyle = "rgba(255,210,122,0.35)";
+  c.setLineDash([3, 4]);
+  c.beginPath();
+  c.arc(70, 84, 44, 0, Math.PI * 2);
+  c.stroke();
+  c.setLineDash([]);
+  renderSprite(c, "warden", "attack", 0, 118, 62, false, true);
+  renderSprite(c, "paladin", "idle", 0, 70, 84, false);
+  renderSprite(c, "hunter", "attack", 1, 22, 70, false);
+  renderSprite(c, "mage", "attack", 1, 30, 100, false);
 }

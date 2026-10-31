@@ -377,6 +377,9 @@ const POWER_KEYS = [
   "reloadTime",
   "range",
   "bounce",
+  // Paladin kartalari
+  "shockwave",
+  "aura",
 ] as const;
 type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
 function savePowers(p: Player): Powers {
@@ -405,6 +408,8 @@ export class Game {
   quakes: Quake[] = [];
   /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
   private threat = new ThreatTable();
+  /** Boss to'lqinida o'yinchi hali jon yo'qotmagan ("Qalqonsiz devor" yutug'i) */
+  private bossClean = true;
   /** Paladin: shu SHANG zarbasida o'ldirilganlar ("SHANG!" yutug'i) */
   private slamKills = { id: 0, kills: 0 };
   /** O'rmon Shohi 3-fazasidagi qorong'ilik (0..1, asta kuchayadi) */
@@ -638,6 +643,7 @@ export class Game {
     if (endlessNumber(i) >= 10) this.achieve("endless10");
     if (this.daily && i >= 2) this.achieve("daily");
     this.waveHurt = false;
+    this.bossClean = true;
     this.boss = null;
     this.player.charge = 0;
     const boss = isBossWave(i);
@@ -1294,6 +1300,7 @@ export class Game {
     // telefonda qisqa tebranish; boss jangida — kuchliroq
     if (this.touch) vibrate(this.boss?.active ? BOSS_BUZZ : HIT_BUZZ);
     this.waveHurt = true;
+    if (this.boss) this.bossClean = false;
     this.combo = 0;
     this.comboTimer = 0;
     this.fx.addShake(0.25);
@@ -1368,6 +1375,7 @@ export class Game {
       const pts = king ? KING_POINTS : queen ? QUEEN_POINTS : BOSS_POINTS;
       this.score += pts;
       if (!king) this.achieve(queen ? "queen" : "boss");
+      if (p.paladin && this.bossClean) this.achieve("wallNoShield");
       this.fx.text(t.x, t.y - 24, `+${pts}`, "#ffcc33");
       // Abadiyat olami: birinchi g'alabada darvoza kaliti, faol topshiriqda — Iblis shoxi
       if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
@@ -1877,7 +1885,9 @@ export class Game {
                   ? "winHunter"
                   : this.hero === "gunner"
                     ? "winGunner"
-                    : "winKnight",
+                    : this.hero === "paladin"
+                      ? "winPaladin"
+                      : "winKnight",
             );
             // dunyo yutildi: xaritada keyingi dunyo ochiladi (kunlik sinov ham hisob)
             recordWorldWin(this.chapter, this.hero);
@@ -2002,7 +2012,7 @@ export class Game {
 
   /** SHANG zarbasi dushmanni o'ldirdi: bitta zarbada 4 ta — "SHANG!" yutug'i. */
   private slamKill() {
-    this.slamKills.kills++;
+    if (++this.slamKills.kills >= 4) this.achieve("shang4");
   }
 
   /**

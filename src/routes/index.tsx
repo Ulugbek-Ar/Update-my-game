@@ -8,6 +8,9 @@ import {
   SCENE_W,
   drawForestCard,
   drawHunterCard,
+  drawPaladinCard,
+  drawRolesCard,
+  drawTankCard,
   renderMenuScene,
 } from "@/game/menuScene";
 import { loadPlayableHero, loadUnlockedHeroes, migrateSave, selectHero } from "@/game/save";
@@ -1800,11 +1803,42 @@ const NEWS_2_0: readonly {
   },
 ];
 
+/** 3.0 e'loni: Paladin, rollar va tank — katta rasmli kartalar. */
+const NEWS_3_0: typeof NEWS_2_0 = [
+  {
+    title: "YANGI QAHRAMON: PALADIN",
+    text: "Qalqonsiz tank, ikki metrlik ulkan qilich. SHANG — yo'lakdagi hammani uloqtiradi. 8 yurak.",
+    width: 160,
+    height: 120,
+    draw: (c) => drawPaladinCard(c),
+  },
+  {
+    title: "ROLLAR TIZIMI",
+    text: "Tank, jangchi, sehrgar va uzoqdan otuvchi — rol belgisi kartada va onlayn ism yonida.",
+    width: 160,
+    height: 120,
+    draw: (c) => drawRolesCard(c),
+  },
+  {
+    title: "TANK BOSSNI USHLAYDI",
+    text: "Onlayn olamda boss eng xavfli o'yinchini quvadi. Qasam bilan tank uni o'ziga tortadi.",
+    width: 160,
+    height: 120,
+    draw: (c) => drawTankCard(c),
+  },
+];
+
 /** Yangi versiyaga birinchi kirishda: CHANGELOG'dagi oxirgi yozuv, har gap alohida qatorda. */
 function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
   const entry = CHANGELOG[0];
   if (!entry) return null;
-  const big = entry.version.startsWith("2.0");
+  // katta e'lonlar (2.0, 3.0): rasmli kartalar
+  const cards = entry.version.startsWith("2.0")
+    ? NEWS_2_0
+    : entry.version.startsWith("3.0")
+      ? NEWS_3_0
+      : null;
+  const big = !!cards;
   const lines = entry.notes
     .split(/(?<=\.)\s+/)
     .map((l) => l.trim())
@@ -1820,12 +1854,12 @@ function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="shrink-0 px-4 pb-3 pt-4 text-primary">
-          {big ? `PIKSEL QAL'A 2.0!` : "YANGILIKLAR"} · v{entry.version}
+          {big ? `PIKSEL QAL'A ${entry.version.slice(0, 3)}!` : "YANGILIKLAR"} · v{entry.version}
         </h2>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
-          {big && (
+          {cards && (
             <ul aria-label="Katta yangiliklar" className="grid gap-3 sm:grid-cols-3">
-              {NEWS_2_0.map((n) => (
+              {cards.map((n) => (
                 <NewsCard
                   key={n.title}
                   title={n.title}

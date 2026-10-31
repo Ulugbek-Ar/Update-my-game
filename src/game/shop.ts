@@ -53,7 +53,7 @@ export const SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: "dash",
     name: "YENGIL ETIK",
-    desc: "Dash/teleport/sakrash/sirpanish qaytishi 10% tez",
+    desc: "Dash/teleport/sakrash/sirpanish/hamla qaytishi 10% tez",
     color: "#a6f08e",
     icon: "wind",
     costs: [25, 50, 90],

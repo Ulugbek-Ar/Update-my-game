@@ -20,7 +20,10 @@ export type AchievementId =
   | "twoChapters"
   | "drumKills"
   | "firstHero"
-  | "loyal";
+  | "loyal"
+  | "winPaladin"
+  | "shang4"
+  | "wallNoShield";
 
 export interface Achievement {
   id: AchievementId;
@@ -48,6 +51,13 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "drumKills", name: "OLTI O'Q", desc: "Bitta barabandagi o'qlar bilan 6 ta dushmanni yeng" },
   { id: "firstHero", name: "YANGI QAHRAMON", desc: "Do'kondan birinchi qahramonni sotib ol" },
   { id: "loyal", name: "SODIQ O'YINCHI", desc: "Kunlik sovg'ani 7 kun ketma-ket ol" },
+  { id: "winPaladin", name: "PALADIN BILAN YUT", desc: "Paladin bilan o'yinni yut" },
+  { id: "shang4", name: "SHANG!", desc: "Bitta SHANG zarbasida 4 ta dushmanni yeng" },
+  {
+    id: "wallNoShield",
+    name: "QALQONSIZ DEVOR",
+    desc: "Paladin bilan zarar olmasdan bossni yeng",
+  },
 ];
 
 export function loadAchievements(): Set<AchievementId> {
