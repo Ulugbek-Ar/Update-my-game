@@ -72,6 +72,8 @@ import { ThreatTable } from "./threat";
 import { HORN_ITEM, hornWanted, recordBossKey, sendToRealm } from "./realmLink";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
+/** Uchuvchi yozuv markazi ekran (xona) chetidan chiqib ketmasin: half — yozuv kengligining yarmi */
+const fitX = (x: number, half = 24) => Math.max(half, Math.min(ROOM.w - half, x));
 /** Xavf jadvalidagi o'yinchi id'si (bir kishilik o'yin) */
 const PLAYER_ID = "me";
 /** Ritsar rekordlari (Sehrgarniki — hero.ts dagi bestKeys) */
@@ -1959,7 +1961,8 @@ export class Game {
       this.fx.burst(tx, ty, "#a8500f", 6, 50, 2);
       this.fx.addShake(0.3);
       this.freeze = Math.max(this.freeze, 0.05);
-      this.fx.text(p.x + p.fx * 18, p.y - 22, "SHANG!", "#ffd27a");
+      // yozuv devor yonida ham ekranga sig'adi
+      this.fx.text(fitX(p.x + p.fx * 18), Math.max(30, p.y - 22), "SHANG!", "#ffd27a");
     }
     if (p.judged) {
       p.judged = false;
@@ -1968,7 +1971,7 @@ export class Game {
       this.fx.burst(p.x, p.y, accent, 14, 80, 2);
       this.fx.addShake(0.45);
       this.freeze = Math.max(this.freeze, 0.06);
-      this.fx.text(p.x, p.y - 26, "OSMON HUKMI!", "#ffd27a");
+      this.fx.text(fitX(p.x, 50), Math.max(30, p.y - 26), "OSMON HUKMI!", "#ffd27a");
     }
     if (p.vowed) {
       p.vowed = false;

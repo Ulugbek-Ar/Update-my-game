@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { SWITCH_RATIO, TANK_THREAT, ThreatTable, threatMul } from "./threat";
 import { loadRealmData } from "@/realm/data";
 import { RealmSim, type RealmPlayer } from "@/realm/sim";
-import { TRAP_HOLD, VOW_TIME } from "./player";
+import { AURA_EVERY, TRAP_HOLD, VOW_TIME } from "./player";
 import type { RealmMob } from "@/realm/mobs";
 
 describe("Xavf jadvali", () => {
@@ -111,5 +111,25 @@ describe("Onlayn: tank Sardorni ushlab turadi", () => {
     }
     expect(tank.p.vowing).toBe(false);
     expect(w.target).toBe("tank");
+  });
+
+  it("MUQADDAS AURA heals nearby friends online too", () => {
+    const s = new RealmSim(data);
+    const tank = s.addPlayer("tank", "paladin");
+    const friend = s.addPlayer("friend", "mage");
+    const far = s.addPlayer("far", "hunter");
+    friend.p.x = tank.p.x + 20;
+    friend.p.y = tank.p.y;
+    far.p.x = tank.p.x + 400;
+    tank.p.aura = true;
+    tank.p.auraT = AURA_EVERY - 0.02;
+    friend.p.hp = 2;
+    far.p.hp = 2;
+    // jangdan tashqari tiklanish aralashmasin
+    friend.lastHurt = far.lastHurt = s.tick + 1e9;
+    s.step();
+    expect(friend.p.hp).toBe(3);
+    expect(far.p.hp).toBe(2);
+    expect(s.events.some((e) => e.type === "aura")).toBe(true);
   });
 });

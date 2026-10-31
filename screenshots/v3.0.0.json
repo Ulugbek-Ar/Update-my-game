@@ -1,0 +1,230 @@
+[
+  {
+    "title": "Paladin",
+    "text": "Yangi qahramon — Paladin (rol: TANK): to'q sariq-oltin plastinka zirh, oq ustki kiyimida quyosh belgisi, yopiq dubulg'a va qalqonsiz — ikki qo'llab ushlanadigan ikki metrlik ulkan qilich. 8 yurak, eng sekin, itarilishga chidamli; og'ir zirh 2 yurakli katta zarbalarni 1 yurakka kamaytiradi. Space — SHANG: qilichni ko'tarib, oldinga uzun yo'lak bo'ylab yerga uradi, yo'lidagi hammani uloqtiradi. Bosib tursang — Osmon hukmi: atrofga oltin zarb to'lqini, dushmanlar gangiydi. Shift — Muqaddas hamla, bosib tursang — Qasam: dushmanlar va boss faqat Paladinni nishonga oladi, zarar yarmiga kamayadi. O'z kuchlari: Zarb to'lqini va Muqaddas aura. Do'konda 450 oltinga sotiladi.",
+    "hero": true,
+    "video": 6,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["paladin"]
+        }
+      },
+      {
+        "click": "PALADIN TANK"
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 70
+        }
+      }
+    ]
+  },
+  {
+    "title": "SHANG: ulkan qilich yerga tushadi — yo'lakdagi hammasi uloqtiriladi, yerda yoriq",
+    "closeup": {
+      "x": 130,
+      "y": 118,
+      "w": 150
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "px": 80,
+          "dx": 30
+        }
+      },
+      {
+        "eval": "const p = g.player; p.x = 80; p.y = 120; p.fx = 1; p.fy = 0; p.takeHit = () => false; g.chest = null; g.enemies.forEach((e, i) => { e.aiTimer = 99; e.x = 98 + i * 12; e.y = 120 + (i % 2 ? 5 : -5); e.hp = e.maxHp = 9; });"
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 250
+      }
+    ]
+  },
+  {
+    "title": "Osmon hukmi: qilich osmonga — yorug'lik ustuni, so'ng 360° oltin zarb to'lqini, dushmanlar gangiydi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 4,
+          "dx": 34
+        }
+      },
+      {
+        "eval": "const p = g.player; p.x = 160; p.y = 130; p.fx = 1; p.fy = 0; p.takeHit = () => false; g.chest = null; [[-34, 0], [34, 0], [0, -32], [0, 32]].forEach(([dx, dy], i) => { const e = g.enemies[i]; if (e) { e.x = 160 + dx; e.y = 130 + dy; e.hp = e.maxHp = 9; e.update = () => {}; } });"
+      },
+      {
+        "keys": [["Space", 1100]]
+      },
+      {
+        "wait": 40
+      }
+    ]
+  },
+  {
+    "title": "Qasam: to'q sariq aura — atrofdagi hamma dushman Paladinga buriladi, zarar yarmiga kamayadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "dx": 60
+        }
+      },
+      {
+        "eval": "const p = g.player; p.x = 150; p.y = 125; p.takeHit = () => false; g.chest = null; [[-55, -20], [60, -10], [10, 55]].forEach(([dx, dy], i) => { const e = g.enemies[i]; if (e) { e.x = 150 + dx; e.y = 125 + dy; e.aiTimer = 99; e.speedMul = 0.25; } });"
+      },
+      {
+        "keys": [["Shift", 450]]
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Do'konning QAHRAMONLAR bo'limida Paladin — 450 oltin, rol belgisi TANK",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["gunner"],
+          "pixel-rpg-gold": "520"
+        }
+      },
+      {
+        "click": "PALADIN — qulflangan, 450 oltin"
+      },
+      {
+        "wait": 700
+      }
+    ]
+  },
+  {
+    "title": "Rollar tizimi: har qahramon kartasida rol belgisi — tank, jangchi, sehrgar, uzoqdan",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "wait": 700
+      }
+    ]
+  },
+  {
+    "title": "Piksel Qal'a 3.0: Yangiliklar oynasida Paladin, rollar va tank",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "2.9.0"
+        }
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Onlayn olamda: Paladin Qasam qiladi, do'stlar ismi yonida rol belgisi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.0.0",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{\"hero\": \"hunter\", \"tag\": \"1357\", \"say\": 1}, {\"hero\": \"mage\", \"tag\": \"2468\"}, {\"hero\": \"gunner\", \"tag\": \"7302\"}]).then(() => { const r=window.__realm,s=r.sim,p=r.me.p,ox=p.x,oy=p.y; for (const [x,y] of [[30,96],[46,75],[46,88],[60,96],[75,95],[90,97]]) { p.x=x*16; p.y=y*16; s.explore(r.me); } p.x=ox; p.y=oy; r.view.panel='none'; });"
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "keys": [["Shift", 450]]
+      },
+      {
+        "wait": 400
+      }
+    ]
+  }
+]

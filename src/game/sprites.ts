@@ -2042,6 +2042,9 @@ export const PALADIN_SWORD: Record<"idle" | "walk" | "attack" | "hurt", readonly
     { hand: [16, 4], tip: [19, -19], glow: true },
     { hand: [25, 19], tip: [52, 27] },
     { hand: [24, 21], tip: [49, 30] },
+    // 4, 5 — devor yonida: qilich tik tushib yerga sanchiladi (xona/ekran chetidan chiqmaydi)
+    { hand: [24, 18], tip: [37, 34] },
+    { hand: [23, 20], tip: [35, 35] },
   ],
   hurt: [{ hand: [20, 20], tip: [-5, 8] }],
 };
@@ -2058,6 +2061,8 @@ const paladinPoses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]>
   attack: [
     { ...poses.attack[0]!, bob: -1, lean: -1 },
     { ...poses.attack[0]!, bob: -2, lean: -2, leftFoot: [10, 28], rightFoot: [21, 27] },
+    { ...poses.attack[1]!, bob: 2, lean: 2 },
+    { ...poses.attack[2]!, bob: 1, lean: 1 },
     { ...poses.attack[1]!, bob: 2, lean: 2 },
     { ...poses.attack[2]!, bob: 1, lean: 1 },
   ],

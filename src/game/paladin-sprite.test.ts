@@ -76,6 +76,14 @@ describe("Paladin ko'rinishi", () => {
     expect(PALADIN_SWORD.attack[2]!.tip[0]).toBeGreaterThan(48);
   });
 
+  it("near a room wall the slam sword is driven into the floor and stays on screen", () => {
+    // xona chetida markaz ~298 px: uchi 320 dan oshmasligi uchun tanadan ko'pi bilan 22 px o'ngda
+    for (const s of PALADIN_SWORD.attack.slice(4)) expect(s.tip[0] - 16).toBeLessThanOrEqual(22);
+    expect(spritePixels("paladin", "attack", 4).join(",")).not.toBe(
+      spritePixels("paladin", "attack", 2).join(","),
+    );
+  });
+
   it("has a different back view and drops the sword on death", () => {
     expect(spritePixels("paladin", "idle", 0, true).join(",")).not.toBe(
       spritePixels("paladin", "idle", 0).join(","),

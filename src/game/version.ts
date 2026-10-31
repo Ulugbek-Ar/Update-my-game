@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "2.9.0";
+export const GAME_VERSION = "3.0.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.0.0",
+    date: "2026-10-31",
+    notes:
+      "Piksel Qal'a 3.0! Yangi qahramon: Paladin — qalqonsiz, ikki metrlik ulkan qilichli tank. SHANG — qilichni ko'tarib yerga uradi va yo'lidagi hammani uloqtiradi. Osmon hukmi atrofdagi dushmanlarni gangitadi, Qasam esa dushmanlarni o'ziga tortadi. Yangi rollar tizimi: tank, jangchi, sehrgar va uzoqdan otuvchilar. Onlayn olamda tank bossni ushlab turadi — do'stlar bilan jamoa bo'lib o'ynang.",
+  },
   {
     version: "2.9.0",
     date: "2026-10-31",

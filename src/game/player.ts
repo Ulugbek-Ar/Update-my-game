@@ -1,4 +1,4 @@
-import { Animator, Body, updatePhysics, isFlashing, clampToRoom } from "./animation";
+import { Animator, Body, ROOM, updatePhysics, isFlashing, clampToRoom } from "./animation";
 import type { Input } from "./input";
 import { renderSprite } from "./sprites";
 import { sfx } from "./audio";
@@ -615,13 +615,7 @@ export class Player implements Body {
     const loaded = !this.gunner || (this.ammo > 0 && !this.reloading);
     // bosib turish -> qo'yib yuborilganda aylana zarba
     if (input.attackHeld()) {
-      if (
-        this.spinCooldown <= 0 &&
-        this.hurtTimer <= 0 &&
-        !this.spinning &&
-        loaded &&
-        !(this.paladin && this.slamT > 0)
-      )
+      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded)
         this.charge += dt;
     } else {
       if (this.charged && this.spinCooldown <= 0) {
@@ -966,6 +960,13 @@ export class Player implements Body {
     return true;
   }
 
+  /** Qarab turgan tomonda xona devori yaqin (faqat xonada; ochiq olamda devor plitkalari boshqa). */
+  private nearWall() {
+    if (this.clamp !== clampToRoom || !this.fx) return false;
+    const room = 40;
+    return this.fx > 0 ? this.x > ROOM.w - room : this.x < room;
+  }
+
   render(ctx: CanvasRenderingContext2D) {
     // teleport paytida sehrgar ko'rinmaydi
     if (this.dashing && this.mage) return;
@@ -977,11 +978,15 @@ export class Player implements Body {
     // Paladin OSMON HUKMI zaryadida qilichni osmonga ko'tarib turadi (porlagan hujum kadri)
     const skyward =
       this.paladin && this.charge > 0.25 && !this.slamming && !this.spinning && !this.dashing;
+    let frame = skyward ? 1 : this.anim.frame;
+    // xona devori yonida SHANG qilichi tik tushib yerga sanchiladi (4-5 kadr) — ekrandan chiqmaydi
+    if (this.paladin && !skyward && this.anim.state === "attack" && frame >= 2 && this.nearWall())
+      frame += 2;
     renderSprite(
       ctx,
       this.hero,
       skyward ? "attack" : this.anim.state,
-      skyward ? 1 : this.anim.frame,
+      frame,
       this.x,
       this.y,
       isFlashing(this) || this.anim.state === "hurt",

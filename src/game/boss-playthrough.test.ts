@@ -4,6 +4,7 @@ import { ForestKing, Queen } from "./boss";
 import { BOSS_WAVE } from "./waves";
 import type { Hero } from "./hero";
 import type { World } from "./waves";
+import { unlockHero } from "./save";
 
 type GI = { startWave(i: number): void };
 
@@ -29,7 +30,8 @@ function playBoss(hero: Hero, world: World) {
     g.enemies = g.enemies.filter((e) => e.kind !== "spider" && e.kind !== "frost");
     const flower = b instanceof ForestKing ? b.flowers.find((f) => f.hp > 0) : undefined;
     const tgt = flower ?? b;
-    const range = p.ranged ? 50 : flower ? 12 : 22;
+    // Paladin SHANG yo'lagi uzun (40 px) — uzoqroqdan uradi
+    const range = p.ranged ? 50 : flower ? 12 : p.paladin ? 30 : 22;
     // nishon bilan bir gorizontal chiziqda, chap tomonda turish
     const want = { x: Math.max(30, tgt.x - range), y: tgt.y };
     const dx = want.x - p.x,
@@ -63,4 +65,16 @@ describe("Har qahramon bilan har boss (bot jangi)", () => {
         expect(r.t).toBeGreaterThan(60);
         expect(r.t).toBeLessThan(160);
       });
+});
+
+describe("Paladin bilan har boss (bot jangi)", () => {
+  for (const world of [1, 2, 3] as World[])
+    it(`paladin vs ${world === 1 ? "Iblis" : world === 2 ? "Qor Malikasi" : "O'rmon Shohi"}`, () => {
+      unlockHero("paladin");
+      const r = playBoss("paladin", world);
+      expect(r.dead).toBe(true);
+      expect([...r.phases].sort()).toEqual([1, 2, 3]);
+      expect(r.t).toBeGreaterThan(60);
+      expect(r.t).toBeLessThan(160);
+    });
 });
