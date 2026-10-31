@@ -13,6 +13,10 @@
  *   Mergan:
  *     baraban = zarar × o'qlar / (o'qlar × zarba_orasi + qayta_o'qlash)
  *
+ *   Paladin:
+ *     SHANG = 2 × zarar / zarba_orasi (0.9 s, tayyorgarlik ichida),
+ *     OSMON HUKMI = 3 × zarar har (spinCd + 1 s zaryad) da — sikl yuqoridagidek
+ *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
@@ -55,6 +59,11 @@ export function heroDps(p: Player) {
   if (p.gunner) {
     const shots = Math.max(1, p.ammoMax);
     return (p.damage * shots) / (shots * p.attackCd + p.reloadTime);
+  }
+  if (p.paladin) {
+    const basic = (2 * p.damage) / p.attackCd;
+    const cycle = (basic * p.spinCd + 3 * p.damage) / (p.spinCd + p.chargeTime);
+    return Math.max(basic, cycle);
   }
   const multi = Math.max(1, p.multishot);
   const basic = (p.damage * multi) / p.attackCd;

@@ -97,12 +97,12 @@ describe("Zaryad halqasi va HUD qahramon rangida", () => {
       const { canvas, ctx, strokes } = recordingCanvas();
       const g = new Game(canvas, h);
       const gi = g as unknown as Internals;
-      g.player.charge = CHARGE_TIME * 0.5;
+      g.player.charge = g.player.chargeTime * 0.5;
       gi.renderSlash(ctx);
       expect(strokes[0]).toBe(withAlpha(HERO_THEME[h].accent, 0.65));
       expect(strokes[0]).toBe(chargeRingColor(h, false, 0));
       seen.add(strokes[0]!);
-      g.player.charge = CHARGE_TIME;
+      g.player.charge = g.player.chargeTime;
       strokes.length = 0;
       gi.renderSlash(ctx);
       const glow = withAlpha(HERO_THEME[h].glow, 0).replace(/,0\)$/, "");

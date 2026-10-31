@@ -505,21 +505,25 @@ function Index() {
                     ? `Ekranning ${ts.leftHanded ? "o'ng" : "chap"} yarmi — yurish`
                     : `${ts.leftHanded ? "O'ngdagi" : "Chapdagi"} joystik — yurish`}
                   <br />
-                  {hero === "mage"
-                    ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                    : hero === "hunter"
-                      ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                      : hero === "gunner"
-                        ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
-                        : "ZARBA — hujum, DASH — sirpanish"}
+                  {hero === "paladin"
+                    ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
+                    : hero === "mage"
+                      ? "SHAR — sehrli shar, TELEPORT — sakrash"
+                      : hero === "hunter"
+                        ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
+                        : hero === "gunner"
+                          ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
+                          : "ZARBA — hujum, DASH — sirpanish"}
                   <br />
-                  {hero === "mage"
-                    ? "SHAR ni bosib turing — sehrli halqa"
-                    : hero === "hunter"
-                      ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                      : hero === "gunner"
-                        ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
-                        : "ZARBA ni bosib turing — aylana zarba"}
+                  {hero === "paladin"
+                    ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
+                    : hero === "mage"
+                      ? "SHAR ni bosib turing — sehrli halqa"
+                      : hero === "hunter"
+                        ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
+                        : hero === "gunner"
+                          ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
+                          : "ZARBA ni bosib turing — aylana zarba"}
                 </>
               ) : (
                 <>
@@ -527,31 +531,37 @@ function Index() {
                   {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} — yurish
                   <br />
                   {actionKeys(kb, "attack")} —{" "}
-                  {hero === "mage"
-                    ? "sehrli shar"
-                    : hero === "hunter"
-                      ? "o'q"
-                      : hero === "gunner"
-                        ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
-                        : "hujum"}
+                  {hero === "paladin"
+                    ? "SHANG (yo'lak bo'ylab zarba)"
+                    : hero === "mage"
+                      ? "sehrli shar"
+                      : hero === "hunter"
+                        ? "o'q"
+                        : hero === "gunner"
+                          ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
+                          : "hujum"}
                   <br />
                   {actionKey(kb, "attack")} ni bosib turish —{" "}
-                  {hero === "mage"
-                    ? "sehrli halqa"
-                    : hero === "hunter"
-                      ? "teshuvchi o'q"
-                      : hero === "gunner"
-                        ? "barabanni bo'shatish"
-                        : "aylana zarba"}
+                  {hero === "paladin"
+                    ? "osmon hukmi (gangitadi)"
+                    : hero === "mage"
+                      ? "sehrli halqa"
+                      : hero === "hunter"
+                        ? "teshuvchi o'q"
+                        : hero === "gunner"
+                          ? "barabanni bo'shatish"
+                          : "aylana zarba"}
                   <br />
                   {actionKeys(kb, "dash")} —{" "}
-                  {hero === "mage"
-                    ? "teleport"
-                    : hero === "hunter"
-                      ? "orqaga sakrash, bosib turish — tuzoq"
-                      : hero === "gunner"
-                        ? "sirpanish, bosib turish — tutun bombasi"
-                        : "dash"}
+                  {hero === "paladin"
+                    ? "muqaddas hamla, bosib turish — qasam"
+                    : hero === "mage"
+                      ? "teleport"
+                      : hero === "hunter"
+                        ? "orqaga sakrash, bosib turish — tuzoq"
+                        : hero === "gunner"
+                          ? "sirpanish, bosib turish — tutun bombasi"
+                          : "dash"}
                   <br />
                   {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
                 </>

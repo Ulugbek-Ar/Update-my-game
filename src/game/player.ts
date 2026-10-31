@@ -54,6 +54,30 @@ export const SLIDE_AMMO = 2;
 /** Tutun bombasi: Shift'ni bosib turish (Ovchi tuzog'idek), tutun ichida shuncha soniya ko'rinmaydi */
 export const SMOKE_CD = 6;
 export const SMOKE_HIDE = 2;
+/** Paladin (tank): 8 yurak — eng ko'p, tezlik 76 — eng sekin, itarilish 50% kam */
+export const PALADIN_MAX_HP = 8;
+export const PALADIN_SPEED = 76;
+export const PALADIN_KNOCK = 0.5;
+/** SHANG: qilichni ko'tarish (tayyorgarlik), so'ng yo'lak bo'ylab zarba; qayta tiklanish bosishdan */
+export const SHANG_WINDUP = 0.4;
+export const SHANG_CD = 0.9;
+export const SHANG_TIME = 0.22;
+/** Zarba yo'lagi: uzunligi reach × 2 (Ritsarniki reach + reach/4 ≈ 20 px — Paladinda 40 px), eni */
+export const PALADIN_REACH = 20;
+export const SHANG_W = 18;
+/** OSMON HUKMI: 1s zaryad, 360° oltin zarb to'lqini (3x zarar), dushmanlar 1s gangiydi */
+export const SKY_CHARGE = 1;
+export const SKY_CD = 4;
+export const SKY_RADIUS = 48;
+export const SKY_STUN = 1;
+/** MUQADDAS HAMLA: qisqa og'ir yugurish, yo'lidagilarni itaradi (1 zarar) */
+export const HAMLA_TIME = 0.2;
+export const HAMLA_SPEED = 230;
+export const HAMLA_DMG = 1;
+/** QASAM: shuncha soniya atrofdagi hamma Paladinni nishonga oladi, zarar 50% kam */
+export const VOW_TIME = 4;
+export const VOW_CD = 10;
+export const VOW_RADIUS = 80;
 /** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
 export const ENCASE_MAX = 3.5;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
@@ -199,6 +223,25 @@ export class Player implements Body {
   smokeDenied = false;
   /** Tutun ichida yashiringan vaqt (dushmanlar ko'rmaydi; tutundan chiqsa Game nollaydi) */
   hideT = 0;
+  /** Paladin: SHANG tayyorgarligi qolgan vaqti (qilich boshi uzra), zarba tushgan kadr (Game effekt) */
+  slamT = 0;
+  slammed = false;
+  /** OSMON HUKMI yerga tushgan kadr (Game: to'lqin, gangitish) */
+  judged = false;
+  /** Kuchli zarba zaryadi shuncha bosib turilganda to'ladi (Paladinda 1s) */
+  chargeTime = CHARGE_TIME;
+  /** QASAM: qolgan vaqt, qayta tiklanish, shu kadrda boshlandi, "hali tayyor emas" */
+  vowT = 0;
+  vowCd = VOW_CD;
+  vowCooldown = 0;
+  vowed = false;
+  vowDenied = false;
+  /** QASAMdagi yarim zarar hisobi: 0.5 lar yig'ilib butun yurak bo'lganda olinadi */
+  private halfDmg = 0;
+  /** Zarba zirhda (yoki QASAMda) to'liq so'ndi — Game "BLOK" yozuvini chiqaradi */
+  absorbed = false;
+  /** HAMLA paytida allaqachon itarilganlar */
+  rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
   private shiftHold = -1;
   /** Eng yaqin dushman (Game belgilaydi) — orqaga sakrash undan uzoqlashadi */
@@ -233,6 +276,17 @@ export class Player implements Body {
       this.boltSpeed = 210;
       this.boltSize = 5;
     }
+    if (hero === "paladin") {
+      this.hp = this.maxHp = PALADIN_MAX_HP;
+      this.speed = PALADIN_SPEED;
+      this.attackCd = SHANG_CD;
+      this.dashCd = 1;
+      this.reach = PALADIN_REACH;
+      this.spinCd = SKY_CD;
+      this.chargeTime = SKY_CHARGE;
+      // hujum kadrlari (4 ta) qo'lda boshqariladi: ko'tarish, porlash, urish, qaytarish
+      this.anim.defs.attack = { frames: 4, frameTime: 99, loop: false };
+    }
     if (hero === "gunner") {
       this.hp = this.maxHp = GUNNER_MAX_HP;
       this.speed = GUNNER_SPEED;
@@ -256,6 +310,20 @@ export class Player implements Body {
     return this.hero === "gunner";
   }
 
+  get paladin() {
+    return this.hero === "paladin";
+  }
+
+  /** QASAM faol: atrofdagi dushmanlar Paladinni nishonga oladi, zarar yarmiga kamayadi */
+  get vowing() {
+    return this.vowT > 0;
+  }
+
+  /** SHANG qilich ko'tarilmoqda yoki zarba yo'lagi faol */
+  get slamming() {
+    return this.slamT > 0 || (this.paladin && this.attackTimer > 0);
+  }
+
   /** Mergan qayta o'qlamoqda */
   get reloading() {
     return this.reloadT > 0;
@@ -268,7 +336,7 @@ export class Player implements Body {
 
   /** Masofadan uradigan qahramon (Sehrgar shari yoki Ovchi o'qi) */
   get ranged() {
-    return this.hero !== "knight";
+    return this.hero !== "knight" && this.hero !== "paladin";
   }
 
   get dead() {
@@ -296,17 +364,36 @@ export class Player implements Body {
 
   /** Kuchli zarba tayyor va tugma yetarlicha bosib turilgan. */
   get charged() {
-    return this.charge >= CHARGE_TIME;
+    return this.charge >= this.chargeTime;
   }
 
-  /** Joriy zarba zarari: aylana zarba 2x. */
+  /** Joriy zarba zarari: aylana zarba 2x; Paladinda SHANG 2x, OSMON HUKMI 3x. */
   get hitDamage() {
+    if (this.paladin) return this.damage * (this.spinning ? 3 : 2);
     return this.spinning ? this.damage * 2 : this.damage;
   }
 
   /** Zarba tegsa true qaytaradi. Dash paytida va himoya dumida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
     if (this.invuln > 0 || this.dead || this.evading) return false;
+    if (this.paladin) {
+      // og'ir zirh: katta (2+ yurakli) zarba bir yurakka kamayadi; QASAMda yana yarmi
+      if (dmg >= 2) dmg -= 1;
+      if (this.vowing) {
+        this.halfDmg += dmg / 2;
+        dmg = Math.floor(this.halfDmg);
+        this.halfDmg -= dmg;
+      }
+      force *= PALADIN_KNOCK;
+      if (dmg <= 0) {
+        // zirhga urildi: zarar yo'q, qisqa daxlsizlik
+        this.absorbed = true;
+        this.invuln = INVULN / 2;
+        this.flash = 0.15;
+        sfx.block();
+        return true;
+      }
+    }
     this.hp -= dmg;
     if (this.hp <= 0) sfx.death();
     else sfx.hurt();
@@ -317,10 +404,14 @@ export class Player implements Body {
     const l = Math.hypot(dx, dy) || 1;
     this.vx = (dx / l) * force;
     this.vy = (dy / l) * force;
-    this.attackTimer = 0;
-    this.charge = 0;
+    // Paladin zarba paytida to'xtamaydi (og'ir zirh): SHANG va OSMON HUKMI davom etadi
+    const steady = this.paladin && (this.slamming || this.spinning) && this.hp > 0;
+    if (!steady) {
+      this.attackTimer = 0;
+      this.charge = 0;
+    }
     if (this.hp <= 0) this.anim.set("death", true);
-    else {
+    else if (!steady) {
       this.hurtTimer = HURT_TIME;
       this.anim.set("hurt", true);
     }
@@ -357,6 +448,7 @@ export class Player implements Body {
 
   /** Hujum zonasi (faqat hujum vaqtida). */
   attackBox(): Body | null {
+    if (this.paladin) return this.paladinBox();
     // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
     if (this.spinning && !this.hunter && !this.gunner)
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
@@ -364,6 +456,25 @@ export class Player implements Body {
     if (this.attackTimer <= 0 || this.ranged) return null;
     const off = this.reach * 0.75;
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
+  }
+
+  /**
+   * Paladin zarba maydoni: OSMON HUKMI — atrofdagi keng doira (kvadrat), SHANG — qarab turgan tomonga
+   * uzun yo'lak (uzunligi reach × 2, eni SHANG_W): tanadan boshlab qilich uchigacha.
+   */
+  private paladinBox(): Body | null {
+    if (this.spinning) return { x: this.x, y: this.y, size: SKY_RADIUS * 2 } as Body;
+    if (this.attackTimer <= 0) return null;
+    const len = this.reach * 2;
+    const c = len / 2 + 2;
+    const horiz = this.fx !== 0;
+    return {
+      x: this.x + this.fx * c,
+      y: this.y + this.fy * c,
+      size: SHANG_W,
+      w: horiz ? len : SHANG_W,
+      h: horiz ? SHANG_W : len,
+    } as unknown as Body;
   }
 
   update(dt: number, input: PlayerInput) {
@@ -381,6 +492,8 @@ export class Player implements Body {
     this.spinCooldown -= dt;
     this.trapCooldown -= dt;
     this.smokeCooldown -= dt;
+    this.vowCooldown -= dt;
+    if (this.vowT > 0) this.vowT -= dt;
     if (this.hideT > 0) this.hideT -= dt;
     if (this.gunner) this.updateGun(dt, input);
     if (this.chill > 0) this.chill -= dt;
@@ -388,6 +501,7 @@ export class Player implements Body {
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.spinTimer > 0) this.spinTimer -= dt;
+    if (this.paladin) this.updateSlam(dt);
 
     if (this.ice > 0) {
       // muz qamoq: har bosish (hujum yoki dash, telefonda ham) muzni yoradi
@@ -418,7 +532,13 @@ export class Player implements Body {
       // Mergan sirpanish oxirida barabanga o'q soladi
       if (this.dashTimer <= 0 && this.gunner) this.slideReload();
       if (this.mage) return;
-      const sp = this.hunter ? JUMP_SPEED : this.gunner ? SLIDE_SPEED : DASH_SPEED;
+      const sp = this.hunter
+        ? JUMP_SPEED
+        : this.gunner
+          ? SLIDE_SPEED
+          : this.paladin
+            ? HAMLA_SPEED
+            : DASH_SPEED;
       this.x += this.dashX * sp * dt;
       this.y += this.dashY * sp * dt;
       this.clamp(this);
@@ -427,12 +547,15 @@ export class Player implements Body {
 
     // Ovchi: Shift'ni qisqa bosish — orqaga sakrash, bosib turish — tuzoq;
     // Mergan: qisqa bosish — sirpanish, bosib turish — tutun bombasi
-    if ((this.hunter || this.gunner) && this.updateShift(dt, wantDash, input, x, y)) return;
+    // Paladin: qisqa bosish — MUQADDAS HAMLA, bosib turish — QASAM
+    if ((this.hunter || this.gunner || this.paladin) && this.updateShift(dt, wantDash, input, x, y))
+      return;
 
     if (
       wantDash &&
       !this.hunter &&
       !this.gunner &&
+      !this.paladin &&
       this.dashCharges > 0 &&
       this.hurtTimer <= 0 &&
       this.snare <= 0
@@ -470,7 +593,13 @@ export class Player implements Body {
     const loaded = !this.gunner || (this.ammo > 0 && !this.reloading);
     // bosib turish -> qo'yib yuborilganda aylana zarba
     if (input.attackHeld()) {
-      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded)
+      if (
+        this.spinCooldown <= 0 &&
+        this.hurtTimer <= 0 &&
+        !this.spinning &&
+        loaded &&
+        !(this.paladin && this.slamT > 0)
+      )
         this.charge += dt;
     } else {
       if (this.charged && this.spinCooldown <= 0) {
@@ -479,7 +608,12 @@ export class Player implements Body {
         this.attackTimer = 0;
         this.hitSet.clear();
         if (this.gunner) sfx.cylinder();
-        else sfx.spin();
+        else if (this.paladin) {
+          // OSMON HUKMI: qilich yerga tushdi — to'lqin va gangitish (Game)
+          sfx.judgment();
+          this.judged = true;
+          this.slamT = 0;
+        } else sfx.spin();
         this.anim.set("attack", true);
         // Ovchi: kuchaytirilgan o'q — hamma dushmanni teshib o'tadi, 2x zarar
         if (this.hunter) this.shoot(true);
@@ -489,7 +623,22 @@ export class Player implements Body {
       this.charge = 0;
     }
 
-    if (wantAttack && this.cooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded) {
+    if (wantAttack && this.paladin) {
+      // SHANG: avval qilichni boshi uzra ko'taradi (tayyorgarlik), zarba updateSlam'da tushadi
+      if (this.cooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && !this.slamming) {
+        this.slamT = SHANG_WINDUP;
+        this.cooldown = Math.max(this.attackCd, SHANG_WINDUP + SHANG_TIME);
+        this.hitSet.clear();
+        sfx.heave();
+        this.anim.set("attack", true);
+      }
+    } else if (
+      wantAttack &&
+      this.cooldown <= 0 &&
+      this.hurtTimer <= 0 &&
+      !this.spinning &&
+      loaded
+    ) {
       this.attackTimer = ATTACK_TIME;
       this.cooldown = this.attackCd;
       this.hitSet.clear();
@@ -502,7 +651,11 @@ export class Player implements Body {
     if (wantAttack && this.gunner && this.ammo <= 0 && !this.reloading) this.startReload();
 
     // Ovchi kuchli o'qdan keyin joyida turmaydi — o'q uchib ketadi
-    const busy = this.attackTimer > 0 || this.hurtTimer > 0 || (this.spinning && !this.hunter);
+    const busy =
+      this.attackTimer > 0 ||
+      this.hurtTimer > 0 ||
+      this.slamT > 0 ||
+      (this.spinning && !this.hunter);
     if (!busy) {
       if ((x || y) && this.snare <= 0) {
         const l = Math.max(1, Math.hypot(x, y));
@@ -669,6 +822,7 @@ export class Player implements Body {
       if (this.shiftHold >= TRAP_HOLD) {
         this.shiftHold = -2;
         if (this.gunner) this.throwSmoke();
+        else if (this.paladin) this.swearVow();
         else if (this.trapCooldown <= 0) {
           this.traps.push({ x: this.x, y: this.y + 4 });
           this.trapCooldown = this.trapCd;
@@ -679,7 +833,72 @@ export class Player implements Body {
     }
     // qo'yib yuborildi — orqaga sakrash (Merganda — sirpanish)
     this.shiftHold = -1;
+    if (this.paladin) return this.hamla(ax, ay);
     return this.gunner ? this.slide(ax, ay) : this.backJump();
+  }
+
+  /**
+   * Paladin kadrlari va SHANG: tayyorgarlik (0 — ko'tarish, 1 — boshi uzra porlaydi) tugaganda zarba
+   * tushadi (2 — urish, 3 — qaytarish). OSMON HUKMI zaryadida qilich osmonga ko'tarilgan (1-kadr).
+   */
+  private updateSlam(dt: number) {
+    if (this.slamT > 0) {
+      this.slamT -= dt;
+      if (this.slamT <= 0) {
+        this.slamT = 0;
+        this.attackTimer = SHANG_TIME;
+        this.hitSet.clear();
+        this.slammed = true;
+        sfx.shang();
+      }
+    }
+    if (this.anim.state !== "attack") return;
+    const a = this.anim;
+    if (this.slamT > 0) a.frame = this.slamT > SHANG_WINDUP / 2 ? 0 : 1;
+    else if (this.attackTimer > 0 || this.spinning)
+      a.frame =
+        (this.spinning ? this.spinTimer / SPIN_TIME : this.attackTimer / SHANG_TIME) > 0.45 ? 2 : 3;
+    else {
+      a.frame = 3;
+      a.done = true;
+    }
+  }
+
+  /** MUQADDAS HAMLA: og'ir oldinga yugurish (dashdek daxlsiz, oxirida himoya dumi). */
+  private hamla(ax: number, ay: number) {
+    if (this.dashCharges <= 0 || this.hurtTimer > 0 || this.snare > 0 || this.slamT > 0)
+      return false;
+    let dx = ax,
+      dy = ay;
+    if (!dx && !dy) {
+      dx = this.fx;
+      dy = this.fy;
+    }
+    const l = Math.hypot(dx, dy) || 1;
+    this.dashX = dx / l;
+    this.dashY = dy / l;
+    this.dashTimer = HAMLA_TIME;
+    this.dashCharges--;
+    this.dashCooldown = this.dashCd;
+    this.attackTimer = 0;
+    this.charge = 0;
+    this.rammed.clear();
+    sfx.dash();
+    this.anim.set("walk");
+    return true;
+  }
+
+  /** QASAM: 4s davomida atrofdagilar Paladinni nishonga oladi, zarar 50% kam (10s qayta tiklanadi). */
+  private swearVow() {
+    if (this.vowCooldown > 0) {
+      this.vowDenied = true;
+      return;
+    }
+    this.vowT = VOW_TIME;
+    this.vowCooldown = this.vowCd;
+    this.halfDmg = 0;
+    this.vowed = true;
+    sfx.vow();
   }
 
   private backJump() {
@@ -716,11 +935,14 @@ export class Player implements Body {
     else if (this.guarded) ctx.globalAlpha = 0.6;
     // tutunda yashiringan Mergan: zo'rg'a ko'rinadi
     else if (this.hidden) ctx.globalAlpha = 0.35;
+    // Paladin OSMON HUKMI zaryadida qilichni osmonga ko'tarib turadi (porlagan hujum kadri)
+    const skyward =
+      this.paladin && this.charge > 0.25 && !this.slamming && !this.spinning && !this.dashing;
     renderSprite(
       ctx,
       this.hero,
-      this.anim.state,
-      this.anim.frame,
+      skyward ? "attack" : this.anim.state,
+      skyward ? 1 : this.anim.frame,
       this.x,
       this.y,
       isFlashing(this) || this.anim.state === "hurt",

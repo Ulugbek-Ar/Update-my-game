@@ -310,6 +310,32 @@ class SoundFX {
     this.tone(2500, 0.1, "triangle", 0.04, 3600);
   }
 
+  /** Paladin SHANG: og'ir metall zarba — past "dum" va baland jarangli "shang" */
+  shang() {
+    this.noise(0.18, 0.09, 1800);
+    this.tone(110, 0.22, "square", 0.07, 45);
+    this.tone(2600, 0.32, "triangle", 0.05, 1900);
+    this.tone(3900, 0.22, "triangle", 0.03, 3100, 0.02);
+  }
+
+  /** SHANG tayyorgarligi: qilich ko'tarilmoqda — ko'tariluvchi "viuu" */
+  heave() {
+    this.tone(260, 0.35, "triangle", 0.035, 720);
+  }
+
+  /** OSMON HUKMI: yerga urish — chuqur gumburlash va jarang */
+  judgment() {
+    this.noise(0.5, 0.1, 900);
+    this.tone(70, 0.6, "square", 0.08, 30);
+    this.tone(1400, 0.5, "triangle", 0.04, 2200, 0.05);
+  }
+
+  /** QASAM: tantanali ikki nota */
+  vow() {
+    this.tone(523, 0.18, "triangle", 0.05);
+    this.tone(784, 0.3, "triangle", 0.05, undefined, 0.15);
+  }
+
   /** Qisqa "vush" — hujum */
   attack() {
     this.tone(700, 0.09, "square", 0.06, 180);

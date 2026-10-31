@@ -378,7 +378,9 @@ export function heroBadge(
         ? ["#a3192a", "#2b1c2e", "#d9d4e0"]
         : hero === "gunner"
           ? ["#d9a441", "#8a5a2a", "#ffe2a0"]
-          : ["#4f8a3a", "#1f4a24", "#c9a26b"];
+          : hero === "paladin"
+            ? ["#ff8c1a", "#7a3d12", "#ffd27a"]
+            : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {
     px(c, main, x + 1, y, 5, 7);
@@ -392,6 +394,12 @@ export function heroBadge(
     px(c, dark, x + 1, y + 3, 5, 1);
     px(c, hi, x + 3, y + 3, 1, 1);
     px(c, dark, x + 3, y + 1, 1, 1);
+  } else if (hero === "paladin") {
+    // yopiq dubulg'a: ko'z tirqishi va oltin toj-chiziq
+    px(c, main, x + 1, y, 5, 7);
+    px(c, main, x, y + 1, 7, 5);
+    px(c, dark, x + 1, y + 3, 5, 1);
+    px(c, hi, x + 3, y, 1, 7);
   } else if (hero === "mage") {
     px(c, dark, x, y + 5, 7, 2);
     px(c, dark, x + 1, y + 3, 5, 2);

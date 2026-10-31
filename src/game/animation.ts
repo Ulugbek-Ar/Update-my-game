@@ -56,6 +56,9 @@ export interface Body {
   heavy?: boolean;
   /** Arvoh (Muz ruhi): devorlar ustidan ham uchadi, faqat xona chegarasi bilan cheklanadi */
   ghost?: boolean;
+  /** To'g'ri to'rtburchak zarba maydoni (Paladin SHANG yo'lagi): eni va bo'yi; bo'lmasa — size x size */
+  w?: number;
+  h?: number;
 }
 
 export const ROOM = { w: 320, h: 240, wall: 16 };
@@ -92,7 +95,10 @@ export function clampToRoom(b: Body) {
 }
 
 export function overlap(a: Body, b: Body) {
-  return Math.abs(a.x - b.x) < (a.size + b.size) / 2 && Math.abs(a.y - b.y) < (a.size + b.size) / 2;
+  return (
+    Math.abs(a.x - b.x) < ((a.w ?? a.size) + (b.w ?? b.size)) / 2 &&
+    Math.abs(a.y - b.y) < ((a.h ?? a.size) + (b.h ?? b.size)) / 2
+  );
 }
 
 /** Ikki tanani bir-biridan itaradi (ustma-ust yig'ilib qolmasligi uchun). ratio=1 — faqat a suriladi. */

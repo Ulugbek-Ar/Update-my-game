@@ -223,6 +223,8 @@ describe("Boss fazalari", () => {
     p.x = 260;
     p.y = 100;
     b.slamTimer = slow.slamTimer = 99;
+    // 3 daqiqalik siklda tasodifan zarba tayyorgarligida qolgan bo'lsa — joyida turadi (test beqaror bo'lmasin)
+    b.windup = slow.windup = 0;
     b.update(0.1, p as Target);
     slow.update(0.1, p as Target);
     expect(b.x - 100).toBeGreaterThan(slow.x - 100);

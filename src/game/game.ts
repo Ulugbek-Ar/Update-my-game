@@ -40,7 +40,27 @@ import {
   isChestWave,
   type Upgrade,
 } from "./waves";
-import { CHARGE_TIME, SPIN_TIME, type Bolt, type Target } from "./player";
+import {
+  HAMLA_DMG,
+  VOW_TIME,
+  SKY_RADIUS,
+  SKY_STUN,
+  SPIN_TIME,
+  VOW_RADIUS,
+  type Bolt,
+  type Target,
+} from "./player";
+import {
+  CRACK_LIFE,
+  QUAKE_LIFE,
+  renderCrack,
+  renderQuake,
+  renderSkyColumn,
+  renderVowAura,
+  renderWindupSparks,
+  type Crack,
+  type Quake,
+} from "./paladinFx";
 import { HERO_THEME, bestKeys, chargeRingColor, hudBarColors, withAlpha, type Hero } from "./hero";
 import { loadPlayableHero, playableHero } from "./save";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
@@ -376,6 +396,11 @@ export class Game {
   /** Mergan tutun bombalari va yashiringan joyi (dushmanlar shu nuqtani nishonga oladi) */
   smokes: Smoke[] = [];
   hideAt: { x: number; y: number } | null = null;
+  /** Paladin: SHANG yoriqlari va OSMON HUKMI zarb to'lqinlari (faqat chizish) */
+  cracks: Crack[] = [];
+  quakes: Quake[] = [];
+  /** Paladin: shu SHANG zarbasida o'ldirilganlar ("SHANG!" yutug'i) */
+  private slamKills = { id: 0, kills: 0 };
   /** O'rmon Shohi 3-fazasidagi qorong'ilik (0..1, asta kuchayadi) */
   darkness = 0;
   /** Boss kirish sahnasi qolgan vaqti (kamera yaqinlashadi, nom kartochkasi) */
@@ -515,6 +540,8 @@ export class Game {
     this.traps = [];
     this.smokes = [];
     this.hideAt = null;
+    this.cracks = [];
+    this.quakes = [];
     this.darkness = 0;
     this.drops = [];
     this.coins = [];
@@ -1313,7 +1340,7 @@ export class Game {
   }
 
   /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
-  private damageTarget(t: Enemy | Boss, dmg: number, knock = true) {
+  private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
     const p = this.player;
     if (t instanceof Boss) {
       // boss zarbadan to'xtamaydi; faza almashinuvida daxlsiz
@@ -1324,7 +1351,7 @@ export class Game {
         }
         return;
       }
-    } else applyHit(t, dmg, p.x, p.y, knock ? 220 : 0);
+    } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
     else {
@@ -1463,6 +1490,7 @@ export class Game {
       this.fx.text(p.x, p.y - 16, `TUTUN ${Math.ceil(p.smokeCooldown)}s`, "#b8a8cc");
     }
     this.updateSmokes(dt);
+    if (p.paladin) this.updatePaladin(dt);
     if (this.hints.length) {
       if (p.attackTimer > 0) this.doneHint("attack");
       if (p.spinning) this.doneHint("spin");
@@ -1700,7 +1728,8 @@ export class Game {
             continue;
           }
           sfx.hit();
-          this.freeze = 0.045;
+          // Paladin zarbasi og'irroq: uzunroq hit-stop
+          this.freeze = p.paladin ? 0.07 : 0.045;
           this.fx.addShake(p.spinning ? 0.14 : 0.08);
           this.fx.burst(
             t.x,
@@ -1710,7 +1739,16 @@ export class Game {
             60,
             1,
           );
-          this.damageTarget(t, blocked ? 1 : p.hitDamage);
+          // Paladin: SHANG kuchli itaradi, OSMON HUKMI gangitadi (boss — sekinlashadi)
+          const heavy = p.paladin;
+          if (heavy && p.spinning && !t.dead) {
+            if (t instanceof Enemy) t.stun = Math.max(t.stun, SKY_STUN);
+            else t.slow = Math.max(t.slow, SKY_STUN);
+            this.fx.text(t.x, t.y - 14, "GANGIDI", "#ffd27a");
+          }
+          const wasAlive = !t.dead;
+          this.damageTarget(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
+          if (heavy && !p.spinning && wasAlive && t.dead && t instanceof Enemy) this.slamKill();
         }
       }
       const part = boss?.active ? boss.partAt(box) : null;
@@ -1846,6 +1884,101 @@ export class Game {
         }
       } else this.clearWave();
     }
+  }
+
+  /**
+   * Paladin: SHANG tayyorgarligidagi uchqunlar, zarba tushganda yoriq va zarb to'lqini, OSMON HUKMI
+   * to'lqini, QASAM aurasi va MUQADDAS HAMLA yo'lidagilarni itarish.
+   */
+  private updatePaladin(dt: number) {
+    const p = this.player;
+    const accent = HERO_THEME.paladin.accent;
+    for (const k of this.cracks) k.life -= dt;
+    this.cracks = this.cracks.filter((k) => k.life > 0);
+    for (const q of this.quakes) q.life -= dt;
+    this.quakes = this.quakes.filter((q) => q.life > 0);
+    if (p.slamT > 0 && Math.random() < 0.6) {
+      // qilich boshi uzra porlaydi: to'q sariq uchqunlar
+      this.fx.burst(p.x + (Math.random() - 0.5) * 10, p.y - 26, accent, 1, 40, 1);
+    }
+    if (p.slammed) {
+      p.slammed = false;
+      this.slamKills = { id: this.slamKills.id + 1, kills: 0 };
+      const len = p.reach * 2;
+      const tx = p.x + p.fx * (len + 2),
+        ty = p.y + p.fy * (len + 2) + 6;
+      this.cracks.push({
+        x: p.x + p.fx * 8,
+        y: p.y + 6 + p.fy * 8,
+        fx: p.fx,
+        fy: p.fy,
+        len,
+        life: CRACK_LIFE,
+        seed: Math.random() * 1000,
+      });
+      this.quakes.push({ x: tx, y: ty, r: 18, life: QUAKE_LIFE * 0.6, max: QUAKE_LIFE * 0.6 });
+      for (let i = 0; i <= 4; i++) {
+        const k = i / 4;
+        this.fx.burst(
+          p.x + p.fx * len * k,
+          p.y + 6 + p.fy * len * k,
+          i % 2 ? "#ffd27a" : accent,
+          3,
+          70,
+          1,
+        );
+      }
+      this.fx.burst(tx, ty, "#a8500f", 6, 50, 2);
+      this.fx.addShake(0.3);
+      this.freeze = Math.max(this.freeze, 0.05);
+      this.fx.text(p.x + p.fx * 18, p.y - 22, "SHANG!", "#ffd27a");
+    }
+    if (p.judged) {
+      p.judged = false;
+      this.quakes.push({ x: p.x, y: p.y + 4, r: SKY_RADIUS, life: QUAKE_LIFE, max: QUAKE_LIFE });
+      this.fx.burst(p.x, p.y, "#ffd27a", 24, 120, 2);
+      this.fx.burst(p.x, p.y, accent, 14, 80, 2);
+      this.fx.addShake(0.45);
+      this.freeze = Math.max(this.freeze, 0.06);
+      this.fx.text(p.x, p.y - 26, "OSMON HUKMI!", "#ffd27a");
+    }
+    if (p.vowed) {
+      p.vowed = false;
+      this.fx.burst(p.x, p.y, accent, 16, 90, 2);
+      this.fx.text(p.x, p.y - 22, "QASAM!", accent);
+      // atrofdagilar Paladinga qarab buriladi (bir kishilik o'yinda ham nishon — Paladin)
+      for (const e of this.enemies)
+        if (e.active && Math.hypot(e.x - p.x, e.y - p.y) < VOW_RADIUS)
+          this.fx.text(e.x, e.y - 14, "!", accent);
+    }
+    if (p.vowDenied) {
+      p.vowDenied = false;
+      this.fx.text(p.x, p.y - 16, `QASAM ${Math.ceil(p.vowCooldown)}s`, "#b8a8cc");
+    }
+    if (p.absorbed) {
+      p.absorbed = false;
+      this.fx.burst(p.x, p.y - 4, "#ffd27a", 6, 60, 1);
+      this.fx.text(p.x, p.y - 18, "BLOK", "#ffd27a");
+    }
+    if (p.dashing) {
+      // MUQADDAS HAMLA: yo'lidagi dushmanlar 1 zarar bilan itariladi
+      const ram = { x: p.x + p.dashX * 4, y: p.y + p.dashY * 4, size: p.size + 8 } as Body;
+      const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+      if (this.boss?.active) targets.push(this.boss);
+      for (const t of targets) {
+        if (p.rammed.has(t) || !overlap(ram, t)) continue;
+        p.rammed.add(t);
+        sfx.hit();
+        this.fx.addShake(0.1);
+        this.fx.burst(t.x, t.y, accent, 6, 70, 1);
+        this.damageTarget(t, HAMLA_DMG * p.damage, 300);
+      }
+    }
+  }
+
+  /** SHANG zarbasi dushmanni o'ldirdi: bitta zarbada 4 ta — "SHANG!" yutug'i. */
+  private slamKill() {
+    this.slamKills.kills++;
   }
 
   /**
@@ -2399,7 +2532,7 @@ export class Game {
     if (p.dead) return;
     // kuchli zarba yig'ilishi: o'yinchi atrofida to'lib boruvchi halqa
     if (p.charge > 0.12) {
-      const k = Math.min(1, p.charge / CHARGE_TIME);
+      const k = Math.min(1, p.charge / p.chargeTime);
       const full = k >= 1;
       c.strokeStyle = chargeRingColor(this.hero, full, this.time);
       c.lineWidth = full ? 2 : 1;
@@ -2409,6 +2542,8 @@ export class Game {
     }
     // Ovchining kuchli o'qi va Merganning yelpig'ich o'qlari uchib ketadi — atrofda halqa yo'q
     if (p.spinning && (p.hunter || p.gunner)) return;
+    // Paladin: OSMON HUKMI to'lqini va SHANG yo'lagi alohida chiziladi (paladinFx)
+    if (p.paladin) return;
     if (p.spinning && p.mage) {
       // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
@@ -2521,6 +2656,11 @@ export class Game {
     for (const w of this.webs) if (!w.flying) this.renderWeb(c, w);
     for (const t of this.traps) if (t.snapT < 0) this.renderTrap(c, t);
     for (const e of this.enemies) e.renderFloor(c);
+    // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
+    for (const k of this.cracks) renderCrack(c, k);
+    for (const q of this.quakes) renderQuake(c, q);
+    if (this.player.paladin && this.player.vowing && !this.player.dead)
+      renderVowAura(c, this.player, this.time);
 
     // chuqurlik bo'yicha tartib
     const p = this.player;
@@ -2575,6 +2715,10 @@ export class Game {
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
 
     this.renderSlash(c);
+    if (this.player.paladin && !this.player.dead) {
+      renderSkyColumn(c, this.player, this.time);
+      renderWindupSparks(c, this.player, this.time);
+    }
     for (const s of this.shots) {
       if (s.arrow) {
         // qora suyak o'qi: qora tayoq, qizil uchi, kulrang pat
@@ -3022,6 +3166,21 @@ export class Game {
       }
     }
     if (p.gunner) this.renderGunHud(p);
+    if (p.paladin) {
+      // QASAM: faol bo'lsa — qolgan vaqt (yorqin), aks holda qayta tiklanish
+      const t = HERO_THEME.paladin;
+      const vk = p.vowing
+        ? p.vowT / VOW_TIME
+        : Math.max(0, Math.min(1, 1 - p.vowCooldown / p.vowCd));
+      px(c, "#000", 4, 21, 32, 3);
+      px(c, p.vowing ? t.glow : vk >= 1 ? t.accent : t.accentDark, 5, 22, 30 * vk, 1);
+      if (vk >= 1 || p.vowing) {
+        // kichik quyosh belgisi
+        px(c, t.accent, 39, 20, 3, 3);
+        px(c, t.glow, 40, 19, 1, 5);
+        px(c, t.glow, 38, 21, 5, 1);
+      }
+    }
 
     this.text(
       isBossWave(this.wave)
@@ -3138,7 +3297,8 @@ export class Game {
 
   /** Pauzadagi boshqaruv qatori: telefonda — tugma nomlari, kompyuterda — belgilangan tugmalar. */
   private controlsLine() {
-    const { mage, hunter, gunner } = this.player;
+    const { mage, hunter, gunner, paladin } = this.player;
+    if (this.touch && paladin) return "Joystik yurish · SHANG zarba · HAMLA / qasam";
     if (this.touch)
       return mage
         ? "Joystik yurish · SHAR otish · TELEPORT"
@@ -3151,6 +3311,7 @@ export class Game {
     const M = moveLabel(k),
       A = actionKey(k, "attack"),
       D = actionKey(k, "dash");
+    if (paladin) return `${M} yurish · ${A} SHANG · ${D} hamla/qasam`;
     return mage
       ? `${M} yurish · ${A} shar · ${D} teleport`
       : hunter
@@ -3162,7 +3323,8 @@ export class Game {
 
   /** Qobiliyat nomi: dash / teleport / orqaga sakrash / sirpanish */
   private dashName() {
-    const { mage, hunter, gunner } = this.player;
+    const { mage, hunter, gunner, paladin } = this.player;
+    if (paladin) return "muqaddas hamla";
     return mage ? "teleport" : hunter ? "orqaga sakrash" : gunner ? "sirpanish" : "dash";
   }
 
@@ -3172,58 +3334,73 @@ export class Game {
    */
   private dashHint() {
     if (!this.touch) return `${actionKey(this.input.keyBinds, "dash")} — ${this.dashName()}`;
-    const { mage, hunter, gunner } = this.player;
+    const { mage, hunter, gunner, paladin } = this.player;
     const button = touchLabels(this.hero).dash.text;
+    if (paladin) return `${button} tugmasi — oldinga yugurish, bosib tur — qasam`;
     return `${button} tugmasi — ${mage ? "sakrash" : hunter ? "orqaga sakrash" : gunner ? "+2 o'q" : "sirpanish"}`;
   }
 
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
-    const { mage, hunter, gunner } = this.player;
+    const { mage, hunter, gunner, paladin } = this.player;
     const k = this.input.keyBinds;
     const A = actionKey(k, "attack"),
       D = actionKey(k, "dash");
-    const label: Record<Hint, string> = this.touch
-      ? gunner
+    const label: Record<Hint, string> = paladin
+      ? this.touch
         ? {
-            attack: "O'Q — otish, o'q belgisi — o'qlash",
-            spin: "O'Q ni bosib turing — barabanni bo'shatish",
-            dash: "SIRPANISH, bosib tur — tutun",
+            attack: "SHANG — qilich bilan yerga urish",
+            spin: "SHANG ni bosib turing — osmon hukmi",
+            dash: "HAMLA — yugurish, bosib tur — qasam",
           }
-        : hunter
-          ? {
-              attack: "O'Q — o'q otish",
-              spin: "O'Q ni bosib turing — teshuvchi o'q",
-              dash: "SAKRASH — orqaga, bosib tur — tuzoq",
-            }
-          : {
-              attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
-              spin: mage ? "SHAR ni bosib turing — halqa" : "ZARBA ni bosib turing — aylana zarba",
-              dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
-            }
-      : gunner
-        ? {
-            attack: `${A} — o'q, ${actionKey(k, "reload")} — qayta o'qlash`,
-            spin: `${A} ni bosib turing — barabanni bo'shatish`,
-            dash: `${D} — sirpanish, bosib tur — tutun`,
+        : {
+            attack: `${A} — SHANG zarbasi`,
+            spin: `${A} ni bosib turing — osmon hukmi`,
+            dash: `${D} — hamla, bosib tur — qasam`,
           }
-        : hunter
+      : this.touch
+        ? gunner
           ? {
-              attack: `${A} — o'q`,
-              spin: `${A} ni bosib turing — teshuvchi o'q`,
-              dash: `${D} — orqaga sakrash, bosib tur — tuzoq`,
+              attack: "O'Q — otish, o'q belgisi — o'qlash",
+              spin: "O'Q ni bosib turing — barabanni bo'shatish",
+              dash: "SIRPANISH, bosib tur — tutun",
             }
-          : {
-              attack: mage ? `${A} — sehrli shar` : `${A} — zarba`,
-              spin: mage
-                ? `${A} ni bosib turing — sehrli halqa`
-                : `${A} ni bosib turing — aylana zarba`,
-              dash: `${D} — ${this.dashName()}`,
-            };
+          : hunter
+            ? {
+                attack: "O'Q — o'q otish",
+                spin: "O'Q ni bosib turing — teshuvchi o'q",
+                dash: "SAKRASH — orqaga, bosib tur — tuzoq",
+              }
+            : {
+                attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
+                spin: mage
+                  ? "SHAR ni bosib turing — halqa"
+                  : "ZARBA ni bosib turing — aylana zarba",
+                dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
+              }
+        : gunner
+          ? {
+              attack: `${A} — o'q, ${actionKey(k, "reload")} — qayta o'qlash`,
+              spin: `${A} ni bosib turing — barabanni bo'shatish`,
+              dash: `${D} — sirpanish, bosib tur — tutun`,
+            }
+          : hunter
+            ? {
+                attack: `${A} — o'q`,
+                spin: `${A} ni bosib turing — teshuvchi o'q`,
+                dash: `${D} — orqaga sakrash, bosib tur — tuzoq`,
+              }
+            : {
+                attack: mage ? `${A} — sehrli shar` : `${A} — zarba`,
+                spin: mage
+                  ? `${A} ni bosib turing — sehrli halqa`
+                  : `${A} ni bosib turing — aylana zarba`,
+                dash: `${D} — ${this.dashName()}`,
+              };
     // Ovchida HUD'da uchinchi (tuzoq) chizig'i, Merganda tutun chizig'i va baraban bor —
     // ko'rsatmalar pastroqda
-    const top = gunner ? 40 : hunter ? 28 : 24;
+    const top = gunner ? 40 : hunter || paladin ? 28 : 24;
     const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
     px(c, "rgba(8,4,16,0.6)", 4, top, w, this.hints.length * 10 + 4);
     const blink = Math.floor(this.time * 3) % 2 ? "#ffcc33" : "#8a6a1a";

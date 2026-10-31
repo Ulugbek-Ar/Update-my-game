@@ -51,7 +51,13 @@ export const guestName = (tag: string) => `Mehmon-${tag}`;
 
 // ---------------- klient -> server ----------------
 
-const HERO_IDS = ["knight", "mage", "hunter", "gunner", "paladin"] as const satisfies readonly Hero[];
+const HERO_IDS = [
+  "knight",
+  "mage",
+  "hunter",
+  "gunner",
+  "paladin",
+] as const satisfies readonly Hero[];
 const num = z.number().finite();
 const axis = num.min(-1).max(1);
 const id = z
