@@ -124,6 +124,8 @@ export interface Upgrade {
   hunter?: HeroCard;
   /** Mergan uchun alohida karta */
   gunner?: HeroCard;
+  /** Paladin uchun alohida karta */
+  paladin?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
 }
@@ -137,9 +139,11 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
         ? u.hunter
         : p.hero === "gunner"
           ? u.gunner
-          : undefined;
+          : p.hero === "paladin"
+            ? u.paladin
+            : undefined;
   if (!alt) return u;
-  const { mage: _m, hunter: _h, gunner: _g, ...base } = u;
+  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, ...base } = u;
   return { ...base, ...alt };
 }
 
@@ -177,6 +181,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#c8743a",
       icon: "gheart",
     },
+    paladin: {
+      name: "MUQADDAS YURAK",
+      desc: "+1 yurak va to'liq davolanish",
+      color: "#ff8c1a",
+      icon: "pheart",
+    },
   },
   {
     id: "blade",
@@ -193,6 +203,12 @@ export const UPGRADES: Upgrade[] = [
     },
     hunter: { name: "O'TKIR UCH", desc: "O'q zarari +1", color: "#c9a26b", icon: "arrowhead" },
     gunner: { name: "OG'IR O'Q", desc: "O'q zarari +1", color: "#d9a441", icon: "slug" },
+    paladin: {
+      name: "OG'IR TIG'",
+      desc: "SHANG va osmon hukmi zarari oshadi",
+      color: "#ffd27a",
+      icon: "greatblade",
+    },
   },
   {
     id: "reach",
@@ -233,6 +249,14 @@ export const UPGRADES: Upgrade[] = [
       },
       ok: (p) => p.boltSpeed < 420,
     },
+    paladin: {
+      name: "OSMON QILICHI",
+      desc: "SHANG yo'lagi uzunroq",
+      color: "#ffd27a",
+      icon: "skyblade",
+      // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
+      ok: (p) => p.reach < 30,
+    },
   },
   {
     id: "haste",
@@ -250,6 +274,14 @@ export const UPGRADES: Upgrade[] = [
       icon: "cylinder",
       apply: (p) => (p.reloadTime *= 0.7),
       ok: (p) => p.reloadTime > 0.6,
+    },
+    paladin: {
+      name: "QAT'IYAT",
+      desc: "SHANG 25% tezroq qaytadi",
+      color: "#ff8c1a",
+      icon: "resolve",
+      // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
+      ok: (p) => p.attackCd > 0.66,
     },
   },
   {
@@ -280,6 +312,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#b07a48",
       icon: "spur",
     },
+    paladin: {
+      name: "HAQ YO'LI",
+      desc: "Tezlik +15%, hamla tezroq qaytadi",
+      color: "#ffd27a",
+      icon: "path",
+    },
   },
   {
     id: "vamp",
@@ -306,6 +344,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#d9a441",
       icon: "bounty",
+    },
+    paladin: {
+      name: "IMON NURI",
+      desc: "Har bir necha o'ldirishda +1 yurak",
+      color: "#ff8c1a",
+      icon: "faith",
     },
   },
   {
@@ -335,6 +379,12 @@ export const UPGRADES: Upgrade[] = [
       color: "#9a948a",
       icon: "vest",
     },
+    paladin: {
+      name: "QASOS ZIRHI",
+      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      color: "#ff8c1a",
+      icon: "avenger",
+    },
   },
   {
     id: "dash2",
@@ -360,6 +410,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Ketma-ket 2 ta sirpanish",
       color: "#d9a441",
       icon: "slide2",
+    },
+    paladin: {
+      name: "IKKI KARRA HAMLA",
+      desc: "Ketma-ket 2 ta muqaddas hamla",
+      color: "#ff8c1a",
+      icon: "hamla2",
     },
   },
   {
@@ -387,6 +443,12 @@ export const UPGRADES: Upgrade[] = [
       desc: "Barcha yuraklarni tiklash",
       color: "#c8743a",
       icon: "flask",
+    },
+    paladin: {
+      name: "DUO",
+      desc: "Barcha yuraklarni tiklash",
+      color: "#ffd27a",
+      icon: "prayer",
     },
   },
   // ---- Faqat Sehrgar ----
@@ -455,6 +517,27 @@ export const UPGRADES: Upgrade[] = [
     hero: "gunner",
     apply: (p) => (p.bounce = 1),
     ok: (p) => p.bounce < 1,
+  },
+  // ---- Faqat Paladin ----
+  {
+    id: "shockwave",
+    name: "ZARB TO'LQINI",
+    desc: "SHANG zarbasidan keyin oldinga to'lqin uchadi",
+    color: "#ff8c1a",
+    icon: "shockwave",
+    hero: "paladin",
+    apply: (p) => (p.shockwave = true),
+    ok: (p) => !p.shockwave,
+  },
+  {
+    id: "aura",
+    name: "MUQADDAS AURA",
+    desc: "Har 15s da 1 yurak tiklanadi (onlayn — yaqin do'stlarga ham)",
+    color: "#ffd27a",
+    icon: "aura",
+    hero: "paladin",
+    apply: (p) => (p.aura = true),
+    ok: (p) => !p.aura,
   },
 ];
 

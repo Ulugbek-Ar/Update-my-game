@@ -55,6 +55,7 @@ import {
   QUAKE_LIFE,
   renderCrack,
   renderQuake,
+  renderShockwave,
   renderSkyColumn,
   renderVowAura,
   renderWindupSparks,
@@ -1648,9 +1649,10 @@ export class Game {
       this.bolts = this.bolts.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (b.bullet) {
-          // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi
-          if (Math.random() < 0.5) this.fx.trail(b.x, b.y, "rgba(255,226,160,0.55)");
+        if (b.bullet || b.wave) {
+          // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi (Paladin to'lqini — to'q sariq chang)
+          if (Math.random() < 0.5)
+            this.fx.trail(b.x, b.y, b.wave ? "rgba(255,140,26,0.6)" : "rgba(255,226,160,0.55)");
           b.range = (b.range ?? Infinity) - Math.hypot(b.vx, b.vy) * dt;
           if (b.range <= 0) {
             this.fx.burst(b.x, b.y, "#9a948a", 3, 20, 1);
@@ -1664,7 +1666,7 @@ export class Game {
         const body = { x: b.x, y: b.y, size: b.size } as Body;
         const t = targets.find((t) => !t.dead && !b.hit.includes(t) && overlap(body, t));
         // qalqon oldidan kelgan sharni to'sadi (kuchli o'q teshib 1 zarar beradi)
-        const strong = (b.power ?? 1) > 1;
+        const strong = (b.power ?? 1) > 1 || !!b.wave;
         if (t instanceof Enemy && t.blocks(t.x - b.vx, t.y - b.vy)) {
           if (!strong) {
             this.shieldBlock(t, false);
@@ -1689,7 +1691,14 @@ export class Game {
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
-          this.fx.burst(b.x, b.y, b.bullet ? "#ffe2a0" : b.arrow ? "#c9a26b" : "#ff5a3c", 6, 60, 1);
+          this.fx.burst(
+            b.x,
+            b.y,
+            b.wave ? "#ff8c1a" : b.bullet ? "#ffe2a0" : b.arrow ? "#c9a26b" : "#ff5a3c",
+            6,
+            60,
+            1,
+          );
           if (b.poison && !t.dead) {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
@@ -1705,7 +1714,8 @@ export class Game {
         if (this.shots.length < n) {
           this.score += 5 * (n - this.shots.length);
           this.fx.burst(b.x, b.y, b.arrow ? "#7a4a24" : "#a3192a", 6, 50);
-          return false;
+          // zarb to'lqini o'qlarni yutib, uchishda davom etadi
+          return !!b.wave;
         }
         // Rikoshet: Mergan o'qi devordan bir marta qaytadi
         if (!inRoom(b as Shot) && b.bounce) return this.ricochet(b);
@@ -1954,6 +1964,11 @@ export class Game {
     if (p.vowDenied) {
       p.vowDenied = false;
       this.fx.text(p.x, p.y - 16, `QASAM ${Math.ceil(p.vowCooldown)}s`, "#b8a8cc");
+    }
+    if (p.auraPulse) {
+      p.auraPulse = false;
+      this.fx.burst(p.x, p.y, "#ffd27a", 12, 60, 1);
+      this.fx.text(p.x, p.y - 18, "+1 YURAK", "#ffd27a");
     }
     if (p.absorbed) {
       p.absorbed = false;
@@ -2745,6 +2760,10 @@ export class Game {
       }
       if (b.bullet) {
         this.renderBullet(c, b);
+        continue;
+      }
+      if (b.wave) {
+        renderShockwave(c, b);
         continue;
       }
       // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro

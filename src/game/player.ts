@@ -78,6 +78,13 @@ export const HAMLA_DMG = 1;
 export const VOW_TIME = 4;
 export const VOW_CD = 10;
 export const VOW_RADIUS = 80;
+/** ZARB TO'LQINI (karta): SHANGdan keyin oldinga uchadigan to'lqin — tezligi, masofasi, eni */
+export const WAVE_SPEED = 190;
+export const WAVE_RANGE = 120;
+export const WAVE_SIZE = 14;
+/** MUQADDAS AURA (karta): shuncha soniyada 1 yurak (onlayn — shu radiusdagi do'stlarga ham) */
+export const AURA_EVERY = 15;
+export const AURA_RADIUS = 90;
 /** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
 export const ENCASE_MAX = 3.5;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
@@ -126,6 +133,8 @@ export interface Bolt {
   bounce?: number;
   /** Qaysi baraban (qayta o'qlashlar hisobi) — "Olti o'q" yutug'i uchun */
   load?: number;
+  /** Paladinning ZARB TO'LQINI (hamma dushmandan o'tadi) */
+  wave?: boolean;
 }
 
 export class Player implements Body {
@@ -240,6 +249,11 @@ export class Player implements Body {
   private halfDmg = 0;
   /** Zarba zirhda (yoki QASAMda) to'liq so'ndi — Game "BLOK" yozuvini chiqaradi */
   absorbed = false;
+  /** Kartalar: ZARB TO'LQINI, MUQADDAS AURA (taymer va shu kadrda tiklanish — Game/RealmSim effekti) */
+  shockwave = false;
+  aura = false;
+  auraT = 0;
+  auraPulse = false;
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -502,6 +516,14 @@ export class Player implements Body {
     if (this.attackTimer > 0) this.attackTimer -= dt;
     if (this.spinTimer > 0) this.spinTimer -= dt;
     if (this.paladin) this.updateSlam(dt);
+    if (this.aura) {
+      this.auraT += dt;
+      if (this.auraT >= AURA_EVERY) {
+        this.auraT -= AURA_EVERY;
+        this.auraPulse = true;
+        this.heal(1);
+      }
+    }
 
     if (this.ice > 0) {
       // muz qamoq: har bosish (hujum yoki dash, telefonda ham) muzni yoradi
@@ -850,6 +872,7 @@ export class Player implements Body {
         this.hitSet.clear();
         this.slammed = true;
         sfx.shang();
+        if (this.shockwave) this.launchWave();
       }
     }
     if (this.anim.state !== "attack") return;
@@ -862,6 +885,22 @@ export class Player implements Body {
       a.frame = 3;
       a.done = true;
     }
+  }
+
+  /** ZARB TO'LQINI: qilich tushgan joydan oldinga uchadi, yo'lidagi hamma dushmanga zarar beradi. */
+  private launchWave() {
+    const off = this.reach * 2;
+    this.bolts.push({
+      x: this.x + this.fx * off,
+      y: this.y + this.fy * off + 2,
+      vx: this.fx * WAVE_SPEED,
+      vy: this.fy * WAVE_SPEED,
+      size: WAVE_SIZE,
+      left: 99,
+      hit: [],
+      wave: true,
+      range: WAVE_RANGE,
+    });
   }
 
   /** MUQADDAS HAMLA: og'ir oldinga yugurish (dashdek daxlsiz, oxirida himoya dumi). */

@@ -4,7 +4,7 @@
  */
 import { px } from "./animation";
 import { HERO_THEME, withAlpha } from "./hero";
-import { SHANG_TIME, SHANG_W, SHANG_WINDUP, VOW_RADIUS, type Player } from "./player";
+import { SHANG_TIME, SHANG_W, SHANG_WINDUP, VOW_RADIUS, type Bolt, type Player } from "./player";
 
 /** Yerdagi to'q sariq yoriq (SHANG zarbasi yo'lagi bo'ylab) */
 export interface Crack {
@@ -155,5 +155,24 @@ export function renderWindupSparks(c: CanvasRenderingContext2D, p: Player, time:
     Math.round(w) - 1,
     Math.round(h) - 1,
   );
+  c.restore();
+}
+
+/** ZARB TO'LQINI: uchish yo'nalishiga qavariq oltin-to'q sariq o'roq. */
+export function renderShockwave(c: CanvasRenderingContext2D, b: Bolt) {
+  const a = Math.atan2(b.vy, b.vx);
+  const r = b.size / 2 + 2;
+  c.save();
+  c.lineCap = "butt";
+  c.strokeStyle = withAlpha(T.accent, 0.5);
+  c.lineWidth = 5;
+  c.beginPath();
+  c.arc(b.x - Math.cos(a) * 4, b.y - Math.sin(a) * 4, r, a - 1.1, a + 1.1);
+  c.stroke();
+  c.strokeStyle = withAlpha(T.glow, 0.95);
+  c.lineWidth = 2;
+  c.beginPath();
+  c.arc(b.x - Math.cos(a) * 4, b.y - Math.sin(a) * 4, r, a - 1, a + 1);
+  c.stroke();
   c.restore();
 }
