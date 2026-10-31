@@ -317,7 +317,7 @@ describe("Moblar", () => {
     expect(s.mobs.some((m) => m.kind === "wisp" && !m.dead)).toBe(false);
   });
 
-  it("Xaroba Sardori telegraphs attacks and enrages at half health", () => {
+  it("Xaroba Sardori telegraphs attacks and enters phase 2 at 60% health", () => {
     const { s, rp } = sim();
     rp.p.takeHit = () => false;
     const w = s.mobs.find((m) => m.kind === "warden")!;
@@ -330,7 +330,11 @@ describe("Moblar", () => {
       if (s.marks.some((k) => k.owner === w.id)) marked = true;
     }
     expect(marked).toBe(true);
-    w.hp = w.maxHp / 2 + 1;
+    w.hp = Math.ceil(w.maxHp * 0.6) + 1;
+    // orqasidan urish: qalqon o'yinchidan teskari tomonga qaragan
+    w.dirX = 1;
+    w.dirY = 0;
+    w.cd = 99;
     run(s, 1, () => cmd({ type: "aim", x: 1, y: 0 }));
     rp.p.x = w.x - 20;
     rp.p.y = w.y;
@@ -345,7 +349,7 @@ describe("Moblar", () => {
     expect(s.events.length + 1).toBeGreaterThan(0);
   });
 
-  it("killing the warden drops the legendary blade", () => {
+  it("killing the warden from behind gives the legendary blade", () => {
     const { s, rp } = sim();
     const w = s.mobs.find((m) => m.kind === "warden")!;
     rp.p.takeHit = () => false;
@@ -353,13 +357,18 @@ describe("Moblar", () => {
     w.hp = 1;
     w.state = "chase";
     w.target = "p1";
+    w.cd = 99;
+    // qalqon o'ngga qaragan — o'yinchi orqasida (chapda)
+    w.dirX = 1;
+    w.dirY = 0;
     rp.p.x = w.x - 20;
     rp.p.y = w.y;
     run(s, 1, () => cmd({ type: "aim", x: 1, y: 0 }));
     run(s, 1, () => cmd({ type: "attack", down: true }));
     run(s, 3, () => cmd({ type: "attack", down: false }));
     expect(w.dead).toBe(true);
-    expect(s.items.some((i) => i.item === "wardblade")).toBe(true);
+    // lut — shaxsan o'yinchiga (inventarga)
+    expect(rp.inv.some((i) => i?.item === "wardblade")).toBe(true);
   });
 });
 

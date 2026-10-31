@@ -17,7 +17,18 @@ import type {
   SecretDef,
 } from "./schema";
 import { SOLID, TILE, TILE_IDS, WATER } from "./tiles";
-import { RealmMob, damageMob, updateMob, type Mark, type MobCtx, type MobEvent } from "./mobs";
+import {
+  RING_MAX,
+  RING_SPEED,
+  RING_W,
+  RealmMob,
+  damageMob,
+  updateMob,
+  type Mark,
+  type MobCtx,
+  type MobEvent,
+  type Ring,
+} from "./mobs";
 
 export const TICK_RATE = 20;
 export const TICK_DT = 1 / TICK_RATE;
@@ -287,6 +298,8 @@ export class RealmSim {
   players = new Map<string, RealmPlayer>();
   mobs: RealmMob[] = [];
   marks: Mark[] = [];
+  /** Sardorning yer bo'ylab tarqalayotgan to'lqin halqalari (ustidan dash bilan o'tiladi) */
+  rings: Ring[] = [];
   items: GroundItem[] = [];
   projectiles: Projectile[] = [];
   traps: Trap[] = [];
@@ -1029,6 +1042,7 @@ export class RealmSim {
       this.zones[zi]!.left.push(z.respawn);
     }
     if (!rp) return;
+    if (m.kind === "warden") return this.wardenLoot(m, rp);
     rp.kills++;
     this.events.push({ type: "kill", x: m.x, y: m.y, kind: m.kind, pid: rp.id });
     const d = this.data.drops[m.kind];
@@ -1042,9 +1056,35 @@ export class RealmSim {
     this.onKillQuest(rp, m.kind);
   }
 
+  /**
+   * Sardor luti har o'yinchiga alohida: jangda zarar bergan har kimga o'z oltini va buyumlari
+   * to'g'ridan-to'g'ri (sig'masa — oyog'i ostiga), topshiriq hisobi ham har biriga.
+   */
+  private wardenLoot(m: RealmMob, killer: RealmPlayer) {
+    const d = this.data.drops[m.kind];
+    const ids = new Set([...m.hitters, killer.id]);
+    for (const id of ids) {
+      const rp = this.players.get(id);
+      if (!rp) continue;
+      rp.kills++;
+      this.events.push({ type: "kill", x: m.x, y: m.y, kind: m.kind, pid: rp.id });
+      if (d) {
+        const g = d.gold[0] + this.rng.int(d.gold[1] - d.gold[0] + 1);
+        if (g > 0) {
+          rp.gold += g;
+          this.events.push({ type: "gold", pid: rp.id, n: g, x: m.x, y: m.y });
+        }
+        for (const l of d.items) if (this.rng.next() < l.chance) this.give(rp, l.item, 1, m.x, m.y);
+      }
+      this.onKillQuest(rp, m.kind);
+    }
+    m.hitters.clear();
+  }
+
   private hit(rp: RealmPlayer, m: RealmMob, dmg: number, knock: number) {
     if (m.dead || m.spawnT > 0.3) return false;
     const evading = m.evading;
+    if (m.kind === "warden") m.hitters.add(rp.id);
     const killed = damageMob(m, dmg, rp.p.x, rp.p.y, knock, this);
     if (!evading) this.events.push({ type: "hit", x: m.x, y: m.y - 6, dmg, kind: m.kind });
     if (!m.target && !m.evading && !m.dead) m.target = rp.id;
@@ -1082,6 +1122,7 @@ export class RealmSim {
     this.updateTraps(dt);
     this.updateSmokes(dt);
     this.updateMarks(dt);
+    this.updateRings(dt);
     this.updateItems(dt);
     this.updateZones();
     for (const rp of this.players.values()) this.updateWorldFor(rp);
@@ -1297,6 +1338,20 @@ export class RealmSim {
       },
       mark: (m) => this.marks.push(m),
       event: (e) => this.events.push(e),
+      ring: (x, y) => this.rings.push({ x, y, r: 8, hit: new Set() }),
+      summon: (kind, x, y, from) => {
+        // Sardor uyg'otgan tosh qo'riqchi: zonasi yo'q (qayta tug'ilmaydi), darhol jangga
+        const m = new RealmMob(this.nextId++, kind, x, y, "");
+        if (this.boxBlocked(x, y, m.size)) {
+          m.x = m.px = m.homeX = from.x;
+          m.y = m.py = m.homeY = from.y;
+        }
+        m.state = "wake";
+        m.t = 0.6;
+        m.target = from.target;
+        this.mobs.push(m);
+        this.events.push({ type: "wake", x: m.x, y: m.y, kind });
+      },
     };
     const ctx = this.mobCtx;
     ctx.night = this.night;
@@ -1374,6 +1429,23 @@ export class RealmSim {
       }
       return true;
     });
+  }
+
+  /** To'lqin halqalari kengayadi; halqa chizig'iga tushgan o'yinchi 1 zarar oladi (dashda — yo'q). */
+  private updateRings(dt: number) {
+    for (const g of this.rings) {
+      g.r += RING_SPEED * dt;
+      for (const rp of this.players.values()) {
+        const p = rp.p;
+        if (p.dead || g.hit.has(rp.id)) continue;
+        if (Math.abs(dist(p, g) - g.r) >= RING_W / 2 + p.size / 2) continue;
+        if (!p.takeHit(1, g.x, g.y, 150)) continue;
+        g.hit.add(rp.id);
+        rp.lastHurt = this.tick;
+        this.events.push({ type: "mobHurtPlayer", pid: rp.id, x: p.x, y: p.y });
+      }
+    }
+    this.rings = this.rings.filter((g) => g.r < RING_MAX);
   }
 
   private updateMarks(dt: number) {

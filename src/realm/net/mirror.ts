@@ -8,7 +8,7 @@
 import type { Hero } from "@/game/hero";
 import type { Animator, AnimState } from "@/game/animation";
 import { RealmPlayer, RealmSim, TICK_DT, type RealmEvent, type RealmPlayerSave } from "../sim";
-import { RealmMob, type Mark } from "../mobs";
+import { RING_MAX, RING_SPEED, RealmMob, type Mark } from "../mobs";
 import type { RealmData } from "../schema";
 import {
   ANIMS,
@@ -187,7 +187,12 @@ export class RealmMirror {
     }
     if (m.d) sim.doors = new Set(m.d);
     if (m.me) this.applyMe(m.me);
-    if (m.ev) this.events.push(...m.ev);
+    if (m.ev) {
+      this.events.push(...m.ev);
+      // to'lqin halqalari klientda o'zi kengayadi (zarar serverda)
+      for (const e of m.ev)
+        if (e.type === "ring") sim.rings.push({ x: e.x, y: e.y, r: 8, hit: new Set() });
+    }
   }
 
   private applyMe(n: NetMe) {
@@ -265,5 +270,7 @@ export class RealmMirror {
     for (const s of sim.smokes) s.life -= dt;
     sim.smokes = sim.smokes.filter((s) => s.life > 0);
     for (const k of sim.marks) k.t = Math.max(0, k.t - dt);
+    for (const g of sim.rings) g.r += RING_SPEED * dt;
+    sim.rings = sim.rings.filter((g) => g.r < RING_MAX);
   }
 }

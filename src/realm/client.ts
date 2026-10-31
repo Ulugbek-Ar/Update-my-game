@@ -943,10 +943,21 @@ export class RealmClient {
         sfx.roar();
         return;
       case "rage":
-        this.banner("SARDOR G'AZABDA!", "U tezlashdi — osmonga qarang", "#ff7a2a");
+        if (e.phase === 3)
+          this.banner("TOSH QO'RIQCHILAR!", "Sardor qo'riqchilarni uyg'otdi", "#5fe0c8");
+        else this.banner("SARDOR G'AZABDA!", "Yer to'lqinidan dash bilan o'ting!", "#ff7a2a");
         fx.burst(e.x, e.y, "#ff7a2a", 20, 100, 2);
         fx.addShake(0.3);
         sfx.roar();
+        return;
+      case "block":
+        // Sardor qalqoni to'sdi: orqasidan urish kerak
+        fx.burst(e.x, e.y, "#ffe14d", 8, 80, 1);
+        fx.text(e.x, e.y - 12, "QALQON!", "#c9a25a");
+        sfx.block();
+        return;
+      case "ring":
+        fx.addShake(0.12);
         return;
       case "evade":
         fx.text(e.x, e.y - 10, "QAYTDI", "#8a7a9a");

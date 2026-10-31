@@ -13,7 +13,7 @@ import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
 import { TILE_COLOR, drawTile } from "./tileArt";
 import { drawItemIcon, RARITY_COLOR, RARITY_NAME } from "./icons";
-import { MOB_STATS, type Mark, type RealmMob } from "./mobs";
+import { MOB_STATS, RING_MAX, RING_W, WARDEN_SHIELD_ARC, type Mark, type RealmMob } from "./mobs";
 import type { GameObjectDef } from "./schema";
 
 export const VIEW_W = 320;
@@ -462,6 +462,19 @@ export class RealmRenderer {
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
     // belgining chegarasi mavjudotlar ustida ham ko'rinadi (katta Sardor doirani yopib qo'ymaydi)
     for (const k of sim.marks) if (inView(k.x, k.y, camX, camY, 160)) drawMark(c, k, v.time, true);
+    // Sardorning to'lqin halqalari: chang ko'tarilgan yer yorig'i — ustidan dash bilan o'tiladi
+    for (const g of sim.rings) {
+      if (!inView(g.x, g.y, camX, camY, RING_MAX + 20)) continue;
+      const a = Math.max(0, 1 - g.r / RING_MAX);
+      c.strokeStyle = `rgba(255,122,42,${0.85 * a})`;
+      c.lineWidth = RING_W;
+      c.beginPath();
+      c.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+      c.stroke();
+      c.strokeStyle = `rgba(255,236,170,${0.9 * a})`;
+      c.lineWidth = 1;
+      c.stroke();
+    }
     for (const l of labels) l();
 
     // Mergan tutun bombalari: sekin aylanuvchi kulrang tutun (yashiringan Mergan ustida)
@@ -677,6 +690,15 @@ export class RealmRenderer {
     );
     if (dormant) c.filter = "none";
     c.globalAlpha = 1;
+    if (m.shieldUp) {
+      // Sardor qalqoni: oldidagi bronza yoy — orqasidan urish kerak
+      const a = Math.atan2(m.dirY, m.dirX);
+      c.strokeStyle = m.flash > 0 ? "rgba(255,240,170,0.95)" : "rgba(201,162,90,0.7)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(x, y + 2, m.size / 2 + 6, a - WARDEN_SHIELD_ARC, a + WARDEN_SHIELD_ARC);
+      c.stroke();
+    }
     if (m.stun > 0 && !m.dead)
       for (let i = 0; i < 3; i++) {
         const a = v.time * 6 + (i * Math.PI * 2) / 3;

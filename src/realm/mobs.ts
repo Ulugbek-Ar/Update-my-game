@@ -3,6 +3,7 @@
  * uydan uzoqlashsa qaytib ketish (leash). DOM'siz — RealmSim ichida qat'iy tick bilan yuradi.
  */
 import { Animator, applyHit, type Body } from "@/game/animation";
+import { phaseFor } from "@/game/bossPower";
 import type { Player } from "@/game/player";
 import type { MobKind } from "./schema";
 import type { Rng } from "./rng";
@@ -64,8 +65,35 @@ export const WARDEN_CHARGE_SPEED = 210;
 export const WARDEN_STUN = 1.6;
 export const WARDEN_ROCKS = 1.1;
 export const WARDEN_ROCK_R = 16;
-/** 2-faza: hammasi shuncha tezroq */
+/** 2-fazadan: hammasi shuncha tezroq */
 export const WARDEN_RAGE = 0.7;
+/** Qalqon: oldidan (±60°) kelgan zarbani to'sadi; o'yinchi tomon shu tezlikda (rad/s) buriladi */
+export const WARDEN_SHIELD_ARC = Math.PI / 3;
+export const WARDEN_TURN = 2.2;
+/** 2-fazadan: urib-tushirishdan keyin yer bo'ylab tarqaladigan to'lqin halqasi (ustidan dash bilan) */
+export const RING_SPEED = 95;
+export const RING_MAX = 140;
+export const RING_W = 6;
+/** 3-faza: uyg'otadigan tosh qo'riqchilar soni */
+export const WARDEN_GUARDS = 2;
+/** Onlayn: har qo'shimcha o'yinchi uchun Sardor joni +70% */
+export const PARTY_HP = 0.7;
+/** Jangga qo'shilgan hisoblanadigan masofa */
+export const PARTY_RANGE = 260;
+
+/** n o'yinchiga Sardor joni: asosiy × (1 + 0.7 × (n − 1)). */
+export function wardenHp(n: number) {
+  return Math.round(MOB_STATS.warden.hp * (1 + PARTY_HP * (Math.max(1, n) - 1)));
+}
+
+/** Yer bo'ylab tarqalayotgan to'lqin halqasi. */
+export interface Ring {
+  x: number;
+  y: number;
+  r: number;
+  /** allaqachon tekkan o'yinchilar */
+  hit: Set<string>;
+}
 
 export type MobState =
   | "idle"
@@ -108,8 +136,10 @@ export type MobEvent =
   | { type: "burst"; x: number; y: number }
   | { type: "wake"; x: number; y: number; kind: MobKind }
   | { type: "evade"; x: number; y: number }
-  | { type: "rage"; x: number; y: number }
-  | { type: "roar"; x: number; y: number };
+  | { type: "rage"; x: number; y: number; phase?: number }
+  | { type: "roar"; x: number; y: number }
+  | { type: "block"; x: number; y: number }
+  | { type: "ring"; x: number; y: number };
 
 export interface MobTarget {
   id: string;
@@ -127,6 +157,9 @@ export interface MobCtx {
   players: MobTarget[];
   mark(m: Mark): void;
   event(e: MobEvent): void;
+  /** Sardor: to'lqin halqasi va tosh qo'riqchilarni uyg'otish (RealmSim beradi) */
+  ring?(x: number, y: number): void;
+  summon?(kind: MobKind, x: number, y: number, from: RealmMob): void;
 }
 
 export class RealmMob implements Body {
@@ -160,8 +193,13 @@ export class RealmMob implements Body {
   deathT = 0;
   /** paydo bo'lish (0.5s xira) */
   spawnT = 0.5;
-  /** Sardor: 1 yoki 2-faza; hujumlar hisoblagichi; tayyorlanayotgan hujum */
+  /** Sardor: 1, 2 yoki 3-faza; hujumlar hisoblagichi; tayyorlanayotgan hujum */
   phase = 1;
+  /** Sardor: jon hisoblangan o'yinchilar soni (onlayn); 3-fazada qo'riqchilar chaqirilishi kerak */
+  party = 1;
+  guardsDue = false;
+  /** Sardorga zarar bergan o'yinchilar — lut har biriga alohida */
+  hitters = new Set<string>();
   atk = 0;
   move: "slam" | "charge" = "slam";
   /** shu hujumda allaqachon tekkan o'yinchilar */
@@ -203,7 +241,22 @@ export class RealmMob implements Body {
   }
 
   get raging() {
-    return this.kind === "warden" && this.phase === 2;
+    return this.kind === "warden" && this.phase >= 2;
+  }
+
+  /** Sardor qalqoni ko'tarilgan: uyquda, uyg'onayotganda, hamladan keyin va esankiraganda tushadi */
+  get shieldUp() {
+    if (this.kind !== "warden" || this.dead || this.stun > 0) return false;
+    return !["dormant", "wake", "recover", "return"].includes(this.state);
+  }
+
+  /** Qalqon (fromX, fromY) tomondan kelgan zarbani to'sadimi (oldidan ±60°). */
+  blocks(fromX: number, fromY: number) {
+    if (!this.shieldUp) return false;
+    const dx = fromX - this.x,
+      dy = fromY - this.y;
+    const l = Math.hypot(dx, dy) || 1;
+    return (dx * this.dirX + dy * this.dirY) / l >= Math.cos(WARDEN_SHIELD_ARC);
   }
 }
 
@@ -269,6 +322,12 @@ export function damageMob(
     ctx.event({ type: "evade", x: m.x, y: m.y });
     return false;
   }
+  if (m.blocks(fromX, fromY)) {
+    // qalqon to'sdi — orqasiga o'tish kerak
+    ctx.event({ type: "block", x: m.x + m.dirX * 14, y: m.y + m.dirY * 14 });
+    m.flash = 0.08;
+    return false;
+  }
   const busy = m.state === "windup" || m.state === "attack" || m.state === "cast";
   applyHit(m, dmg, fromX, fromY, knock);
   // tayyorgarlik paytidagi animatsiya buzilmasin (Sardor va to'ng'iz zarbadan to'xtamaydi)
@@ -283,9 +342,13 @@ export function damageMob(
         : { type: "wake", x: m.x, y: m.y, kind: m.kind },
     );
   }
-  if (m.kind === "warden" && m.phase === 1 && m.hp <= m.maxHp / 2) {
-    m.phase = 2;
-    ctx.event({ type: "rage", x: m.x, y: m.y });
+  if (m.kind === "warden") {
+    const ph = phaseFor(m.hp, m.maxHp);
+    if (ph > m.phase) {
+      m.phase = ph;
+      if (ph === 3) m.guardsDue = true;
+      ctx.event({ type: "rage", x: m.x, y: m.y, phase: ph });
+    }
   }
   return false;
 }
@@ -330,6 +393,12 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
     const blocked = walkToward(m, home.x, home.y, m.stats.speed * 1.7, ctx);
     // uyiga yetdi (yoki to'siqqa tirandi, lekin yaqin) — joni to'ladi
     if (dist(m, home) < 6 || (blocked && dist(m, home) < 24)) {
+      if (m.kind === "warden") {
+        m.maxHp = MOB_STATS.warden.hp;
+        m.party = 1;
+        m.guardsDue = false;
+        m.hitters.clear();
+      }
       m.hp = m.maxHp;
       m.phase = 1;
       setState(m, m.kind === "sentinel" || m.kind === "warden" ? "dormant" : "idle", 1);
@@ -640,6 +709,15 @@ function wisp(m: RealmMob, t: MobTarget, ctx: MobCtx) {
 function warden(m: RealmMob, t: MobTarget, ctx: MobCtx) {
   const k = m.raging ? WARDEN_RAGE : 1;
   const d = dist(m, t.p);
+  partyScale(m, ctx);
+  if (m.guardsDue && ctx.summon) {
+    // 3-faza: ikki yonida tosh qo'riqchilar uyg'onadi
+    m.guardsDue = false;
+    for (let i = 0; i < WARDEN_GUARDS; i++) {
+      const a = Math.atan2(m.dirY, m.dirX) + (i ? 1 : -1) * 1.9;
+      ctx.summon("sentinel", m.x + Math.cos(a) * 34, m.y + Math.sin(a) * 34, m);
+    }
+  }
   if (m.state !== "attack" && m.state !== "windup" && m.state !== "cast" && m.state !== "dormant") {
     if (m.state !== "wake" && overlaps(m, t.p)) hurt(m, t, 1, 220, ctx);
   }
@@ -665,6 +743,11 @@ function warden(m: RealmMob, t: MobTarget, ctx: MobCtx) {
           for (const p of ctx.players)
             if (!p.p.dead && dist(p.p, { x: cx, y: cy }) < WARDEN_SLAM_R + p.p.size / 2)
               hurt(m, p, 2, 260, ctx);
+          // 2-fazadan: zarbadan yer bo'ylab to'lqin halqasi tarqaladi
+          if (m.phase >= 2) {
+            ctx.ring?.(cx, cy);
+            ctx.event({ type: "ring", x: cx, y: cy });
+          }
           setState(m, "recover", 0.8 * k);
         }
       }
@@ -756,8 +839,32 @@ function warden(m: RealmMob, t: MobTarget, ctx: MobCtx) {
         }
         return;
       }
+      turnToward(m, t.p, ctx.dt);
       if (d > 22) walkToward(m, t.p.x, t.p.y, m.stats.speed * (m.raging ? 1.35 : 1), ctx);
       else m.anim.set("idle");
     }
   }
+}
+
+/** Qalqon (dirX/dirY) o'yinchi tomon asta buriladi — tez aylanib orqasiga o'tish mumkin. */
+function turnToward(m: RealmMob, p: Player, dt: number) {
+  const want = Math.atan2(p.y - m.y, p.x - m.x);
+  const cur = Math.atan2(m.dirY, m.dirX);
+  let diff = want - cur;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  const a = cur + Math.sign(diff) * Math.min(Math.abs(diff), WARDEN_TURN * dt);
+  m.dirX = Math.cos(a);
+  m.dirY = Math.sin(a);
+}
+
+/** Onlayn: jangga yangi o'yinchi qo'shilsa Sardor joni oshadi (jon ulushi saqlanadi, kamaymaydi). */
+function partyScale(m: RealmMob, ctx: MobCtx) {
+  let n = 0;
+  for (const t of ctx.players) if (!t.p.dead && dist(m, t.p) < PARTY_RANGE) n++;
+  if (n <= m.party) return;
+  const k = m.hp / m.maxHp;
+  m.party = n;
+  m.maxHp = wardenHp(n);
+  m.hp = Math.max(1, Math.round(m.maxHp * k));
 }
