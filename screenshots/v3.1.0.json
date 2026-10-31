@@ -1,0 +1,325 @@
+[
+  {
+    "title": "Paladin endi oltin rangda: oltin zirh, oq tabardda oltin quyosh, kumush tig'li ulkan qilich",
+    "closeup": {
+      "x": 160,
+      "y": 118,
+      "w": 110
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 1,
+          "px": 160,
+          "py": 124,
+          "dx": 130,
+          "dy": -80
+        }
+      },
+      {
+        "eval": "const e=g.enemies[0]; if(e){e.speedMul=0; e.aiTimer=99; e.x=292; e.y=40;} g.chest=null; const p=g.player; p.fx=1; p.fy=0; p.invuln=0; p.flash=0;"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "SHANG — muqaddas nur: oq yadroli oltin yoriq, zarb to'lqini va \"SHANG!\" yozuvi",
+    "closeup": {
+      "x": 130,
+      "y": 118,
+      "w": 150
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "rammer",
+          "count": 3,
+          "px": 80,
+          "dx": 30
+        }
+      },
+      {
+        "eval": "const p = g.player; p.x = 80; p.y = 120; p.fx = 1; p.fy = 0; p.takeHit = () => false; g.chest = null; g.enemies.forEach((e, i) => { e.aiTimer = 99; e.x = 98 + i * 12; e.y = 120 + (i % 2 ? 5 : -5); e.hp = e.maxHp = 9; });"
+      },
+      {
+        "keys": ["Space"]
+      },
+      {
+        "wait": 250
+      }
+    ]
+  },
+  {
+    "title": "Yangi hudud — Kul tog'i: lava ko'li va daryolar, qora vulqon toshi, kul yog'ishi va issiq havo",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=600; p.x=146*16+8; p.y=256*16+8; r.me.px=p.x; r.me.py=p.y; p.fx=1; p.fy=0; s.explore(r.me); s.mobs=s.mobs.filter(m=>Math.hypot(m.x-p.x,m.y-p.y)>420);"
+      },
+      {
+        "wait": 1600
+      }
+    ]
+  },
+  {
+    "title": "Vodiy chetidagi Iblis kaliti darvozasi endi ochiq — Kul tog'iga olib boradi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=600; p.x=9*16+8; p.y=90*16+8; r.me.px=p.x; r.me.py=p.y; p.fx=1; p.fy=0; s.explore(r.me); p.fx=-1; for (const [x,y] of [[8,86],[8,96],[14,91]]) { const ox=p.x,oy=p.y; p.x=x*16; p.y=y*16; s.explore(r.me); p.x=ox; p.y=oy; }"
+      },
+      {
+        "wait": 1200
+      }
+    ]
+  },
+  {
+    "title": "Kul iti",
+    "text": "Kul tog'i dalasida to'da bo'lib yuradi: bittasi sizni ko'rsa, uvlaydi va butun to'da yuguradi — har biri o'z tomonidan o'rab oladi. Tashlanishdan oldin yerga cho'kadi va oldida qizil yo'l chiziladi — shu payt chetga o'ting. Orqangizni devorga bering va bitta-bittalab uring. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=600; p.x=40*16+8; p.y=258*16+8; r.me.px=p.x; r.me.py=p.y; p.fx=1; p.fy=0; s.explore(r.me); const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>false||Math.hypot(m.x-p.x,m.y-p.y)>420); {const m=new M(9001,'ashhound',p.x+96,p.y+-10,'show'); m.spawnT=0; s.mobs.push(m);} {const m=new M(9002,'ashhound',p.x+110,p.y+26,'show'); m.spawnT=0; s.mobs.push(m);} {const m=new M(9003,'ashhound',p.x+128,p.y+-34,'show'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 185,
+          "y": 118,
+          "w": 320
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Lava qurti",
+    "text": "Lava ko'li atrofida yer ostida poylab yotadi. Yaqinlashsangiz, oyog'ingiz ostida yer yoriladi va qizil doira chiqadi — darhol qoching: qurt otilib chiqib, ustidagini kuydiradi. Yer ustida olov sharlarini otadi, keyin yana yerga kiradi. Faqat yer ustidaligida uriladi. Joni: 4.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=600; p.x=150*16+8; p.y=260*16+8; r.me.px=p.x; r.me.py=p.y; p.fx=1; p.fy=0; s.explore(r.me); const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>false||Math.hypot(m.x-p.x,m.y-p.y)>420); {const m=new M(9001,'lavaworm',p.x+40,p.y+0,'show'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 170,
+          "y": 116,
+          "w": 300
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Obsidian qo'riqchi",
+    "text": "Obsidian xarobalarda haykal bo'lib turadi va yaqinlashsangiz uyg'onadi. Sekin yuradi, lekin oldidan baland qalqon bilan zarbani to'sadi — asta buriladi, orqasiga o'tib uring. Bolg'asini ko'targanda oldida qizil doira chiqadi: zarbasi 2 yurak oladi. Urgandan keyin qalqoni tushadi — shunda hujum qiling. Joni: 10.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r=window.__realm,s=r.sim,p=r.me.p; r.view.panel='none'; p.takeHit=()=>false; s.tick=600; p.x=148*16+8; p.y=337*16+8; r.me.px=p.x; r.me.py=p.y; p.fx=1; p.fy=0; s.explore(r.me); const M=s.mobs[0].constructor; s.mobs=s.mobs.filter(m=>false||Math.hypot(m.x-p.x,m.y-p.y)>420); {const m=new M(9001,'obsguard',p.x+44,p.y+0,'show'); m.spawnT=0; s.mobs.push(m);} "
+      },
+      {
+        "focus": {
+          "x": 175,
+          "y": 116,
+          "w": 300
+        }
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Birinchi reyd boss — Kul qiroli: zalga kirsangiz, kirish kartochkasi va o'z musiqasi bilan uyg'onadi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{hero:'hunter',tag:'2468'},{hero:'mage',tag:'1357'},{hero:'gunner',tag:'7302'}]).then((lb) => { window.__lb = lb; const room=[...lb.rooms.values()][0]; const sim=room.sim; sim.tick=600; const boss=sim.raid.boss(sim); let i=0; for (const rp of sim.players.values()) { rp.p.takeHit=()=>false; const a=[[-46,70],[60,64],[-18,104],[34,112]][i++%4]; rp.p.x=boss.x+a[0]; rp.p.y=boss.y+a[1]; rp.px=rp.p.x; rp.py=rp.p.y; rp.p.fx=0; rp.p.fy=-1; } window.__realm.view.panel='none'; });"
+      },
+      {
+        "wait": 800
+      }
+    ]
+  },
+  {
+    "title": "Kul qiroli",
+    "text": "Iblis ibodatxonasining ichki zalidagi lava va olovdan yasalgan ulkan jangchi — 2–4 o'yinchi uchun reyd boss, joni jamoa soniga moslashadi. Eng xavfli o'yinchini quvadi: tank (Paladin Qasami) uni ushlab turadi va olov konusini do'stlardan uzoqqa buradi. 2-fazada zal yarmi lavaga to'ladi, osmondan meteorlar yog'adi, 2 ta kul ruhini uzoqdan otuvchilar yo'q qiladi. 3-fazada Kul bo'roni — hamma oltin doiraga yig'ilib zararni bo'lishadi. 6 daqiqada g'azablanadi; o'lganlar 10 soniyada zal kirishida tug'iladi. G'oliblarga alohida lut va \"Kul qirolini yenggan\" unvoni.",
+    "mob": true,
+    "video": 6,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.1.0",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-guest": "4821",
+          "pixel-rpg-offline": "1"
+        }
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return window.__realmDemo([{hero:'hunter',tag:'2468'},{hero:'mage',tag:'1357'},{hero:'gunner',tag:'7302'}]).then((lb) => { window.__lb = lb; const room=[...lb.rooms.values()][0]; const sim=room.sim; sim.tick=600; const boss=sim.raid.boss(sim); let i=0; for (const rp of sim.players.values()) { rp.p.takeHit=()=>false; const a=[[-46,70],[60,64],[-18,104],[34,112]][i++%4]; rp.p.x=boss.x+a[0]; rp.p.y=boss.y+a[1]; rp.px=rp.p.x; rp.py=rp.p.y; rp.p.fx=0; rp.p.fy=-1; } window.__realm.view.panel='none'; });"
+      },
+      {
+        "wait": 3000
+      },
+      {
+        "eval": "const room=[...window.__lb.rooms.values()][0]; const sim=room.sim; const boss=sim.raid.boss(sim); boss.hp=Math.floor(boss.maxHp*0.55);"
+      },
+      {
+        "focus": {
+          "x": 160,
+          "y": 104,
+          "w": 320
+        }
+      },
+      {
+        "wait": 300
+      }
+    ]
+  }
+]

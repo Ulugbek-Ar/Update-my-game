@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.0.0";
+export const GAME_VERSION = "3.1.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.1.0",
+    date: "2026-10-31",
+    notes:
+      "Paladin endi oltin rangda, uning barcha qobiliyatlari muqaddas nur bilan porlaydi. Abadiyat olamida yangi hudud: Kul tog'i — Iblis kaliti bilan ochiladi. Lava daryolari, 3 ta yangi dushman va yangi sirlar. Birinchi reyd boss: Kul qiroli — do'stlar bilan jamoa bo'lib yenging, tank uni ushlab tursin. Kul qirolini yengganlarga maxsus unvon.",
+  },
   {
     version: "3.0.0",
     date: "2026-10-31",

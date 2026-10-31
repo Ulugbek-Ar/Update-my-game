@@ -1742,8 +1742,9 @@ function playerLabel(
   const p = rp.p;
   let top = y - 20;
   if (name && !p.dead && !p.hidden) {
-    // unvon (masalan, "Kul qirolini yenggan") ism ostida
+    // unvon (masalan, "Kul qirolini yenggan") ism ostida, jon chizig'i undan pastda
     const title = rp.titles[0] ? TITLE_TEXT[rp.titles[0]] : undefined;
+    const bar = top + 2;
     if (title) {
       text(c, title, x, top, 4, "#ffb02e", "center");
       top -= 6;
@@ -1754,9 +1755,9 @@ function playerLabel(
     const nw = Math.ceil(c.measureText(name).width);
     drawRoleIcon(c, HERO_ROLE[rp.hero], x - nw / 2 - 10, top - 6);
     const w = 16;
-    px(c, "#000", x - w / 2 - 1, top + 2, w + 2, 3);
-    px(c, "#3b2a3a", x - w / 2, top + 3, w, 1);
-    px(c, "#ff4d6d", x - w / 2, top + 3, (w * Math.max(0, p.hp)) / p.maxHp, 1);
+    px(c, "#000", x - w / 2 - 1, bar, w + 2, 3);
+    px(c, "#3b2a3a", x - w / 2, bar + 1, w, 1);
+    px(c, "#ff4d6d", x - w / 2, bar + 1, (w * Math.max(0, p.hp)) / p.maxHp, 1);
     top -= 7;
   }
   if (say) {
