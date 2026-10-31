@@ -405,7 +405,8 @@ export class Boss implements Body {
     if (e.m > 1) {
       const r = this.safeRect();
       const out = p.x < r.l || p.x > r.r || p.y < r.t || p.y > r.b;
-      if (out) p.takeHit(this.dmg(1), ROOM.w - p.x, ROOM.h - p.y, 140);
+      // itarish markaz tomonga (zarba "tashqaridan" keladi)
+      if (out) p.takeHit(this.dmg(1), 2 * p.x - ROOM.w / 2, 2 * p.y - ROOM.h / 2, 140);
     }
   }
 
