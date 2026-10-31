@@ -7,7 +7,17 @@ import type { Effects } from "@/game/effects";
 import { HERO_ROLE, HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
-import { renderShockwave, renderVowAura } from "@/game/paladinFx";
+import {
+  renderCrack,
+  renderDazeStars,
+  renderQuake,
+  renderShockwave,
+  renderSkyColumn,
+  renderVowAura,
+  renderWindupSparks,
+  type Crack,
+  type Quake,
+} from "@/game/paladinFx";
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP } from "./net/protocol";
@@ -75,6 +85,9 @@ export interface RealmView {
   /** dialog/do'kon tanlovi */
   sel: number;
   hover: { x: number; y: number } | null;
+  /** Paladin SHANG yoriqlari va zarb to'lqinlari (faqat chizish, klient voqealardan to'ldiradi) */
+  cracks: Crack[];
+  quakes: Quake[];
   toasts: Toast[];
   banner: { text: string; sub: string; t: number; color: string };
   shake: number;
@@ -347,6 +360,9 @@ export class RealmRenderer {
       if (!inView(k.x, k.y, camX, camY, 160)) continue;
       drawMark(c, k, v.time);
     }
+    // Paladin: SHANG yoriqlari va zarb to'lqinlari (oq yadro, oltin chekka)
+    for (const k of v.cracks) if (inView(k.x, k.y, camX, camY, 80)) renderCrack(c, k);
+    for (const q of v.quakes) if (inView(q.x, q.y, camX, camY, 80)) renderQuake(c, q);
     // tuzoqlar
     for (const t of sim.traps) {
       px(c, "#5a3e24", t.x - 5, t.y - 1, 10, 2);
@@ -432,7 +448,7 @@ export class RealmRenderer {
           if (!p.dead && !(p.dashing && p.mage)) shadow(c, x, y + 12, 12);
           c.save();
           c.translate(Math.round(x - p.x), Math.round(y - p.y));
-          // Paladin QASAMi: to'q sariq aura (boshqalar ham ko'radi — tank bossni ushlab turibdi)
+          // Paladin QASAMi: oltin aura (boshqalar ham ko'radi — tank bossni ushlab turibdi)
           if (p.paladin && p.vowing && !p.dead) renderVowAura(c, p, v.time);
           p.render(c);
           c.restore();
@@ -479,6 +495,14 @@ export class RealmRenderer {
       c.strokeStyle = `rgba(255,236,170,${0.9 * a})`;
       c.lineWidth = 1;
       c.stroke();
+    }
+    // o'z Paladini: OSMON HUKMI yorug'lik ustuni va SHANG tayyorgarligi (zaryad faqat o'zida ma'lum)
+    if (me.p.paladin && !me.p.dead) {
+      c.save();
+      c.translate(Math.round(ix - me.p.x), Math.round(iy - me.p.y));
+      renderSkyColumn(c, me.p, v.time, camY - (iy - me.p.y));
+      renderWindupSparks(c, me.p, v.time);
+      c.restore();
     }
     for (const l of labels) l();
 
@@ -705,7 +729,9 @@ export class RealmRenderer {
       c.arc(x, y + 2, m.size / 2 + 6, a - WARDEN_SHIELD_ARC, a + WARDEN_SHIELD_ARC);
       c.stroke();
     }
-    if (m.stun > 0 && !m.dead)
+    // Paladin OSMON HUKMIdan gangigan — oq-oltin yulduzchalar, boshqa gangish — sariq
+    if (m.stun > 0 && !m.dead && m.holy) renderDazeStars(c, x, y - m.size / 2 - 8, v.time);
+    else if (m.stun > 0 && !m.dead)
       for (let i = 0; i < 3; i++) {
         const a = v.time * 6 + (i * Math.PI * 2) / 3;
         px(c, "#ffe14d", x + Math.cos(a) * 7, y - m.size / 2 - 8 + Math.sin(a) * 2, 2, 2);

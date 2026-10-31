@@ -154,9 +154,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Mergan: siyoh, porox-qora (shlyapa, shim, kamzul), jigarrang plash va etik, qizil bo'yinbog',
   // mis-jez (to'pponcha, to'qa, shpora) — oftobda qoraygan yuz va qo'llar ham shu rangda
   gunner: ["#0b0907", "#2b2723", "#7a4b2a", "#b8322a", "#dba45a"],
-  // Paladin: siyoh, to'q bronza (soya, kamar, dasta), to'q sariq-oltin plastinka zirh va quyosh belgisi,
-  // och oltin (hoshiya, ko'ndalang, porlash), oq ustki kiyim va po'lat tig'
-  paladin: ["#140a04", "#7a3d12", "#ff8c1a", "#ffd27a", "#eceae4"],
+  // Paladin: siyoh, to'q oltin-bronza (soya, kamar, qo'lqop, dasta), oltin plastinka zirh, dubulg'a,
+  // quyosh belgisi va qilich dastasi, kumush tig', oq ustki kiyim (tabard) va zirhdagi muqaddas nur
+  paladin: ["#170f02", "#7a5a12", "#f2c14e", "#aab4c4", "#fbf8ec"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -2069,7 +2069,10 @@ const paladinPoses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]>
   hurt: poses.hurt,
 };
 
-/** Ikki qo'lli ulkan qilich: tig' (oq po'lat yoki porlagan oltin), oltin ko'ndalang, charm dasta va oltin boldoq. */
+/**
+ * Ikki qo'lli ulkan qilich: kumush tig' (o'rtasida oq yaltiroq; porlaganda — oq nur, oltin ariqcha),
+ * oltin ko'ndalang, charm dasta va oltin boldoq.
+ */
 function greatsword(p: Pixels, s: Greatsword) {
   const [hx, hy] = s.hand,
     [tx, ty] = s.tip;
@@ -2080,53 +2083,54 @@ function greatsword(p: Pixels, s: Greatsword) {
     uy = dy / len;
   const nx = -uy,
     ny = ux;
-  // dasta qo'ldan orqaga (ikki qo'l sig'adi) va boldoq
+  // dasta qo'ldan orqaga (ikki qo'l sig'adi) va oltin boldoq
   const pommel: Point = [Math.round(hx - ux * 5), Math.round(hy - uy * 5)];
   p.line(2, s.hand, pommel, 2);
-  p.rect(4, pommel[0] - 1, pommel[1] - 1, 3, 3);
+  p.rect(3, pommel[0] - 1, pommel[1] - 1, 3, 3);
   // tig': ko'ndalangdan uchigacha, qalin (3 px), uchi toraygan
   const base: Point = [Math.round(hx + ux * 3), Math.round(hy + uy * 3)];
   const near: Point = [Math.round(tx - ux * 3), Math.round(ty - uy * 3)];
   p.line(1, base, s.tip, 5);
-  p.line(s.glow ? 4 : 5, base, near, 3);
-  p.line(s.glow ? 4 : 5, near, s.tip, 1);
-  // tig' o'rtasidagi ariqcha (oltin) — qisqa
+  p.line(s.glow ? 5 : 4, base, near, 3);
+  p.line(s.glow ? 5 : 4, near, s.tip, 1);
+  // tig' o'rtasidagi yaltiroq qirra (kumushda oq, porlaganda oltin ariqcha)
   p.line(
-    s.glow ? 5 : 4,
+    s.glow ? 3 : 5,
     [Math.round(hx + ux * 6), Math.round(hy + uy * 6)],
     [Math.round(hx + ux * 14), Math.round(hy + uy * 14)],
     1,
   );
   // keng oltin ko'ndalang
   p.line(
-    4,
+    3,
     [Math.round(base[0] - nx * 4), Math.round(base[1] - ny * 4)],
     [Math.round(base[0] + nx * 4), Math.round(base[1] + ny * 4)],
     2,
   );
   if (s.glow) {
-    // porlash: tig' atrofida oltin uchqunlar
-    for (const k of [0.35, 0.65, 0.95]) {
+    // porlash: tig' atrofida oq-oltin uchqunlar (muqaddas nur)
+    for (const [i, k] of [0.35, 0.65, 0.95].entries()) {
       const cx = Math.round(hx + dx * k),
         cy = Math.round(hy + dy * k);
-      p.rect(4, cx + Math.round(nx * 3), cy + Math.round(ny * 3), 1, 1);
-      p.rect(4, cx - Math.round(nx * 3), cy - Math.round(ny * 3), 1, 1);
+      const c = i % 2 ? 3 : 5;
+      p.rect(c, cx + Math.round(nx * 3), cy + Math.round(ny * 3), 1, 1);
+      p.rect(c, cx - Math.round(nx * 3), cy - Math.round(ny * 3), 1, 1);
     }
   }
 }
 
 /**
- * Paladin: 2 — to'q bronza (soyalar, kamar, dasta), 3 — to'q sariq-oltin plastinka zirh va
- * quyosh belgisi, 4 — och oltin (hoshiya, ko'ndalang, yaltiroq), 5 — oq ustki kiyim va po'lat tig'.
+ * Paladin: 2 — to'q oltin-bronza (soyalar, kamar, qo'lqop, dasta), 3 — oltin plastinka zirh, dubulg'a
+ * va quyosh belgisi, 4 — kumush tig', 5 — oq ustki kiyim va zirhdagi yaltiroq (muqaddas nur).
  */
 function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
   const { bob: b, lean: l } = pose;
-  // og'ir zirhli oyoqlar: tizzada oltin hoshiya, temir etik
+  // og'ir zirhli oyoqlar: tizzada yaltiroq, temir etik
   p.line(3, [13, 21 + b], pose.leftFoot, 4);
   p.line(3, [19, 21 + b], pose.rightFoot, 4);
   for (const [fx, fy] of [pose.leftFoot, pose.rightFoot]) p.rect(2, fx - 3, fy - 1, 6, 2);
-  p.rect(4, 12, 24 + Math.round(b / 2), 2, 1);
-  p.rect(4, 18, 24 + Math.round(b / 2), 2, 1);
+  p.rect(5, 12, 24 + Math.round(b / 2), 2, 1);
+  p.rect(5, 18, 24 + Math.round(b / 2), 2, 1);
   // ikki qo'l bitta dastada: old qo'l ko'ndalang yonida, orqa qo'l undan 3 px boldoq tomonda
   const grip = s.hand;
   const gl = Math.hypot(s.tip[0] - grip[0], s.tip[1] - grip[1]) || 1;
@@ -2142,8 +2146,8 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
     [22, 23 + b],
     [10, 23 + b],
   ]);
-  p.rect(4, 11 + l, 13 + b, 2, 6);
-  // oq ustki kiyim (tabard) tizzagacha; oldda to'q sariq quyosh
+  p.rect(5, 11 + l, 13 + b, 2, 6);
+  // oq ustki kiyim (tabard) tizzagacha; oldda oltin quyosh
   p.polygon(5, [
     [12 + l, 13 + b],
     [20 + l, 13 + b],
@@ -2151,23 +2155,22 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
     [11, 26 + b],
   ]);
   p.rect(2, 11, 21 + b, 11, 2);
-  p.rect(4, 15, 21 + b, 2, 2);
+  p.rect(3, 15, 21 + b, 2, 2);
   if (!back) {
     p.ellipse(3, 16.5 + l, 17.5 + b, 2.2, 2.2);
     p.rect(3, 16 + l, 13 + b, 1, 1);
     p.rect(3, 16 + l, 20 + b, 1, 1);
     p.rect(3, 13 + l, 17 + b, 1, 1);
     p.rect(3, 19 + l, 17 + b, 1, 1);
-    p.rect(4, 16 + l, 17 + b, 1, 1);
-  } else p.rect(4, 16 + l, 15 + b, 1, 6);
+  } else p.rect(3, 16 + l, 15 + b, 1, 6);
   // etak hoshiyasi
   p.rect(3, 11, 25 + b, 11, 1);
   // orqa yelkalik
   p.ellipse(3, 9 + l, 13 + b, 3.5, 2.6);
-  p.rect(4, 8 + l, 11 + b, 3, 1);
+  p.rect(5, 8 + l, 11 + b, 3, 1);
   // ulkan qilich (yelkada — tana va boshdan oldin, uchi orqada)
   greatsword(p, s);
-  // yopiq dubulg'a: tepasi gumbaz, oldida ko'z tirqishi va nafas teshiklari, oltin toj-hoshiya
+  // yopiq oltin dubulg'a: tepasi gumbaz, oldida ko'z tirqishi va nafas teshiklari, yaltiroq qirra
   p.polygon(3, [
     [12 + l, 4 + b],
     [20 + l, 4 + b],
@@ -2176,8 +2179,8 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
     [10 + l, 12 + b],
     [10 + l, 7 + b],
   ]);
-  p.rect(4, 15 + l, 3 + b, 2, 9);
-  p.rect(4, 10 + l, 11 + b, 12, 1);
+  p.rect(5, 15 + l, 3 + b, 2, 9);
+  p.rect(2, 10 + l, 11 + b, 12, 1);
   if (!back) {
     p.rect(1, 12 + l, 7 + b, 9, 1);
     p.rect(1, 18 + l, 9 + b, 1, 1);
@@ -2190,7 +2193,7 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
   p.rect(2, back2[0] - 1, back2[1] - 1, 3, 3);
   // old yelkalik
   p.ellipse(3, 23 + l, 13 + b, 3.5, 2.6);
-  p.rect(4, 22 + l, 11 + b, 3, 1);
+  p.rect(5, 22 + l, 11 + b, 3, 1);
 }
 
 /** Paladinning yiqilishi: tiz cho'kadi va qilich qo'ldan tushadi, so'ng yerda yotadi, qilich yonida. */
@@ -2225,7 +2228,7 @@ function paladinFallen(p: Pixels, frame: number) {
     p.line(3, [17, 25], [27, 28], 4);
     p.rect(2, 26, 27, 3, 2);
     p.ellipse(3, 6, 13, 4, 4);
-    p.rect(4, 3, 13, 7, 1);
+    p.rect(2, 3, 13, 7, 1);
     p.rect(1, 4, 11, 4, 1);
     return;
   }
@@ -2233,11 +2236,11 @@ function paladinFallen(p: Pixels, frame: number) {
   p.rect(3, 6, 23, 18, 6);
   p.rect(5, 9, 23, 11, 5);
   p.ellipse(3, 14.5, 25.5, 1.8, 1.8);
-  p.rect(4, 6, 23, 18, 1);
+  p.rect(5, 6, 23, 18, 1);
   p.rect(2, 22, 27, 4, 2);
   p.ellipse(3, 3.5, 25, 3, 3.5);
   p.rect(1, 2, 24, 3, 1);
-  p.rect(4, 1, 27, 5, 1);
+  p.rect(2, 1, 27, 5, 1);
 }
 
 /** Paladin kadri: tana 32x32 da chiziladi, PALADIN_GRID to'rning o'rtasiga siljitiladi. */
@@ -3666,7 +3669,7 @@ export function spriteSize(kind: SpriteKind) {
 }
 
 // Kuch kartalari ikonkalari (12x12): X — kuch rangi, qolganlari ICON_COLORS dan.
-const ICON_COLORS: Record<string, string> = {
+export const ICON_COLORS: Readonly<Record<string, string>> = {
   o: "#ffffff",
   g: "#5bc85b",
   k: "#8a6a3a",
@@ -3692,12 +3695,12 @@ const ICON_COLORS: Record<string, string> = {
   N: "#2b2723",
   H: "#6a4022",
   E: "#b8322a",
-  // Paladin palitrasi: to'q sariq, to'q apelsin, och oltin, oq tabard, bronza
-  A: "#ff8c1a",
-  Q: "#a8500f",
-  U: "#ffd27a",
-  V: "#eceae4",
-  Z: "#7a3d12",
+  // Paladin palitrasi: oltin, to'q oltin, muqaddas nur (oq-oltin), oq tabard va kumush, oltin-bronza
+  A: "#f2c14e",
+  Q: "#a87a12",
+  U: "#fff2b0",
+  V: "#fbf8ec",
+  Z: "#7a5a12",
 };
 export const UPGRADE_ICONS: Record<string, readonly string[]> = {
   pheart: [

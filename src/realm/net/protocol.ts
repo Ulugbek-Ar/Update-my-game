@@ -199,7 +199,10 @@ export type NetPlayer = [
   number,
   number,
 ];
-/** [id, tur, x, y, jon, max, holat, anim, kadr, yuz, dirX, dirY, flash, stun, paydo, nishon, faza] */
+/**
+ * [id, tur, x, y, jon, max, holat, anim, kadr, yuz, dirX, dirY, flash, stun (1 — gangigan,
+ * 2 — Paladin OSMON HUKMIdan), paydo, nishon, faza]
+ */
 export type NetMob = [
   number,
   MobKind,

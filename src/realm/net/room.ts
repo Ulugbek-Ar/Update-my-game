@@ -564,7 +564,8 @@ export function netMob(m: RealmMob): NetMob {
     r2(m.dirX),
     r2(m.dirY),
     m.flash > 0 ? r2(m.flash) : 0,
-    m.stun > 0 ? 1 : 0,
+    // gangigan: 1, Paladin OSMON HUKMIdan — 2 (oltin yulduzchalar)
+    m.stun > 0 ? (m.holy ? 2 : 1) : 0,
     m.spawnT > 0 ? r2(m.spawnT) : 0,
     m.target,
     m.phase,

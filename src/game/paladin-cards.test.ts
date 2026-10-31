@@ -25,7 +25,7 @@ describe("Paladin kuch kartalari", () => {
     mend: ["DUO", "prayer"],
   };
 
-  it("every shared card has its own Paladin name, orange-gold colour and code-drawn icon", () => {
+  it("every shared card has its own Paladin name, gold colour and code-drawn icon", () => {
     const knight = new Player("knight");
     const p = new Player("paladin");
     for (const [id, [name, icon]] of Object.entries(expected)) {
@@ -34,7 +34,7 @@ describe("Paladin kuch kartalari", () => {
       expect(c.name).toBe(name);
       expect(upgradeIcon(c)).toBe(icon);
       expect(UPGRADE_ICONS[icon]).toHaveLength(12);
-      expect(["#ff8c1a", "#ffd27a"]).toContain(c.color);
+      expect(["#f2c14e", "#fff2b0"]).toContain(c.color);
       expect(c.color).not.toBe(k.color);
       expect(c.desc).not.toMatch(/[Dd]ash|[Tt]eleport|[Qq]alqon/);
     }

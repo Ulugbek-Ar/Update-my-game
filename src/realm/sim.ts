@@ -1286,7 +1286,10 @@ export class RealmSim {
         if (overlap(box, m)) {
           p.hitSet.add(m);
           // Paladin: OSMON HUKMI gangitadi, SHANG kuchli itaradi
-          if (p.paladin && p.spinning && !m.evading) m.stun = Math.max(m.stun, SKY_STUN);
+          if (p.paladin && p.spinning && !m.evading) {
+            m.stun = Math.max(m.stun, SKY_STUN);
+            m.holy = true;
+          }
           this.hit(rp, m, p.hitDamage, p.paladin ? 260 : p.spinning ? 200 : 140);
         }
       }

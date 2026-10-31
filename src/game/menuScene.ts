@@ -1,6 +1,7 @@
 /** Bosh menyu foni: qasr, oy va yulduzlar fonida qahramonlar va moblar (kod bilan chiziladi). */
 import { px } from "./animation";
 import { renderSprite, spriteSize, type SpriteKind } from "./sprites";
+import { HERO_THEME, withAlpha } from "./hero";
 
 /** Sahna o'lchami: 16:9 ekranni to'liq qoplaydi */
 export const SCENE_W = 320;
@@ -254,28 +255,29 @@ export function drawHunterCard(c: CanvasRenderingContext2D) {
   }
 }
 
-/** 3.0 e'loni: Paladin SHANG zarbasi — ulkan qilich yerga tushgan, yo'lak bo'ylab yoriq va uchqunlar. */
+/** 3.0 e'loni: Paladin SHANG zarbasi — ulkan qilich yerga tushgan, yo'lak bo'ylab nurli yoriq va uchqunlar. */
 export function drawPaladinCard(c: CanvasRenderingContext2D) {
   c.imageSmoothingEnabled = false;
-  const bands = ["#1a0f08", "#24140a", "#2e1a0c", "#38200e"];
+  const T = HERO_THEME.paladin;
+  // ibodatxona qorong'iligi: sovuq binafsha-ko'k fonda oltin nur aniq ko'rinadi
+  const bands = ["#120f1c", "#171324", "#1c172c", "#221b34"];
   bands.forEach((col, i) => px(c, col, 0, i * 30, 160, 30));
-  px(c, "#2a1d12", 0, 100, 160, 20);
-  px(c, "#4a3018", 0, 100, 160, 2);
-  // yoriq: qilich uchidan oldinga
+  px(c, "#1e1a26", 0, 100, 160, 20);
+  px(c, "#3a3446", 0, 100, 160, 2);
+  // yoriq: qilich uchidan oldinga — ichida oq yadro, oltin chekka
   for (let x = 92; x < 150; x++) {
     const y = 103 + Math.round(Math.sin(x * 0.7) * 1.2);
-    px(c, "#140a04", x, y, 2, 2);
-    if (x % 2 === 0) px(c, "#ff8c1a", x, y, 1, 1);
+    px(c, "#1e1606", x, y, 2, 2);
+    if (x % 2 === 0) px(c, x % 4 === 0 ? T.glow : T.accent, x, y, 1, 1);
   }
-  for (let k = 0; k < 9; k++)
-    px(c, k % 2 ? "#ffd27a" : "#ff8c1a", 96 + k * 6, 92 - (k % 3) * 4, 2, 2);
+  for (let k = 0; k < 9; k++) px(c, k % 2 ? T.glow : T.accent, 96 + k * 6, 92 - (k % 3) * 4, 2, 2);
   c.save();
   c.translate(46, 70);
   c.scale(2, 2);
   renderSprite(c, "paladin", "attack", 2, 0, 0, false);
   c.restore();
-  // "SHANG!" yozuvi o'rniga oltin chaqnash
-  c.fillStyle = "rgba(255,210,122,0.3)";
+  // "SHANG!" yozuvi o'rniga muqaddas nur chaqnashi
+  c.fillStyle = withAlpha(T.glow, 0.3);
   c.fillRect(70, 84, 84, 18);
 }
 
@@ -285,7 +287,7 @@ export function drawRolesCard(c: CanvasRenderingContext2D) {
   px(c, "#141022", 0, 0, 160, 120);
   px(c, "#1f1730", 0, 92, 160, 28);
   const heroes: [SpriteKind, string][] = [
-    ["paladin", "#ff8c1a"],
+    ["paladin", HERO_THEME.paladin.accent],
     ["knight", "#68cde4"],
     ["mage", "#ff4d4d"],
     ["hunter", "#a6f08e"],
@@ -302,13 +304,18 @@ export function drawTankCard(c: CanvasRenderingContext2D) {
   c.imageSmoothingEnabled = false;
   px(c, "#1b2420", 0, 0, 160, 120);
   px(c, "#24302a", 0, 80, 160, 40);
-  // aura
-  c.strokeStyle = "rgba(255,140,26,0.8)";
+  // aura: oltin halqa, oq yadro
+  c.strokeStyle = withAlpha(HERO_THEME.paladin.accent, 0.8);
   c.lineWidth = 2;
   c.beginPath();
   c.ellipse(70, 92, 18, 9, 0, 0, Math.PI * 2);
   c.stroke();
-  c.strokeStyle = "rgba(255,210,122,0.35)";
+  c.strokeStyle = "rgba(255,255,255,0.5)";
+  c.lineWidth = 1;
+  c.beginPath();
+  c.ellipse(70, 92, 18, 9, 0, 0, Math.PI * 2);
+  c.stroke();
+  c.strokeStyle = withAlpha(HERO_THEME.paladin.glow, 0.35);
   c.setLineDash([3, 4]);
   c.beginPath();
   c.arc(70, 84, 44, 0, Math.PI * 2);

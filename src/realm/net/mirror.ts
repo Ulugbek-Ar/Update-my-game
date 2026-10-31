@@ -261,6 +261,7 @@ export class RealmMirror {
       mob.dirY = a[11];
       mob.flash = a[12];
       mob.stun = a[13];
+      mob.holy = a[13] === 2;
       mob.spawnT = a[14];
       mob.target = a[15];
       mob.phase = a[16];

@@ -379,7 +379,7 @@ export function heroBadge(
         : hero === "gunner"
           ? ["#d9a441", "#8a5a2a", "#ffe2a0"]
           : hero === "paladin"
-            ? ["#ff8c1a", "#7a3d12", "#ffd27a"]
+            ? ["#f2c14e", "#7a5a12", "#fff2b0"]
             : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {

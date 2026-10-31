@@ -27,16 +27,16 @@ function outside(frame: Uint8Array) {
 }
 
 describe("Paladin ko'rinishi", () => {
-  it("is the 5th hero, sold in the shop, with an orange theme", () => {
+  it("is the 5th hero, sold in the shop, with a gold theme", () => {
     const i = HERO_LIST.findIndex((h) => h.id === "paladin");
     expect(i).toBe(4);
     expect(HERO_LIST.length).toBeLessThanOrEqual(MAX_HEROES);
     expect(HERO_LIST[i]!.name).toBe("PALADIN");
     expect(PALADIN_PRICE).toBeGreaterThan(GUNNER_PRICE);
     expect(HERO_THEME.paladin).toMatchObject({
-      accent: "#ff8c1a",
-      accentDark: "#a8500f",
-      glow: "#ffd27a",
+      accent: "#f2c14e",
+      accentDark: "#a87a12",
+      glow: "#fff2b0",
     });
   });
 

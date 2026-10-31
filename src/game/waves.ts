@@ -184,7 +184,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "MUQADDAS YURAK",
       desc: "+1 yurak va to'liq davolanish",
-      color: "#ff8c1a",
+      color: "#f2c14e",
       icon: "pheart",
     },
   },
@@ -206,7 +206,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "OG'IR TIG'",
       desc: "SHANG va osmon hukmi zarari oshadi",
-      color: "#ffd27a",
+      color: "#fff2b0",
       icon: "greatblade",
     },
   },
@@ -252,7 +252,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "OSMON QILICHI",
       desc: "SHANG yo'lagi uzunroq",
-      color: "#ffd27a",
+      color: "#fff2b0",
       icon: "skyblade",
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
       ok: (p) => p.reach < 30,
@@ -278,7 +278,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "QAT'IYAT",
       desc: "SHANG 25% tezroq qaytadi",
-      color: "#ff8c1a",
+      color: "#f2c14e",
       icon: "resolve",
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
       ok: (p) => p.attackCd > 0.66,
@@ -315,7 +315,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "HAQ YO'LI",
       desc: "Tezlik +15%, hamla tezroq qaytadi",
-      color: "#ffd27a",
+      color: "#fff2b0",
       icon: "path",
     },
   },
@@ -348,7 +348,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "IMON NURI",
       desc: "Har bir necha o'ldirishda +1 yurak",
-      color: "#ff8c1a",
+      color: "#f2c14e",
       icon: "faith",
     },
   },
@@ -382,7 +382,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "QASOS ZIRHI",
       desc: "Zarba yesang, yaqin dushmanga 1 zarar",
-      color: "#ff8c1a",
+      color: "#f2c14e",
       icon: "avenger",
     },
   },
@@ -414,7 +414,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "IKKI KARRA HAMLA",
       desc: "Ketma-ket 2 ta muqaddas hamla",
-      color: "#ff8c1a",
+      color: "#f2c14e",
       icon: "hamla2",
     },
   },
@@ -447,7 +447,7 @@ export const UPGRADES: Upgrade[] = [
     paladin: {
       name: "DUO",
       desc: "Barcha yuraklarni tiklash",
-      color: "#ffd27a",
+      color: "#fff2b0",
       icon: "prayer",
     },
   },
@@ -523,7 +523,7 @@ export const UPGRADES: Upgrade[] = [
     id: "shockwave",
     name: "ZARB TO'LQINI",
     desc: "SHANG zarbasidan keyin oldinga to'lqin uchadi",
-    color: "#ff8c1a",
+    color: "#f2c14e",
     icon: "shockwave",
     hero: "paladin",
     apply: (p) => (p.shockwave = true),
@@ -533,7 +533,7 @@ export const UPGRADES: Upgrade[] = [
     id: "aura",
     name: "MUQADDAS AURA",
     desc: "Har 15s da 1 yurak tiklanadi (onlayn — yaqin do'stlarga ham)",
-    color: "#ffd27a",
+    color: "#fff2b0",
     icon: "aura",
     hero: "paladin",
     apply: (p) => (p.aura = true),

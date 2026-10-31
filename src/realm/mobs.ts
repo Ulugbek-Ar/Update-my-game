@@ -207,6 +207,8 @@ export class RealmMob implements Body {
   struck = new Set<string>();
   /** Xavf jadvali: kim ko'proq zarar bersa (Paladin — 2x) yoki QASAM qilsa — nishon o'sha */
   threat = new ThreatTable();
+  /** Paladin OSMON HUKMIdan gangigan: yulduzchalar oq-oltin (faqat chizish uchun) */
+  holy = false;
   anim = new Animator({
     idle: { frames: 2, frameTime: 0.5, loop: true },
     walk: { frames: 4, frameTime: 0.14, loop: true },
@@ -380,6 +382,7 @@ export function updateMob(m: RealmMob, ctx: MobCtx) {
     if (m.anim.state !== "hurt") m.anim.set("idle");
     return;
   }
+  m.holy = false;
   // kunduzgi ruh so'nadi
   if (m.state === "fade") {
     m.t -= dt;

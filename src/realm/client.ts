@@ -11,6 +11,7 @@ import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
 import { HERO_THEME, type Hero } from "@/game/hero";
+import { CRACK_LIFE, QUAKE_LIFE } from "@/game/paladinFx";
 import { playableHero } from "@/game/save";
 import { loadSettings, onSettingsChange } from "@/game/settings";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "@/game/haptics";
@@ -163,6 +164,8 @@ export class RealmClient {
       panel: save?.intro ? "none" : "intro",
       sel: 0,
       hover: null,
+      cracks: [],
+      quakes: [],
       toasts: [],
       banner: { text: "", sub: "", t: 0, color: "#ffe14d" },
       shake: 0,
@@ -651,6 +654,10 @@ export class RealmClient {
     this.mirror?.update(performance.now() / 1000, dt);
     this.input.endFrame();
     this.fx.update(dt);
+    for (const k of v.cracks) k.life -= dt;
+    v.cracks = v.cracks.filter((k) => k.life > 0);
+    for (const q of v.quakes) q.life -= dt;
+    v.quakes = v.quakes.filter((q) => q.life > 0);
     for (const t of v.toasts) t.t -= dt / 2.5;
     v.toasts = v.toasts.filter((t) => t.t > 0);
     if (v.banner.t > 0) v.banner.t -= dt / 2.5;
@@ -1029,7 +1036,7 @@ export class RealmClient {
         fx.burst(e.x, e.y, "#6e6860", 10, 40, 3);
         return;
       case "shang": {
-        // Paladin SHANG: yo'lak bo'ylab to'q sariq uchqunlar, uchida kichik zarb
+        // Paladin SHANG: yo'lak bo'ylab nurli yoriq va oq-oltin uchqunlar, uchida kichik zarb
         const t = HERO_THEME.paladin;
         for (let i = 0; i <= 4; i++)
           fx.burst(
@@ -1040,15 +1047,36 @@ export class RealmClient {
             70,
             1,
           );
-        fx.text(e.x + e.fx * 18, e.y - 22, "SHANG!", t.glow);
+        const tx = e.x + e.fx * (e.len + 2),
+          ty = e.y + e.fy * (e.len + 2) + 6;
+        this.view.cracks.push({
+          x: e.x + e.fx * 8,
+          y: e.y + 6 + e.fy * 8,
+          fx: e.fx,
+          fy: e.fy,
+          len: e.len,
+          life: CRACK_LIFE,
+          seed: (e.x * 7 + e.y * 13) % 1000,
+        });
+        this.view.quakes.push({
+          x: tx,
+          y: ty,
+          r: 18,
+          life: QUAKE_LIFE * 0.6,
+          max: QUAKE_LIFE * 0.6,
+        });
+        fx.burst(tx, ty, t.accentDark, 6, 50, 2);
+        fx.text(e.x + e.fx * 18, e.y - 22, "SHANG!", t.accent);
         fx.addShake(mine ? 0.3 : 0.1);
         if (mine) sfx.shang();
         return;
       }
       case "judgment":
+        // OSMON HUKMI: 360° zarb to'lqini — oq yadro, oltin chekka
+        this.view.quakes.push({ x: e.x, y: e.y + 4, r: e.r, life: QUAKE_LIFE, max: QUAKE_LIFE });
         fx.burst(e.x, e.y, HERO_THEME.paladin.glow, 24, 120, 2);
         fx.burst(e.x, e.y, HERO_THEME.paladin.accent, 14, 80, 2);
-        fx.text(e.x, e.y - 26, "OSMON HUKMI!", HERO_THEME.paladin.glow);
+        fx.text(e.x, e.y - 26, "OSMON HUKMI!", HERO_THEME.paladin.accent);
         fx.addShake(0.35);
         if (!mine) sfx.judgment();
         return;

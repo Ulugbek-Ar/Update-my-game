@@ -288,7 +288,7 @@ describe("Upgrade card icons", () => {
         expect(rows, u.id).toBeDefined();
         expect(rows!.length).toBe(12);
         // Ovchi ikonkalari yashil-jigarrang (G, D, B, T, W), Merganniki mis-jez-kulrang
-        // (M, J, Y, P, N, H, E), Paladinniki to'q sariq-oltin (A, Q, U, V, Z) palitra harflari bilan
+        // (M, J, Y, P, N, H, E), Paladinniki oltin-oq (A, Q, U, V, Z) palitra harflari bilan
         for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTWMJYPNHEAQUVZ]{12}$/);
       }
   });

@@ -152,7 +152,7 @@ describe("Paladin hamma rejimlarda", () => {
     expect(w2.chapter).toBe(2);
   });
 
-  it("the adventure map shows an orange helmet badge", () => {
+  it("the adventure map shows a gold helmet badge", () => {
     const fills: string[] = [];
     const ctx = new Proxy(
       {},
@@ -165,7 +165,7 @@ describe("Paladin hamma rejimlarda", () => {
       },
     ) as CanvasRenderingContext2D;
     heroBadge(ctx, "paladin", 10, 10, true);
-    expect(fills).toContain("#ff8c1a");
+    expect(fills).toContain("#f2c14e");
   });
 
   it("works in the Realm (offline sim): SHANG hits a mob, QASAM taunts it", () => {

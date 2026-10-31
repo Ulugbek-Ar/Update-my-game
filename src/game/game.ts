@@ -59,6 +59,7 @@ import {
   renderSkyColumn,
   renderVowAura,
   renderWindupSparks,
+  renderDazeStars,
   type Crack,
   type Quake,
 } from "./paladinFx";
@@ -1668,9 +1669,13 @@ export class Game {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         if (b.bullet || b.wave) {
-          // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi (Paladin to'lqini — to'q sariq chang)
+          // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi (Paladin to'lqini — oq-oltin nur)
           if (Math.random() < 0.5)
-            this.fx.trail(b.x, b.y, b.wave ? "rgba(255,140,26,0.6)" : "rgba(255,226,160,0.55)");
+            this.fx.trail(
+              b.x,
+              b.y,
+              b.wave ? withAlpha(HERO_THEME.paladin.glow, 0.6) : "rgba(255,226,160,0.55)",
+            );
           b.range = (b.range ?? Infinity) - Math.hypot(b.vx, b.vy) * dt;
           if (b.range <= 0) {
             this.fx.burst(b.x, b.y, "#9a948a", 3, 20, 1);
@@ -1712,7 +1717,13 @@ export class Game {
           this.fx.burst(
             b.x,
             b.y,
-            b.wave ? "#ff8c1a" : b.bullet ? "#ffe2a0" : b.arrow ? "#c9a26b" : "#ff5a3c",
+            b.wave
+              ? HERO_THEME.paladin.accent
+              : b.bullet
+                ? "#ffe2a0"
+                : b.arrow
+                  ? "#c9a26b"
+                  : "#ff5a3c",
             6,
             60,
             1,
@@ -1772,7 +1783,7 @@ export class Game {
           if (heavy && p.spinning && !t.dead) {
             if (t instanceof Enemy) t.stun = Math.max(t.stun, SKY_STUN);
             else t.slow = Math.max(t.slow, SKY_STUN);
-            this.fx.text(t.x, t.y - 14, "GANGIDI", "#ffd27a");
+            this.fx.text(t.x, t.y - 14, "GANGIDI", HERO_THEME.paladin.glow);
           }
           const wasAlive = !t.dead;
           this.damageTarget(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
@@ -1922,14 +1933,15 @@ export class Game {
    */
   private updatePaladin(dt: number) {
     const p = this.player;
-    const accent = HERO_THEME.paladin.accent;
+    const { accent, accentDark, glow } = HERO_THEME.paladin;
     for (const k of this.cracks) k.life -= dt;
     this.cracks = this.cracks.filter((k) => k.life > 0);
     for (const q of this.quakes) q.life -= dt;
     this.quakes = this.quakes.filter((q) => q.life > 0);
     if (p.slamT > 0 && Math.random() < 0.6) {
-      // qilich boshi uzra porlaydi: to'q sariq uchqunlar
-      this.fx.burst(p.x + (Math.random() - 0.5) * 10, p.y - 26, accent, 1, 40, 1);
+      // qilich boshi uzra porlaydi: oq-oltin uchqunlar (muqaddas nur)
+      const col = Math.random() < 0.5 ? accent : glow;
+      this.fx.burst(p.x + (Math.random() - 0.5) * 10, p.y - 26, col, 1, 40, 1);
     }
     if (p.slammed) {
       p.slammed = false;
@@ -1952,26 +1964,27 @@ export class Game {
         this.fx.burst(
           p.x + p.fx * len * k,
           p.y + 6 + p.fy * len * k,
-          i % 2 ? "#ffd27a" : accent,
+          i % 2 ? glow : accent,
           3,
           70,
           1,
         );
       }
-      this.fx.burst(tx, ty, "#a8500f", 6, 50, 2);
+      this.fx.burst(tx, ty, accentDark, 6, 50, 2);
+      this.fx.burst(tx, ty, "#ffffff", 3, 40, 1);
       this.fx.addShake(0.3);
       this.freeze = Math.max(this.freeze, 0.05);
       // yozuv devor yonida ham ekranga sig'adi
-      this.fx.text(fitX(p.x + p.fx * 18), Math.max(30, p.y - 22), "SHANG!", "#ffd27a");
+      this.fx.text(fitX(p.x + p.fx * 18), Math.max(30, p.y - 22), "SHANG!", accent);
     }
     if (p.judged) {
       p.judged = false;
       this.quakes.push({ x: p.x, y: p.y + 4, r: SKY_RADIUS, life: QUAKE_LIFE, max: QUAKE_LIFE });
-      this.fx.burst(p.x, p.y, "#ffd27a", 24, 120, 2);
+      this.fx.burst(p.x, p.y, glow, 24, 120, 2);
       this.fx.burst(p.x, p.y, accent, 14, 80, 2);
       this.fx.addShake(0.45);
       this.freeze = Math.max(this.freeze, 0.06);
-      this.fx.text(fitX(p.x, 50), Math.max(30, p.y - 26), "OSMON HUKMI!", "#ffd27a");
+      this.fx.text(fitX(p.x, 50), Math.max(30, p.y - 26), "OSMON HUKMI!", accent);
     }
     if (p.vowed) {
       p.vowed = false;
@@ -1989,13 +2002,13 @@ export class Game {
     }
     if (p.auraPulse) {
       p.auraPulse = false;
-      this.fx.burst(p.x, p.y, "#ffd27a", 12, 60, 1);
-      this.fx.text(p.x, p.y - 18, "+1 YURAK", "#ffd27a");
+      this.fx.burst(p.x, p.y, glow, 12, 60, 1);
+      this.fx.text(p.x, p.y - 18, "+1 YURAK", glow);
     }
     if (p.absorbed) {
       p.absorbed = false;
-      this.fx.burst(p.x, p.y - 4, "#ffd27a", 6, 60, 1);
-      this.fx.text(p.x, p.y - 18, "BLOK", "#ffd27a");
+      this.fx.burst(p.x, p.y - 4, glow, 6, 60, 1);
+      this.fx.text(p.x, p.y - 18, "BLOK", glow);
     }
     if (p.dashing) {
       // MUQADDAS HAMLA: yo'lidagi dushmanlar 1 zarar bilan itariladi
@@ -2717,7 +2730,10 @@ export class Game {
           );
         e.render(c);
         // Merganda sekinlashish faqat tutundan — muz uchqunlari chizilmaydi
-        if (e.slow > 0 && !e.dead && !p.gunner) this.frost(c, e.x, e.y, e.size);
+        if (e.slow > 0 && !e.dead && !p.gunner && !p.paladin) this.frost(c, e.x, e.y, e.size);
+        // Paladin OSMON HUKMIdan gangigan: boshi uzra oq-oltin yulduzchalar
+        if (p.paladin && (e.stun > 0 || e.slow > 0) && !e.dead)
+          renderDazeStars(c, e.x, e.y - e.size / 2 - 7, this.time);
       },
     }));
     const boss = this.boss;
@@ -2729,7 +2745,11 @@ export class Game {
           // ko'zgular bor paytda haqiqiy Malikaning soyasi och muz polda ham aniq ko'rinsin
           if (boss instanceof Queen && boss.mirrors.length) this.shadow(c, boss.x, boss.y + 24, 34);
           boss.render(c);
-          if (boss.slow > 0 && !boss.dead && !p.gunner) this.frost(c, boss.x, boss.y, boss.size);
+          // Paladin: Boss OSMON HUKMIdan sekinlashdi — muz emas, gangish yulduzchalari
+          if (boss.slow > 0 && !boss.dead && p.paladin)
+            renderDazeStars(c, boss.x, boss.y - boss.size / 2 - 6, this.time);
+          else if (boss.slow > 0 && !boss.dead && !p.gunner)
+            this.frost(c, boss.x, boss.y, boss.size);
         },
       });
     // ko'zgu nusxalari: soyasi yo'q — haqiqiy Malikani shundan ajratish mumkin

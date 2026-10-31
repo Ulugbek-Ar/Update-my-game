@@ -50,14 +50,15 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     uiText: "#d9a441",
     empty: "#2e2820",
   },
-  // Paladin: to'q sariq (apelsin) va oltin
+  // Paladin: oltin va oq "muqaddas nur" (oq yadro, oltin chekka). Tanga/ochko sarig'idan (#ffcc33)
+  // ajralib turadi: to'qroq, iliq oltin va deyarli oq porlash
   paladin: {
-    accent: "#ff8c1a",
-    accentDark: "#a8500f",
-    glow: "#ffd27a",
-    trail: "rgba(255,140,26,0.8)",
-    uiText: "#ff8c1a",
-    empty: "#3a2410",
+    accent: "#f2c14e",
+    accentDark: "#a87a12",
+    glow: "#fff2b0",
+    trail: "rgba(255,242,176,0.8)",
+    uiText: "#f2c14e",
+    empty: "#3a300e",
   },
 };
 
@@ -77,7 +78,7 @@ export interface RoleInfo {
 export const ROLE_INFO: Record<Role, RoleInfo> = {
   tank: {
     name: "TANK",
-    color: "#ff8c1a",
+    color: "#f2c14e",
     desc: "Dushman va bossni o'ziga tortadi, zarbani ko'taradi",
   },
   warrior: { name: "JANGCHI", color: "#68cde4", desc: "Yaqin jangda tez va chaqqon uradi" },
