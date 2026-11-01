@@ -155,3 +155,55 @@ describe("online name and level", () => {
     expect(d).toBeLessThan(110);
   });
 });
+
+describe("account deletion", () => {
+  it("removes everything on the server; the device keeps playing as a guest", async () => {
+    const { store, api } = setup();
+    const a = await store.login({ id: 50, username: "Ketuvchi" }, "web", NOW);
+    const b = await store.login({ id: 51, username: "Qoluvchi" }, "web", NOW);
+    const ida = store.playerByTg(50)!.id;
+    const idb = store.playerByTg(51)!.id;
+    store.putSave(ida, { base: 0, time: NOW, device: "web", data: { "pixel-rpg-gold": "5" } }, NOW);
+    store.putSave(
+      ida,
+      { base: 1, time: NOW + 1, device: "web", dev: "otherdev1", data: {} },
+      NOW + 1,
+    );
+    await api("friends/add", { token: a.token, query: "Qoluvchi" });
+    await api("friends/answer", { token: b.token, id: ida, accept: true });
+    await api("friends/msg", { token: b.token, to: ida, phrase: 0 });
+    await api("presence", { token: a.token, place: "menu" });
+    await api("scores/submit", {
+      token: a.token,
+      mode: "world",
+      hero: "knight",
+      score: 1000,
+      wave: 3,
+      time: 120,
+      won: false,
+    });
+    // tasdiqsiz — so'rov rad
+    expect(await api("account/delete", { token: a.token })).toEqual({ ok: false, error: "bad" });
+    expect(await api("account/delete", { token: a.token, confirm: true })).toEqual({ ok: true });
+    const count = (q: string, ...b: (number | string)[]) =>
+      Number(store.db.exec<{ n: number }>(q, ...b).toArray()[0]!.n);
+    expect(store.playerByTg(50)).toBeNull();
+    expect(count("SELECT COUNT(*) AS n FROM sessions WHERE player = ?", ida)).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM saves WHERE player = ?", ida)).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM backups WHERE player = ?", ida)).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM friends WHERE a = ? OR b = ?", ida, ida)).toBe(0);
+    expect(
+      count("SELECT COUNT(*) AS n FROM messages WHERE sender = ? OR receiver = ?", ida, ida),
+    ).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM presence WHERE player = ?", ida)).toBe(0);
+    expect(count("SELECT COUNT(*) AS n FROM scores WHERE player = ?", ida)).toBe(0);
+    // sessiya ham ishlamaydi; ikkinchi o'yinchining do'stlar ro'yxati bo'sh
+    expect(await api("me", { token: a.token })).toEqual({ ok: false, error: "auth" });
+    expect(await api("friends/list", { token: b.token })).toMatchObject({ friends: [] });
+    // qayta kirsa — yangi, bo'sh akkaunt
+    const again = await store.login({ id: 50, username: "Ketuvchi" }, "web", NOW);
+    expect(again.created).toBe(true);
+    expect(store.getSave(again.me.id)).toBeNull();
+    expect(idb).toBeGreaterThan(0);
+  });
+});

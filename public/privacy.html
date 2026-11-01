@@ -55,32 +55,80 @@
   <body>
     <main>
       <h1>Piksel Qal'a — Maxfiylik siyosati</h1>
-      <p class="muted">Kuchga kirgan sana: 2026-yil 29-oktabr</p>
+      <p class="muted">Kuchga kirgan sana: 2026-yil 1-noyabr (v3.2.0 — akkauntlar)</p>
 
       <p>
         Ushbu siyosat "Piksel Qal'a" o'yiniga — Android ilovasi
-        (<code>com.ulugbek.pikselqala</code>) va brauzer versiyasiga tegishli.
+        (<code>com.ulugbek.pikselqala</code>), Windows dasturi, portativ va brauzer versiyasiga (shu
+        jumladan Telegram ichida) tegishli.
       </p>
 
-      <h2>Qanday ma'lumot yig'iladi</h2>
+      <h2>Akkauntsiz (mehmon) o'ynasangiz</h2>
       <p>
-        <strong>Hech qanday shaxsiy ma'lumot yig'ilmaydi.</strong> O'yin ro'yxatdan o'tishni, ism,
-        telefon raqami, elektron pochta, joylashuv, kontaktlar, rasm yoki boshqa shaxsiy
-        ma'lumotlarni so'ramaydi va ularni hech kimga yubormaydi.
+        <strong>Hech qanday shaxsiy ma'lumot yig'ilmaydi.</strong> Rekordlar, oltin, do'kon
+        xaridlari, yutuqlar, daraja, sozlamalar va Abadiyat olami holati
+        <strong>faqat qurilmangizda</strong> saqlanadi. Ilovani o'chirsangiz yoki ma'lumotlarini
+        tozalasangiz, saqlanishlar ham o'chadi. Onlayn olamga kirsangiz, o'yin paytida qahramon
+        holati xonadagi boshqa o'yinchilarga ko'rsatish uchun serverga yuboriladi va "Mehmon-1234"
+        kabi ism bilan ko'rinasiz; bu ma'lumot akkauntga bog'lanmaydi.
       </p>
 
-      <h2>Saqlanishlar</h2>
+      <h2>Telegram orqali kirsangiz: nima saqlanadi</h2>
+      <p>Kirish ixtiyoriy. Parol yo'q — Telegram tasdiqlaydi. Serverda saqlanadi:</p>
+      <ul>
+        <li><strong>Telegram ID</strong> (raqam) — sizni tanish uchun;</li>
+        <li>
+          <strong>taxallus</strong> (o'zingiz tanlaysiz; birinchi kirishda Telegram username'ingiz
+          mos bo'lsa, o'shandan olinadi) va <strong>avatar</strong> (o'yindagi qahramon);
+        </li>
+        <li>
+          <strong>o'yin progressi</strong>: oltin, qahramonlar, rekordlar, yutuqlar, daraja (XP) va
+          statistika, Abadiyat olami holati — oxirgi nusxa va 5 ta zaxira;
+        </li>
+        <li>
+          <strong>do'stlar</strong> ro'yxati, so'rovlar va bloklanganlar, do'stlar o'rtasidagi
+          tayyor iboralar (yetkazilgach o'chadi);
+        </li>
+        <li>
+          <strong>onlayn holat</strong>: menyuda, sarguzashtda yoki olamda ekaningiz va olam xonasi
+          kodi — faqat do'stlaringizga ko'rinadi;
+        </li>
+        <li><strong>reyting natijalari</strong> (ochko, vaqt, qahramon).</li>
+      </ul>
       <p>
-        Rekordlar, oltin, do'kon xaridlari, yutuqlar, sozlamalar va Abadiyat olami holati
-        <strong>faqat qurilmangizda</strong> (ilova ichidagi mahalliy xotirada) saqlanadi. Ular
-        serverga yuborilmaydi. Ilovani o'chirsangiz yoki ma'lumotlarini tozalasangiz, saqlanishlar
-        ham o'chadi.
+        Saqlanmaydi: telefon raqami, ism-familiya, Telegram rasmi, kontaktlar, joylashuv,
+        Telegram'dagi xabarlaringiz. Sessiya — tasodifiy kalit (serverda faqat uning xeshi), 60 kun
+        ishlatilmasa eskiradi. Boshqaruv sozlamalari bulutga yuborilmaydi.
+      </p>
+
+      <h2>Nima uchun</h2>
+      <p>
+        Progressingiz sayt, Telegram, telefon va kompyuterda bir xil bo'lishi uchun; do'stlar
+        ro'yxati (kim onlayn, "yoniga kirish") va reyting ishlashi uchun. Ma'lumot reklama yoki
+        boshqa maqsadda ishlatilmaydi, sotilmaydi va uchinchi tomonga berilmaydi.
+      </p>
+
+      <h2>Qayerda saqlanadi</h2>
+      <p>
+        O'yin serverida (Cloudflare Workers va Durable Objects). Reytingning haftalik natijalari
+        taxminan 3 haftadan keyin, kunlik sinov natijalari 8 kundan keyin avtomatik o'chiriladi.
+      </p>
+
+      <h2>Qanday o'chirish mumkin</h2>
+      <p>
+        O'yinda <strong>Profil → "Akkauntni o'chirish"</strong> (taxallusingizni yozib
+        tasdiqlaysiz): akkaunt va serverdagi <strong>barcha ma'lumot</strong> (Telegram ID,
+        taxallus, bulutdagi progress va zaxiralar, do'stlar, xabarlar, onlayn holat, reyting) darhol
+        o'chiriladi. Qurilmangizdagi progress qoladi — mehmon sifatida davom etasiz. "Chiqish" esa
+        faqat shu qurilmadagi sessiyani yopadi. Savol bo'lsa — pastdagi Telegram kanal orqali
+        yozing.
       </p>
 
       <h2>Internet, reklama va analitika</h2>
       <p>
-        Android ilovasi to'liq oflayn ishlaydi. Ilovada reklama, analitika, kuzatuv (tracking)
-        vositalari va to'lovlar yo'q. Uchinchi tomon SDK'lari ma'lumot yig'maydi.
+        O'yin internetsiz ham ishlaydi; internet faqat ixtiyoriy onlayn imkoniyatlar (onlayn olam,
+        akkaunt, do'stlar, reyting) va yangi versiya tekshiruvi uchun ishlatiladi. Reklama,
+        analitika, kuzatuv (tracking) vositalari va to'lovlar yo'q.
       </p>
 
       <h2>Ruxsatlar</h2>
@@ -91,7 +139,8 @@
 
       <h2>Bolalar</h2>
       <p>
-        O'yin bolalardan ham hech qanday ma'lumot yig'maydi, chunki umuman ma'lumot yig'ilmaydi.
+        Mehmon rejimida bolalardan hech qanday ma'lumot yig'ilmaydi. Akkaunt Telegram orqali
+        ochiladi (Telegram foydalanish shartlariga ko'ra) va undan faqat yuqoridagilar saqlanadi.
       </p>
 
       <h2>O'zgarishlar</h2>
@@ -102,8 +151,7 @@
       <h2>Aloqa</h2>
       <p>
         Savol va takliflar uchun Telegram kanalimiz:
-        <!-- Telegram kanal havolasini shu yerga yozing (masalan https://t.me/kanal_nomi) -->
-        <a href="https://t.me/TELEGRAM_KANAL">Piksel Qal'a Telegram kanali</a>.
+        <a href="https://t.me/piksel_qala">Piksel Qal'a Telegram kanali</a>.
       </p>
 
       <hr />

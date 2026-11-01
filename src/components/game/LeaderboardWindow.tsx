@@ -22,7 +22,18 @@ function left(ms: number) {
   return d > 0 ? `${d} kun ${h} soat` : h > 0 ? `${h} soat ${m % 60} daqiqa` : `${m} daqiqa`;
 }
 
-function ScoreLine({ r, me, ash }: { r: ScoreRow; me: boolean; ash: boolean }) {
+function ScoreLine({
+  r,
+  me,
+  ash,
+  hero = true,
+}: {
+  r: ScoreRow;
+  me: boolean;
+  ash: boolean;
+  /** natija qaysi qahramon bilan (cheksiz, kunlik; 1-dunyo jadvali — bitta qahramonniki) */
+  hero?: boolean;
+}) {
   return (
     <li
       className={`flex items-center gap-2 border-2 px-2 py-1 ${me ? "border-primary bg-primary/15" : "border-border"}`}
@@ -42,7 +53,7 @@ function ScoreLine({ r, me, ash }: { r: ScoreRow; me: boolean; ash: boolean }) {
           <span className="truncate text-muted-foreground">Jamoa: {r.team.join(", ")}</span>
         )}
       </span>
-      {!ash && r.hero && <HeroAvatar hero={r.hero} size={16} />}
+      {!ash && hero && r.hero && <HeroAvatar hero={r.hero} size={16} />}
       <span className="shrink-0 text-primary">{ash ? mmss(r.score / 10) : r.score}</span>
     </li>
   );
@@ -154,7 +165,7 @@ export function LeaderboardWindow({
       ) : (
         <ol className="flex flex-col gap-1" aria-label="Top-50">
           {data.rows.map((r) => (
-            <ScoreLine key={r.id} r={r} me={r.id === meId} ash={ash} />
+            <ScoreLine key={r.id} r={r} me={r.id === meId} ash={ash} hero={kind !== "w1"} />
           ))}
         </ol>
       )}
@@ -163,7 +174,7 @@ export function LeaderboardWindow({
           !inTop && (
             <div className="flex flex-col gap-1">
               <span className="text-primary">SIZNING O'RNINGIZ</span>
-              <ScoreLine r={mine} me ash={ash} />
+              <ScoreLine r={mine} me ash={ash} hero={kind !== "w1"} />
               {mine.hidden && (
                 <span className="text-muted-foreground">
                   Natijangiz tekshiruvda — hozircha reytingda ko'rinmaydi.

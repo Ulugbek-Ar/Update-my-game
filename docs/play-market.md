@@ -30,8 +30,8 @@ VITE_STATIC=1 bun run dev          # (skrinshot uchun: AI tugmasisiz)
 SHOT_FILE=store/screenshots.json SHOT_OUT=store/screenshots node scripts/screenshot.mjs
 ```
 
-> `public/privacy.html` dagi Telegram kanal havolasini (`https://t.me/TELEGRAM_KANAL`)
-> haqiqiy kanal manziliga almashtiring.
+> `public/privacy.html` — v3.2.0 dan akkauntlar (Telegram orqali kirish, bulutli saqlanish,
+> do'stlar, reyting) bilan yangilangan; aloqa — https://t.me/piksel_qala.
 
 ## 1. Imzo kaliti (keystore)
 
@@ -102,7 +102,11 @@ Har bo'limni **Start** bilan ochib to'ldiring:
 
 ### App access
 
-**All functionality is available without special access** (login yo'q).
+v3.2.0 dan: asosiy o'yin loginsiz to'liq ishlaydi, lekin bulutli saqlanish, do'stlar va reytingda
+qatnashish **ixtiyoriy Telegram akkaunti** bilan. **All or some functionality is restricted** →
+ko'rsatma: "Login is optional (Telegram, no password). The full game is playable without login.
+To test account features: tap KIRISH → TELEGRAM BILAN KIRISH, open the bot link and press
+Tasdiqlash with any Telegram account." (parol yoki test login kerak emas).
 
 ### Content rating (IARC so'rovnomasi)
 
@@ -112,7 +116,8 @@ Har bo'limni **Start** bilan ochib to'ldiring:
 - Fear/horror: yengil fantastik maxluqlar (skeletlar, Iblis) — "mild".
 - Sexuality, nudity, bad language, drugs, alcohol, tobacco: **No**.
 - Gambling / simulated gambling: **No** (sandiq va kartalar pulga sotilmaydi).
-- User interaction / chat, sharing location, digital purchases: **No**.
+- User interaction: **Yes** — faqat do'stlar o'rtasida **tayyor iboralar** (erkin matn yo'q) va
+  onlayn olamda tayyor iboralar; sharing location, digital purchases: **No**.
 - Kutilgan natija: taxminan **PEGI 7 / ESRB Everyone 10+** (fantasy violence).
 
 ### Target audience and content
@@ -124,12 +129,17 @@ Har bo'limni **Start** bilan ochib to'ldiring:
 
 ### Data safety
 
-- Does your app collect or share any of the required user data types? → **No**.
-- Is all of the user data collected by your app encrypted in transit? → savol chiqmaydi
-  (ma'lumot yig'ilmaydi).
-- Do you provide a way for users to request that their data is deleted? → kerak emas
-  (ma'lumot yig'ilmaydi; saqlanishlar faqat qurilmada, ilovani o'chirish bilan o'chadi).
-- Natija: **"No data collected"**, **"No data shared"**.
+v3.2.0 dan (faqat foydalanuvchi Telegram orqali kirsa; mehmon rejimida hech narsa yig'ilmaydi):
+
+- Does your app collect or share any of the required user data types? → **Yes** (collect).
+- **Personal info → User IDs**: Telegram ID, taxallus — _Collected_, _optional_, maqsad:
+  **App functionality, Account management**. Shared: **No**.
+- **App activity → Other actions** (o'yin progressi, reyting natijalari, do'stlar ro'yxati):
+  _Collected_, _optional_, maqsad: **App functionality**. Shared: **No**.
+- Is all of the user data collected by your app encrypted in transit? → **Yes** (HTTPS / WSS).
+- Do you provide a way for users to request that their data is deleted? → **Yes**: ilova ichida
+  Profil → "Akkauntni o'chirish" (darhol, hammasi), yoki Telegram kanal orqali so'rov.
+- Natija: "Data collected: User IDs, App activity (optional)", **"No data shared"**.
 
 ### Boshqa deklaratsiyalar
 

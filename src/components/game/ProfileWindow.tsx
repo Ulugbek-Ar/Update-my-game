@@ -432,6 +432,65 @@ export function ProfileWindow({
           </button>
         </div>
       )}
+      {tab === "profile" && <DeleteAccount nick={me.nick} onDone={onClose} />}
     </PixelWindow>
+  );
+}
+
+/** Akkauntni o'chirish: taxallusni yozib tasdiqlanadi; serverdagi hamma narsa o'chadi */
+function DeleteAccount({ nick, onDone }: { nick: string; onDone: () => void }) {
+  const a = useAccount();
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState("");
+  if (!open)
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="self-start text-[9px] text-[#ff4d6d] underline sm:text-[10px]"
+      >
+        Akkauntni o'chirish
+      </button>
+    );
+  const ok = v.trim().toLowerCase() === nick.toLowerCase();
+  return (
+    <div role="alertdialog" className="flex flex-col gap-2 border-2 border-[#ff4d6d] p-3">
+      <p className="text-foreground">
+        Akkaunt va serverdagi <span className="text-[#ff4d6d]">barcha ma'lumot</span> butunlay
+        o'chadi: Telegram ID, taxallus, bulutdagi progress va zaxiralar, do'stlar, xabarlar,
+        reyting. Qaytarib bo'lmaydi. Shu qurilmadagi progress qoladi.
+      </p>
+      <label className="flex flex-col gap-1 text-muted-foreground">
+        Tasdiqlash uchun taxallusingizni yozing: {nick}
+        <input
+          value={v}
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Taxallus (tasdiqlash)"
+          onChange={(e) => setV(e.target.value)}
+          className={`w-48 border-2 border-border bg-background px-2 py-1 text-foreground ${pixelFocus}`}
+        />
+      </label>
+      {a.error && (
+        <p role="alert" className="text-[#ff4d6d]">
+          {a.error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          disabled={!ok || a.busy}
+          onClick={() =>
+            void account.deleteAccount().then((done) => {
+              if (done) onDone();
+            })
+          }
+          className={btn("pixel", "border-[#ff4d6d] bg-[#ff4d6d]")}
+        >
+          {a.busy ? "O'CHIRILMOQDA..." : "AKKAUNTNI O'CHIRISH"}
+        </button>
+        <button onClick={() => setOpen(false)} className={btn("pixelOutline")}>
+          BEKOR
+        </button>
+      </div>
+    </div>
   );
 }

@@ -222,6 +222,30 @@ export class AccountStore {
     return { ok: true, player: this.player(p.id)! };
   }
 
+  /**
+   * Akkauntni o'chirish: serverdagi barcha ma'lumot — o'yinchi, sessiyalar, saqlanish va zaxiralar,
+   * do'stlik, xabarlar, onlayn holat, reyting. Qaytarib bo'lmaydi.
+   */
+  deleteAccount(id: number) {
+    this.db.tx(() => {
+      const p = this.player(id);
+      for (const q of [
+        "DELETE FROM sessions WHERE player = ?",
+        "DELETE FROM saves WHERE player = ?",
+        "DELETE FROM backups WHERE player = ?",
+        "DELETE FROM friends WHERE a = ?",
+        "DELETE FROM friends WHERE b = ?",
+        "DELETE FROM messages WHERE sender = ?",
+        "DELETE FROM messages WHERE receiver = ?",
+        "DELETE FROM presence WHERE player = ?",
+        "DELETE FROM scores WHERE player = ?",
+        "DELETE FROM players WHERE id = ?",
+      ])
+        this.db.exec(q, id);
+      if (p) this.db.exec("DELETE FROM logins WHERE tg = ?", p.tg);
+    });
+  }
+
   /** XP bulutli saqlanishdan (daraja onlayn ism yonida va reytingda ko'rinadi) */
   setXp(id: number, xp: number) {
     this.db.exec("UPDATE players SET xp = ? WHERE id = ? AND xp != ?", xp, id, xp);

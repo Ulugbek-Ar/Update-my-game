@@ -166,6 +166,12 @@ export async function handleApi(
       const save = store.restore(p.id, b.slot, env.now);
       return save ? { ok: true, save } : fail("none");
     }
+    case "account/delete": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      store.deleteAccount(p.id);
+      return { ok: true };
+    }
     case "friends/list": {
       const p = await authed();
       if (!p) return fail("auth");

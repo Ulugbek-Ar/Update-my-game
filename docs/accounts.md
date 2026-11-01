@@ -110,6 +110,16 @@ soniga nisbatan imkonsiz ochko yoki vaqt; Kul qiroli 10 soniyadan tez. Shubhali 
 yaqin, juda tez g'alaba) saqlanadi, lekin reytingda **yashirin** — o'yinchining o'ziga
 "tekshiruvda" deb ko'rinadi. Internet yo'q bo'lsa natija qurilmada navbatda turadi.
 
+## Maxfiylik va akkauntni o'chirish
+
+Serverda faqat: Telegram ID, taxallus, avatar, progress (va 5 ta zaxira), do'stlar, xabarlar
+(yetkazilgach o'chadi), onlayn holat va reyting. Telefon raqami, ism, rasm saqlanmaydi.
+Batafsil — `public/privacy.html` (saytda `privacy.html`).
+
+Profil → **Akkauntni o'chirish** (taxallusni yozib tasdiqlanadi): serverdagi hamma narsa darhol
+o'chadi (`account/delete`), sessiya ham. Qurilmadagi progress qoladi — mehmon sifatida davom
+etiladi. Shu Telegram bilan qayta kirilsa — yangi, bo'sh akkaunt.
+
 ## BotFather va server sozlamasi
 
 1. Kanal boti (TELEGRAM_BOT_TOKEN — kanalga post ham shu bot bilan).
@@ -138,7 +148,9 @@ npx wrangler dev --port 8787
 VITE_SERVER_URL=http://127.0.0.1:8787 bun run dev
 ```
 
-`.dev.vars` git'ga kirmaydi. Haqiqiy Telegram bo'lmasa, bot tasdig'ini webhook'ga o'zingiz
+`.dev.vars` git'ga kirmaydi. Serversiz ko'rish (skrinshotlar ham shu bilan olinadi): `bun run dev`
+da konsolda `await window.__accountDemo()` — soxta akkaunt, do'stlar va reyting
+(`{ pending: true }` — bot kodi kutilayotgan holat). Haqiqiy serverga hech narsa yuborilmaydi. Haqiqiy Telegram bo'lmasa, bot tasdig'ini webhook'ga o'zingiz
 yuborasiz (yo'l va secret — yuqoridagi formula bilan): `/start login_<kod>` xabari va
 `callback_query` (`ok:<kod>`). Testlar: `npm test` (`src/account/**`).
 
@@ -152,3 +164,9 @@ yuborasiz (yo'l va secret — yuqoridagi formula bilan): `/start login_<kod>` xa
 | Botda "Tasdiqlash" bosildi, o'yin kirmadi     | o'yinga qayting (fonda so'ramaydi); 5 daqiqa o'tgan bo'lsa — qayta "TELEGRAM BILAN KIRISH".      |
 | Bot javob bermaydi                            | Actions → Server → "Bot webhook'i" qadami: `setWebhook` xatosi (token, server manzili).          |
 | "Sessiya tugadi"                              | 60 kun ishlatilmagan yoki boshqa joyda chiqilgan — qayta kiring, progress bulutda.               |
+| Bulut belgisi sariq yoki kulrang              | o'zgarish yuborilmoqda yoki internet yo'q — progress qurilmada, ulanganda o'zi yuboriladi.       |
+| "Bulutga saqlanmadi: imkonsiz qiymat"         | oltin/rekord/XP chegaradan tashqari (qo'lda o'zgartirilgan). Profil → BULUT → zaxiradan tiklang. |
+| Boshqa qurilmadagi progress ko'rinmaydi       | menyuga qayting yoki ilovani qayta oching (o'yin paytida yangilanmaydi); Profil → HOZIR SAQLASH. |
+| Do'st "Oflayn", lekin o'ynayapti              | holat daqiqada bir yuboriladi — 5 daqiqagacha kechikishi mumkin, yoki u akkauntdan chiqqan.      |
+| "YONIGA KIRISH" yo'q                          | do'st olamda emas yoki olamda internetsiz (oflayn) o'ynayapti.                                   |
+| Natija reytingda yo'q                         | mehmon rejimida natija yuborilmaydi; kunlik sinov — kuniga bitta; shubhali natija "tekshiruvda". |

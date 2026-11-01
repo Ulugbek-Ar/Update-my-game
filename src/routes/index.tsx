@@ -264,6 +264,11 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
+    // dev: serversiz akkaunt (skrinshotlar) — await window.__accountDemo()
+    if (import.meta.env.DEV)
+      (window as unknown as { __accountDemo?: unknown }).__accountDemo = (o?: {
+        pending?: boolean;
+      }) => import("@/account/demo").then((m) => m.startAccountDemo(o));
     // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach);
     // bulutli saqlanish: kirgan bo'lsa — yangiroq progress yuklanadi, o'zgarishlar yuboriladi
     account.init();
@@ -815,7 +820,12 @@ function Index() {
                 <Button
                   variant="pixelLink"
                   onClick={() => (acc.me ? setFriendsOpen(true) : setLoginOpen(true))}
-                  title="Do'stlar: kim onlayn, yoniga kirish, tez xabar"
+                  aria-label="DO'STLAR"
+                  title={
+                    acc.me && fr.requests + fr.unread > 0
+                      ? `Do'stlar: ${fr.requests + fr.unread} ta yangi so'rov yoki xabar`
+                      : "Do'stlar: kim onlayn, yoniga kirish, tez xabar"
+                  }
                   className={cn(
                     "gap-1 text-[9px] sm:text-[10px]",
                     fr.requests + fr.unread > 0 && "gift-blink text-primary",

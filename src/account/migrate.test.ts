@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { setTransport } from "./api";
 import { AccountManager } from "./account";
 import { CloudSync } from "./cloud";
-import { ACCOUNT_KEY } from "./keys";
+import { ACCOUNT_KEY, CLOUD_KEY } from "./keys";
 import { installStorage, testServer } from "./server/testing";
 import { GOLD_KEY } from "@/game/shop";
 import { ACHIEVEMENTS_KEY } from "@/game/achievements";
@@ -143,5 +143,20 @@ describe("guest progress -> account", () => {
     expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull();
     expect(localStorage.getItem(GOLD_KEY)).toBe("10");
     expect(await srv.store.authenticate(token, Date.now())).toBeNull();
+  });
+
+  it("deleting the account clears the server, keeps the device progress as a guest", async () => {
+    localStorage.setItem(GOLD_KEY, "77");
+    const d = device();
+    await loginViaBot(d, srv, 555);
+    await d.sync.resolve("local");
+    const id = srv.store.playerByTg(555)!.id;
+    expect(await d.acc.deleteAccount()).toBe(true);
+    expect(d.acc.state.me).toBeNull();
+    expect(localStorage.getItem(ACCOUNT_KEY)).toBeNull();
+    expect(localStorage.getItem(CLOUD_KEY)).toBeNull();
+    expect(localStorage.getItem(GOLD_KEY)).toBe("77");
+    expect(srv.store.player(id)).toBeNull();
+    expect(srv.store.getSave(id)).toBeNull();
   });
 });

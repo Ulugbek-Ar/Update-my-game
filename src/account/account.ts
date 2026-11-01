@@ -11,7 +11,7 @@
 import { openExternal } from "@/lib/desktop";
 import { telegramApp, telegramUserId } from "@/lib/telegram";
 import { ACCOUNTS_ENABLED, ERROR_TEXT, accConfig, call, currentDevice } from "./api";
-import { ACCOUNT_KEY, LOGIN_KEY } from "./keys";
+import { ACCOUNT_KEY, CLOUD_KEY, LOGIN_KEY } from "./keys";
 import type { ErrCode, Me } from "./protocol";
 import { widgetAuth, loadWidget } from "./widget";
 
@@ -271,6 +271,33 @@ export class AccountManager {
     if (r.ok) this.setMe(r.me);
     else if (r.error === "auth") await this.dropSession();
     return r;
+  }
+
+  /**
+   * Akkauntni butunlay o'chirish (serverdan hamma narsa). Qurilmadagi progress qoladi —
+   * mehmon sifatida davom etiladi. true — o'chirildi.
+   */
+  async deleteAccount() {
+    const token = this.token;
+    if (!token) return false;
+    this.set({ busy: true });
+    const r = await call("account/delete", { token, confirm: true });
+    this.set({ busy: false });
+    if (!r.ok && r.error !== "auth") {
+      this.set({ error: ERROR_TEXT[r.error] });
+      return false;
+    }
+    try {
+      // bu qurilmadagi sinxron holati ham (u akkaunt endi yo'q)
+      localStorage.removeItem(CLOUD_KEY);
+    } catch {
+      /* saqlash imkonsiz */
+    }
+    await this.dropSession();
+    this.set({
+      notice: "Akkaunt o'chirildi. Progress shu qurilmada qoldi — mehmon sifatida o'ynaysiz",
+    });
+    return true;
   }
 
   /** Profil o'zgardi (taxallus, avatar, daraja) */
