@@ -14,6 +14,8 @@ const TICK_MS = TICK_DT * 1000;
 /** Lobbiga hisobot va dunyoni saqlash oralig'i */
 const REPORT_MS = 60_000;
 const SAVE_MS = 120_000;
+/** Hafta g'olibi (vodiydagi bayroq) shuncha vaqtda bir so'raladi */
+const CHAMP_MS = 3600_000;
 
 interface Attachment {
   id: string;
@@ -51,6 +53,7 @@ export class RoomDO extends DurableObject<Env> {
   /** tick ishlagan vaqt (DO vaqti limiti uchun) */
   private activeMs = 0;
   private activeAt = 0;
+  private champAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -85,7 +88,21 @@ export class RoomDO extends DurableObject<Env> {
     server.serializeAttachment({ id: this.room.newId() } satisfies Attachment);
     // Worker so'rovi + DO so'rovi
     this.used += 2;
+    // vodiydagi bayroq: o'tgan hafta g'olibi (soatiga bir marta)
+    if (Date.now() - this.champAt > CHAMP_MS) await this.loadChamp();
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  private async loadChamp() {
+    this.champAt = Date.now();
+    this.used += 1;
+    try {
+      this.room.setChamp(
+        await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName("accounts")).champion(),
+      );
+    } catch (e) {
+      console.error("champion", e);
+    }
   }
 
   async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) {

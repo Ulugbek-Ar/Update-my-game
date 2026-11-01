@@ -411,6 +411,8 @@ export class RealmSim {
   wallHits: Record<string, number> = {};
   /** plitka o'zgarsa oshadi (chizuvchi chunk keshini yangilaydi) */
   mapVersion = 0;
+  /** o'tgan hafta g'olibi (vodiydagi bayroq yozuvi): serverda — akkauntlardan, oflayn — keshdan */
+  champ: { name: string; tag: string; xp: number } | null = null;
   /** shu tickdagi voqealar (klient effekt va ovoz chiqaradi) */
   events: RealmEvent[] = [];
   private nextId = 1;
@@ -1106,6 +1108,25 @@ export class RealmSim {
         this.openChest(rp, o);
         return;
       case "guild":
+        // hafta g'olibi bayrog'i — oddiy yozuv (boshqalari klientda: zal, gildiya oynasi)
+        if (o.what === "flag") {
+          const c = this.champ;
+          rp.ui = {
+            kind: "sign",
+            title: "HAFTA G'OLIBI",
+            text: c
+              ? [
+                  `[${c.tag}] ${c.name}`,
+                  `O'tgan haftada ${c.xp} gildiya XP to'pladi — eng kuchli gildiya.`,
+                  "Bayrog'i hafta davomida shu maydonda hilpiraydi.",
+                ]
+              : [
+                  "Bayroq hali bo'sh.",
+                  "Hafta yakunida eng ko'p gildiya XP to'plagan gildiya bayrog'i shu yerda hilpiraydi.",
+                ],
+          };
+          return;
+        }
         this.events.push({ type: "guild", pid: rp.id, what: o.what });
         return;
       case "fragment":

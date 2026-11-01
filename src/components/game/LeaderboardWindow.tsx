@@ -12,9 +12,10 @@ import { HERO_LIST, HERO_THEME, type Hero } from "@/game/hero";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { HeroAvatar, LevelBadge, PixelWindow, TelegramIcon } from "./pixel";
 import { GuildTagBadge } from "./GuildBadge";
+import { GuildLeaderboard } from "./GuildLeaderboard";
 import { btn, tabBtn } from "./pixelUi";
 
-type Kind = "w1" | "endless" | "daily" | "ashking";
+type Kind = "w1" | "endless" | "daily" | "ashking" | "guilds";
 
 function left(ms: number) {
   const m = Math.max(0, Math.floor(ms / 60_000));
@@ -77,11 +78,13 @@ export function LeaderboardWindow({
   const [period, setPeriod] = useState<"week" | "all">("week");
   const [data, setData] = useState<ScoreTop | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
-  const board: BoardId = kind === "w1" ? `w1:${h}` : kind;
+  const board: BoardId = kind === "w1" ? `w1:${h}` : kind === "guilds" ? "ashking" : kind;
   const meId = a.me?.id ?? 0;
 
   useEffect(() => {
     let alive = true;
+    // gildiyalar jadvali — o'z bo'limida (GuildLeaderboard)
+    if (kind === "guilds") return;
     setState("loading");
     void topScores(board, period).then((t) => {
       if (!alive) return;
@@ -91,7 +94,7 @@ export function LeaderboardWindow({
     return () => {
       alive = false;
     };
-  }, [board, period, meId]);
+  }, [board, period, meId, kind]);
 
   const ash = kind === "ashking";
   const mine = data?.me;
@@ -101,6 +104,7 @@ export function LeaderboardWindow({
     ["endless", "CHEKSIZ"],
     ["daily", "KUNLIK"],
     ["ashking", "KUL QIROLI"],
+    ["guilds", "GILDIYALAR"],
   ];
   return (
     <PixelWindow label="Reyting" title="REYTING" onClose={onClose} wide>
@@ -128,6 +132,7 @@ export function LeaderboardWindow({
           </button>
         ))}
       </div>
+      {kind === "guilds" && <GuildLeaderboard period={period} />}
       {kind === "w1" && (
         <div className="flex flex-wrap gap-2" aria-label="Qahramon">
           {HERO_LIST.map((x) => (
@@ -148,60 +153,64 @@ export function LeaderboardWindow({
           ))}
         </div>
       )}
-      <p className="text-muted-foreground">
-        {boardName(board)}
-        {kind === "w1" ? " — eng yuqori ochko" : ash ? " — jamoa bo'lib, onlayn olamda" : ""}
-        {period === "week" && data
-          ? ` · yangilanadi: dushanba 00:00 (Toshkent), ${left(data.resets - Date.now())} qoldi`
-          : ""}
-      </p>
-      {state === "loading" ? (
-        <p className="text-muted-foreground">Yuklanmoqda...</p>
-      ) : state === "error" || !data ? (
-        <p className="text-[#ff4d6d]">Reytingni olib bo'lmadi — internetni tekshiring.</p>
-      ) : !data.rows.length ? (
-        <p className="text-muted-foreground">
-          Hali natija yo'q — birinchi bo'ling!
-          {ash ? " Kul qirolini do'stlar bilan onlayn olamda yenging." : ""}
-        </p>
-      ) : (
-        <ol className="flex flex-col gap-1" aria-label="Top-50">
-          {data.rows.map((r) => (
-            <ScoreLine key={r.id} r={r} me={r.id === meId} ash={ash} hero={kind !== "w1"} />
-          ))}
-        </ol>
-      )}
-      {a.me ? (
-        mine ? (
-          !inTop && (
-            <div className="flex flex-col gap-1">
-              <span className="text-primary">SIZNING O'RNINGIZ</span>
-              <ScoreLine r={mine} me ash={ash} hero={kind !== "w1"} />
-              {mine.hidden && (
-                <span className="text-muted-foreground">
-                  Natijangiz tekshiruvda — hozircha reytingda ko'rinmaydi.
-                </span>
-              )}
-            </div>
-          )
-        ) : (
-          state === "ok" && (
+      {kind !== "guilds" && (
+        <>
+          <p className="text-muted-foreground">
+            {boardName(board)}
+            {kind === "w1" ? " — eng yuqori ochko" : ash ? " — jamoa bo'lib, onlayn olamda" : ""}
+            {period === "week" && data
+              ? ` · yangilanadi: dushanba 00:00 (Toshkent), ${left(data.resets - Date.now())} qoldi`
+              : ""}
+          </p>
+          {state === "loading" ? (
+            <p className="text-muted-foreground">Yuklanmoqda...</p>
+          ) : state === "error" || !data ? (
+            <p className="text-[#ff4d6d]">Reytingni olib bo'lmadi — internetni tekshiring.</p>
+          ) : !data.rows.length ? (
             <p className="text-muted-foreground">
-              Sizda bu jadvalda natija yo'q —{" "}
-              {ash ? "Kul qirolini onlayn olamda yenging" : "o'ynang va reytingga kiring"}.
+              Hali natija yo'q — birinchi bo'ling!
+              {ash ? " Kul qirolini do'stlar bilan onlayn olamda yenging." : ""}
             </p>
-          )
-        )
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground">
-            Reytingda faqat kirgan o'yinchilar qatnashadi.
-          </span>
-          <button onClick={onLogin} className={btn("pixel", "inline-flex items-center gap-2")}>
-            <TelegramIcon />
-            KIRISH
-          </button>
-        </div>
+          ) : (
+            <ol className="flex flex-col gap-1" aria-label="Top-50">
+              {data.rows.map((r) => (
+                <ScoreLine key={r.id} r={r} me={r.id === meId} ash={ash} hero={kind !== "w1"} />
+              ))}
+            </ol>
+          )}
+          {a.me ? (
+            mine ? (
+              !inTop && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-primary">SIZNING O'RNINGIZ</span>
+                  <ScoreLine r={mine} me ash={ash} hero={kind !== "w1"} />
+                  {mine.hidden && (
+                    <span className="text-muted-foreground">
+                      Natijangiz tekshiruvda — hozircha reytingda ko'rinmaydi.
+                    </span>
+                  )}
+                </div>
+              )
+            ) : (
+              state === "ok" && (
+                <p className="text-muted-foreground">
+                  Sizda bu jadvalda natija yo'q —{" "}
+                  {ash ? "Kul qirolini onlayn olamda yenging" : "o'ynang va reytingga kiring"}.
+                </p>
+              )
+            )
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-muted-foreground">
+                Reytingda faqat kirgan o'yinchilar qatnashadi.
+              </span>
+              <button onClick={onLogin} className={btn("pixel", "inline-flex items-center gap-2")}>
+                <TelegramIcon />
+                KIRISH
+              </button>
+            </div>
+          )}
+        </>
       )}
     </PixelWindow>
   );

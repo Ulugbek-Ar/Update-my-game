@@ -20,7 +20,7 @@ import { XP, addXp, awardRealm } from "@/account/xp";
 import { addStats } from "@/account/stats";
 import { account } from "@/account/account";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
-import { cachedGuild } from "@/account/guild";
+import { cachedChamp, cachedGuild, saveChamp } from "@/account/guild";
 import { loadHallData, loadRealmData } from "./data";
 import {
   RealmSim,
@@ -194,6 +194,8 @@ export class RealmClient {
         : save.player
       : null;
     this.me = this.sim.addPlayer(this.pid, hero, player);
+    // vodiydagi bayroq yozuvi (oflayn — qurilmadagi keshdan; onlayn — server)
+    this.sim.champ = cachedChamp();
     // oltin asosiy o'yin bilan umumiy: eski saqlanishdagi olam oltini bir marta hisobga qo'shiladi
     if (save && !save.sharedGold && save.player.gold > 0 && !this.hall) addGold(save.player.gold);
     this.me.gold = this.gold = loadGold();
@@ -220,7 +222,7 @@ export class RealmClient {
       net: { mode: "offline", n: 1, ping: 0, code: null },
       hall: this.hall ? hallFromCache() : null,
       myGuild: cachedGuild(),
-      champ: null,
+      champ: cachedChamp(),
       dps: null,
       names: new Map(),
       bubbles: new Map(),
@@ -308,7 +310,11 @@ export class RealmClient {
   private onNet(m: ServerMsg) {
     if (m.t === "welcome") {
       if (m.hall) this.view.hall = m.hall;
-      if (m.champ !== undefined) this.view.champ = m.champ;
+      if (m.champ !== undefined) {
+        this.view.champ = m.champ;
+        this.sim.champ = m.champ;
+        saveChamp(m.champ);
+      }
       this.goOnline(m.pid, m.code, m.tick, m.n);
     } else if (m.t === "hall") this.view.hall = m.hall;
     else if (m.t === "s") this.mirror?.apply(m, performance.now() / 1000);
@@ -376,6 +382,7 @@ export class RealmClient {
     const player = this.sim.savePlayer(this.pid);
     const sim = new RealmSim(this.sim.data);
     sim.loadWorld(this.sim.saveWorld());
+    sim.champ = this.sim.champ;
     const me = sim.addPlayer(PID, this.hero, player);
     me.keys = keys;
     this.mirror = null;
@@ -695,7 +702,7 @@ export class RealmClient {
   private onGuild(what: "gate" | "flag" | "treasury" | "quests" | "members" | "exit") {
     if (what === "gate") return this.enterHall();
     if (what === "exit") return this.leaveHall(null);
-    if (what === "flag") return this.showChampion();
+    if (what === "flag") return;
     this.onGuildPanel?.(what);
   }
 
@@ -722,25 +729,6 @@ export class RealmClient {
     if (!this.hall) return;
     this.flushProfile();
     this.onLeaveHall?.(notice);
-  }
-
-  /** Hafta g'olibi bayrog'i (4-bosqich) */
-  private showChampion() {
-    const c = this.view.champ;
-    this.me.ui = {
-      kind: "sign",
-      title: "HAFTA G'OLIBI",
-      text: c
-        ? [
-            `[${c.tag}] ${c.name}`,
-            `O'tgan haftada ${c.xp} gildiya XP to'pladi — eng kuchli gildiya.`,
-            "Bayrog'i hafta davomida shu maydonda hilpiraydi.",
-          ]
-        : [
-            "Bayroq hali bo'sh.",
-            "Hafta yakunida eng ko'p gildiya XP to'plagan gildiya bayrog'i shu yerda hilpiraydi.",
-          ],
-    };
   }
 
   /** O'yinchi darajasi va profil: olamdagi vaqt, o'ldirishlar, topshiriq va sirlar uchun XP */

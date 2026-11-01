@@ -60,6 +60,14 @@ const friend = (
 ): FriendInfo => ({ id, nick, avatar, level, online: !!place, place, room, seen });
 
 const PQ = { tag: "PQ", emblem: "0-0-3-1" };
+/** O'tgan hafta g'olibi (vodiydagi bayroq) */
+const CHAMP = {
+  name: "Qal'a Qo'riqchilari",
+  tag: "PQ",
+  emblem: PQ.emblem,
+  xp: 4200,
+  week: "2026-10-26",
+};
 
 const FRIENDS = () => ({
   friends: [
@@ -411,8 +419,9 @@ function transport(pending: boolean, inGuild: boolean): Transport {
             ? {
                 guild: { id: 7, name: "Qal'a Qo'riqchilari", ...PQ, level: 6, role: "leader" },
                 pending: 2,
+                champ: CHAMP,
               }
-            : { guild: null, pending: 1 },
+            : { guild: null, pending: 1, champ: CHAMP },
         };
       case "guild/get":
         return { ok: true, ...demoState(inGuild) };
@@ -420,6 +429,41 @@ function transport(pending: boolean, inGuild: boolean): Transport {
         return { ok: true, guilds: SEARCH() };
       case "guild/info":
         return { ok: true, guild: demoGuild(), members: MEMBERS() };
+      case "guild/top": {
+        const b = String(body["board"] ?? "xp");
+        const week = body["period"] !== "all";
+        const rows = SEARCH()
+          .map((g, i) => ({
+            rank: i + 1,
+            id: g.id,
+            name: g.name,
+            tag: g.tag,
+            emblem: g.emblem,
+            level: g.level,
+            members: g.members,
+            score:
+              b === "ashking"
+                ? 1980 + i * 140
+                : b === "quests"
+                  ? Math.max(0, (week ? 3 : 14) - i * (week ? 0.5 : 2)) | 0
+                  : (week ? 4200 : 31_000) - i * (week ? 520 : 3900),
+          }))
+          .filter((r) => r.score > 0)
+          .sort((x, y) => (b === "ashking" ? x.score - y.score : y.score - x.score))
+          .map((r, i) => ({ ...r, rank: i + 1 }));
+        return {
+          ok: true,
+          rows,
+          me: rows.find((r) => r.tag === "PQ") ?? null,
+          week: weekKey(now),
+          resets: nextWeekStart(now),
+          champ: CHAMP,
+          territories: [
+            { id: "valley", name: "BOSHLANG'ICH VODIY", controlledBy: null, since: 0 },
+            { id: "ashmount", name: "KUL TOG'I", controlledBy: null, since: 0 },
+          ],
+        };
+      }
       case "guild/create":
         return { ok: true, guild: { ...demoGuild(), level: 1, members: 1, xp: 0 }, cost: 500 };
       case "guild/give":

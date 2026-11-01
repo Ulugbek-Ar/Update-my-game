@@ -93,10 +93,18 @@ export class AccountDO extends DurableObject<Env> {
     const r = this.store.scores.raid(team, secs, now);
     try {
       this.store.guilds.life.raid(team, now);
+      // bitta gildiya jamoasi: gildiyalar reytingiga eng tez vaqt va gildiya XP
+      this.store.guilds.ranks.raid(team, secs, now);
     } catch (e) {
       console.error("guild raid", e);
     }
     return r;
+  }
+
+  /** Olam xonasi (RoomDO): o'tgan hafta g'olibi — bayrog'i vodiy maydonida */
+  async champion() {
+    this.count();
+    return this.store.guilds.ranks.champion(Date.now());
   }
 
   /** Gildiya zali xonasi (HallDO): zal bezagi — nom, teg, gerb, daraja va trofeylar */

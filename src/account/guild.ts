@@ -31,7 +31,9 @@ import {
   type GuildNameError,
   type JoinMode,
 } from "./guildRules";
-import { GUILD_CACHE_KEY, GUILD_READ_KEY, GUILD_SPEND_KEY } from "./keys";
+import { CHAMP_KEY, GUILD_CACHE_KEY, GUILD_READ_KEY, GUILD_SPEND_KEY } from "./keys";
+import type { ChampInfo } from "@/realm/net/protocol";
+import type { GuildBoard } from "./guildRules";
 import type {
   ErrCode,
   GuildCard,
@@ -42,6 +44,7 @@ import type {
   GuildPing,
   GuildReward,
   GuildState,
+  GuildTop,
   Op,
 } from "./protocol";
 import { setXpBonus } from "./xp";
@@ -116,6 +119,29 @@ function write(key: string, v: unknown) {
 export function cachedGuild(): GuildBrief | null {
   const c = read<GuildBrief>(GUILD_CACHE_KEY);
   return c && typeof c.id === "number" && typeof c.tag === "string" ? c : null;
+}
+
+/** O'tgan hafta g'olibi (qurilmada: vodiydagi bayroq olam oflayn bo'lsa ham ko'rinsin) */
+export function cachedChamp(): ChampInfo | null {
+  const c = read<ChampInfo>(CHAMP_KEY);
+  return c && typeof c.tag === "string" && typeof c.emblem === "string" ? c : null;
+}
+
+export function saveChamp(c: ChampInfo | null) {
+  write(CHAMP_KEY, c);
+}
+
+/** Gildiyalar reytingi (ko'rish — hamma uchun) */
+export async function guildTop(
+  board: GuildBoard,
+  period: "week" | "all",
+): Promise<GuildTop | null> {
+  const token = account.sessionToken;
+  const r = await call("guild/top", { board, period, ...(token ? { token } : {}) });
+  if (!r.ok) return null;
+  const { ok: _ok, ...top } = r;
+  saveChamp(top.champ);
+  return top;
 }
 
 /** Takroriy so'rov raqami */
@@ -268,6 +294,7 @@ export class GuildManager {
 
   /** Onlayn holat javobi (daqiqada bir) */
   gotPing(p: GuildPing) {
+    if (p.champ !== undefined) saveChamp(p.champ);
     const old = this.view.brief;
     if (JSON.stringify(old) !== JSON.stringify(p.guild) || p.pending !== this.view.pending)
       this.setBrief(p.guild, p.pending);

@@ -253,6 +253,14 @@ export const SCHEMA: readonly string[] = [
   `CREATE INDEX IF NOT EXISTS guild_chat_guild ON guild_chat (guild, id)`,
   // chat o'zgarishi (xabar o'chirildi): klient to'liq ro'yxatni qayta oladi
   `CREATE TABLE IF NOT EXISTS guild_chatrev (guild INTEGER PRIMARY KEY, rev INTEGER NOT NULL)`,
+  // kelajakdagi "hududlar urushi" poydevori: olam hududlari ustidan gildiya nazorati
+  // (controlled_by — gildiya raqami, hozircha hech kim; o'yin mantig'i hali yoqilmagan)
+  `CREATE TABLE IF NOT EXISTS territories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    controlled_by INTEGER,
+    since INTEGER NOT NULL DEFAULT 0
+  ) WITHOUT ROWID`,
 ];
 
 export function initSchema(db: Db) {

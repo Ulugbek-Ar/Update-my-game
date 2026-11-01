@@ -36,6 +36,7 @@ import {
   guestName,
   netGuild,
   parseClientMsg,
+  type ChampInfo,
   type ErrReason,
   type HelloMsg,
   type NetBolt,
@@ -151,6 +152,14 @@ export class RealmRoom {
   busy = false;
   /** xona sig'imi (olam — 8, Gildiya zali — gildiya a'zolari soniga yetadi) */
   cap = ROOM_CAP;
+  /** o'tgan hafta g'olibi (bayrog'i vodiy maydonida) — server akkauntlar DO'sidan oladi */
+  champ: ChampInfo | null = null;
+
+  /** Hafta g'olibi: welcome'da klientlarga, bayroq yozuvi uchun sim'ga */
+  setChamp(c: ChampInfo | null) {
+    this.champ = c;
+    this.sim.champ = c;
+  }
   /** kiruvchi xabarlar soni (Cloudflare limiti: 20 xabar = 1 so'rov) */
   inbound = 0;
   private rand: () => number;
@@ -225,7 +234,7 @@ export class RealmRoom {
 
   /** welcome xabaridagi qo'shimcha (zal bezagi, hafta g'olibi) */
   protected welcomeExtra(): Partial<Extract<ServerMsg, { t: "welcome" }>> {
-    return {};
+    return { champ: this.champ };
   }
 
   /** Buyruq ruxsatmi (zalda buyum ishlatish va savdo yo'q) */

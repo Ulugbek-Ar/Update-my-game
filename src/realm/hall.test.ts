@@ -278,3 +278,43 @@ describe("Trofeylar", () => {
     });
   });
 });
+
+describe("Hafta g'olibi bayrog'i (vodiy maydoni)", () => {
+  it("bayroq qishloq maydonida; bosilganda g'olib haqida yozuv, yana bosilsa yopiladi", () => {
+    const d = loadRealmData();
+    const flag = d.region.objects.find((o) => o.type === "guild" && o.what === "flag")!;
+    const village = d.region.landmarks.find((l) => l.id === "village")!;
+    expect(Math.hypot(flag.x - village.x, flag.y - village.y)).toBeLessThan(village.r);
+    const sim = new RealmSim(d);
+    const rp = sim.addPlayer("me", "knight");
+    interactAt(sim, "me", flag.x, flag.y);
+    expect(rp.ui).toMatchObject({ kind: "sign", title: "HAFTA G'OLIBI" });
+    expect(rp.ui?.kind === "sign" && rp.ui.text[0]).toContain("hali bo'sh");
+    sim.step([{ pid: "me", cmd: { type: "interact" } }]);
+    expect(rp.ui).toBeNull();
+    sim.champ = { name: "Tungi Bo'rilar", tag: "TB", xp: 4200 };
+    interactAt(sim, "me", flag.x, flag.y);
+    expect(rp.ui?.kind === "sign" && rp.ui.text[0]).toBe("[TB] Tungi Bo'rilar");
+  });
+
+  it("olam xonasi g'olibni welcome'da yuboradi va bayroq yozuvi serverdagi sim'dan", () => {
+    const r = new RealmRoom("ABCDEF");
+    r.setChamp({
+      name: "Tungi Bo'rilar",
+      tag: "TB",
+      emblem: "2-5-6-11",
+      xp: 4200,
+      week: "2026-10-26",
+    });
+    const c = new FakeConn();
+    r.receive(r.newId(), c, hello(), 0, null);
+    expect(c.last("welcome")?.champ).toMatchObject({ tag: "TB", xp: 4200 });
+    expect(r.sim.champ).toMatchObject({ tag: "TB" });
+    // zalda bayroq yo'q — g'olib yuborilmaydi
+    const h = new HallRoom(7);
+    h.info = { id: 7, name: "Z", tag: "Z", emblem: "0-0-3-1", level: 1, trophies: [] };
+    const hc = new FakeConn();
+    h.receive(h.newId(), hc, hello({ acct: "w".repeat(40) }), 0, member(9, 7));
+    expect(hc.last("welcome")?.champ).toBeUndefined();
+  });
+});

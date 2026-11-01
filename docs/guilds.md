@@ -153,13 +153,41 @@ soniga qarab: kichik (1–5), o'rta (6–14), katta (15+).
 - Zal bezagi (nom, gerb, daraja, trofeylar) — zal xonasi akkauntlar DO'sidan oladi
   (`hallInfo`), 2 daqiqada bir yangilaydi va o'zgarsa zaldagilarga `hall` xabari yuboradi.
 
+## Gildiyalar reytingi va hafta g'olibi bayrog'i
+
+REYTING oynasida **GILDIYALAR** bo'limi — haftalik (dushanba 00:00, Toshkent) va umumiy
+(`src/account/server/guildTop.ts`):
+
+| Jadval       | Haftalik                          | Umumiy                       |
+| ------------ | --------------------------------- | ---------------------------- |
+| GILDIYA XP   | shu hafta to'plangan gildiya XP   | jami gildiya XP              |
+| TOPSHIRIQLAR | shu hafta bajarilgan topshiriqlar | jami bajarilgan topshiriqlar |
+| KUL QIROLI   | shu haftaning eng tez vaqti       | eng tez vaqt                 |
+
+- **Kul qiroli — gildiyaga ochko:** jamoadagi kirgan o'yinchilar (kamida 2) **hammasi bitta
+  gildiyadan** bo'lsa — gildiyaga vaqt (jadvalda) va **+150 gildiya XP**. Vaqtni olam serveri
+  yuboradi; shubhali (30 s dan tez) va imkonsiz vaqt hisoblanmaydi (`judgeRaid`).
+- Top-50 va o'z gildiyasining o'rni; ko'rish — hamma uchun (`guild/top`).
+- **Hafta g'olibi:** o'tgan haftada eng ko'p gildiya XP to'plagan gildiya. Uning bayrog'i (gerbi,
+  ikki baravar katta) **vodiy qishlog'i maydonida** (quduq yonida) butun hafta hilpiraydi;
+  bosilganda — g'olib nomi va XP. Olam xonasi g'olibni akkauntlar DO'sidan oladi (soatiga bir) va
+  welcome'da yuboradi; oflayn olamda — qurilmadagi keshdan (`presence` javobida ham keladi).
+
+### Hududlar urushi poydevori (o'yin mantig'i hali yoqilmagan)
+
+`territories` jadvali: olam hududlari (`valley` — Boshlang'ich vodiy, `ashmount` — Kul tog'i) va
+**`controlled_by`** — nazorat qiluvchi gildiya (hozircha hech kim), `since` — qachondan. Reyting
+oynasida "HUDUDLAR" ro'yxati. `GuildRanks.setController` — kelajakdagi urush uchun (hozir
+chaqirilmaydi); gildiya tarqalsa uning hududlari bo'shaydi.
+
 ## Server jadvallari (`src/account/server/db.ts`)
 
 `guilds`, `guild_members`, `guild_requests` (ariza/taklif), `guild_cooldown` (24 soat),
 `guild_rids` (takroriy so'rovlar, 7 kun), `guild_log` (jurnal: gildiyaga oxirgi 200 yozuv),
 `guild_gifts` (kunlik hissa, 3 kun), `guild_week` (haftalik gildiya XP, topshiriqlar, Kul
 qiroli), `guild_quests` va `guild_qc` (topshiriqlar va hissalar, 5 hafta), `guild_rewards`
-(sovg'alar, 30 kun), `guild_chat` (gildiyaga 100 xabar) va `guild_chatrev`.
+(sovg'alar, 30 kun), `guild_chat` (gildiyaga 100 xabar), `guild_chatrev` va `territories`
+(hududlar, `controlled_by`). Kul qirolining gildiya vaqti — `guild_week.ashbest`.
 Akkaunt o'chirilsa: a'zolik, arizalar, jurnal yozuvlari, hissalar, sovg'alar va chatdagi
 xabarlari o'chadi; rahbar bo'lsa — rahbarlik eng
 eski o'rinbosarga (yo'q bo'lsa — eng eski a'zoga) o'tadi, yolg'iz bo'lsa — gildiya tarqaladi.
@@ -180,6 +208,7 @@ eski o'rinbosarga (yo'q bo'lsa — eng eski a'zoga) o'tadi, yolg'iz bo'lsa — g
 | `guild/give`, `guild/log`         | xazinaga hissa (`gold`, `rid`), jurnal              |
 | `guild/chat`, `guild/say`         | chat (since, rev), yozish (matn yoki ibora)         |
 | `guild/unsay`, `guild/mute`       | xabarni o'chirish, jim qilish (daqiqa; 0 — olish)   |
+| `guild/top`                       | gildiyalar reytingi, hafta g'olibi, hududlar        |
 
 `presence` javobida `guild` — qisqacha (teg, gerb, daraja, rol va kutilayotgan arizalar/takliflar
 soni): menyudagi GILDIYA nishoni va daraja foydalari shu bilan ishlaydi (qurilmada saqlanadi).
@@ -194,4 +223,4 @@ muharriri, taklif). Gildiya zali: olamda `window.__realm.onEnterHall(7)`, so'ng 
 
 Haqiqiy server bilan — docs/accounts.md ("Lokal sinov"). Testlar: `src/account/server/guilds.test.ts`,
 `src/account/server/guildLife.test.ts`, `src/account/guild.test.ts`, `src/realm/hall.test.ts`,
-`src/realm/hall-client.test.ts`.
+`src/realm/hall-client.test.ts`, `src/account/server/guildTop.test.ts`.

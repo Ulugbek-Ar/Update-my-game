@@ -7,7 +7,9 @@
  */
 import { z } from "zod";
 import type { Hero } from "@/game/hero";
+import type { ChampInfo } from "@/realm/net/protocol";
 import {
+  GUILD_BOARDS,
   GUILD_LANGS,
   GUILD_PHRASES,
   JOIN_MODES,
@@ -344,6 +346,12 @@ export const REQ = {
     .refine((b) => (b.text === undefined) !== (b.phrase === undefined)),
   /** Xabarni o'chirish (o'zinikini — har kim; boshqanikini — rahbar/o'rinbosar) */
   "guild/unsay": z.object({ token, id: z.number().int().positive() }),
+  /** Gildiyalar reytingi (ko'rish — hamma uchun; o'z gildiyasi o'rni — kirgan o'yinchiga) */
+  "guild/top": z.object({
+    token: token.optional(),
+    board: z.enum(GUILD_BOARDS),
+    period: z.enum(["week", "all"]),
+  }),
   /** Chatdan vaqtincha jim qilish (0 — jimlikni olib tashlash) */
   "guild/mute": z.object({
     token,
@@ -582,6 +590,36 @@ export interface GuildNone {
 
 export type GuildState = GuildMine | GuildNone;
 
+/** Gildiyalar reytingi qatori */
+export interface GuildTopRow extends GuildTag {
+  rank: number;
+  id: number;
+  name: string;
+  level: number;
+  members: number;
+  /** gildiya XP yoki topshiriqlar soni; Kul qiroli — vaqt (soniyaning o'ndan biri) */
+  score: number;
+}
+
+/** Olam hududi: kim nazorat qiladi (hududlar urushi poydevori — hozircha hech kim) */
+export interface Territory {
+  id: string;
+  name: string;
+  controlledBy: (GuildTag & { id: number; name: string }) | null;
+  since: number;
+}
+
+export interface GuildTop {
+  rows: GuildTopRow[];
+  /** o'z gildiyasi (gildiyada bo'lsa; top-50 dan tashqarida ham) */
+  me: GuildTopRow | null;
+  week: string;
+  resets: number;
+  /** o'tgan hafta eng kuchli gildiyasi (bayrog'i vodiyda) */
+  champ: ChampInfo | null;
+  territories: Territory[];
+}
+
 /**
  * Onlayn holat javobidagi gildiya qisqachasi (daqiqada bir): menyu belgisi va daraja foydalari
  * (+XP %, kunlik sovg'a) uchun qurilmada saqlanadi.
@@ -593,6 +631,8 @@ export interface GuildPing {
   /** oxirgi topshiriq sovg'asi va chat xabari raqami (yangisi bormi — klient o'zi solishtiradi) */
   reward?: number;
   chat?: number;
+  /** o'tgan hafta g'olibi (bayroq — olam oflayn bo'lsa ham ko'rinsin) */
+  champ?: ChampInfo | null;
 }
 
 type GuildReply<O extends Op> = O extends "guild/get"
@@ -625,7 +665,9 @@ type GuildReply<O extends Op> = O extends "guild/get"
                       | Fail
                     : O extends "guild/say"
                       ? { ok: true; message: GuildChatMsg } | Fail
-                      : { ok: true } | Fail;
+                      : O extends "guild/top"
+                        ? ({ ok: true } & GuildTop) | Fail
+                        : { ok: true } | Fail;
 
 export type Reply<O extends Op> = O extends `guild/${string}`
   ? GuildReply<O>

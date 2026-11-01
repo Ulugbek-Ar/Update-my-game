@@ -19,6 +19,8 @@ export const GUILD_CACHE_KEY = "pixel-rpg-guild-cache";
 export const GUILD_SPEND_KEY = "pixel-rpg-guild-spend";
 /** Gildiya chatida o'qilgan oxirgi xabar */
 export const GUILD_READ_KEY = "pixel-rpg-guild-read";
+/** O'tgan hafta g'olibi (vodiydagi bayroq — olam oflayn bo'lsa ham) */
+export const CHAMP_KEY = "pixel-rpg-champ";
 
 export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   ACCOUNT_KEY,
@@ -29,4 +31,5 @@ export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   GUILD_CACHE_KEY,
   GUILD_SPEND_KEY,
   GUILD_READ_KEY,
+  CHAMP_KEY,
 ];

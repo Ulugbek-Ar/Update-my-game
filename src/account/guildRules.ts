@@ -479,3 +479,23 @@ export function cleanChat(raw: string) {
     .map((w) => (w.trim() && isRude(w) ? "*".repeat([...w].length) : w))
     .join("");
 }
+
+// ---------------- gildiyalar reytingi ----------------
+
+/** Jadvallar: gildiya XP, bajarilgan topshiriqlar, Kul qirolini eng tez yengan jamoa */
+export const GUILD_BOARDS = ["xp", "quests", "ashking"] as const;
+export type GuildBoard = (typeof GUILD_BOARDS)[number];
+export const GUILD_BOARD_NAME: Record<GuildBoard, string> = {
+  xp: "GILDIYA XP",
+  quests: "TOPSHIRIQLAR",
+  ashking: "KUL QIROLI",
+};
+/** Kul qirolini bitta gildiya jamoasi (kamida 2 a'zo, hammasi shu gildiyadan) yengsa — gildiyaga XP */
+export const GUILD_RAID_XP = 150;
+export const GUILD_RAID_MIN = 2;
+
+/** Olam hududlari (hududlar urushi poydevori: controlled_by — hozircha hech kim) */
+export const TERRITORIES: readonly { id: string; name: string }[] = [
+  { id: "valley", name: "BOSHLANG'ICH VODIY" },
+  { id: "ashmount", name: "KUL TOG'I" },
+];

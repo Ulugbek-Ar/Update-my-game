@@ -28,6 +28,11 @@ export async function handleGuild(
     if (hasToken && !(await authed())) return fail("auth");
     return { ok: true, guilds: g.search(b.query, b.lang, now) };
   }
+  if (op === "guild/top") {
+    const b = body as ReqOf<"guild/top">;
+    const p = hasToken ? await authed() : null;
+    return { ok: true, ...g.ranks.top(b.board, b.period, p, now) };
+  }
   if (op === "guild/info") {
     const b = body as ReqOf<"guild/info">;
     const info = g.info(b.id, now);

@@ -2226,19 +2226,24 @@ function drawGuildObject(
       return;
     }
     case "flag": {
-      // hafta g'olibi bayrog'i (4-bosqich): xoda va g'olib gildiya gerbi
+      // hafta g'olibi bayrog'i: baland xoda, g'olib gildiya gerbi ikki baravar katta bayroqda
       const champ = v.champ;
-      px(c, "#1a0f08", x - 1, y - 44, 3, 52);
-      px(c, "#8a8692", x, y - 44, 1, 52);
-      px(c, "#ffcc33", x - 1, y - 47, 3, 3);
-      px(c, "#1a0f08", x - 5, y + 6, 11, 3);
+      px(c, "#1a0f08", x - 1, y - 66, 3, 74);
+      px(c, "#8a8692", x, y - 66, 1, 74);
+      px(c, "#ffcc33", x - 2, y - 70, 5, 4);
+      px(c, "#1a0f08", x - 6, y + 6, 13, 3);
+      px(c, "#5a5662", x - 5, y + 6, 11, 1);
       if (champ) {
-        const sway = Math.round(Math.sin(v.time * 2) * 1);
-        drawEmblem(c, champ.emblem.replace(/^\d+/, "1"), x + 2 + sway, y - 43, 1);
-        text(c, `[${champ.tag}]`, x + 10, y - 49, 4, "#ffd97a", "center");
+        // shamolda hilpiraydi: bayroq va uchidagi soya tebranadi
+        const sway = Math.round(Math.sin(v.time * 2.4) * 1.5);
+        drawEmblem(c, champ.emblem.replace(/^\d+/, "1"), x + 2 + sway, y - 64, 2);
+        text(c, `[${champ.tag}]`, x + 18, y - 72, 5, "#ffd97a", "center");
+        text(c, "HAFTA G'OLIBI", x + 18, y - 22, 4, "#c8c0d8", "center");
       } else {
-        px(c, "#5c4a6e", x + 2, y - 43, 14, 10);
-        px(c, "#3b2a3a", x + 2, y - 34, 14, 1);
+        const sway = Math.round(Math.sin(v.time * 2.4));
+        px(c, "#1a1820", x + 2 + sway, y - 64, 26, 20);
+        px(c, "#5c4a6e", x + 3 + sway, y - 63, 24, 18);
+        text(c, "?", x + 15 + sway, y - 50, 6, "#8a7a9a", "center");
       }
       return;
     }

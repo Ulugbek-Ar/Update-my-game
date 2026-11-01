@@ -47,6 +47,7 @@ import { GIVE_DAILY } from "../guildRules";
 import { weekKey } from "../scoring";
 import { first, num, str, type Row } from "./db";
 import { GuildLife } from "./guildLife";
+import { GuildRanks } from "./guildTop";
 import type { AccountStore, PlayerRow } from "./store";
 import type { HallInfo } from "@/realm/net/protocol";
 
@@ -127,9 +128,12 @@ export class Guilds {
   private ridsPrunedAt = 0;
   /** xazina, topshiriqlar, sovg'alar va chat */
   readonly life: GuildLife;
+  /** gildiyalar reytingi, hafta g'olibi va hududlar */
+  readonly ranks: GuildRanks;
 
   constructor(private store: AccountStore) {
     this.life = new GuildLife(store, this);
+    this.ranks = new GuildRanks(store, this);
   }
 
   private get db() {
@@ -179,7 +183,7 @@ export class Guilds {
   }
 
   /** Onlayn holat javobi uchun qisqacha: gildiya, roli va kutilayotgan arizalar/takliflar soni */
-  ping(player: number, _now: number): GuildPing {
+  ping(player: number, now: number): GuildPing {
     const r = first<GuildRow & { role: string }>(
       this.db,
       "SELECT g.*, m.role FROM guild_members m JOIN guilds g ON g.id = m.guild WHERE m.player = ?",
@@ -193,7 +197,12 @@ export class Guilds {
           player,
         )?.["n"],
       );
-      return { guild: null, pending, reward: this.life.lastReward(player) };
+      return {
+        guild: null,
+        pending,
+        reward: this.life.lastReward(player),
+        champ: this.ranks.champion(now),
+      };
     }
     const role = roleOf(r.role);
     const pending = canManage(role)
@@ -217,6 +226,7 @@ export class Guilds {
       pending,
       reward: this.life.lastReward(player),
       chat: this.life.lastChat(num(r.id)),
+      champ: this.ranks.champion(now),
     };
   }
 
@@ -864,6 +874,7 @@ export class Guilds {
   /** Gildiyani butunlay o'chirish (ichki: rahbar tarqatdi, oxirgi a'zo akkauntini o'chirdi) */
   private wipe(guild: number) {
     this.life.wipe(guild);
+    this.ranks.wipe(guild);
     for (const q of [
       "DELETE FROM guild_members WHERE guild = ?",
       "DELETE FROM guild_requests WHERE guild = ?",

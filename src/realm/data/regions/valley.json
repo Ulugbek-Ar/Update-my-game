@@ -1004,7 +1004,8 @@
       "key": "king",
       "name": "O'RMON DARVOZASI"
     },
-    { "type": "guild", "id": "guild-gate", "x": 50, "y": 83, "what": "gate" }
+    { "type": "guild", "id": "guild-gate", "x": 50, "y": 83, "what": "gate" },
+    { "type": "guild", "id": "guild-flag", "x": 41, "y": 92, "what": "flag" }
   ],
   "secrets": [
     {
