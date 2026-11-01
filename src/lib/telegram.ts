@@ -4,7 +4,7 @@
  */
 interface TelegramShareApp {
   initData?: string;
-  initDataUnsafe?: { start_param?: string };
+  initDataUnsafe?: { start_param?: string; user?: { id?: number } };
   openTelegramLink?: (url: string) => void;
 }
 
@@ -30,4 +30,10 @@ export function telegramShare(url: string, text: string) {
 /** Mini App havolasidagi start_param (t.me/...?startapp=KOD) */
 export function telegramStartParam() {
   return telegramApp()?.initDataUnsafe?.start_param ?? null;
+}
+
+/** Mini App ichidagi Telegram foydalanuvchisi raqami (avtomatik kirish uchun; tekshiruv — serverda) */
+export function telegramUserId(): number | null {
+  const id = telegramApp()?.initDataUnsafe?.user?.id;
+  return typeof id === "number" ? id : null;
 }

@@ -24,7 +24,8 @@ function checkOnce() {
   return latest;
 }
 
-export function UpdateBanner() {
+/** inline — menyuning chap yuqori ustunida (akkaunt tugmasi ostida), o'zi joylashmaydi */
+export function UpdateBanner({ inline = false }: { inline?: boolean }) {
   const [version, setVersion] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -56,7 +57,10 @@ export function UpdateBanner() {
   return (
     <div
       role="status"
-      className="absolute left-2 top-2 z-10 flex max-w-[30%] flex-col items-start gap-2 border-2 border-primary bg-card px-3 py-2 text-left text-[8px] sm:text-[10px] leading-relaxed text-foreground"
+      className={cn(
+        inline ? "relative max-w-full" : "absolute left-2 top-2 z-10 max-w-[30%]",
+        "flex flex-col items-start gap-2 border-2 border-primary bg-card px-3 py-2 text-left text-[8px] sm:text-[10px] leading-relaxed text-foreground",
+      )}
     >
       <span>Yangi versiya v{version} chiqdi!</span>
       <button

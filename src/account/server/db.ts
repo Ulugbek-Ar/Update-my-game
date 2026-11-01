@@ -1,0 +1,98 @@
+/**
+ * Akkaunt ombori uchun SQL qatlami. Serverda — Durable Object SQLite (`ctx.storage.sql`,
+ * server/src/account-do.ts), testlarda — Node'ning `node:sqlite` (memory-db.ts). Ikkalasi ham
+ * sinxron: o'qish-tekshirish-yozish orasida `await` bo'lmasa, boshqa so'rov aralasha olmaydi.
+ */
+
+export type SqlValue = string | number | null;
+export type Row = Record<string, SqlValue>;
+
+export interface SqlCursor<T> {
+  toArray(): T[];
+}
+
+export interface Db {
+  /** Bitta SQL buyrug'i (? — parametrlar) */
+  exec<T extends Row = Row>(query: string, ...bindings: SqlValue[]): SqlCursor<T>;
+  /** Bir nechta buyruq birdaniga atomik (hammasi yoki hech biri) */
+  tx<T>(fn: () => T): T;
+}
+
+/** Birinchi qator yoki null */
+export function first<T extends Row>(db: Db, query: string, ...b: SqlValue[]): T | null {
+  return db.exec<T>(query, ...b).toArray()[0] ?? null;
+}
+
+export function num(v: SqlValue | undefined): number {
+  return typeof v === "number" ? v : Number(v ?? 0) || 0;
+}
+
+export function str(v: SqlValue | undefined): string {
+  return typeof v === "string" ? v : v === null || v === undefined ? "" : String(v);
+}
+
+/**
+ * Jadvallar. Yangi jadval qo'shilsa — shu ro'yxat oxiriga (IF NOT EXISTS: eski ma'lumot saqlanadi).
+ * Har o'zgarish yozilgan qatorlar sifatida hisoblanadi (bepul tarif: kuniga 100 000) —
+ * shuning uchun indekslar faqat kerakli joyda.
+ */
+export const SCHEMA: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL) WITHOUT ROWID`,
+  // o'yinchi: Telegram ID, taxallus, avatar-qahramon, do'st kodi, XP (bulutli saqlanishdan)
+  `CREATE TABLE IF NOT EXISTS players (
+    id INTEGER PRIMARY KEY,
+    tg INTEGER NOT NULL UNIQUE,
+    nick TEXT NOT NULL,
+    nick_key TEXT NOT NULL UNIQUE,
+    avatar TEXT NOT NULL DEFAULT 'knight',
+    code TEXT NOT NULL UNIQUE,
+    created INTEGER NOT NULL,
+    xp INTEGER NOT NULL DEFAULT 0
+  )`,
+  // sessiya: tokenning SHA-256 xeshi (token o'zi saqlanmaydi)
+  `CREATE TABLE IF NOT EXISTS sessions (
+    hash TEXT PRIMARY KEY,
+    player INTEGER NOT NULL,
+    created INTEGER NOT NULL,
+    expires INTEGER NOT NULL,
+    device TEXT NOT NULL
+  ) WITHOUT ROWID`,
+  `CREATE INDEX IF NOT EXISTS sessions_player ON sessions (player)`,
+  // bot orqali kirish: bir martalik kod, 5 daqiqa
+  `CREATE TABLE IF NOT EXISTS logins (
+    code TEXT PRIMARY KEY,
+    secret TEXT NOT NULL,
+    created INTEGER NOT NULL,
+    expires INTEGER NOT NULL,
+    device TEXT NOT NULL,
+    status TEXT NOT NULL,
+    tg INTEGER,
+    hint TEXT
+  ) WITHOUT ROWID`,
+  // bulutli saqlanish: har o'yinchiga bitta joriy nusxa
+  `CREATE TABLE IF NOT EXISTS saves (
+    player INTEGER PRIMARY KEY,
+    version INTEGER NOT NULL,
+    time INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    device TEXT NOT NULL,
+    dev TEXT NOT NULL DEFAULT '',
+    data TEXT NOT NULL
+  )`,
+  // zaxira: o'yinchi bo'yicha 5 ta joy (halqa)
+  `CREATE TABLE IF NOT EXISTS backups (
+    player INTEGER NOT NULL,
+    slot INTEGER NOT NULL,
+    version INTEGER NOT NULL,
+    time INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    device TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (player, slot)
+  ) WITHOUT ROWID`,
+];
+
+export function initSchema(db: Db) {
+  for (const q of SCHEMA) db.exec(q);
+}

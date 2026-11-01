@@ -3,6 +3,7 @@
  * Kod: "PQ1-" + rejim harfi + base64url(siqilgan JSON) + "-" + CRC32 (8 hex).
  * Qurilmaga xos kalitlar (boshqaruv joylashuvi, ovoz, dev, ko'rilgan versiya) kodga kirmaydi.
  */
+import { ACCOUNT_DEVICE_KEYS } from "@/account/keys";
 import { ACHIEVEMENTS, ACHIEVEMENTS_KEY } from "./achievements";
 import { MUTE_KEY } from "./audio";
 import { HERO_LIST, bestKeys, type Hero } from "./hero";
@@ -22,13 +23,17 @@ export const BAD_CODE = "Kod noto'g'ri yoki to'liq nusxalanmagan";
 
 const PREFIX = "pixel-rpg-";
 const FORMAT = 1;
-/** Har qurilmada o'zi: kodga kirmaydi va import ularni o'zgartirmaydi */
+/**
+ * Har qurilmada o'zi: kodga ham, bulutli saqlanishga ham kirmaydi va import ularni o'zgartirmaydi
+ * (boshqaruv sozlamalari, ovoz, akkaunt sessiyasi va sinxron holati)
+ */
 const DEVICE_KEYS: ReadonlySet<string> = new Set([
   SETTINGS_KEY,
   MUTE_KEY,
   DEV_KEY,
   SEEN_VERSION_KEY,
   BACKUP_KEY,
+  ...ACCOUNT_DEVICE_KEYS,
 ]);
 
 export function isProgressKey(key: string) {
@@ -55,6 +60,52 @@ function collect(): Record<string, string> {
 function replace(keys: Record<string, string>) {
   for (const k of Object.keys(collect())) localStorage.removeItem(k);
   for (const [k, v] of Object.entries(keys)) if (isProgressKey(k)) localStorage.setItem(k, v);
+}
+
+/** Bulutli saqlanish uchun: hozirgi progress kalitlari (qurilmaga xoslarisiz) */
+export function collectProgress() {
+  return collect();
+}
+
+/** Bulutdan kelgan progress bilan almashtiradi (qurilmaga xoslarga tegmaydi) va migratsiya. */
+export function replaceProgress(keys: Record<string, string>) {
+  replace(keys);
+  migrateSave();
+}
+
+/** Kod qo'llanishidan oldingi holat kabi zaxira (Sozlamalar -> OLDINGI HOLATGA QAYTARISH) */
+export function backupProgress(keys: Record<string, string> = collect()) {
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify({ time: Date.now(), keys } satisfies Backup));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Bulutga yuborishdan oldin: olam tumani RLE bilan siqiladi (kod bilan bir xil usul) */
+export function packProgress(keys: Record<string, string>): Record<string, string> {
+  const v = keys[REALM_SAVE_KEY];
+  if (v === undefined) return keys;
+  try {
+    return { ...keys, [REALM_SAVE_KEY]: JSON.stringify(mapFog(JSON.parse(v), packFog)) };
+  } catch {
+    return keys;
+  }
+}
+
+/** Bulutdan kelganda: siqilgan olam tumani ochiladi (siqilmagan bo'lsa — o'zgarmaydi) */
+export function unpackProgress(keys: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(keys)) if (isProgressKey(k)) out[k] = v;
+  const v = out[REALM_SAVE_KEY];
+  if (v === undefined || !v.includes(FOG_TAG)) return out;
+  try {
+    out[REALM_SAVE_KEY] = JSON.stringify(mapFog(JSON.parse(v), unpackFog));
+  } catch {
+    /* buzuq tuman — o'zgarmaydi */
+  }
+  return out;
 }
 
 // ---------- ko'rib chiqish ----------

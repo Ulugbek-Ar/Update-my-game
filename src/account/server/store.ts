@@ -1,0 +1,430 @@
+/**
+ * Akkaunt ombori (serverda bitta nusxa — AccountDO): o'yinchilar, sessiyalar, bot orqali kirish
+ * kodlari va bulutli saqlanish. Platformadan mustaqil — Node'da sinaladi (memory-db.ts).
+ *
+ * Muhim: tekshirish va yozish orasida `await` yo'q (xesh va imzolar oldindan hisoblanadi) —
+ * shunda bir martalik kod ikki marta ishlatilmaydi, ikki so'rov bir-birini buzmaydi.
+ */
+import {
+  CODE_ALPHABET,
+  HERO_IDS,
+  LOGIN_TTL,
+  MAX_SAVE,
+  SESSION_DAYS,
+  type CloudSave,
+  type Device,
+  type Me,
+} from "../protocol";
+import { checkNick, nickFromTelegram, nickKey } from "../nick";
+import { levelOf } from "../xp";
+import { first, initSchema, num, str, type Db, type Row } from "./db";
+import { sha256Hex, type TgUser } from "./telegram";
+
+const DAY = 86_400_000;
+/** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
+const MAX_SESSIONS = 10;
+/** Bir vaqtda kutilayotgan bot kodlari (ko'payib ketmasin) */
+const MAX_PENDING_LOGINS = 500;
+/** Klient soati shundan ko'p oldinda bo'lsa — server vaqti bilan cheklanadi */
+const CLOCK_SKEW = 5 * 60_000;
+
+export interface PlayerRow extends Row {
+  id: number;
+  tg: number;
+  nick: string;
+  nick_key: string;
+  avatar: string;
+  code: string;
+  created: number;
+  xp: number;
+}
+
+interface LoginRow extends Row {
+  code: string;
+  secret: string;
+  expires: number;
+  device: string;
+  status: string;
+  tg: number | null;
+  hint: string | null;
+}
+
+interface SaveRow extends Row {
+  player: number;
+  version: number;
+  time: number;
+  at: number;
+  device: string;
+  dev: string;
+  data: string;
+}
+
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const B62 = B64.slice(0, 62);
+
+/** Tasodifiy satr (kriptografik), alifbodan teng ehtimol bilan */
+export function randomString(n: number, alphabet = B64) {
+  const out: string[] = [];
+  const max = 256 - (256 % alphabet.length);
+  while (out.length < n) {
+    const bytes = crypto.getRandomValues(new Uint8Array(n * 2));
+    for (const b of bytes) {
+      if (b < max) out.push(alphabet[b % alphabet.length]!);
+      if (out.length === n) break;
+    }
+  }
+  return out.join("");
+}
+
+const isDevice = (s: string): s is Device =>
+  ["web", "telegram", "android", "windows", "portable"].includes(s);
+
+export type PutResult =
+  | { ok: true; version: number }
+  | { ok: false; error: "conflict"; save: CloudSave }
+  | { ok: false; error: "big" }
+  | { ok: false; error: "invalid"; field: string };
+
+export interface PutRequest {
+  base: number;
+  time: number;
+  device: Device;
+  dev?: string | undefined;
+  data: Record<string, string>;
+  force?: boolean | undefined;
+}
+
+export class AccountStore {
+  constructor(readonly db: Db) {
+    initSchema(db);
+  }
+
+  // ---------------- o'yinchilar ----------------
+
+  player(id: number) {
+    return first<PlayerRow>(this.db, "SELECT * FROM players WHERE id = ?", id);
+  }
+
+  playerByTg(tg: number) {
+    return first<PlayerRow>(this.db, "SELECT * FROM players WHERE tg = ?", tg);
+  }
+
+  playerByNick(nick: string) {
+    return first<PlayerRow>(this.db, "SELECT * FROM players WHERE nick_key = ?", nickKey(nick));
+  }
+
+  playerByCode(code: string) {
+    return first<PlayerRow>(this.db, "SELECT * FROM players WHERE code = ?", code);
+  }
+
+  nickFree(nick: string, exceptId = 0) {
+    const p = this.playerByNick(nick);
+    return !p || p.id === exceptId;
+  }
+
+  /** Bo'sh taxallus: Telegram username (mos bo'lsa), aks holda "Qahramon1234" */
+  private freeNick(hint: string | null | undefined) {
+    const fromTg = nickFromTelegram(hint);
+    if (fromTg && this.nickFree(fromTg)) return fromTg;
+    for (let i = 0; i < 50; i++) {
+      const n = `Qahramon${1000 + Math.floor(Math.random() * 9000)}`;
+      if (this.nickFree(n)) return n;
+    }
+    return `Qahramon${randomString(6, "0123456789")}`;
+  }
+
+  private freeCode() {
+    for (;;) {
+      const c = randomString(8, CODE_ALPHABET);
+      if (!this.playerByCode(c)) return c;
+    }
+  }
+
+  /** Telegram foydalanuvchisi bo'yicha o'yinchi; birinchi kirishda yaratiladi */
+  ensurePlayer(user: Pick<TgUser, "id" | "username">, now: number) {
+    const old = this.playerByTg(user.id);
+    if (old) return { player: old, created: false };
+    const nick = this.freeNick(user.username);
+    this.db.exec(
+      "INSERT INTO players (tg, nick, nick_key, avatar, code, created, xp) VALUES (?, ?, ?, 'knight', ?, ?, 0)",
+      user.id,
+      nick,
+      nickKey(nick),
+      this.freeCode(),
+      now,
+    );
+    return { player: this.playerByTg(user.id)!, created: true };
+  }
+
+  me(p: PlayerRow): Me {
+    const avatar = HERO_IDS.find((h) => h === p.avatar) ?? "knight";
+    return {
+      id: num(p.id),
+      nick: str(p.nick),
+      avatar,
+      xp: num(p.xp),
+      level: levelOf(num(p.xp)),
+      code: str(p.code),
+      created: num(p.created),
+      tg: num(p.tg),
+    };
+  }
+
+  /** Taxallus va avatar. Taxallus tekshiriladi va band bo'lmasligi kerak. */
+  setProfile(
+    p: PlayerRow,
+    patch: { nick?: string | undefined; avatar?: string | undefined },
+    unlocked: (hero: string) => boolean,
+  ): { ok: true; player: PlayerRow } | { ok: false; error: "nick" | "taken" | "none" } {
+    let nick = p.nick;
+    if (patch.nick !== undefined) {
+      const c = checkNick(patch.nick);
+      if (!c.ok) return { ok: false, error: "nick" };
+      if (!this.nickFree(c.nick, p.id)) return { ok: false, error: "taken" };
+      nick = c.nick;
+    }
+    let avatar = p.avatar;
+    if (patch.avatar !== undefined) {
+      if (!HERO_IDS.some((h) => h === patch.avatar) || !unlocked(patch.avatar))
+        return { ok: false, error: "none" };
+      avatar = patch.avatar;
+    }
+    if (nick !== p.nick || avatar !== p.avatar)
+      this.db.exec(
+        "UPDATE players SET nick = ?, nick_key = ?, avatar = ? WHERE id = ?",
+        nick,
+        nickKey(nick),
+        avatar,
+        p.id,
+      );
+    return { ok: true, player: this.player(p.id)! };
+  }
+
+  /** XP bulutli saqlanishdan (daraja onlayn ism yonida va reytingda ko'rinadi) */
+  setXp(id: number, xp: number) {
+    this.db.exec("UPDATE players SET xp = ? WHERE id = ? AND xp != ?", xp, id, xp);
+  }
+
+  // ---------------- sessiyalar ----------------
+
+  /** Yangi sessiya: tasodifiy token (o'yinchiga), serverda — faqat uning xeshi */
+  async createSession(player: number, device: Device, now: number) {
+    const token = randomString(43);
+    const hash = await sha256Hex(token);
+    this.db.tx(() => {
+      this.db.exec(
+        "INSERT INTO sessions (hash, player, created, expires, device) VALUES (?, ?, ?, ?, ?)",
+        hash,
+        player,
+        now,
+        now + SESSION_DAYS * DAY,
+        device,
+      );
+      // eng eskilari (ko'p qurilmada kirgan bo'lsa)
+      const extra = this.db
+        .exec<{ hash: string }>(
+          "SELECT hash FROM sessions WHERE player = ? ORDER BY created DESC LIMIT -1 OFFSET ?",
+          player,
+          MAX_SESSIONS,
+        )
+        .toArray();
+      for (const r of extra) this.db.exec("DELETE FROM sessions WHERE hash = ?", r.hash);
+    });
+    return token;
+  }
+
+  /** Token bo'yicha o'yinchi; muddati o'tgan bo'lsa null. Kuniga bir marta muddat uzayadi. */
+  async authenticate(token: string, now: number) {
+    const hash = await sha256Hex(token);
+    const s = first<{ player: number; expires: number }>(
+      this.db,
+      "SELECT player, expires FROM sessions WHERE hash = ?",
+      hash,
+    );
+    if (!s) return null;
+    if (num(s.expires) <= now) {
+      this.db.exec("DELETE FROM sessions WHERE hash = ?", hash);
+      return null;
+    }
+    const p = this.player(num(s.player));
+    if (!p) return null;
+    if (num(s.expires) - now < (SESSION_DAYS - 1) * DAY)
+      this.db.exec(
+        "UPDATE sessions SET expires = ? WHERE hash = ?",
+        now + SESSION_DAYS * DAY,
+        hash,
+      );
+    return p;
+  }
+
+  async logout(token: string) {
+    const hash = await sha256Hex(token);
+    this.db.exec("DELETE FROM sessions WHERE hash = ?", hash);
+  }
+
+  /** Telegram tasdiqlagan foydalanuvchi: o'yinchi (kerak bo'lsa yangi) va sessiya */
+  async login(user: Pick<TgUser, "id" | "username">, device: Device, now: number) {
+    const { player, created } = this.ensurePlayer(user, now);
+    const token = await this.createSession(player.id, device, now);
+    return { token, me: this.me(player), created };
+  }
+
+  // ---------------- bot orqali kirish (ilova va kompyuter) ----------------
+
+  /** Yangi bir martalik kod. null — kutilayotganlar juda ko'p (keyinroq). */
+  async startBotLogin(device: Device, now: number) {
+    const code = randomString(12, B62);
+    const secret = randomString(32);
+    const hash = await sha256Hex(secret);
+    return this.db.tx(() => {
+      this.db.exec("DELETE FROM logins WHERE expires < ?", now);
+      const n = num(first(this.db, "SELECT COUNT(*) AS n FROM logins")?.["n"]);
+      if (n >= MAX_PENDING_LOGINS) return null;
+      this.db.exec(
+        "INSERT INTO logins (code, secret, created, expires, device, status) VALUES (?, ?, ?, ?, ?, 'wait')",
+        code,
+        hash,
+        now,
+        now + LOGIN_TTL,
+        device,
+      );
+      return { code, secret, expires: now + LOGIN_TTL };
+    });
+  }
+
+  /** Bot /start login_KOD ni oldi: kod haliyam kutilyaptimi va qaysi qurilmadan */
+  botLoginInfo(code: string, now: number): { device: Device } | null {
+    const r = first<LoginRow>(this.db, "SELECT * FROM logins WHERE code = ?", code);
+    if (!r || r.status !== "wait" || num(r.expires) <= now) return null;
+    return { device: isDevice(str(r.device)) ? (str(r.device) as Device) : "web" };
+  }
+
+  /** Botdagi "Tasdiqlash" / "Bekor qilish" tugmasi. false — kod eskirgan yoki ishlatilgan. */
+  botConfirm(code: string, user: Pick<TgUser, "id" | "username">, accept: boolean, now: number) {
+    const r = first<LoginRow>(this.db, "SELECT * FROM logins WHERE code = ?", code);
+    if (!r || r.status !== "wait" || num(r.expires) <= now) return false;
+    this.db.exec(
+      "UPDATE logins SET status = ?, tg = ?, hint = ? WHERE code = ?",
+      accept ? "ok" : "no",
+      user.id,
+      user.username ?? null,
+      code,
+    );
+    return true;
+  }
+
+  /**
+   * O'yin tasdiqni so'raydi (secret — faqat kodni boshlagan qurilmada). Tasdiqlangan bo'lsa kod
+   * o'chiriladi va sessiya beriladi — ikkinchi marta ishlamaydi.
+   */
+  async pollBotLogin(code: string, secret: string, now: number) {
+    const hash = await sha256Hex(secret);
+    // token oldindan: tekshiruv va yozish bitta sinxron blokda
+    const token = randomString(43);
+    const tokenHash = await sha256Hex(token);
+    return this.db.tx(() => {
+      const r = first<LoginRow>(this.db, "SELECT * FROM logins WHERE code = ?", code);
+      if (!r || r.secret !== hash) return { status: "expired" as const };
+      if (num(r.expires) <= now || r.status === "no") {
+        this.db.exec("DELETE FROM logins WHERE code = ?", code);
+        return { status: r.status === "no" ? ("cancelled" as const) : ("expired" as const) };
+      }
+      if (r.status !== "ok" || r.tg === null) return { status: "wait" as const };
+      this.db.exec("DELETE FROM logins WHERE code = ?", code);
+      const { player, created } = this.ensurePlayer(
+        { id: num(r.tg), ...(r.hint ? { username: str(r.hint) } : {}) },
+        now,
+      );
+      const device = isDevice(str(r.device)) ? (str(r.device) as Device) : "web";
+      this.db.exec(
+        "INSERT INTO sessions (hash, player, created, expires, device) VALUES (?, ?, ?, ?, ?)",
+        tokenHash,
+        player.id,
+        now,
+        now + SESSION_DAYS * DAY,
+        device,
+      );
+      return { status: "done" as const, token, me: this.me(player), created };
+    });
+  }
+
+  // ---------------- bulutli saqlanish ----------------
+
+  private saveRow(player: number) {
+    return first<SaveRow>(this.db, "SELECT * FROM saves WHERE player = ?", player);
+  }
+
+  getSave(player: number): CloudSave | null {
+    const r = this.saveRow(player);
+    if (!r) return null;
+    return {
+      version: num(r.version),
+      time: num(r.time),
+      device: isDevice(str(r.device)) ? (str(r.device) as Device) : "web",
+      data: parseData(str(r.data)),
+    };
+  }
+
+  saveVersion(player: number) {
+    return num(
+      first(this.db, "SELECT version FROM saves WHERE player = ?", player)?.["version"] ?? 0,
+    );
+  }
+
+  /**
+   * Saqlanish. Ziddiyat qoidasi — versiya + vaqt:
+   *  - klient oxirgi ko'rgan versiyadan davom etsa (base = joriy) — qabul;
+   *  - boshqa qurilma orada saqlagan bo'lsa — progressi keyinroq o'zgargani qoladi (time);
+   *    bulutdagisi yangiroq bo'lsa — rad, javobda bulutdagi nusxa (klient uni yuklaydi);
+   *  - force — tanlov oynasida "shu qurilmadagini saqlash" bosilgan.
+   */
+  putSave(player: number, req: PutRequest, now: number): PutResult {
+    const json = JSON.stringify(req.data);
+    if (json.length > MAX_SAVE) return { ok: false, error: "big" };
+    const time = Math.min(req.time, now + CLOCK_SKEW);
+    return this.db.tx(() => {
+      const cur = this.saveRow(player);
+      if (!cur) {
+        this.db.exec(
+          "INSERT INTO saves (player, version, time, at, device, dev, data) VALUES (?, 1, ?, ?, ?, ?, ?)",
+          player,
+          time,
+          now,
+          req.device,
+          req.dev ?? "",
+          json,
+        );
+        return { ok: true as const, version: 1 };
+      }
+      const curVersion = num(cur.version);
+      const follows = req.base === curVersion;
+      if (!follows && !req.force && time <= num(cur.time))
+        return { ok: false as const, error: "conflict" as const, save: this.getSave(player)! };
+      const version = curVersion + 1;
+      this.db.exec(
+        "UPDATE saves SET version = ?, time = ?, at = ?, device = ?, dev = ?, data = ? WHERE player = ?",
+        version,
+        time,
+        now,
+        req.device,
+        req.dev ?? "",
+        json,
+        player,
+      );
+      return { ok: true as const, version };
+    });
+  }
+}
+
+export function parseData(json: string): Record<string, string> {
+  try {
+    const v = JSON.parse(json) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, x] of Object.entries(v as Record<string, unknown>))
+      if (typeof x === "string") out[k] = x;
+    return out;
+  } catch {
+    return {};
+  }
+}

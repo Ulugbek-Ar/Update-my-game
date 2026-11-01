@@ -35,6 +35,13 @@ export class LobbyDO extends DurableObject<Env> {
     return r;
   }
 
+  /** Akkauntlar DO'si: o'z so'rovlari (daqiqasiga bir marta yig'ib) */
+  extra(used: number): { busy: boolean } {
+    const r = this.lobby.extra(Date.now(), used);
+    this.persist();
+    return r;
+  }
+
   /** /health */
   health() {
     // Worker so'rovi + shu chaqiruv

@@ -1,9 +1,11 @@
-# Abadiyat olami serveri (multiplayer)
+# Piksel Qal'a serveri: Abadiyat olami (multiplayer) va akkauntlar
 
 Server manzili: **https://pikselqala-server.ulugbek2647.workers.dev** (holat: `/health`).
 
 Server — Cloudflare Workers + Durable Objects, **bepul tarif**. O'yin mantig'i bitta: serverda ham
-klientdagi `src/realm/sim.ts` (`RealmSim`) aynan o'zi ishlaydi.
+klientdagi `src/realm/sim.ts` (`RealmSim`) aynan o'zi ishlaydi. Akkauntlar, bulutli saqlanish,
+do'stlar va reyting — `AccountDO` (pastda, "Akkauntlar ombori"); kirish usullari va BotFather
+sozlamasi — [docs/accounts.md](accounts.md).
 
 ## Qanday ishlaydi
 
@@ -13,8 +15,10 @@ o'yin (brauzer, Telegram, Android)
    │  WS  /ws?xona=KOD           → shu xonaning Durable Object'i
    ▼
 Worker (server/src/index.ts)
-   ├─ LobbyDO (bitta, "lobby")   — xonalar ro'yxati, kunlik limitlar hisobi, /health
-   └─ RoomDO  (har xona — bitta) — RealmRoom → RealmSim, 20 Hz tick
+   ├─ LobbyDO   (bitta, "lobby")    — xonalar ro'yxati, kunlik limitlar hisobi, /health
+   ├─ RoomDO    (har xona — bitta)  — RealmRoom → RealmSim, 20 Hz tick
+   └─ AccountDO (bitta, "accounts") — akkaunt, sessiya, bulutli saqlanish (SQLite)
+                                      POST /acc/<op>, Telegram webhook POST /tg/<secret>
 ```
 
 - **Haqiqat manbai — server.** Klient faqat buyruq yuboradi (`move`, `attack`, `ability`,
@@ -53,12 +57,36 @@ Worker (server/src/index.ts)
 Xona va lobbi mantig'i Cloudflare'ga bog'liq emas — testlar Node'da ishlaydi
 (`src/realm/net/room.test.ts`, `client.test.ts`).
 
+## Akkauntlar ombori: nega Durable Object SQLite (D1 emas)
+
+Ikkalasi ham bepul tarifda bor va limitlari bir xil: kuniga **5 mln qator o'qish**, **100 ming qator
+yozish**, jami **5 GB**. Tanlov — `AccountDO` ichidagi SQLite (`ctx.storage.sql`):
+
+| Mezon               | Durable Object SQLite (tanlandi)                                                        | D1                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Sozlash             | `wrangler.toml` dagi migratsiya (`v2`) — bor token bilan deploy'da o'zi yaratiladi      | `wrangler d1 create`, `database_id`, token'ga qo'shimcha "D1: Edit" ruxsati kerak |
+| Bir martalik kodlar | bitta nusxa, SQL sinxron — "o'qi-tekshir-yoz" orasida boshqa so'rov aralasha olmaydi    | parallel so'rovlar: alohida himoya kerak                                          |
+| Kechikish           | ma'lumot DO ichida (so'rov va SQL bitta joyda)                                          | Worker -> D1 tarmoq so'rovi                                                       |
+| DO vaqti (GB-s)     | taymer/alarm yo'q — faqat so'rov bajarilayotganda; 10 000 so'rov × ~20 ms ≈ 26 GB-s/kun | —                                                                                 |
+| So'rovlar limiti    | Worker + DO = 2 birlik (lobbi hisobiga qo'shiladi, `extra`)                             | Worker = 1 birlik                                                                 |
+
+Kamchiligi — bitta nusxa (sekundiga ~1000 so'rovgacha); o'yinchilar ko'payib ketsa, o'yinchi
+raqami bo'yicha bir nechta DO'ga bo'lish mumkin. Yozuvlar tejamli: saqlanish — 1 qator (zaxira
+faqat boshqa qurilmadan yoki 30 daqiqada bir), sessiya muddati kuniga bir marta uzayadi, kirish
+kodlari ishlatilgach o'chadi. Jadvallar — `src/account/server/db.ts` (`SCHEMA`), mantiq —
+`src/account/server/store.ts` (Node'da `node:sqlite` bilan sinaladi).
+
 ## Endpointlar
 
 - `GET /health` — `{ ok, version, protocol, rooms, online, today: { requests, limit, durationGBs, durationLimit } }`
 - `GET /join?v=1[&xona=KOD]` — `{ ok: true, code }` yoki `{ ok: false, reason: "busy" | "full" | "version" | "bad" }`
 - `GET /ws?xona=KOD` — WebSocket. Birinchi xabar — `hello` (protokol versiyasi, mehmon raqami,
   qahramon, progress). Keyin `cmd` (buyruqlar), `ping`, `chat` (faqat tayyor ibora raqami).
+- `GET /acc/config` — `{ ok, bot, botId }` (saytdagi Login Widget va bot havolasi uchun).
+- `POST /acc/<op>` — akkaunt API (`src/account/protocol.ts`): tana — JSON, `Content-Type: text/plain`
+  (CORS preflight'siz), javob doim `{ ok, ... }` yoki `{ ok: false, error }`.
+- `POST /tg/<secret>` — bot webhook'i; `secret` va `X-Telegram-Bot-Api-Secret-Token` bot tokenidan
+  yasaladi, noto'g'ri bo'lsa — 404.
 
 ## Limitlar (bepul tarif) va himoya
 
@@ -90,7 +118,9 @@ Himoya:
 workflow). GitHub secrets:
 
 - `CLOUDFLARE_API_TOKEN` — "Edit Cloudflare Workers" shablonidagi token;
-- `CLOUDFLARE_ACCOUNT_ID` — Cloudflare hisob ID'si.
+- `CLOUDFLARE_ACCOUNT_ID` — Cloudflare hisob ID'si;
+- `TELEGRAM_BOT_TOKEN` — kanal boti (kanalga post ham shu bilan). Workflow uni serverga
+  `wrangler secret put` bilan beradi (kodda yo'q) va bot webhook'ini o'rnatadi — docs/accounts.md.
 
 Secrets bo'lmasa workflow ogohlantirish beradi va yiqilmaydi (faqat tekshiruv). Deploy'dan keyin
 server manzili va `/health` javobi workflow xulosasida (Summary) chiqadi.

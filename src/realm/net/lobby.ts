@@ -122,6 +122,12 @@ export class Lobby {
     return { busy: this.busy(now) };
   }
 
+  /** Xona bo'lmagan so'rovlar (akkauntlar, reyting): kunlik limitga qo'shiladi */
+  extra(now: number, used: number) {
+    this.count(now, used + 1);
+    return { busy: this.busy(now) };
+  }
+
   stats(now: number) {
     this.prune(now);
     this.count(now, 0);

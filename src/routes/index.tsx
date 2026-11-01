@@ -62,6 +62,13 @@ import { actionKey, actionKeys, moveLabel } from "@/game/keys";
 import { useSettings } from "@/components/game/useSettings";
 import { UpdateBanner } from "@/components/game/UpdateBanner";
 import { NEEDS_UPDATE_CHECK } from "@/lib/update";
+import { account } from "@/account/account";
+import { cloud } from "@/account/cloud";
+import { useAccount, useCloud } from "@/account/useAccount";
+import { AccountCorner } from "@/components/game/AccountCorner";
+import { LoginWindow } from "@/components/game/LoginWindow";
+import { MigrateWindow } from "@/components/game/MigrateWindow";
+import { ProfileWindow } from "@/components/game/ProfileWindow";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -185,6 +192,14 @@ function Index() {
       setGiftOpen(true);
     }
   };
+  /** Akkaunt: kirish va profil oynalari, progress tanlovi (birinchi kirishda) */
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [decisionOpen, setDecisionOpen] = useState(true);
+  /** Akkaunt xabari ("Xush kelibsiz!", "Akkauntdan chiqdingiz") — menyuda bir necha soniya */
+  const [notice, setNotice] = useState<string | null>(null);
+  const acc = useAccount();
+  const cloudView = useCloud();
   /** Progress ko'chirish kodi bilan almashtirilganda oshadi (rekordlar qayta o'qiladi) */
   const [progressRev, setProgressRev] = useState(0);
   /** Ko'chirish kodi qo'llangach yoki zaxira qaytarilgach: menyu holati saqlanishdan qayta o'qiladi */
@@ -198,6 +213,9 @@ function Index() {
     setGiftReady(!giftStatus().claimed);
     setProgressRev((r) => r + 1);
   };
+  // bulutdan progress kelganda menyu qayta o'qiladi; o'yin yoki olam ketayotganda kutadi
+  const refreshRef = useRef(refreshProgress);
+  refreshRef.current = refreshProgress;
   /** Menyu ko'rsatmalari uchun: telefon boshqaruvi va qayta belgilangan tugmalar */
   const { touch: ts, keys: kb } = useSettings();
   /** Kunlik sinov sanasi (oddiy o'yinda null) */
@@ -205,6 +223,8 @@ function Index() {
   const startedRef = useRef(false);
   // olamda ham avtomatik yangilanish so'rab qilinadi
   startedRef.current = started || realm;
+  cloud.canApply = () => !startedRef.current;
+  cloud.onApplied = () => refreshRef.current();
   useEffect(() => {
     // eski versiya ma'lumotlari (rekord, oltin, do'kon, yutuqlar) saqlanadi, xarita uchun to'ldiriladi
     migrateSave();
@@ -228,6 +248,8 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
+    // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach)
+    account.init();
     // do'st chaqiruvi: sayt havolasi ?xona=KOD — kod kiritish oynasi to'lib ochiladi
     const invited = normalizeRoomCode(new URLSearchParams(location.search).get("xona"));
     if (invited && SERVER_URL) {
@@ -242,6 +264,8 @@ function Index() {
     if (IS_APP) return;
     const onTelegram = () => {
       initTelegram();
+      // Mini App: initData bilan avtomatik kirish
+      account.checkTelegram();
       // Telegram Mini App havolasi: ...?startapp=KOD
       const code = normalizeRoomCode(telegramStartParam()?.replace(/^xona_?/i, ""));
       if (code && SERVER_URL && !invited) {
@@ -263,6 +287,21 @@ function Index() {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
+
+  // akkaunt xabari: bir necha soniya menyuda
+  useEffect(() => {
+    if (!acc.notice) return;
+    setNotice(account.takeNotice());
+  }, [acc.notice]);
+  useEffect(() => {
+    if (!notice) return;
+    const id = window.setTimeout(() => setNotice(null), 4500);
+    return () => window.clearTimeout(id);
+  }, [notice]);
+  // yangi tanlov (birinchi kirish) — oyna o'zi ochiladi
+  useEffect(() => {
+    if (cloudView.decision) setDecisionOpen(true);
+  }, [cloudView.decision]);
 
   // Sensorli qurilmada vertikal holat: "aylantiring" oynasi, o'yin pauzada
   const [portrait, setPortrait] = useState(false);
@@ -386,6 +425,9 @@ function Index() {
   backRef.current = () => {
     const windows = [
       [exitOpen, () => setExitOpen(false)],
+      [loginOpen, () => setLoginOpen(false)],
+      [profileOpen, () => setProfileOpen(false)],
+      [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
       [joinOpen, () => setJoinOpen(false)],
       [coachOpen, () => setCoachOpen(false)],
       [
@@ -746,8 +788,24 @@ function Index() {
             <span className="absolute bottom-2 right-2 text-[8px] sm:text-[9px] text-foreground/50">
               v{GAME_VERSION}
             </span>
-            {/* portativ HTML, Windows dasturi va ilova o'zi yangilanmaydi — yangi versiya xabari */}
-            {NEEDS_UPDATE_CHECK && <UpdateBanner />}
+            {/* chap yuqori: akkaunt (kirish / profil); sarlavha (o'rtada) va oy (o'ngda) yopilmaydi */}
+            <div className="absolute left-2 top-2 z-10 flex max-w-[30%] flex-col items-start gap-2 text-[8px] sm:text-[10px]">
+              <AccountCorner
+                onLogin={() => setLoginOpen(true)}
+                onProfile={() => setProfileOpen(true)}
+                onDecision={() => setDecisionOpen(true)}
+              />
+              {/* portativ HTML, Windows dasturi va ilova o'zi yangilanmaydi — yangi versiya xabari */}
+              {NEEDS_UPDATE_CHECK && <UpdateBanner inline />}
+            </div>
+            {notice && (
+              <p
+                role="status"
+                className="absolute left-1/2 top-2 z-10 -translate-x-1/2 border-2 border-primary bg-card px-3 py-1 text-[8px] sm:text-[10px] text-primary"
+              >
+                {notice}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -798,6 +856,11 @@ function Index() {
         />
       )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
+      {loginOpen && !started && !realm && <LoginWindow onClose={() => setLoginOpen(false)} />}
+      {profileOpen && !started && !realm && <ProfileWindow onClose={() => setProfileOpen(false)} />}
+      {cloudView.decision && decisionOpen && !started && !realm && !loginOpen && (
+        <MigrateWindow decision={cloudView.decision} onLater={() => setDecisionOpen(false)} />
+      )}
       {joinOpen && !started && !realm && (
         <JoinRoomWindow
           code={joinCode}

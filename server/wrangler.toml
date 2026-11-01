@@ -18,10 +18,22 @@ class_name = "RoomDO"
 name = "LOBBY"
 class_name = "LobbyDO"
 
+# Akkauntlar, bulutli saqlanish, do'stlar va reyting (bitta nusxa, SQLite) — docs/accounts.md
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "AccountDO"
+
 # Bepul tarif faqat SQLite saqlashli Durable Object'larni qo'llaydi
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["RoomDO", "LobbyDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["AccountDO"]
+
+# TELEGRAM_BOT_TOKEN — secret (`wrangler secret put`, .github/workflows/server.yml), bu yerga yozilmaydi.
+# Lokal sinov: server/.dev.vars faylida TELEGRAM_BOT_TOKEN=... (git'ga kirmaydi)
 
 [observability]
 enabled = true
