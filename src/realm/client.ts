@@ -306,6 +306,7 @@ export class RealmClient {
     this.useSim(mirror.sim, mirror.me, pid);
     this.view.names = mirror.names;
     this.view.levels = mirror.levels;
+    this.view.guilds = mirror.guilds;
     this.pred.reset();
     Object.assign(this.view.net, { mode: "online", n, code });
     const notice = this.net?.notice;
@@ -327,6 +328,7 @@ export class RealmClient {
     this.useSim(sim, me, PID);
     this.view.names = new Map();
     this.view.levels = new Map();
+    this.view.guilds = new Map();
     this.view.net.n = 1;
   }
 

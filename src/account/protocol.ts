@@ -7,6 +7,13 @@
  */
 import { z } from "zod";
 import type { Hero } from "@/game/hero";
+import {
+  GUILD_LANGS,
+  JOIN_MODES,
+  type GuildLang,
+  type GuildRole,
+  type JoinMode,
+} from "./guildRules";
 
 /** Sessiya muddati (kun): har kuni birinchi so'rovda yana shuncha uzayadi */
 export const SESSION_DAYS = 60;
@@ -91,9 +98,34 @@ export type ErrCode =
   /** topilmadi (o'yinchi, do'st) */
   | "none"
   /** chegaraga yetdi (do'stlar soni va h.k.) */
-  | "limit";
+  | "limit"
+  /** gildiya: oltin yetmaydi */
+  | "gold"
+  /** gildiya: chiqqanidan beri 24 soat o'tmadi (until — qachon mumkin) */
+  | "cooldown"
+  /** gildiya to'la */
+  | "full"
+  /** gildiya: bu amalga huquq yo'q (rol) */
+  | "perm"
+  /** allaqachon gildiyada (yoki gildiyada emas) */
+  | "guild"
+  /** gildiya nomi yoki tegi qoidaga mos emas (field: name | tag, why — sabab) */
+  | "name"
+  /** gildiyaga faqat taklif bilan kiriladi */
+  | "invite"
+  /** gildiya chatida jim qilingan (until — qachongacha) */
+  | "muted";
 
-export type Fail = { ok: false; error: ErrCode; field?: string; save?: CloudSave };
+export type Fail = {
+  ok: false;
+  error: ErrCode;
+  field?: string;
+  save?: CloudSave;
+  /** gildiya nomi/tegi xatosi sababi (guildRules: GuildNameError) */
+  why?: string;
+  /** cooldown / muted: shu vaqtgacha (ms) */
+  until?: number;
+};
 
 // ---------------- so'rov sxemalari ----------------
 
@@ -103,6 +135,11 @@ const hero = z.enum(HERO_IDS);
 const keys = z.record(z.string().max(80), z.string().max(MAX_SAVE));
 
 export const LOGIN_CODE_RE = /^[A-Za-z0-9]{12}$/;
+
+/** Gerb yozuvi: "shakl-fon-belgi rangi-belgi" (guildRules.ts parseEmblem) */
+const emblem = z.string().regex(/^\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}$/);
+/** Takroriy so'rov raqami (klient yasaydi) */
+const rid = z.string().regex(/^[A-Za-z0-9_-]{8,32}$/);
 
 /** Qayerda: menyu, dunyo (sarguzasht/kunlik), olam; off — ilova yopildi */
 export const PLACES = ["menu", "world", "realm", "off"] as const;
@@ -220,6 +257,60 @@ export const REQ = {
       .regex(/^[A-HJ-NP-Z2-9]{6}$/)
       .optional(),
   }),
+  // ---------------- gildiyalar (docs/guilds.md) ----------------
+  /** Mening gildiyam (yoki takliflar, arizalar va 24 soat cheklovi) */
+  "guild/get": z.object({ token }),
+  /**
+   * Gildiya tuzish (500 oltin). gold — qurilmadagi oltin (server bulutdagisi bilan solishtiradi),
+   * rid — takroriy so'rovni bir marta hisoblash uchun (oltin faqat muvaffaqiyatdan keyin yechiladi).
+   */
+  "guild/create": z.object({
+    token,
+    name: z.string().max(64),
+    tag: z.string().max(16),
+    emblem: emblem,
+    mode: z.enum(JOIN_MODES),
+    lang: z.enum(GUILD_LANGS),
+    gold: z.number().int().min(0).max(10_000_000),
+    rid,
+  }),
+  /** Qidirish ro'yxati: nomi yoki tegi bo'yicha (bo'sh — eng faollari) */
+  "guild/search": z.object({
+    token: token.optional(),
+    query: z.string().max(32),
+    lang: z.enum(GUILD_LANGS).optional(),
+  }),
+  /** Gildiya haqida (a'zolar ro'yxati bilan) — qo'shilishdan oldin ko'rish */
+  "guild/info": z.object({ token: token.optional(), id: z.number().int().positive() }),
+  /** Qo'shilish: ochiq — darhol, ariza bilan — ariza, faqat taklif — taklif bo'lsa */
+  "guild/join": z.object({ token, id: z.number().int().positive() }),
+  /** O'z arizasini bekor qilish */
+  "guild/cancel": z.object({ token, id: z.number().int().positive() }),
+  /** Rahbar/o'rinbosar: arizani qabul qilish yoki rad etish (rad — yuborilgan taklifni ham bekor qiladi) */
+  "guild/answer": z.object({ token, player: z.number().int().positive(), accept: z.boolean() }),
+  /** Rahbar/o'rinbosar: o'yinchini taxallus yoki do'st kodi bo'yicha taklif qilish */
+  "guild/invite": z.object({ token, query: z.string().min(1).max(32) }),
+  /** Kelgan taklifga javob */
+  "guild/reply": z.object({ token, id: z.number().int().positive(), accept: z.boolean() }),
+  "guild/leave": z.object({ token }),
+  "guild/kick": z.object({ token, player: z.number().int().positive() }),
+  /** Rol berish: o'rinbosar yoki a'zo */
+  "guild/role": z.object({
+    token,
+    player: z.number().int().positive(),
+    role: z.enum(["officer", "member"]),
+  }),
+  /** Rahbarlikni topshirish */
+  "guild/transfer": z.object({ token, player: z.number().int().positive() }),
+  /** Gildiyani tarqatish (faqat rahbar) */
+  "guild/disband": z.object({ token, confirm: z.literal(true) }),
+  /** Rahbar: qo'shilish usuli, til va gerb */
+  "guild/settings": z.object({
+    token,
+    mode: z.enum(JOIN_MODES).optional(),
+    lang: z.enum(GUILD_LANGS).optional(),
+    emblem: emblem.optional(),
+  }),
 } as const;
 
 export type Op = keyof typeof REQ;
@@ -257,6 +348,8 @@ export interface FriendInfo {
   room: string | null;
   /** oxirgi marta ko'rilgan (ms, 0 — noma'lum) */
   seen: number;
+  /** gildiya tegi va gerbi (gildiyada bo'lsa) */
+  guild?: GuildTag;
 }
 
 export interface FriendLists {
@@ -282,6 +375,8 @@ export interface ScoreRow {
   wave?: number;
   /** Kul qiroli: jamoadagi kirgan o'yinchilar taxallusi */
   team?: string[];
+  /** gildiya tegi va gerbi (ism yonida) */
+  guild?: GuildTag;
 }
 
 export interface ScoreTop {
@@ -301,33 +396,151 @@ export interface FriendMessage {
   at: number;
 }
 
-export type Reply<O extends Op> = O extends "auth/webapp" | "auth/widget"
-  ? { ok: true; token: string; me: Me } | Fail
-  : O extends "auth/bot"
-    ? { ok: true; code: string; secret: string; link: string; expires: number } | Fail
-    : O extends "auth/poll"
-      ? { ok: true; status: "wait" } | { ok: true; status: "done"; token: string; me: Me } | Fail
-      : O extends "me" | "profile"
-        ? { ok: true; me: Me } | Fail
-        : O extends "save/get"
-          ? { ok: true; save: CloudSave | null; same?: boolean } | Fail
-          : O extends "save/put"
-            ? { ok: true; version: number } | Fail
-            : O extends "save/backups"
-              ? { ok: true; backups: BackupInfo[] } | Fail
-              : O extends "save/restore"
-                ? { ok: true; save: CloudSave } | Fail
-                : O extends "friends/list"
-                  ? ({ ok: true } & FriendLists) | Fail
-                  : O extends "friends/add"
-                    ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
-                    : O extends "presence"
-                      ? { ok: true; messages: FriendMessage[]; requests: number } | Fail
-                      : O extends "scores/top"
-                        ? ({ ok: true } & ScoreTop) | Fail
-                        : O extends "scores/submit"
-                          ? { ok: true; hidden: boolean; best: number; rank: number | null } | Fail
-                          : { ok: true } | Fail;
+// ---------------- gildiyalar ----------------
+
+/** Gildiya belgisi: teg va gerb (onlayn ism yonida, profilda, reytingda) */
+export interface GuildTag {
+  tag: string;
+  /** "shakl-fon-belgi rangi-belgi" (guildRules.ts) */
+  emblem: string;
+}
+
+/** Qidirish ro'yxati va takliflardagi gildiya */
+export interface GuildCard extends GuildTag {
+  id: number;
+  name: string;
+  level: number;
+  members: number;
+  /** a'zolar sig'imi (darajaga qarab 20–30) */
+  cap: number;
+  mode: JoinMode;
+  lang: GuildLang;
+  /** so'nggi 3 kunda o'ynagan a'zolar (faollik) */
+  active: number;
+  /** hozir onlayn a'zolar */
+  online: number;
+}
+
+export interface GuildInfo extends GuildCard {
+  /** gildiya XP (daraja shundan) */
+  xp: number;
+  /** xazina (oltin) */
+  treasury: number;
+  created: number;
+  /** rahbar taxallusi */
+  leader: string;
+}
+
+export interface GuildMember {
+  id: number;
+  nick: string;
+  avatar: Hero;
+  /** o'yinchi darajasi */
+  level: number;
+  role: GuildRole;
+  joined: number;
+  online: boolean;
+  /** oxirgi marta ko'rilgan (ms) */
+  seen: number;
+  /** xazinaga jami hissa (oltin) */
+  given: number;
+  /** chatda jim (shu vaqtgacha, ms; 0 — yo'q) */
+  muted: number;
+}
+
+/** Ariza (o'yinchi so'radi) yoki yuborilgan taklif — rahbar va o'rinbosarga ko'rinadi */
+export interface GuildRequestInfo {
+  id: number;
+  nick: string;
+  avatar: Hero;
+  level: number;
+  kind: "apply" | "invite";
+  at: number;
+  /** taklifni kim yubordi */
+  by?: string;
+}
+
+/** Gildiyadagi o'yinchi: gildiya, roli, a'zolar va arizalar */
+export interface GuildMine {
+  guild: GuildInfo;
+  role: GuildRole;
+  members: GuildMember[];
+  requests: GuildRequestInfo[];
+}
+
+/** Gildiyasiz o'yinchi: kelgan takliflar, yuborgan arizalari va 24 soat cheklovi */
+export interface GuildNone {
+  guild: null;
+  /** qo'shilish mumkin bo'ladigan vaqt (ms; 0 — hozir) */
+  cooldown: number;
+  invites: { guild: GuildCard; by: string; at: number }[];
+  applications: { guild: GuildCard; at: number }[];
+}
+
+export type GuildState = GuildMine | GuildNone;
+
+/**
+ * Onlayn holat javobidagi gildiya qisqachasi (daqiqada bir): menyu belgisi va daraja foydalari
+ * (+XP %, kunlik sovg'a) uchun qurilmada saqlanadi.
+ */
+export interface GuildPing {
+  guild: (GuildTag & { id: number; name: string; level: number; role: GuildRole }) | null;
+  /** rahbar/o'rinbosarga — arizalar, gildiyasizga — kelgan takliflar */
+  pending: number;
+}
+
+type GuildReply<O extends Op> = O extends "guild/get"
+  ? ({ ok: true } & GuildState) | Fail
+  : O extends "guild/create"
+    ? { ok: true; guild: GuildInfo; cost: number; dup?: boolean } | Fail
+    : O extends "guild/search"
+      ? { ok: true; guilds: GuildCard[] } | Fail
+      : O extends "guild/info"
+        ? { ok: true; guild: GuildInfo; members: GuildMember[] } | Fail
+        : O extends "guild/join"
+          ? { ok: true; joined: boolean; applied: boolean } | Fail
+          : O extends "guild/invite"
+            ? { ok: true; joined: boolean; nick: string } | Fail
+            : O extends "guild/reply"
+              ? { ok: true; joined: boolean } | Fail
+              : { ok: true } | Fail;
+
+export type Reply<O extends Op> = O extends `guild/${string}`
+  ? GuildReply<O>
+  : O extends "auth/webapp" | "auth/widget"
+    ? { ok: true; token: string; me: Me } | Fail
+    : O extends "auth/bot"
+      ? { ok: true; code: string; secret: string; link: string; expires: number } | Fail
+      : O extends "auth/poll"
+        ? { ok: true; status: "wait" } | { ok: true; status: "done"; token: string; me: Me } | Fail
+        : O extends "me" | "profile"
+          ? { ok: true; me: Me } | Fail
+          : O extends "save/get"
+            ? { ok: true; save: CloudSave | null; same?: boolean } | Fail
+            : O extends "save/put"
+              ? { ok: true; version: number } | Fail
+              : O extends "save/backups"
+                ? { ok: true; backups: BackupInfo[] } | Fail
+                : O extends "save/restore"
+                  ? { ok: true; save: CloudSave } | Fail
+                  : O extends "friends/list"
+                    ? ({ ok: true } & FriendLists) | Fail
+                    : O extends "friends/add"
+                      ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
+                      : O extends "presence"
+                        ? | {
+                              ok: true;
+                              messages: FriendMessage[];
+                              requests: number;
+                              guild?: GuildPing;
+                            }
+                          | Fail
+                        : O extends "scores/top"
+                          ? ({ ok: true } & ScoreTop) | Fail
+                          : O extends "scores/submit"
+                            ? | { ok: true; hidden: boolean; best: number; rank: number | null }
+                              | Fail
+                            : { ok: true } | Fail;
 
 /** /acc/config (GET) — saytdagi Login Widget va bot havolasi uchun */
 export interface AccConfig {

@@ -9,6 +9,8 @@ import type { CloudStatus } from "@/account/cloud";
 import { cn } from "@/lib/utils";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import { HeroAvatar, LevelBadge, TelegramIcon } from "./pixel";
+import { EmblemIcon } from "./GuildBadge";
+import { useGuild } from "@/account/guild";
 import { btn, cloudText } from "./pixelUi";
 
 /** Bulut belgisi: yashil — saqlangan, sariq — kutilmoqda, qizil — xato */
@@ -52,6 +54,7 @@ export function AccountCorner({
 }) {
   const a = useAccount();
   const c = useCloud();
+  const g = useGuild().brief;
   // daraja qurilmadagi XP'dan (bulutdagisidan oldin yangilanadi); mehmonda ham yig'iladi
   const { level } = useLevel(rev);
   if (!account.enabled) return null;
@@ -78,6 +81,7 @@ export function AccountCorner({
         className={`inline-flex max-w-full items-center gap-1 border-2 border-border bg-card px-1 py-0.5 text-foreground hover:border-foreground ${pixelPress} ${pixelFocus}`}
       >
         <HeroAvatar hero={a.me.avatar} size={16} />
+        {g && <EmblemIcon emblem={g.emblem} size={10} />}
         <span className="truncate">{a.me.nick}</span>
         <LevelBadge level={level} />
         <CloudDot status={c.status} />

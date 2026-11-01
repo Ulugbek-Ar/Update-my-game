@@ -5,6 +5,7 @@
  */
 import { Lobby } from "./lobby";
 import { RealmRoom, type RoomConn } from "./room";
+import type { NetIdent } from "./protocol";
 import type { NetDeps, SocketLike } from "./session";
 
 export class Loopback {
@@ -14,6 +15,11 @@ export class Loopback {
   latency = 0;
   /** server "o'chiq": join va ulanish muvaffaqiyatsiz */
   down = false;
+  /**
+   * Akkaunt tekshiruvi (RoomDO dagi kabi): salomlashuvdagi token -> taxallus, daraja, gildiya.
+   * Berilmasa — hamma mehmon.
+   */
+  identify: ((token: string) => NetIdent | null) | null = null;
   private sockets = new Set<LoopSocket>();
   private reported = new Map<string, number>();
 
@@ -73,6 +79,17 @@ export class Loopback {
   now() {
     return this.clock() / 1000;
   }
+
+  /** @internal salomlashuvdagi akkaunt tokeni */
+  identOf(raw: string): NetIdent | null {
+    if (!this.identify || !raw.includes('"acct"')) return null;
+    try {
+      const token = (JSON.parse(raw) as { acct?: unknown }).acct;
+      return typeof token === "string" ? this.identify(token) : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 class LoopSocket implements SocketLike {
@@ -100,7 +117,11 @@ class LoopSocket implements SocketLike {
 
   send(data: string) {
     if (!this.up) return;
-    this.lb.later(() => this.up && this.room.receive(this.id, this.conn, data, this.lb.now()));
+    this.lb.later(() => {
+      if (!this.up) return;
+      const ident = this.room.has(this.id) ? null : this.lb.identOf(data);
+      this.room.receive(this.id, this.conn, data, this.lb.now(), ident);
+    });
   }
 
   close() {

@@ -110,6 +110,11 @@ soniga nisbatan imkonsiz ochko yoki vaqt; Kul qiroli 10 soniyadan tez. Shubhali 
 yaqin, juda tez g'alaba) saqlanadi, lekin reytingda **yashirin** — o'yinchining o'ziga
 "tekshiruvda" deb ko'rinadi. Internet yo'q bo'lsa natija qurilmada navbatda turadi.
 
+## Gildiyalar
+
+Kirgan o'yinchilar gildiya tuzadi (500 oltin) yoki qo'shiladi: rollar, qo'shilish usullari, gerb,
+24 soatlik cheklov — batafsil [docs/guilds.md](guilds.md).
+
 ## Maxfiylik va akkauntni o'chirish
 
 Serverda faqat: Telegram ID, taxallus, avatar, progress (va 5 ta zaxira), do'stlar, xabarlar

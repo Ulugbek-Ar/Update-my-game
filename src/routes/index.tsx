@@ -72,6 +72,8 @@ import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
 import { LeaderboardWindow } from "@/components/game/LeaderboardWindow";
+import { GuildWindow } from "@/components/game/GuildWindow";
+import { useGuild } from "@/account/guild";
 import { flushScores, submitRun } from "@/account/scores";
 import { friends, useFriends } from "@/account/friends";
 import type { FriendInfo } from "@/account/protocol";
@@ -209,6 +211,9 @@ function Index() {
   /** DO'STLAR oynasi; "yoniga kirish" — shu do'st (akkaunt) yoniga */
   const [friendsOpen, setFriendsOpen] = useState(false);
   const fr = useFriends();
+  /** GILDIYA oynasi; nishon — kelgan takliflar (gildiyasiz) yoki arizalar (rahbar/o'rinbosar) */
+  const [guildOpen, setGuildOpen] = useState(false);
+  const gv = useGuild();
   const nearAccRef = useRef<number | null>(null);
   /** Daraja oshdi: oltin sovg'asi va unvon (menyuda, o'yin tugagach) */
   const [levelUp, setLevelUp] = useState<LevelUp | null>(null);
@@ -268,6 +273,7 @@ function Index() {
     if (import.meta.env.DEV)
       (window as unknown as { __accountDemo?: unknown }).__accountDemo = (o?: {
         pending?: boolean;
+        guild?: boolean;
       }) => import("@/account/demo").then((m) => m.startAccountDemo(o));
     // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach);
     // bulutli saqlanish: kirgan bo'lsa — yangiroq progress yuklanadi, o'zgarishlar yuboriladi
@@ -487,6 +493,7 @@ function Index() {
       [exitOpen, () => setExitOpen(false)],
       [loginOpen, () => setLoginOpen(false)],
       [friendsOpen, () => setFriendsOpen(false)],
+      [guildOpen, () => setGuildOpen(false)],
       [boardOpen, () => setBoardOpen(false)],
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [profileOpen, () => setProfileOpen(false)],
@@ -835,6 +842,26 @@ function Index() {
                   {acc.me && fr.requests + fr.unread > 0 ? ` (${fr.requests + fr.unread})` : ""}
                 </Button>
               )}
+              {/* gildiya: kirgan o'yinchida (mehmon — kirish oynasi); taklif/ariza — nishon */}
+              {account.enabled && (
+                <Button
+                  variant="pixelLink"
+                  onClick={() => (acc.me ? setGuildOpen(true) : setLoginOpen(true))}
+                  aria-label="GILDIYA"
+                  title={
+                    acc.me && gv.pending > 0
+                      ? `Gildiya: ${gv.pending} ta yangi taklif yoki ariza`
+                      : "Gildiya: tuzish, qo'shilish, a'zolar va gerb"
+                  }
+                  className={cn(
+                    "gap-1 text-[9px] sm:text-[10px]",
+                    acc.me && gv.pending > 0 && "gift-blink text-primary",
+                  )}
+                >
+                  GILDIYA
+                  {acc.me && gv.pending > 0 ? ` (${gv.pending})` : ""}
+                </Button>
+              )}
               {account.enabled && (
                 <Button
                   variant="pixelLink"
@@ -987,6 +1014,9 @@ function Index() {
             setRealm(true);
           }}
         />
+      )}
+      {guildOpen && acc.me && !started && !realm && (
+        <GuildWindow onClose={() => setGuildOpen(false)} />
       )}
       {levelUp && !giftOpen && !newsOpen && !started && !realm && (
         <LevelUpWindow up={levelUp} onClose={() => setLevelUp(null)} />

@@ -56,6 +56,18 @@ export interface NetIdent {
   id: number;
   nick: string;
   level: number;
+  /** gildiyasi: raqami, tegi va gerbi (ism yonida ko'rinadi) */
+  guild?: { id: number; tag: string; emblem: string };
+}
+
+/** Ism yonidagi gildiya belgisi tarmoqda: "TEG|gerb" ("" — gildiyasiz) */
+export const netGuild = (g: { tag: string; emblem: string } | null | undefined) =>
+  g ? `${g.tag}|${g.emblem}` : "";
+
+export function parseNetGuild(s: string | undefined): { tag: string; emblem: string } | null {
+  if (!s) return null;
+  const i = s.indexOf("|");
+  return i > 0 ? { tag: s.slice(0, i), emblem: s.slice(i + 1) } : null;
 }
 
 // ---------------- klient -> server ----------------
@@ -216,7 +228,8 @@ export const PF_DASH = 1,
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,
- * flash, unvon ("" — yo'q), o'yinchi darajasi (0 — mehmon)]
+ * flash, unvon ("" — yo'q), o'yinchi darajasi (0 — mehmon), gildiya ("TEG|gerb", "" — yo'q;
+ * eski server yubormaydi)]
  */
 export type NetPlayer = [
   string,
@@ -234,6 +247,7 @@ export type NetPlayer = [
   number,
   string,
   number,
+  string?,
 ];
 /**
  * [id, tur, x, y, jon, max, holat, anim, kadr, yuz, dirX, dirY, flash, stun (1 — gangigan,

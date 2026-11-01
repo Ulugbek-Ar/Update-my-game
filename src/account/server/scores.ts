@@ -178,7 +178,13 @@ export class Scores {
   }
 
   private row(
-    r: ScoreDbRow & { nick: string; avatar: string; xp: number },
+    r: ScoreDbRow & {
+      nick: string;
+      avatar: string;
+      xp: number;
+      gtag?: string | null;
+      gemblem?: string | null;
+    },
     rank: number,
   ): ScoreRow {
     let meta: { h?: unknown; w?: unknown; team?: unknown } = {};
@@ -202,6 +208,8 @@ export class Scores {
       out.team = meta.team
         .map((id) => (typeof id === "number" ? this.store.player(id)?.nick : undefined))
         .filter((n): n is string => typeof n === "string");
+    // gildiya tegi va gerbi (ism yonida)
+    if (r.gtag) out.guild = { tag: str(r.gtag), emblem: str(r.gemblem) };
     return out;
   }
 
@@ -212,9 +220,20 @@ export class Scores {
     const key = period === "week" ? `w:${weekKey(now)}` : "all";
     const order = lowerIsBetter(board) ? "ASC" : "DESC";
     const list = this.db
-      .exec<ScoreDbRow & { nick: string; avatar: string; xp: number }>(
-        `SELECT s.player, s.score, s.at, s.hidden, s.meta, p.nick, p.avatar, p.xp
+      .exec<
+        ScoreDbRow & {
+          nick: string;
+          avatar: string;
+          xp: number;
+          gtag: string | null;
+          gemblem: string | null;
+        }
+      >(
+        `SELECT s.player, s.score, s.at, s.hidden, s.meta, p.nick, p.avatar, p.xp,
+                g.tag AS gtag, g.emblem AS gemblem
            FROM scores s JOIN players p ON p.id = s.player
+           LEFT JOIN guild_members gm ON gm.player = s.player
+           LEFT JOIN guilds g ON g.id = gm.guild
           WHERE s.board = ? AND s.period = ? AND s.hidden = 0
           ORDER BY s.score ${order}, s.at ASC LIMIT ?`,
         board,
@@ -235,8 +254,19 @@ export class Scores {
       if (r) {
         const hidden = num(r.hidden) === 1;
         const rank = hidden ? 0 : this.rankOf(board, key, r);
+        const g = this.store.guilds.tagOf(me.id);
         mine = {
-          ...this.row({ ...r, nick: me.nick, avatar: me.avatar, xp: me.xp }, rank),
+          ...this.row(
+            {
+              ...r,
+              nick: me.nick,
+              avatar: me.avatar,
+              xp: me.xp,
+              gtag: g?.tag ?? null,
+              gemblem: g?.emblem ?? null,
+            },
+            rank,
+          ),
           hidden,
         };
       }

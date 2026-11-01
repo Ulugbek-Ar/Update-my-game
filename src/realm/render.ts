@@ -20,7 +20,8 @@ import {
 } from "@/game/paladinFx";
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
-import { PHRASES, ROOM_CAP } from "./net/protocol";
+import { PHRASES, ROOM_CAP, parseNetGuild } from "./net/protocol";
+import { MINI_W, drawEmblemMini } from "@/game/emblem";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, LAVA, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
@@ -68,6 +69,8 @@ export interface RealmView {
   names: Map<string, string>;
   /** kirgan o'yinchilar darajasi (id -> 12) — ism yonida */
   levels?: Map<string, number>;
+  /** gildiya tegi va gerbi (id -> "TEG|gerb") — ism yonida */
+  guilds?: Map<string, string>;
   /** chat pufakchalari (id -> ibora, qolgan vaqt) */
   bubbles: Map<string, { text: string; t: number }>;
   /** tayyor iboralar ro'yxati ochiq */
@@ -532,8 +535,9 @@ export class RealmRenderer {
       const name = rp === me ? null : v.names.get(rp.id);
       const bubble = v.bubbles.get(rp.id);
       const level = v.levels?.get(rp.id) ?? 0;
+      const guild = parseNetGuild(v.guilds?.get(rp.id));
       if (name || bubble)
-        labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text, level));
+        labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text, level, guild));
     }
     for (const i of occluders) {
       const tx = i % sim.map.w,
@@ -1743,6 +1747,7 @@ function playerLabel(
   name: string | null,
   say: string | undefined,
   level = 0,
+  guild: { tag: string; emblem: string } | null = null,
 ) {
   const p = rp.p;
   let top = y - 20;
@@ -1754,10 +1759,19 @@ function playerLabel(
       text(c, title, x, top, 4, "#ffb02e", "center");
       top -= 6;
     }
-    text(c, name, x, top, 4, HERO_THEME[rp.hero].uiText, "center");
+    // gildiya: kichik gerb va [TEG] ism oldida — hammasi birga markazda
+    c.font = `4px ${FONT}`;
+    const tag = guild ? `[${guild.tag}]` : "";
+    const tw = guild ? Math.ceil(c.measureText(tag).width) + MINI_W + 3 : 0;
+    const nw = Math.ceil(c.measureText(name).width) + tw;
+    const left = x - nw / 2;
+    if (guild) {
+      drawEmblemMini(c, guild.emblem, Math.round(left), top - 6);
+      text(c, tag, left + MINI_W + 1, top, 4, "#ffd97a", "left");
+    }
+    text(c, name, left + tw, top, 4, HERO_THEME[rp.hero].uiText, "left");
     // rol belgisi ism yonida (TANK, JANGCHI, SEHRGAR, UZOQDAN)
     c.font = `4px ${FONT}`;
-    const nw = Math.ceil(c.measureText(name).width);
     drawRoleIcon(c, HERO_ROLE[rp.hero], x - nw / 2 - 10, top - 6);
     // o'yinchi darajasi (akkaunt bilan kirganlar) — ism o'ng tomonida sariq belgida
     if (level > 0) {

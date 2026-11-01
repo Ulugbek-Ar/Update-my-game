@@ -72,13 +72,15 @@ export class AccountDO extends DurableObject<Env> {
       await this.call(c.method, c.body);
   }
 
-  /** Olam xonasi (RoomDO) so'raydi: token kimniki — taxallus va daraja ism yonida ko'rinadi */
+  /** Olam xonasi (RoomDO) so'raydi: token kimniki — taxallus, daraja va gildiya ism yonida ko'rinadi */
   async identify(token: string) {
     this.count();
     const p = await this.store.authenticate(token, Date.now());
     if (!p) return null;
     const me = this.store.me(p);
-    return { id: me.id, nick: me.nick, level: me.level };
+    // gildiya tegi va gerbi — onlayn ism yonida
+    const g = this.store.guilds.badgeOf(me.id);
+    return { id: me.id, nick: me.nick, level: me.level, ...(g ? { guild: g } : {}) };
   }
 
   /** Olam xonasi (RoomDO): Kul qiroli yengildi — jamoadagi kirgan o'yinchilar reytingga */

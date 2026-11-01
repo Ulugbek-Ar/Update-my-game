@@ -8,6 +8,7 @@ import { FRIEND_PHRASES, formatFriendCode, type FriendInfo } from "@/account/pro
 import { useAccount } from "@/account/useAccount";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { HeroAvatar, LevelBadge, PixelWindow } from "./pixel";
+import { GuildTagBadge } from "./GuildBadge";
 import { ago, btn, tabBtn } from "./pixelUi";
 
 type Tab = "list" | "requests" | "add" | "inbox" | "blocked";
@@ -18,6 +19,7 @@ function Row({ f, children }: { f: FriendInfo; children?: ReactNode }) {
       <HeroAvatar hero={f.avatar} size={24} />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="inline-flex items-center gap-2 text-foreground">
+          <GuildTagBadge guild={f.guild} />
           <span className="truncate">{f.nick}</span>
           <LevelBadge level={f.level} />
         </span>

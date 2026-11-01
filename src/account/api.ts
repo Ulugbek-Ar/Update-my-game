@@ -105,4 +105,12 @@ export const ERROR_TEXT: Record<ErrCode, string> = {
   nick: "Taxallus qoidaga mos emas",
   none: "Topilmadi",
   limit: "Chegaraga yetdingiz",
+  gold: "Oltin yetmaydi",
+  cooldown: "Gildiyadan chiqqaningizga hali 24 soat bo'lmadi",
+  full: "Gildiya to'la",
+  perm: "Bu amal uchun huquqingiz yo'q",
+  guild: "Siz allaqachon gildiyadasiz (yoki gildiyada emassiz)",
+  name: "Nom yoki teg qoidaga mos emas",
+  invite: "Bu gildiyaga faqat taklif bilan kiriladi",
+  muted: "Chatda vaqtincha jim qilingansiz",
 };

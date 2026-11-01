@@ -24,6 +24,7 @@ export const REALM_KEY = "pixel-rpg-realm";
 import { first, initSchema, num, str, type Db, type Row } from "./db";
 import { sha256Hex, type TgUser } from "./telegram";
 import { Friends } from "./friends";
+import { Guilds } from "./guilds";
 import { Scores } from "./scores";
 
 const DAY = 86_400_000;
@@ -114,11 +115,14 @@ export class AccountStore {
   readonly friends: Friends;
   /** reyting (haftalik va umumiy) */
   readonly scores: Scores;
+  /** gildiyalar (docs/guilds.md) */
+  readonly guilds: Guilds;
 
   constructor(readonly db: Db) {
     initSchema(db);
     this.friends = new Friends(this);
     this.scores = new Scores(this);
+    this.guilds = new Guilds(this);
   }
 
   // ---------------- o'yinchilar ----------------
@@ -224,11 +228,12 @@ export class AccountStore {
 
   /**
    * Akkauntni o'chirish: serverdagi barcha ma'lumot — o'yinchi, sessiyalar, saqlanish va zaxiralar,
-   * do'stlik, xabarlar, onlayn holat, reyting. Qaytarib bo'lmaydi.
+   * do'stlik, xabarlar, onlayn holat, reyting, gildiya a'zoligi va yozuvlari. Qaytarib bo'lmaydi.
    */
   deleteAccount(id: number) {
     this.db.tx(() => {
       const p = this.player(id);
+      this.guilds.forget(id);
       for (const q of [
         "DELETE FROM sessions WHERE player = ?",
         "DELETE FROM saves WHERE player = ?",

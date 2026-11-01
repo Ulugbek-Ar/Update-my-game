@@ -129,6 +129,64 @@ export const SCHEMA: readonly string[] = [
     PRIMARY KEY (board, period, player)
   ) WITHOUT ROWID`,
   `CREATE INDEX IF NOT EXISTS scores_rank ON scores (board, period, hidden, score)`,
+  // ---------------- gildiyalar (v3.3, docs/guilds.md) ----------------
+  // gildiya: nomi va tegi takrorlanmas (kalit — katta-kichik harf farqsiz), gerb, qo'shilish usuli,
+  // til, gildiya XP (daraja shundan), xazina, trofeylar (yengilgan bosslar, vergul bilan)
+  `CREATE TABLE IF NOT EXISTS guilds (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL UNIQUE,
+    tag TEXT NOT NULL,
+    tag_key TEXT NOT NULL UNIQUE,
+    emblem TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'open',
+    lang TEXT NOT NULL DEFAULT 'uz',
+    created INTEGER NOT NULL,
+    xp INTEGER NOT NULL DEFAULT 0,
+    treasury INTEGER NOT NULL DEFAULT 0,
+    trophies TEXT NOT NULL DEFAULT ''
+  )`,
+  // a'zolik: o'yinchi faqat bitta gildiyada; rol — leader | officer | member; muted — chatda jim
+  // (shu vaqtgacha), given — xazinaga jami hissasi
+  `CREATE TABLE IF NOT EXISTS guild_members (
+    player INTEGER PRIMARY KEY,
+    guild INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    joined INTEGER NOT NULL,
+    muted INTEGER NOT NULL DEFAULT 0,
+    given INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS guild_members_guild ON guild_members (guild, role)`,
+  // ariza (apply — o'yinchi so'radi) va taklif (invite — gildiya chaqirdi, by — kim)
+  `CREATE TABLE IF NOT EXISTS guild_requests (
+    guild INTEGER NOT NULL,
+    player INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    by INTEGER NOT NULL DEFAULT 0,
+    at INTEGER NOT NULL,
+    PRIMARY KEY (guild, player)
+  ) WITHOUT ROWID`,
+  `CREATE INDEX IF NOT EXISTS guild_requests_player ON guild_requests (player)`,
+  // gildiyadan chiqqandan keyin 24 soat boshqasiga qo'shilmaydi (sakrashga qarshi)
+  `CREATE TABLE IF NOT EXISTS guild_cooldown (player INTEGER PRIMARY KEY, until INTEGER NOT NULL)`,
+  // oltin yechiladigan so'rovlar (tuzish, xazinaga hissa): takror kelsa — bir marta hisoblanadi
+  `CREATE TABLE IF NOT EXISTS guild_rids (
+    player INTEGER NOT NULL,
+    rid TEXT NOT NULL,
+    at INTEGER NOT NULL,
+    PRIMARY KEY (player, rid)
+  ) WITHOUT ROWID`,
+  // gildiya jurnali: tuzildi, qo'shildi, chiqdi, chiqarildi, rol, topshirildi, hissa...
+  `CREATE TABLE IF NOT EXISTS guild_log (
+    id INTEGER PRIMARY KEY,
+    guild INTEGER NOT NULL,
+    player INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0,
+    other INTEGER NOT NULL DEFAULT 0,
+    at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS guild_log_guild ON guild_log (guild, id)`,
 ];
 
 export function initSchema(db: Db) {

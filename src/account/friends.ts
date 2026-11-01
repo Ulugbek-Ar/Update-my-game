@@ -12,6 +12,7 @@ import {
   type FriendInfo,
   type FriendLists,
   type FriendMessage,
+  type GuildPing,
   type Place,
 } from "./protocol";
 
@@ -53,6 +54,8 @@ export class FriendsManager {
   private room: string | null = null;
   private started = false;
   private beating = false;
+  /** holat javobini kutayotganlar (gildiya qisqachasi — guild.ts) */
+  private presenceHooks: ((r: { guild?: GuildPing }) => void)[] = [];
 
   constructor(private acc: AccountManager = account) {
     acc.onLogin(() => {
@@ -73,6 +76,11 @@ export class FriendsManager {
   private set(patch: Partial<FriendsState>) {
     this.state = { ...this.state, ...patch };
     for (const f of this.subs) f();
+  }
+
+  /** Har holat javobida (daqiqada bir): javobdagi qo'shimchalar (gildiya) shu yerga */
+  onPresence(fn: (r: { guild?: GuildPing }) => void) {
+    this.presenceHooks.push(fn);
   }
 
   /** Ilova ochilganda bir marta: daqiqada bir holat, yopilganda "off" */
@@ -116,6 +124,7 @@ export class FriendsManager {
     this.beating = false;
     if (!r.ok) return;
     this.receive(r.messages, r.requests);
+    for (const f of this.presenceHooks) f(r);
   }
 
   private receive(messages: FriendMessage[], requests: number) {

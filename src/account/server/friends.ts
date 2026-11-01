@@ -72,7 +72,7 @@ export class Friends {
     const at = pr ? num(pr.at) : 0;
     const place = pr && PLACES.includes(str(pr.place) as Place) ? (str(pr.place) as Place) : null;
     const online = !!pr && place !== "off" && now - at < ONLINE_MS;
-    return {
+    const out: FriendInfo = {
       id: num(p.id),
       nick: str(p.nick),
       avatar: HERO_IDS.find((h) => h === p.avatar) ?? "knight",
@@ -82,6 +82,9 @@ export class Friends {
       room: online && withRoom && place === "realm" && pr?.room ? str(pr.room) : null,
       seen: at,
     };
+    const guild = this.store.guilds.tagOf(num(p.id));
+    if (guild) out.guild = guild;
+    return out;
   }
 
   private others(sql: string, id: number, now: number, withRoom: boolean) {
@@ -305,6 +308,6 @@ export class Friends {
         "n"
       ],
     );
-    return { ok: true as const, messages, requests };
+    return { ok: true as const, messages, requests, guild: this.store.guilds.ping(me.id, now) };
   }
 }

@@ -11,6 +11,7 @@ import { useAccount } from "@/account/useAccount";
 import { HERO_LIST, HERO_THEME, type Hero } from "@/game/hero";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { HeroAvatar, LevelBadge, PixelWindow, TelegramIcon } from "./pixel";
+import { GuildTagBadge } from "./GuildBadge";
 import { btn, tabBtn } from "./pixelUi";
 
 type Kind = "w1" | "endless" | "daily" | "ashking";
@@ -46,6 +47,7 @@ function ScoreLine({
       <HeroAvatar hero={r.avatar} size={20} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="inline-flex items-center gap-2 text-foreground">
+          <GuildTagBadge guild={r.guild} />
           <span className="truncate">{r.nick}</span>
           <LevelBadge level={r.level} />
         </span>

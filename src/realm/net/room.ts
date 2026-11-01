@@ -34,6 +34,7 @@ import {
   ROOM_CAP,
   SNAPSHOT_EVERY,
   guestName,
+  netGuild,
   parseClientMsg,
   type ErrReason,
   type HelloMsg,
@@ -116,6 +117,9 @@ interface Member {
   /** akkaunt raqami (mehmon — 0) va daraja */
   acc: number;
   level: number;
+  /** gildiya raqami (0 — yo'q) va ism yonidagi belgisi ("TEG|gerb") */
+  guildId: number;
+  guild: string;
   hero: Hero;
   conn: RoomConn;
   tokens: number;
@@ -246,6 +250,8 @@ export class RealmRoom {
       name: ident ? ident.nick : guestName(hello.tag),
       acc: ident?.id ?? 0,
       level: ident?.level ?? 0,
+      guildId: ident?.guild?.id ?? 0,
+      guild: netGuild(ident?.guild),
       hero: hello.hero,
       conn,
       tokens: RATE_BURST,
@@ -414,7 +420,7 @@ export class RealmRoom {
       const mem = this.members.get(o.id);
       if (!mem) continue;
       seenP.add(o.id);
-      const t = netPlayer(o, mem.name, mem.level);
+      const t = netPlayer(o, mem.name, mem.level, mem.guild);
       const k = JSON.stringify(t);
       if (b.players.get(o.id) !== k) {
         b.players.set(o.id, k);
@@ -590,7 +596,7 @@ function send(conn: RoomConn, msg: ServerMsg) {
 const loopFrame = (state: string, frame: number) =>
   state === "idle" || state === "walk" ? -1 : frame;
 
-export function netPlayer(o: RealmPlayer, name: string, level = 0): NetPlayer {
+export function netPlayer(o: RealmPlayer, name: string, level = 0, guild = ""): NetPlayer {
   const p = o.p;
   const flags =
     (p.dashing ? PF_DASH : 0) |
@@ -613,6 +619,7 @@ export function netPlayer(o: RealmPlayer, name: string, level = 0): NetPlayer {
     p.flash > 0 ? r2(p.flash) : 0,
     o.titles[0] ?? "",
     level,
+    guild,
   ];
 }
 

@@ -16,6 +16,9 @@ import { HERO_LIST, HERO_THEME, bestKeys, type Hero } from "@/game/hero";
 import { loadUnlockedHeroes } from "@/game/save";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { CloudDot } from "./AccountCorner";
+import { EmblemIcon } from "./GuildBadge";
+import { useGuild } from "@/account/guild";
+import { ROLE_NAME } from "@/account/guildRules";
 import { HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
 import { ago, btn, cloudText, tabBtn, when } from "./pixelUi";
 
@@ -249,6 +252,8 @@ function AvatarPicker({ me, onDone }: { me: Me; onDone: () => void }) {
 
 function ProfileTab({ me, rev }: { me: Me; rev: number }) {
   const { xp, level } = useLevel(rev);
+  // gildiya: qurilmadagi qisqacha (daqiqada bir yangilanadi)
+  const g = useGuild().brief;
   const [edit, setEdit] = useState<"nick" | "avatar" | null>(null);
   const [have, need] = levelProgress(xp);
   const st = loadStats();
@@ -306,6 +311,17 @@ function ProfileTab({ me, rev }: { me: Me; rev: number }) {
           <span className="text-muted-foreground">
             Do'st kodi: <span className="text-primary">{formatFriendCode(me.code)}</span>
           </span>
+          {g ? (
+            <span className="inline-flex flex-wrap items-center gap-2 text-foreground">
+              Gildiya: <EmblemIcon emblem={g.emblem} size={14} />
+              <span className="text-[#ffd97a]">[{g.tag}]</span>
+              <span>{g.name}</span>
+              <LevelBadge level={g.level} />
+              <span className="text-muted-foreground">· {ROLE_NAME[g.role]}</span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Gildiya: yo'q — menyuda GILDIYA</span>
+          )}
         </div>
       </div>
       {edit === "nick" && <NickEditor nick={me.nick} onDone={() => setEdit(null)} />}

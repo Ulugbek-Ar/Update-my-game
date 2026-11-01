@@ -7,6 +7,7 @@ import { HERO_LIST } from "@/game/hero";
 import { AUTH_MAX_AGE, REQ, isOp, type ErrCode, type Op, type ReqOf } from "../protocol";
 import type { AccountStore, PlayerRow } from "./store";
 import { verifyInitData, verifyLoginWidget } from "./telegram";
+import { handleGuild } from "./guildApi";
 
 export interface ApiEnv {
   now: number;
@@ -91,6 +92,9 @@ export async function handleApi(
 
   const authed = async (): Promise<PlayerRow | null> =>
     token ? store.authenticate(token, env.now) : null;
+
+  // gildiyalar — alohida faylda (guildApi.ts)
+  if (op.startsWith("guild/")) return handleGuild(store, op, body, env.now, authed, !!token);
 
   switch (op as Op) {
     case "auth/webapp": {
