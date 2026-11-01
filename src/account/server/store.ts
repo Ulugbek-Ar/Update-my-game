@@ -23,6 +23,7 @@ import { checkSave, type LimitField } from "../limits";
 export const REALM_KEY = "pixel-rpg-realm";
 import { first, initSchema, num, str, type Db, type Row } from "./db";
 import { sha256Hex, type TgUser } from "./telegram";
+import { Friends } from "./friends";
 
 const DAY = 86_400_000;
 /** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
@@ -108,8 +109,12 @@ export interface PutRequest {
 }
 
 export class AccountStore {
+  /** do'stlar, onlayn holat va tez xabarlar */
+  readonly friends: Friends;
+
   constructor(readonly db: Db) {
     initSchema(db);
+    this.friends = new Friends(this);
   }
 
   // ---------------- o'yinchilar ----------------

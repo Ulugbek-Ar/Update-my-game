@@ -104,6 +104,28 @@ const keys = z.record(z.string().max(80), z.string().max(MAX_SAVE));
 
 export const LOGIN_CODE_RE = /^[A-Za-z0-9]{12}$/;
 
+/** Qayerda: menyu, dunyo (sarguzasht/kunlik), olam; off — ilova yopildi */
+export const PLACES = ["menu", "world", "realm", "off"] as const;
+export type Place = (typeof PLACES)[number];
+
+/** Do'stlar o'rtasidagi tayyor iboralar (erkin matn hali yo'q) */
+export const FRIEND_PHRASES = [
+  "Salom!",
+  "Olamga kel!",
+  "Yordam kerak!",
+  "Rahmat!",
+  "Zo'r o'yin!",
+  "Kul qirolini birga yengamizmi?",
+  "Hozir bandman, keyinroq",
+  "Xayr!",
+] as const;
+
+/** Do'stlar soni va kutilayotgan so'rovlar chegarasi */
+export const MAX_FRIENDS = 100;
+export const MAX_OUTGOING = 30;
+/** Shuncha vaqt ichida yangilangan holat — onlayn */
+export const ONLINE_MS = 5 * 60_000;
+
 export const REQ = {
   /** Telegram Mini App: Telegram.WebApp.initData */
   "auth/webapp": z.object({ initData: z.string().min(1).max(4096), device }),
@@ -150,6 +172,33 @@ export const REQ = {
     avatar: hero.optional(),
   }),
   "account/delete": z.object({ token, confirm: z.literal(true) }),
+  /** Do'stlar ro'yxati, so'rovlar va bloklanganlar */
+  "friends/list": z.object({ token }),
+  /** So'rov: taxallus yoki do'st kodi bo'yicha */
+  "friends/add": z.object({ token, query: z.string().min(1).max(32) }),
+  "friends/answer": z.object({ token, id: z.number().int().positive(), accept: z.boolean() }),
+  "friends/remove": z.object({ token, id: z.number().int().positive() }),
+  "friends/block": z.object({ token, id: z.number().int().positive() }),
+  "friends/unblock": z.object({ token, id: z.number().int().positive() }),
+  /** Tayyor ibora (FRIEND_PHRASES raqami) */
+  "friends/msg": z.object({
+    token,
+    to: z.number().int().positive(),
+    phrase: z
+      .number()
+      .int()
+      .min(0)
+      .max(FRIEND_PHRASES.length - 1),
+  }),
+  /** Onlayn holat (har daqiqada va o'zgarganda): javobda yangi xabarlar va so'rovlar soni */
+  presence: z.object({
+    token,
+    place: z.enum(PLACES),
+    room: z
+      .string()
+      .regex(/^[A-HJ-NP-Z2-9]{6}$/)
+      .optional(),
+  }),
 } as const;
 
 export type Op = keyof typeof REQ;
@@ -173,6 +222,39 @@ export interface BackupInfo {
   data: Record<string, string>;
 }
 
+/** Do'stlar ro'yxatidagi o'yinchi */
+export interface FriendInfo {
+  id: number;
+  nick: string;
+  avatar: Hero;
+  level: number;
+  /** onlayn: oxirgi 5 daqiqada holat yuborgan */
+  online: boolean;
+  /** qayerda (onlayn bo'lsa) */
+  place: Place | null;
+  /** olam xonasi kodi ("Yoniga kirish") — faqat do'stlarga */
+  room: string | null;
+  /** oxirgi marta ko'rilgan (ms, 0 — noma'lum) */
+  seen: number;
+}
+
+export interface FriendLists {
+  friends: FriendInfo[];
+  /** menga kelgan so'rovlar */
+  incoming: FriendInfo[];
+  /** men yuborgan, javob kutilayotgan */
+  outgoing: FriendInfo[];
+  blocked: FriendInfo[];
+}
+
+export interface FriendMessage {
+  id: number;
+  from: number;
+  nick: string;
+  phrase: number;
+  at: number;
+}
+
 export type Reply<O extends Op> = O extends "auth/webapp" | "auth/widget"
   ? { ok: true; token: string; me: Me } | Fail
   : O extends "auth/bot"
@@ -189,7 +271,13 @@ export type Reply<O extends Op> = O extends "auth/webapp" | "auth/widget"
               ? { ok: true; backups: BackupInfo[] } | Fail
               : O extends "save/restore"
                 ? { ok: true; save: CloudSave } | Fail
-                : { ok: true } | Fail;
+                : O extends "friends/list"
+                  ? ({ ok: true } & FriendLists) | Fail
+                  : O extends "friends/add"
+                    ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
+                    : O extends "presence"
+                      ? { ok: true; messages: FriendMessage[]; requests: number } | Fail
+                      : { ok: true } | Fail;
 
 /** /acc/config (GET) — saytdagi Login Widget va bot havolasi uchun */
 export interface AccConfig {

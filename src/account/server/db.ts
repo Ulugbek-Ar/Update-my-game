@@ -91,6 +91,31 @@ export const SCHEMA: readonly string[] = [
     data TEXT NOT NULL,
     PRIMARY KEY (player, slot)
   ) WITHOUT ROWID`,
+  // do'stlar: (a -> b) req — so'rov, ok — do'st (ikki tomonga ikki qator), block — a b ni bloklagan
+  `CREATE TABLE IF NOT EXISTS friends (
+    a INTEGER NOT NULL,
+    b INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    since INTEGER NOT NULL,
+    PRIMARY KEY (a, b)
+  ) WITHOUT ROWID`,
+  `CREATE INDEX IF NOT EXISTS friends_b ON friends (b, status)`,
+  // onlayn holat: qayerda (menu / world / realm), olam xonasi (faqat do'stlarga ko'rinadi)
+  `CREATE TABLE IF NOT EXISTS presence (
+    player INTEGER PRIMARY KEY,
+    at INTEGER NOT NULL,
+    place TEXT NOT NULL,
+    room TEXT NOT NULL DEFAULT ''
+  )`,
+  // do'stlar o'rtasidagi tayyor iboralar (erkin matn yo'q); yetkazilgach o'chadi
+  `CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY,
+    sender INTEGER NOT NULL,
+    receiver INTEGER NOT NULL,
+    phrase INTEGER NOT NULL,
+    at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS messages_to ON messages (receiver, id)`,
 ];
 
 export function initSchema(db: Db) {

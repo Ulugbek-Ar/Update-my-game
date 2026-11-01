@@ -74,6 +74,24 @@ olinadi. Har 10 darajada yangi unvon: Yangi kelgan → Zindon kezuvchisi (10) �
 XP mehmonda ham yig'iladi va kirganda akkauntga o'tadi. Onlayn olamda kirgan o'yinchining ismi
 o'rniga taxallusi va yonida darajasi ko'rinadi (server tokenni akkauntlar DO'sida tekshiradi).
 
+## Do'stlar
+
+- **Qo'shish:** taxallus yoki do'st kodi (`XXXX-XXXX`, profil va QO'SHISH bo'limida) bo'yicha
+  so'rov → u qabul qiladi yoki rad etadi. Ikkalasi bir-biriga so'rov yuborsa — darhol do'st.
+  Chegaralar: 100 do'st, 30 ta javob kutilayotgan so'rov.
+- **Ro'yxat:** onlayn/oflayn (oxirgi 5 daqiqada holat yuborgan) va qayerda: menyuda, sarguzashtda
+  yoki Abadiyat olamida. Oflayn bo'lsa — qachon ko'rilgani.
+- **YONIGA KIRISH:** do'st olamda bo'lsa — uning xonasiga, aynan uning yoniga (xona to'la bo'lsa —
+  boshqa xonaga va xabar). Xona kodi faqat do'stlarga ko'rinadi.
+- **Bloklash va o'chirish:** bloklangan o'yinchi so'rov ham, xabar ham yubora olmaydi (unga
+  "topilmadi" deb ko'rinadi).
+- **Tez xabar:** faqat do'stlar o'rtasida, faqat tayyor iboralar (erkin matn yo'q): "Salom!",
+  "Olamga kel!", "Yordam kerak!", "Rahmat!", "Zo'r o'yin!", "Kul qirolini birga yengamizmi?",
+  "Hozir bandman, keyinroq", "Xayr!". Olamda — o'yin ichida, menyuda — yuqorida yozuv.
+
+Onlayn holat daqiqada bir (va o'zgarganda) yuboriladi; serverga faqat o'zgarganda yoki 3
+daqiqada bir yoziladi. Ilova yopilsa yoki fonga o'tsa — darhol "oflayn".
+
 ## BotFather va server sozlamasi
 
 1. Kanal boti (TELEGRAM_BOT_TOKEN — kanalga post ham shu bot bilan).

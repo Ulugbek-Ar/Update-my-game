@@ -70,6 +70,9 @@ import { LoginWindow } from "@/components/game/LoginWindow";
 import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
+import { FriendsWindow } from "@/components/game/FriendsWindow";
+import { friends, useFriends } from "@/account/friends";
+import type { FriendInfo } from "@/account/protocol";
 import { checkLevelUp } from "@/account/progression";
 import { XP, addXp, type LevelUp } from "@/account/xp";
 
@@ -199,6 +202,10 @@ function Index() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(true);
+  /** DO'STLAR oynasi; "yoniga kirish" — shu do'st (akkaunt) yoniga */
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const fr = useFriends();
+  const nearAccRef = useRef<number | null>(null);
   /** Daraja oshdi: oltin sovg'asi va unvon (menyuda, o'yin tugagach) */
   const [levelUp, setLevelUp] = useState<LevelUp | null>(null);
   /** Akkaunt xabari ("Xush kelibsiz!", "Akkauntdan chiqdingiz") — menyuda bir necha soniya */
@@ -257,6 +264,8 @@ function Index() {
     // bulutli saqlanish: kirgan bo'lsa — yangiroq progress yuklanadi, o'zgarishlar yuboriladi
     account.init();
     cloud.start();
+    // do'stlar: onlayn holat (daqiqada bir) va tez xabarlar
+    friends.start();
     // do'st chaqiruvi: sayt havolasi ?xona=KOD — kod kiritish oynasi to'lib ochiladi
     const invited = normalizeRoomCode(new URLSearchParams(location.search).get("xona"));
     if (invited && SERVER_URL) {
@@ -305,6 +314,19 @@ function Index() {
     const id = window.setTimeout(() => setNotice(null), 4500);
     return () => window.clearTimeout(id);
   }, [notice]);
+  // do'stlarga: qayerdaman (menyu / dunyo / olam — xona kodi RealmClient.onRoom dan)
+  useEffect(() => {
+    if (!realm) friends.setPlace(started ? "world" : "menu");
+  }, [started, realm]);
+  // do'stdan tayyor ibora: olamda — o'yin ichida, menyuda — yuqorida yozuv
+  const realmClientRef = useRef<RealmClient | null>(null);
+  realmClientRef.current = realmClient;
+  useEffect(() => {
+    friends.onMessage = (_m, text) => {
+      if (realmClientRef.current) realmClientRef.current.notify(text);
+      else if (!startedRef.current) account.notify(text);
+    };
+  }, []);
   // o'yin yoki olamdan menyuga qaytildi: bulutdagi yangiroq progress (boshqa qurilmadan) shu yerda
   useEffect(() => {
     if (!started && !realm) cloud.resume();
@@ -414,8 +436,13 @@ function Index() {
   // Abadiyat olami: o'sha canvas'da alohida klient (o'z saqlanishi bilan)
   useEffect(() => {
     if (!realm || !canvasRef.current) return;
-    const c = new RealmClient(canvasRef.current, hero, { room: realmRoomRef.current });
+    const c = new RealmClient(canvasRef.current, hero, {
+      room: realmRoomRef.current,
+      nearAcc: nearAccRef.current,
+    });
     realmRoomRef.current = null;
+    nearAccRef.current = null;
+    c.onRoom = (code) => friends.setPlace("realm", code);
     c.touch = touch;
     c.onSettings = () => setSettingsOpen(true);
     c.onExit = () => {
@@ -445,6 +472,7 @@ function Index() {
     const windows = [
       [exitOpen, () => setExitOpen(false)],
       [loginOpen, () => setLoginOpen(false)],
+      [friendsOpen, () => setFriendsOpen(false)],
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
@@ -772,6 +800,21 @@ function Index() {
               >
                 SOZLAMALAR
               </Button>
+              {/* do'stlar: kirgan o'yinchida (mehmon — kirish oynasi); yangi so'rov/xabar — nishon */}
+              {account.enabled && (
+                <Button
+                  variant="pixelLink"
+                  onClick={() => (acc.me ? setFriendsOpen(true) : setLoginOpen(true))}
+                  title="Do'stlar: kim onlayn, yoniga kirish, tez xabar"
+                  className={cn(
+                    "gap-1 text-[9px] sm:text-[10px]",
+                    fr.requests + fr.unread > 0 && "gift-blink text-primary",
+                  )}
+                >
+                  DO'STLAR
+                  {acc.me && fr.requests + fr.unread > 0 ? ` (${fr.requests + fr.unread})` : ""}
+                </Button>
+              )}
               <Button
                 variant="pixelLink"
                 onClick={() => setAchOpen(true)}
@@ -885,6 +928,24 @@ function Index() {
           rev={progressRev}
           onClose={() => setProfileOpen(false)}
           onRestored={refreshProgress}
+        />
+      )}
+      {friendsOpen && acc.me && !started && !realm && (
+        <FriendsWindow
+          onClose={() => setFriendsOpen(false)}
+          onJoin={(f: FriendInfo) => {
+            if (!f.room) return;
+            if (!realmOpen) {
+              account.notify("Abadiyat olamiga kirish uchun avval Iblisni yeng");
+              return;
+            }
+            sfx.unlock();
+            if (touch) void enterLandscape();
+            realmRoomRef.current = f.room;
+            nearAccRef.current = f.id;
+            setFriendsOpen(false);
+            setRealm(true);
+          }}
         />
       )}
       {levelUp && !giftOpen && !newsOpen && !started && !realm && (

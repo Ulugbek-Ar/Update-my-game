@@ -154,6 +154,57 @@ export async function handleApi(
       const save = store.restore(p.id, b.slot, env.now);
       return save ? { ok: true, save } : fail("none");
     }
+    case "friends/list": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      return { ok: true, ...store.friends.list(p.id, env.now) };
+    }
+    case "friends/add": {
+      const b = body as ReqOf<"friends/add">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.friends.add(p, b.query, env.now);
+      return r.ok ? r : fail(r.error);
+    }
+    case "friends/answer": {
+      const b = body as ReqOf<"friends/answer">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.friends.answer(p, b.id, b.accept, env.now);
+      return r.ok ? r : fail(r.error);
+    }
+    case "friends/remove": {
+      const b = body as ReqOf<"friends/remove">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      return store.friends.remove(p, b.id);
+    }
+    case "friends/block": {
+      const b = body as ReqOf<"friends/block">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.friends.block(p, b.id, env.now);
+      return r.ok ? r : fail(r.error);
+    }
+    case "friends/unblock": {
+      const b = body as ReqOf<"friends/unblock">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      return store.friends.unblock(p, b.id);
+    }
+    case "friends/msg": {
+      const b = body as ReqOf<"friends/msg">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.friends.message(p, b.to, b.phrase, env.now);
+      return r.ok ? r : fail(r.error);
+    }
+    case "presence": {
+      const b = body as ReqOf<"presence">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      return store.friends.presence(p, b.place, b.room ?? null, env.now);
+    }
     case "profile": {
       const b = body as ReqOf<"profile">;
       const p = await authed();

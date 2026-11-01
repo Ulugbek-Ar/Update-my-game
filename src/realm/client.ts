@@ -116,6 +116,8 @@ export class RealmClient {
   onExit: (() => void) | null = null;
   /** Pauzadagi SOZLAMALAR (React oynani ochadi; olam pauzada qoladi) */
   onSettings: (() => void) | null = null;
+  /** Onlayn xonaga ulandi (kod) yoki oflayn (null) — do'stlar "yoniga kirish" uchun */
+  onRoom: ((code: string | null) => void) | null = null;
   private offSettings: (() => void) | null = null;
   view: RealmView;
   private renderer = new RealmRenderer();
@@ -289,6 +291,7 @@ export class RealmClient {
 
   /** Onlaynga o'tish: ko'zgu joriy progressdan quriladi, keyin server holati bilan to'ladi */
   private goOnline(pid: string, code: string, tick: number, n: number) {
+    this.onRoom?.(code);
     const keys = this.me.keys;
     const mirror = new RealmMirror(
       this.sim.data,
@@ -313,6 +316,7 @@ export class RealmClient {
   /** Oflaynga o'tish: ko'zgudagi dunyo va progress bilan mahalliy RealmSim */
   private goOffline() {
     if (!this.mirror) return;
+    this.onRoom?.(null);
     const keys = this.me.keys;
     const player = this.sim.savePlayer(this.pid);
     const sim = new RealmSim(this.sim.data);
@@ -622,6 +626,11 @@ export class RealmClient {
       intro: this.view.panel !== "intro",
       sharedGold: true,
     });
+  }
+
+  /** Tashqaridan xabar (do'stdan tayyor ibora) — olam ichida qisqa yozuv */
+  notify(text: string) {
+    this.toast(text, "#9fd0ef");
   }
 
   /** O'yinchi darajasi va profil: olamdagi vaqt, o'ldirishlar, topshiriq va sirlar uchun XP */
