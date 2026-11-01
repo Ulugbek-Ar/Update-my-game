@@ -3,6 +3,7 @@
  * daraja va bulut holati (bosilsa — profil). Progress tanlovi kutilayotgan bo'lsa — "TANLANG!".
  */
 import { useAccount, useCloud } from "@/account/useAccount";
+import { useLevel } from "@/account/progression";
 import { account } from "@/account/account";
 import type { CloudStatus } from "@/account/cloud";
 import { cn } from "@/lib/utils";
@@ -38,24 +39,31 @@ export function CloudDot({ status }: { status: CloudStatus }) {
 }
 
 export function AccountCorner({
+  rev,
   onLogin,
   onProfile,
   onDecision,
 }: {
+  /** progress almashtirilganda oshadi (daraja qayta o'qiladi) */
+  rev: number;
   onLogin: () => void;
   onProfile: () => void;
   onDecision: () => void;
 }) {
   const a = useAccount();
   const c = useCloud();
+  // daraja qurilmadagi XP'dan (bulutdagisidan oldin yangilanadi); mehmonda ham yig'iladi
+  const { level } = useLevel(rev);
   if (!account.enabled) return null;
   if (!a.me)
     return (
       <button
         onClick={onLogin}
-        title="Telegram bilan kirish: progress bulutda, do'stlar va reyting"
+        aria-label="KIRISH"
+        title={`Telegram bilan kirish: progress bulutda, do'stlar va reyting (${level}-daraja)`}
         className={btn("pixelOutline", "inline-flex items-center gap-1 px-2 py-0.5")}
       >
+        <LevelBadge level={level} />
         <TelegramIcon />
         <span className={a.pending ? "gift-blink text-primary" : undefined}>
           {a.pending ? "KUTILMOQDA..." : "KIRISH"}
@@ -66,12 +74,12 @@ export function AccountCorner({
     <div className="flex flex-col items-start gap-1">
       <button
         onClick={onProfile}
-        aria-label={`Profil: ${a.me.nick}, ${a.me.level}-daraja`}
+        aria-label={`Profil: ${a.me.nick}, ${level}-daraja`}
         className={`inline-flex max-w-full items-center gap-1 border-2 border-border bg-card px-1 py-0.5 text-foreground hover:border-foreground ${pixelPress} ${pixelFocus}`}
       >
         <HeroAvatar hero={a.me.avatar} size={16} />
         <span className="truncate">{a.me.nick}</span>
-        <LevelBadge level={a.me.level} />
+        <LevelBadge level={level} />
         <CloudDot status={c.status} />
       </button>
       {c.decision && (

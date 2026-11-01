@@ -47,8 +47,16 @@ export function normalizeRoomCode(s: string | null | undefined): string | null {
 /** Tayyor iboralar (erkin matn yo'q — moderatsiyasiz xavfsiz) */
 export const PHRASES = ["Salom!", "Bu yoqqa!", "Yordam bering!", "Rahmat!"] as const;
 
-/** Mehmon ismi (akkaunt keyingi versiyada) */
+/** Mehmon ismi (kirgan o'yinchida — taxallus) */
 export const guestName = (tag: string) => `Mehmon-${tag}`;
+
+/** Kirgan o'yinchi (akkauntlar DO'si tasdiqlagan) */
+export interface NetIdent {
+  /** akkaunt raqami */
+  id: number;
+  nick: string;
+  level: number;
+}
 
 // ---------------- klient -> server ----------------
 
@@ -124,6 +132,16 @@ export const HelloSchema = z.object({
   keys: z.array(z.enum(["devil", "queen", "king"])).max(3),
   /** do'st chaqiruvi (kod/havola): xonadagi o'yinchi yoniga tushadi */
   near: z.boolean().optional(),
+  /**
+   * Akkaunt sessiyasi (kirgan o'yinchi): server uni akkauntlar DO'sida tekshiradi — ism o'rniga
+   * taxallus va daraja ko'rinadi. Noto'g'ri yoki eskirgan bo'lsa — mehmon ismi.
+   */
+  acct: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{32,64}$/)
+    .optional(),
+  /** "Yoniga kirish": aynan shu akkaunt (do'st) yoniga tushish */
+  nearAcc: z.number().int().positive().optional(),
 });
 
 export const ClientMsgSchema = z.discriminatedUnion("t", [
@@ -198,7 +216,7 @@ export const PF_DASH = 1,
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,
- * flash, unvon ("" — yo'q)]
+ * flash, unvon ("" — yo'q), o'yinchi darajasi (0 — mehmon)]
  */
 export type NetPlayer = [
   string,
@@ -215,6 +233,7 @@ export type NetPlayer = [
   number,
   number,
   string,
+  number,
 ];
 /**
  * [id, tur, x, y, jon, max, holat, anim, kadr, yuz, dirX, dirY, flash, stun (1 — gangigan,

@@ -69,6 +69,9 @@ import { AccountCorner } from "@/components/game/AccountCorner";
 import { LoginWindow } from "@/components/game/LoginWindow";
 import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
+import { LevelUpWindow } from "@/components/game/LevelUpWindow";
+import { checkLevelUp } from "@/account/progression";
+import { XP, addXp, type LevelUp } from "@/account/xp";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -196,6 +199,8 @@ function Index() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(true);
+  /** Daraja oshdi: oltin sovg'asi va unvon (menyuda, o'yin tugagach) */
+  const [levelUp, setLevelUp] = useState<LevelUp | null>(null);
   /** Akkaunt xabari ("Xush kelibsiz!", "Akkauntdan chiqdingiz") — menyuda bir necha soniya */
   const [notice, setNotice] = useState<string | null>(null);
   const acc = useAccount();
@@ -304,6 +309,14 @@ function Index() {
   useEffect(() => {
     if (!started && !realm) cloud.resume();
   }, [started, realm]);
+  // menyuda: yig'ilgan XP bo'yicha yangi darajalar sovg'asi (o'yin, olam, sovg'a, bulutdan keyin)
+  useEffect(() => {
+    if (!ready || started || realm) return;
+    const up = checkLevelUp();
+    if (!up) return;
+    setLevelUp(up);
+    setGold(loadGold());
+  }, [ready, started, realm, progressRev]);
   // yangi tanlov (birinchi kirish) — oyna o'zi ochiladi
   useEffect(() => {
     if (cloudView.decision) setDecisionOpen(true);
@@ -432,6 +445,7 @@ function Index() {
     const windows = [
       [exitOpen, () => setExitOpen(false)],
       [loginOpen, () => setLoginOpen(false)],
+      [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
       [joinOpen, () => setJoinOpen(false)],
@@ -799,6 +813,7 @@ function Index() {
             {/* chap yuqori: akkaunt (kirish / profil); sarlavha (o'rtada) va oy (o'ngda) yopilmaydi */}
             <div className="absolute left-2 top-2 z-10 flex max-w-[30%] flex-col items-start gap-2 text-[8px] sm:text-[10px]">
               <AccountCorner
+                rev={progressRev}
                 onLogin={() => setLoginOpen(true)}
                 onProfile={() => setProfileOpen(true)}
                 onDecision={() => setDecisionOpen(true)}
@@ -866,7 +881,14 @@ function Index() {
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {loginOpen && !started && !realm && <LoginWindow onClose={() => setLoginOpen(false)} />}
       {profileOpen && !started && !realm && (
-        <ProfileWindow onClose={() => setProfileOpen(false)} onRestored={refreshProgress} />
+        <ProfileWindow
+          rev={progressRev}
+          onClose={() => setProfileOpen(false)}
+          onRestored={refreshProgress}
+        />
+      )}
+      {levelUp && !giftOpen && !newsOpen && !started && !realm && (
+        <LevelUpWindow up={levelUp} onClose={() => setLevelUp(null)} />
       )}
       {cloudView.decision && decisionOpen && !started && !realm && !loginOpen && (
         <MigrateWindow decision={cloudView.decision} onLater={() => setDecisionOpen(false)} />
@@ -891,6 +913,10 @@ function Index() {
           onClose={() => setGiftOpen(false)}
           onClaim={() => {
             setGiftReady(false);
+            // kunlik sovg'a XP beradi; daraja oshsa — sovg'a oynasi yopilgach ko'rinadi
+            addXp(XP.gift);
+            const up = checkLevelUp();
+            if (up) setLevelUp(up);
             setGold(loadGold());
             setAchCount(loadAchievements().size);
           }}

@@ -64,8 +64,10 @@ export interface RealmView {
   sim: RealmSim;
   me: RealmPlayer;
   net: NetView;
-  /** boshqa o'yinchilar ismi (id -> "Mehmon-1234") */
+  /** boshqa o'yinchilar ismi (id -> "Mehmon-1234" yoki taxallus) */
   names: Map<string, string>;
+  /** kirgan o'yinchilar darajasi (id -> 12) — ism yonida */
+  levels?: Map<string, number>;
   /** chat pufakchalari (id -> ibora, qolgan vaqt) */
   bubbles: Map<string, { text: string; t: number }>;
   /** tayyor iboralar ro'yxati ochiq */
@@ -529,7 +531,9 @@ export class RealmRenderer {
       // boshqa o'yinchi: ismi va jon chizig'i; har kimning chat iborasi (hamma narsa ustida)
       const name = rp === me ? null : v.names.get(rp.id);
       const bubble = v.bubbles.get(rp.id);
-      if (name || bubble) labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text));
+      const level = v.levels?.get(rp.id) ?? 0;
+      if (name || bubble)
+        labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text, level));
     }
     for (const i of occluders) {
       const tx = i % sim.map.w,
@@ -1738,6 +1742,7 @@ function playerLabel(
   y: number,
   name: string | null,
   say: string | undefined,
+  level = 0,
 ) {
   const p = rp.p;
   let top = y - 20;
@@ -1754,6 +1759,17 @@ function playerLabel(
     c.font = `4px ${FONT}`;
     const nw = Math.ceil(c.measureText(name).width);
     drawRoleIcon(c, HERO_ROLE[rp.hero], x - nw / 2 - 10, top - 6);
+    // o'yinchi darajasi (akkaunt bilan kirganlar) — ism o'ng tomonida sariq belgida
+    if (level > 0) {
+      const lt = String(level);
+      const lw = Math.ceil(c.measureText(lt).width) + 2;
+      const lx = Math.round(x + nw / 2 + 3);
+      px(c, "#000", lx - 1, top - 6, lw + 2, 8);
+      px(c, "#ffcc33", lx, top - 5, lw, 6);
+      c.textAlign = "left";
+      c.fillStyle = "#1f1730";
+      c.fillText(lt, lx + 1, Math.round(top));
+    }
     const w = 16;
     px(c, "#000", x - w / 2 - 1, bar, w + 2, 3);
     px(c, "#3b2a3a", x - w / 2, bar + 1, w, 1);

@@ -71,6 +71,8 @@ import { BOSS_GOLD, KILL_GOLD, addGold, applyShop, dropBonus, loadGold, loadShop
 import { recordWorldWin } from "./progress";
 import { ThreatTable } from "./threat";
 import { HORN_ITEM, hornWanted, recordBossKey, sendToRealm } from "./realmLink";
+import { XP, addXp } from "@/account/xp";
+import { addStats } from "@/account/stats";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 /** Uchuvchi yozuv markazi ekran (xona) chetidan chiqib ketmasin: half — yozuv kengligining yarmi */
@@ -434,6 +436,11 @@ export class Game {
   runGold = 0;
   /** Yakun ekranidagi statistika; reset() da nollanadi, pauza vaqti kirmaydi */
   stats = newStats();
+  /** Profil statistikasiga allaqachon qo'shilgan qism (o'yin oxirida farqi yoziladi) */
+  private statsDone = newStats();
+  /** Shu o'yinda olingan XP va yengilgan bosslar (profil statistikasi) */
+  runXp = 0;
+  private runBosses = 0;
   /** Oxirgi marta hisobga qo'shilgan oltin va umumiy hisob — yakun ekranida */
   lastGold = 0;
   totalGold = 0;
@@ -565,6 +572,9 @@ export class Game {
     this.bonusPick = false;
     this.runGold = 0;
     this.stats = newStats();
+    this.statsDone = newStats();
+    this.runXp = 0;
+    this.runBosses = 0;
     this.fx = new Effects();
     this.score = 0;
     this.newBest = false;
@@ -1021,6 +1031,7 @@ export class Game {
   exitToMenu() {
     if (this.daily && this.phase === "play") this.saveDailyResult(false);
     this.bankGold();
+    this.flushStats(this.phase === "play");
     this.setPaused(false);
     this.onExit?.();
   }
@@ -1383,6 +1394,8 @@ export class Game {
       // Abadiyat olami: birinchi g'alabada darvoza kaliti, faol topshiriqda — Iblis shoxi
       if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
         this.fx.text(t.x, t.y - 44, "DARVOZA KALITI!", "#c9a25a");
+      this.runBosses++;
+      this.gainXp(king ? XP.king : queen ? XP.queen : XP.devil, t.x, t.y - 54);
       if (!king && !queen && hornWanted()) {
         sendToRealm(HORN_ITEM);
         this.fx.text(t.x, t.y - 34, "IBLIS SHOXI — OLAMGA", "#ff7a2a");
@@ -1866,6 +1879,7 @@ export class Game {
         this.commitBest();
         this.bankGold();
         this.saveDailyResult(false);
+        this.flushStats(true);
         this.noDeathRun = false;
         // cheksiz rejimda o'yin allaqachon yutilgan, kunlik sinov alohida — urinish oshmaydi
         if (!this.endless && !this.daily) {
@@ -1918,6 +1932,7 @@ export class Game {
               save(bestKeys(this.hero).ch3, this.ch3Best);
             }
             this.stats.waves++;
+            this.flushStats(true);
             this.phase = "victory";
             sfx.stopMusic();
             sfx.victory();
@@ -2238,8 +2253,31 @@ export class Game {
     }
   }
 
+  /** O'yinchi darajasi: XP qo'shiladi (sovg'asi menyuda olinadi), ekranda "+10 XP" */
+  private gainXp(n: number, x: number, y: number) {
+    addXp(n);
+    this.runXp += n;
+    this.fx.text(x, y, `+${n} XP`, "#9fd0ef");
+  }
+
+  /** Profil statistikasi: shu o'yinning hali yozilmagan qismi (run — o'yin tugadi) */
+  private flushStats(run: boolean) {
+    const s = this.stats;
+    const d = this.statsDone;
+    addStats({
+      time: s.time - d.time,
+      kills: s.kills - d.kills,
+      waves: s.waves - d.waves,
+      bosses: this.runBosses,
+      runs: run ? 1 : 0,
+    });
+    this.statsDone = { ...s };
+    this.runBosses = 0;
+  }
+
   private clearWave() {
     this.stats.waves++;
+    this.gainXp(XP.wave, ROOM.w / 2, 72);
     // birinchi to'lqin o'tildi — ko'rsatmalar keyingi o'yinlarda chiqmaydi
     if (this.hints.length && !this.endless) {
       this.hints = [];

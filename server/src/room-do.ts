@@ -6,7 +6,7 @@
  */
 import { DurableObject } from "cloudflare:workers";
 import { RealmRoom, type RoomConn } from "../../src/realm/net/room";
-import { normalizeRoomCode } from "../../src/realm/net/protocol";
+import { MAX_MSG, normalizeRoomCode, type NetIdent } from "../../src/realm/net/protocol";
 import { TICK_DT, type RealmWorldSave } from "../../src/realm/sim";
 import type { Env } from "./index";
 
@@ -81,8 +81,11 @@ export class RoomDO extends DurableObject<Env> {
 
   async webSocketMessage(ws: WebSocket, msg: string | ArrayBuffer) {
     const { id } = ws.deserializeAttachment() as Attachment;
+    // salomlashuvdagi akkaunt tokeni — akkauntlar DO'sida tekshiriladi (taxallus va daraja).
+    // Klient welcome'gacha boshqa xabar yubormaydi, shuning uchun kutish xavfsiz.
+    const ident = typeof msg === "string" && !this.room.has(id) ? await this.identify(msg) : null;
     const before = this.room.size;
-    this.room.receive(id, conn(ws), typeof msg === "string" ? msg : null, Date.now() / 1000);
+    this.room.receive(id, conn(ws), typeof msg === "string" ? msg : null, Date.now() / 1000, ident);
     if (this.room.size !== before) this.changed();
     this.ensureTick();
   }
@@ -106,6 +109,25 @@ export class RoomDO extends DurableObject<Env> {
     const before = this.room.size;
     this.room.leave(att.id);
     if (this.room.size !== before) this.changed();
+  }
+
+  /** hello.acct -> { id, nick, level } (yaroqsiz yoki mehmon — null) */
+  private async identify(raw: string): Promise<NetIdent | null> {
+    if (raw.length > MAX_MSG || !raw.includes('"acct"')) return null;
+    let token: unknown;
+    try {
+      token = (JSON.parse(raw) as { t?: unknown; acct?: unknown }).acct;
+    } catch {
+      return null;
+    }
+    if (typeof token !== "string" || !/^[A-Za-z0-9_-]{32,64}$/.test(token)) return null;
+    this.used += 1;
+    try {
+      return await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName("accounts")).identify(token);
+    } catch (e) {
+      console.error("identify", e);
+      return null;
+    }
   }
 
   /** O'yinchilar soni o'zgardi: lobbiga aytiladi; hamma chiqsa — tick to'xtaydi */

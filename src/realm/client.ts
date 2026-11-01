@@ -16,6 +16,9 @@ import { playableHero } from "@/game/save";
 import { loadSettings, onSettingsChange } from "@/game/settings";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "@/game/haptics";
 import { addGold, loadGold, saveGold } from "@/game/shop";
+import { XP, addXp, awardRealm } from "@/account/xp";
+import { addStats } from "@/account/stats";
+import { account } from "@/account/account";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
 import { loadRealmData } from "./data";
 import {
@@ -56,6 +59,8 @@ type BossKeyId = (typeof BOSS_KEY_IDS)[number];
 export interface RealmOptions {
   /** do'st chaqiruvi: shu xona kodiga kirish */
   room?: string | null;
+  /** "Yoniga kirish" (do'stlar ro'yxati): shu akkaunt yoniga */
+  nearAcc?: number | null;
 }
 /** Har shuncha soniyada avtomatik saqlash */
 const SAVE_EVERY = 10;
@@ -102,6 +107,8 @@ export class RealmClient {
   private outbox: RealmCommand[] = [];
   private lastFlush = -99;
   private room: string | null;
+  /** "Yoniga kirish": shu do'st (akkaunt raqami) yoniga tushiladi */
+  private nearAcc: number | null;
   /** "do'stni chaqirish" pauzadan ochilgan */
   private inviteBack = false;
   fx = new Effects();
@@ -124,6 +131,10 @@ export class RealmClient {
   private releaseAttack = false;
   private releaseAbility = false;
   private saveT = 0;
+  /** Profil statistikasi va XP: har saqlanishda yoziladi (har o'ldirishda emas) */
+  private playT = 0;
+  private killN = 0;
+  private bossN = 0;
   private music: MusicTrack | null = null;
   private shakeOn = true;
   /** asosiy o'yin hisobidagi oltin (olamda o'zgarsa darhol yoziladi) */
@@ -139,6 +150,7 @@ export class RealmClient {
     opts: RealmOptions = {},
   ) {
     this.room = opts.room ?? null;
+    this.nearAcc = opts.nearAcc ?? null;
     // olamda ham faqat ochilgan (sotib olingan) qahramon o'ynaydi
     hero = this.hero = playableHero(hero);
     this.ctx = canvas.getContext("2d")!;
@@ -247,6 +259,9 @@ export class RealmClient {
         (BOSS_KEY_IDS as readonly string[]).includes(k),
       ),
       near,
+      // kirgan o'yinchi: server tokenni tekshirib, taxallus va darajani ko'rsatadi
+      ...(account.sessionToken ? { acct: account.sessionToken } : {}),
+      ...(near && this.nearAcc ? { nearAcc: this.nearAcc } : {}),
     };
   }
 
@@ -287,6 +302,7 @@ export class RealmClient {
     this.mirror = mirror;
     this.useSim(mirror.sim, mirror.me, pid);
     this.view.names = mirror.names;
+    this.view.levels = mirror.levels;
     this.pred.reset();
     Object.assign(this.view.net, { mode: "online", n, code });
     const notice = this.net?.notice;
@@ -306,6 +322,7 @@ export class RealmClient {
     this.mirror = null;
     this.useSim(sim, me, PID);
     this.view.names = new Map();
+    this.view.levels = new Map();
     this.view.net.n = 1;
   }
 
@@ -595,6 +612,7 @@ export class RealmClient {
   }
 
   save() {
+    this.flushProfile();
     const player = this.sim.savePlayer(this.pid);
     if (!player) return;
     writeRealmSave({
@@ -604,6 +622,17 @@ export class RealmClient {
       intro: this.view.panel !== "intro",
       sharedGold: true,
     });
+  }
+
+  /** O'yinchi darajasi va profil: olamdagi vaqt, o'ldirishlar, topshiriq va sirlar uchun XP */
+  private flushProfile() {
+    addStats({ time: this.playT, kills: this.killN, bosses: this.bossN });
+    this.playT = this.killN = this.bossN = 0;
+    const done = Object.entries(this.me.quests)
+      .filter(([, q]) => q.status === "done")
+      .map(([id]) => id);
+    const xp = awardRealm(done, this.me.secrets);
+    if (xp > 0) this.toast(`+${xp} XP`, "#9fd0ef");
   }
 
   private keys() {
@@ -762,6 +791,7 @@ export class RealmClient {
       this.fx.trail(this.me.p.x, this.me.p.y + 2, HERO_THEME[this.hero].trail);
     this.updateMusic();
     this.saveT += TICK_DT;
+    if (this.view.panel === "none") this.playT += TICK_DT;
     if (this.saveT >= SAVE_EVERY) {
       this.saveT = 0;
       this.save();
@@ -1008,6 +1038,15 @@ export class RealmClient {
           2,
         );
         sfx.kill();
+        if (mine && "pid" in e) {
+          this.killN++;
+          if (e.kind === "warden" || e.kind === "ashking") {
+            this.bossN++;
+            const n = e.kind === "ashking" ? XP.ashking : XP.warden;
+            addXp(n);
+            fx.text(e.x, e.y - 40, `+${n} XP`, "#9fd0ef");
+          }
+        }
         if (e.kind === "warden" && mine) {
           this.banner("SARDOR YENGILDI!", "Xarobalar jim bo'ldi", "#ffb02e");
           sfx.victory();

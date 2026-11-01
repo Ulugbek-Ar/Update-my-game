@@ -264,6 +264,15 @@ export class AccountManager {
     }
   }
 
+  /** Taxallus yoki avatar o'zgartirish (server tekshiradi: qoida, bandlik, ochilgan qahramon) */
+  async updateProfile(patch: { nick?: string; avatar?: Me["avatar"] }) {
+    if (!this.token) return { ok: false as const, error: "auth" as const };
+    const r = await call("profile", { token: this.token, ...patch });
+    if (r.ok) this.setMe(r.me);
+    else if (r.error === "auth") await this.dropSession();
+    return r;
+  }
+
   /** Profil o'zgardi (taxallus, avatar, daraja) */
   setMe(me: Me) {
     if (!this.token) return;
@@ -283,7 +292,8 @@ export class AccountManager {
         console.error(e);
       }
     }
-    void call("auth/logout", { token });
+    // serverdagi sessiya ham o'chadi (internet yo'q bo'lsa — 60 kunda o'zi eskiradi)
+    await call("auth/logout", { token });
     await this.dropSession();
     this.set({ busy: false, notice: "Akkauntdan chiqdingiz — mehmon sifatida davom etasiz" });
   }

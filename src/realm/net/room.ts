@@ -38,6 +38,7 @@ import {
   type ErrReason,
   type HelloMsg,
   type NetBolt,
+  type NetIdent,
   type NetFireball,
   type NetItem,
   type NetMark,
@@ -112,6 +113,9 @@ const newBaseline = (): Baseline => ({
 interface Member {
   pid: string;
   name: string;
+  /** akkaunt raqami (mehmon — 0) va daraja */
+  acc: number;
+  level: number;
   hero: Hero;
   conn: RoomConn;
   tokens: number;
@@ -162,8 +166,17 @@ export class RealmRoom {
     return this.members.has(connId);
   }
 
-  /** Ulanishdan kelgan xom xabar. connId — ulanish id'si (o'yinchi id'si ham shu). now — soniya. */
-  receive(connId: string, conn: RoomConn, raw: unknown, now: number) {
+  /**
+   * Ulanishdan kelgan xom xabar. connId — ulanish id'si (o'yinchi id'si ham shu). now — soniya.
+   * ident — salomlashuvdagi akkaunt (server tekshirgan; mehmon — null).
+   */
+  receive(
+    connId: string,
+    conn: RoomConn,
+    raw: unknown,
+    now: number,
+    ident: NetIdent | null = null,
+  ) {
     this.inbound++;
     const msg = parseClientMsg(raw);
     const m = this.members.get(connId);
@@ -171,7 +184,7 @@ export class RealmRoom {
       // birinchi xabar — salomlashuv; server qayta ishga tushgan bo'lsa klient qayta salomlashadi
       if (!msg) return this.reject(conn, "bad");
       if (msg.t !== "hello") return send(conn, { t: "rejoin" });
-      const err = this.join(connId, conn, msg, now);
+      const err = this.join(connId, conn, msg, now, ident);
       if (err) this.reject(conn, err);
       return;
     }
@@ -209,18 +222,30 @@ export class RealmRoom {
     conn.close(4000, reason);
   }
 
-  private join(pid: string, conn: RoomConn, hello: HelloMsg, now: number): ErrReason | null {
+  private join(
+    pid: string,
+    conn: RoomConn,
+    hello: HelloMsg,
+    now: number,
+    ident: NetIdent | null,
+  ): ErrReason | null {
     if (hello.v !== NET_VERSION) return "version";
     if (this.busy) return "busy";
     if (this.members.size >= ROOM_CAP) return "full";
     const save = hello.save ? this.sanitize(hello.save, hello.hero) : null;
-    const host = hello.near ? this.members.values().next().value : undefined;
+    // do'st yoniga: aynan shu akkaunt (bo'lmasa — xonadagi birinchi o'yinchi)
+    const host = hello.near
+      ? ([...this.members.values()].find((m) => hello.nearAcc && m.acc === hello.nearAcc) ??
+        this.members.values().next().value)
+      : undefined;
     const rp = this.sim.addPlayer(pid, hello.hero, save);
     rp.keys = [...new Set(hello.keys)];
     if (host) this.placeNear(rp, this.sim.players.get(host.pid));
     const m: Member = {
       pid,
-      name: guestName(hello.tag),
+      name: ident ? ident.nick : guestName(hello.tag),
+      acc: ident?.id ?? 0,
+      level: ident?.level ?? 0,
       hero: hello.hero,
       conn,
       tokens: RATE_BURST,
@@ -376,7 +401,7 @@ export class RealmRoom {
       const mem = this.members.get(o.id);
       if (!mem) continue;
       seenP.add(o.id);
-      const t = netPlayer(o, mem.name);
+      const t = netPlayer(o, mem.name, mem.level);
       const k = JSON.stringify(t);
       if (b.players.get(o.id) !== k) {
         b.players.set(o.id, k);
@@ -552,7 +577,7 @@ function send(conn: RoomConn, msg: ServerMsg) {
 const loopFrame = (state: string, frame: number) =>
   state === "idle" || state === "walk" ? -1 : frame;
 
-export function netPlayer(o: RealmPlayer, name: string): NetPlayer {
+export function netPlayer(o: RealmPlayer, name: string, level = 0): NetPlayer {
   const p = o.p;
   const flags =
     (p.dashing ? PF_DASH : 0) |
@@ -574,6 +599,7 @@ export function netPlayer(o: RealmPlayer, name: string): NetPlayer {
     flags,
     p.flash > 0 ? r2(p.flash) : 0,
     o.titles[0] ?? "",
+    level,
   ];
 }
 

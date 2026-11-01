@@ -79,6 +79,8 @@ export class RealmMirror {
   readonly me: RealmPlayer;
   /** o'yinchi ismlari (o'zi ham) */
   names = new Map<string, string>();
+  /** kirgan o'yinchilar darajasi (ism yonida) */
+  levels = new Map<string, number>();
   /** xonadagi o'yinchilar soni */
   n = 1;
   /** o'zining server holati (oxirgi ma'lumi) */
@@ -126,6 +128,7 @@ export class RealmMirror {
     const gotP = new Set<string>();
     for (const p of m.p ?? []) {
       this.names.set(p[0], p[2]);
+      this.levels.set(p[0], p[14] ?? 0);
       if (p[0] === this.pid) {
         this.self = p;
         continue;
@@ -137,6 +140,7 @@ export class RealmMirror {
       if (id === this.pid) continue;
       this.players.delete(id);
       this.names.delete(id);
+      this.levels.delete(id);
       sim.removePlayer(id);
     }
     extend(this.players, T, gotP);

@@ -50,6 +50,30 @@ tiklashdan oldin va har 30 daqiqada. Profil → BULUT → ZAXIRALAR → TIKLASH.
 ≤ 3 000 + soatiga 2 000; bitta o'yin ochkosi ≤ 300 000 (cheksiz ≤ 3 000 000); XP ≤ 1 000 000
 va ≤ 5 000 + soatiga 3 000. Imkonsiz qiymat — saqlanish rad etiladi, bulutda eskisi qoladi.
 
+## Profil va o'yinchi darajasi
+
+Profil (menyuda chap yuqorida — avatar, taxallus va daraja): taxallus (3–16 belgi, harf/raqam/`_`,
+lotin yoki kirill — aralash emas; haqoratli so'zlar va xizmat nomlari filtri, band bo'lmasligi
+kerak), avatar — ochilgan qahramonlardan biri, daraja, unvon, XP chizig'i, do'st kodi, statistika
+(o'ynalgan vaqt, dushmanlar, bosslar, o'yinlar) va har qahramon bo'yicha eng yaxshi rekordlar.
+
+| XP manbai                                                 | XP            |
+| --------------------------------------------------------- | ------------- |
+| tozalangan to'lqin (sarguzasht, cheksiz, kunlik)          | 10            |
+| Iblis (va cheksiz rejim bosslari) / Malika / O'rmon Shohi | 50 / 75 / 100 |
+| Olamda: Xaroba Sardori / Kul qiroli                       | 80 / 150      |
+| olam topshirig'i / yangi sir                              | 40 / 25       |
+| kunlik sovg'a                                             | 20            |
+
+Daraja 1–50: L dan L+1 ga 100 + 20·(L−1) XP (10-daraja — 1 620, 50-daraja — 28 420 XP). Har
+darajada kichik oltin sovg'asi (5 + L/5, har 10-darajada +25; 2→50 jami ≈ 600 oltin — o'yinlardan
+topiladiganning ~3 %, do'kon narxlari o'zgarmaydi), sovg'a menyuda "YANGI DARAJA!" oynasida
+olinadi. Har 10 darajada yangi unvon: Yangi kelgan → Zindon kezuvchisi (10) → Qal'a qo'riqchisi
+(20) → Olam sayyohi (30) → Bosslar ovchisi (40) → Afsona (50).
+
+XP mehmonda ham yig'iladi va kirganda akkauntga o'tadi. Onlayn olamda kirgan o'yinchining ismi
+o'rniga taxallusi va yonida darajasi ko'rinadi (server tokenni akkauntlar DO'sida tekshiradi).
+
 ## BotFather va server sozlamasi
 
 1. Kanal boti (TELEGRAM_BOT_TOKEN — kanalga post ham shu bot bilan).
