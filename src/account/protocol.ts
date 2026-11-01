@@ -9,10 +9,13 @@ import { z } from "zod";
 import type { Hero } from "@/game/hero";
 import {
   GUILD_LANGS,
+  GUILD_PHRASES,
   JOIN_MODES,
+  MUTE_MINUTES,
   type GuildLang,
   type GuildRole,
   type JoinMode,
+  type QuestKind,
 } from "./guildRules";
 
 /** Sessiya muddati (kun): har kuni birinchi so'rovda yana shuncha uzayadi */
@@ -311,6 +314,45 @@ export const REQ = {
     lang: z.enum(GUILD_LANGS).optional(),
     emblem: emblem.optional(),
   }),
+  /** Xazinaga hissa (kuniga chegarali): gold — qurilmadagi oltin, rid — takroriy so'rov raqami */
+  "guild/give": z.object({
+    token,
+    amount: z.number().int().min(1).max(100_000),
+    gold: z.number().int().min(0).max(10_000_000),
+    rid,
+  }),
+  /** Gildiya jurnali: hissalar, qo'shilish/chiqish, rollar, bajarilgan topshiriqlar */
+  "guild/log": z.object({ token }),
+  /** Chat: since — oxirgi olingan xabar, rev — chat versiyasi (o'chirilsa o'zgaradi) */
+  "guild/chat": z.object({
+    token,
+    since: z.number().int().min(0),
+    rev: z.number().int().min(0),
+  }),
+  /** Chatga yozish: erkin matn yoki tayyor ibora */
+  "guild/say": z
+    .object({
+      token,
+      text: z.string().max(400).optional(),
+      phrase: z
+        .number()
+        .int()
+        .min(0)
+        .max(GUILD_PHRASES.length - 1)
+        .optional(),
+    })
+    .refine((b) => (b.text === undefined) !== (b.phrase === undefined)),
+  /** Xabarni o'chirish (o'zinikini — har kim; boshqanikini — rahbar/o'rinbosar) */
+  "guild/unsay": z.object({ token, id: z.number().int().positive() }),
+  /** Chatdan vaqtincha jim qilish (0 — jimlikni olib tashlash) */
+  "guild/mute": z.object({
+    token,
+    player: z.number().int().positive(),
+    minutes: z
+      .number()
+      .int()
+      .refine((m) => m === 0 || (MUTE_MINUTES as readonly number[]).includes(m)),
+  }),
 } as const;
 
 export type Op = keyof typeof REQ;
@@ -460,12 +502,73 @@ export interface GuildRequestInfo {
   by?: string;
 }
 
-/** Gildiyadagi o'yinchi: gildiya, roli, a'zolar va arizalar */
+/** Haftalik gildiya topshirig'i */
+export interface GuildQuest {
+  slot: number;
+  kind: QuestKind;
+  target: number;
+  progress: number;
+  /** bajarilgan vaqt (ms; 0 — hali) */
+  done: number;
+  /** har a'zoga oltin va gildiyaga XP */
+  gold: number;
+  gxp: number;
+  /** a'zolar hissasi (ko'pdan kamga) */
+  top: { id: number; nick: string; amount: number }[];
+}
+
+/** Topshiriq sovg'asi (oltin) — klient oladi */
+export interface GuildReward {
+  id: number;
+  gold: number;
+  kind: QuestKind;
+  week: string;
+  at: number;
+}
+
+/** Gildiya jurnali yozuvi */
+export interface GuildLogEntry {
+  id: number;
+  /** create | join | leave | kick | promote | demote | leader | give | quest | mute */
+  kind: string;
+  nick: string;
+  /** kim tomonidan (qabul qilgan, chiqargan...) */
+  other: string;
+  amount: number;
+  at: number;
+}
+
+export interface GuildChatMsg {
+  id: number;
+  from: number;
+  nick: string;
+  /** muallifning hozirgi roli (gildiyadan chiqqan bo'lsa — null) */
+  role: GuildRole | null;
+  text: string;
+  /** tayyor ibora raqami (-1 — erkin matn) */
+  phrase: number;
+  at: number;
+}
+
+/** Gildiyadagi o'yinchi: gildiya, roli, a'zolar, arizalar, topshiriqlar va xazina */
 export interface GuildMine {
   guild: GuildInfo;
   role: GuildRole;
   members: GuildMember[];
   requests: GuildRequestInfo[];
+  /** shu haftaning topshiriqlari, hafta (dushanba) va keyingi yangilanish (ms) */
+  quests: GuildQuest[];
+  week: string;
+  resets: number;
+  /** bugun xazinaga qo'shganim va kunlik chegara */
+  given: number;
+  giveCap: number;
+  /** so'nggi 30 kundagi topshiriq sovg'alari */
+  rewards: GuildReward[];
+  /** chatdagi oxirgi xabar raqami (o'qilmaganlar uchun) */
+  chat: number;
+  /** chatda jim (shu vaqtgacha; 0 — yo'q) */
+  muted: number;
 }
 
 /** Gildiyasiz o'yinchi: kelgan takliflar, yuborgan arizalari va 24 soat cheklovi */
@@ -487,6 +590,9 @@ export interface GuildPing {
   guild: (GuildTag & { id: number; name: string; level: number; role: GuildRole }) | null;
   /** rahbar/o'rinbosarga — arizalar, gildiyasizga — kelgan takliflar */
   pending: number;
+  /** oxirgi topshiriq sovg'asi va chat xabari raqami (yangisi bormi — klient o'zi solishtiradi) */
+  reward?: number;
+  chat?: number;
 }
 
 type GuildReply<O extends Op> = O extends "guild/get"
@@ -503,7 +609,23 @@ type GuildReply<O extends Op> = O extends "guild/get"
             ? { ok: true; joined: boolean; nick: string } | Fail
             : O extends "guild/reply"
               ? { ok: true; joined: boolean } | Fail
-              : { ok: true } | Fail;
+              : O extends "guild/give"
+                ? { ok: true; given: number; cap: number; treasury: number; dup?: boolean } | Fail
+                : O extends "guild/log"
+                  ? { ok: true; entries: GuildLogEntry[] } | Fail
+                  : O extends "guild/chat"
+                    ? | {
+                          ok: true;
+                          messages: GuildChatMsg[];
+                          rev: number;
+                          /** true — ro'yxat to'liq (eski xabarlar almashtiriladi) */
+                          full: boolean;
+                          muted: number;
+                        }
+                      | Fail
+                    : O extends "guild/say"
+                      ? { ok: true; message: GuildChatMsg } | Fail
+                      : { ok: true } | Fail;
 
 export type Reply<O extends Op> = O extends `guild/${string}`
   ? GuildReply<O>

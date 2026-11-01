@@ -87,6 +87,28 @@ export async function handleGuild(
       const b = body as ReqOf<"guild/settings">;
       return done(g.settings(p, { mode: b.mode, lang: b.lang, emblem: b.emblem }));
     }
+    case "guild/give": {
+      const b = body as ReqOf<"guild/give">;
+      return done(g.life.give(p, b.amount, b.gold, b.rid, now));
+    }
+    case "guild/log":
+      return done(g.life.log(p));
+    case "guild/chat": {
+      const b = body as ReqOf<"guild/chat">;
+      return done(g.life.chat(p, b.since, b.rev, now));
+    }
+    case "guild/say": {
+      const b = body as ReqOf<"guild/say">;
+      return done(g.life.say(p, { text: b.text, phrase: b.phrase }, now));
+    }
+    case "guild/unsay": {
+      const b = body as ReqOf<"guild/unsay">;
+      return done(g.life.unsay(p, b.id));
+    }
+    case "guild/mute": {
+      const b = body as ReqOf<"guild/mute">;
+      return done(g.life.mute(p, b.player, b.minutes, now));
+    }
     default:
       return fail("bad");
   }

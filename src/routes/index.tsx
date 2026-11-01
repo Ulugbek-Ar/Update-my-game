@@ -73,7 +73,7 @@ import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
 import { LeaderboardWindow } from "@/components/game/LeaderboardWindow";
 import { GuildWindow } from "@/components/game/GuildWindow";
-import { useGuild } from "@/account/guild";
+import { guild, useGuild } from "@/account/guild";
 import { flushScores, submitRun } from "@/account/scores";
 import { friends, useFriends } from "@/account/friends";
 import type { FriendInfo } from "@/account/protocol";
@@ -336,6 +336,13 @@ function Index() {
   useEffect(() => {
     if (!realm) friends.setPlace(started ? "world" : "menu");
   }, [started, realm]);
+  // gildiya topshirig'i sovg'asi (oyna ochilganda o'zi olinadi): oltin va xabar
+  useEffect(() => {
+    guild.onReward = (g) => {
+      setGold(loadGold());
+      account.notify(`Gildiya topshirig'i sovg'asi: +${g} oltin`);
+    };
+  }, []);
   // do'stdan tayyor ibora: olamda — o'yin ichida, menyuda — yuqorida yozuv
   const realmClientRef = useRef<RealmClient | null>(null);
   realmClientRef.current = realmClient;
@@ -851,15 +858,22 @@ function Index() {
                   title={
                     acc.me && gv.pending > 0
                       ? `Gildiya: ${gv.pending} ta yangi taklif yoki ariza`
-                      : "Gildiya: tuzish, qo'shilish, a'zolar va gerb"
+                      : acc.me && gv.reward
+                        ? "Gildiya: topshiriq sovg'asi sizni kutmoqda"
+                        : acc.me && gv.unread
+                          ? "Gildiya: chatda yangi xabar"
+                          : "Gildiya: tuzish, qo'shilish, a'zolar, xazina va topshiriqlar"
                   }
                   className={cn(
                     "gap-1 text-[9px] sm:text-[10px]",
-                    acc.me && gv.pending > 0 && "gift-blink text-primary",
+                    acc.me &&
+                      (gv.pending > 0 || gv.reward || gv.unread) &&
+                      "gift-blink text-primary",
                   )}
                 >
                   GILDIYA
                   {acc.me && gv.pending > 0 ? ` (${gv.pending})` : ""}
+                  {acc.me && !gv.pending && (gv.reward || gv.unread) ? " •" : ""}
                 </Button>
               )}
               {account.enabled && (
@@ -1759,6 +1773,11 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
             <p className="gift-pop inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
               <PixelIcon id="coin" color="#ffcc33" size={16} />+{claim.gold} OLTIN!
             </p>
+            {!!claim.bonus && (
+              <p className="text-[#ffd97a]">
+                Gildiya sovg'asi (daraja foydasi): +{claim.bonus} oltin
+              </p>
+            )}
             {claim.achievement && (
               <p className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary">
                 <PixelIcon id="trophy" color="#ffcc33" size={12} />

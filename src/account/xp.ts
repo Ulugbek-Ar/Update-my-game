@@ -89,6 +89,25 @@ export interface XpSave {
   /** XP berilgan olam topshiriqlari va sirlari (qayta berilmasin) */
   q: string[];
   s: string[];
+  /** gildiya qo'shimchasining kasr qoldig'i (masalan, 10 XP ning 2 % i — 0.2) */
+  b?: number;
+}
+
+/** Gildiya darajasi foydasi: XP qo'shimchasi (%) — src/account/guild.ts o'rnatadi (0..10) */
+let bonusPct: () => number = () => 0;
+
+export function setXpBonus(fn: () => number) {
+  bonusPct = fn;
+}
+
+/** Qo'shimcha bilan: kasr qismi keyingi safarga yig'iladi (kichik XP ham hisobga kiradi) */
+function withBonus(s: XpSave, add: number) {
+  const pct = Math.max(0, Math.min(10, Number(bonusPct()) || 0));
+  if (!pct || add <= 0) return add;
+  const f = (s.b ?? 0) + (add * pct) / 100;
+  const whole = Math.floor(f);
+  s.b = Math.round((f - whole) * 1000) / 1000;
+  return add + whole;
 }
 
 /** Saqlangan XP yozuvidan jami XP (buzuq bo'lsa — 0) */
@@ -111,12 +130,14 @@ export function loadXp(): XpSave {
     const v = JSON.parse(raw ?? "null") as Partial<XpSave> | null;
     const xp = xpFromRaw(raw);
     const lvl = Math.floor(Number(v?.lvl));
+    const b = Number(v?.b);
     return {
       xp,
       // eski (sovg'a hisobisiz) yozuv: hozirgi daraja olingan deb hisoblanadi
       lvl: Number.isFinite(lvl) && lvl >= 1 ? Math.min(lvl, MAX_LEVEL) : levelOf(xp),
       q: strings(v?.q),
       s: strings(v?.s),
+      ...(Number.isFinite(b) && b > 0 && b < 1 ? { b } : {}),
     };
   } catch {
     return { xp: 0, lvl: 1, q: [], s: [] };
@@ -146,7 +167,7 @@ export function addXp(n: number) {
   const s = loadXp();
   const add = Math.max(0, Math.floor(n));
   if (!add) return s.xp;
-  s.xp += add;
+  s.xp += withBonus(s, add);
   saveXp(s);
   for (const f of listeners) f();
   return s.xp;
@@ -158,7 +179,7 @@ export function awardRealm(doneQuests: readonly string[], secrets: readonly stri
   const q = doneQuests.filter((id) => !s.q.includes(id));
   const sec = secrets.filter((id) => !s.s.includes(id));
   if (!q.length && !sec.length) return 0;
-  const add = q.length * XP.quest + sec.length * XP.secret;
+  const add = withBonus(s, q.length * XP.quest + sec.length * XP.secret);
   s.q = [...s.q, ...q];
   s.s = [...s.s, ...sec];
   s.xp += add;

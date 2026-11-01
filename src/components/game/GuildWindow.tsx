@@ -21,6 +21,7 @@ import {
   JOIN_MODE_NAME,
   JOIN_MODE_TEXT,
   LANG_NAME,
+  MUTE_MINUTES,
   ROLE_NAME,
   canKick,
   canManage,
@@ -39,11 +40,14 @@ import { useAccount } from "@/account/useAccount";
 import { loadGold } from "@/game/shop";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { EmblemEditor } from "./EmblemEditor";
+import { ChatTab, QuestsTab, TreasuryTab } from "./GuildLifeTabs";
 import { EmblemIcon } from "./GuildBadge";
 import { HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
 import { ago, btn, tabBtn, when } from "./pixelUi";
 
-type InTab = "home" | "members" | "requests" | "settings";
+export type GuildTab =
+  "home" | "members" | "requests" | "treasury" | "quests" | "chat" | "settings";
+type InTab = GuildTab;
 type OutTab = "search" | "create" | "invites";
 
 const ROLE_COLOR: Record<GuildRole, string> = {
@@ -553,6 +557,7 @@ function MemberActions({
   const down = canSetRole(role, m.role, "member");
   const kick = canKick(role, m.role);
   const lead = role === "leader" && m.role !== "leader";
+  const muted = m.muted > Date.now();
   if (!up && !down && !kick && !lead) return null;
   if (ask)
     return (
@@ -608,6 +613,26 @@ function MemberActions({
           CHIQARISH
         </button>
       )}
+      {/* chatdan vaqtincha jim qilish (chiqarish huquqi bor bo'lsa) */}
+      {kick &&
+        (muted ? (
+          <button
+            onClick={() => void guild.mute(m.id, 0).then(onDone)}
+            className={btn("pixelOutline", "px-2 py-1")}
+          >
+            JIMLIKNI OLISH
+          </button>
+        ) : (
+          MUTE_MINUTES.map((min) => (
+            <button
+              key={min}
+              onClick={() => void guild.mute(m.id, min).then(onDone)}
+              className={btn("pixelOutline", "px-2 py-1")}
+            >
+              JIM: {min >= 60 ? `${min / 60} SOAT` : `${min} DAQ`}
+            </button>
+          ))
+        ))}
     </span>
   );
 }
@@ -839,16 +864,21 @@ function SettingsTab({ st, onDone }: { st: GuildMine; onDone: (r: GuildResult) =
   );
 }
 
-function InGuild({ st, me }: { st: GuildMine; me: number }) {
-  const [tab, setTab] = useState<InTab>("home");
+function InGuild({ st, me, first }: { st: GuildMine; me: number; first: InTab }) {
+  const [tab, setTab] = useState<InTab>(first);
   const [res, setRes] = useState<GuildResult | null>(null);
+  const v = useGuild();
   const apps = st.requests.filter((r) => r.kind === "apply").length;
+  const doneQ = st.quests.filter((q) => q.done > 0).length;
   const tabs: [InTab, string][] = [
     ["home", "GILDIYA"],
     ["members", `A'ZOLAR ${st.members.length}/${st.guild.cap}`],
     ...(canManage(st.role)
       ? [["requests", `ARIZALAR${apps ? ` (${apps})` : ""}`] as [InTab, string]]
       : []),
+    ["treasury", "XAZINA"],
+    ["quests", `TOPSHIRIQLAR ${doneQ}/${st.quests.length}`],
+    ["chat", `CHAT${v.unread && tab !== "chat" ? " •" : ""}`],
     ["settings", "SOZLAMALAR"],
   ];
   return (
@@ -861,6 +891,12 @@ function InGuild({ st, me }: { st: GuildMine; me: number }) {
         <MembersTab st={st} me={me} onDone={setRes} />
       ) : tab === "requests" && canManage(st.role) ? (
         <RequestsTab st={st} onDone={setRes} />
+      ) : tab === "treasury" ? (
+        <TreasuryTab st={st} onDone={setRes} />
+      ) : tab === "quests" ? (
+        <QuestsTab st={st} />
+      ) : tab === "chat" ? (
+        <ChatTab st={st} me={me} />
       ) : (
         <SettingsTab st={st} onDone={setRes} />
       )}
@@ -868,7 +904,14 @@ function InGuild({ st, me }: { st: GuildMine; me: number }) {
   );
 }
 
-export function GuildWindow({ onClose }: { onClose: () => void }) {
+export function GuildWindow({
+  onClose,
+  tab = "home",
+}: {
+  onClose: () => void;
+  /** ochiladigan bo'lim (Gildiya zalidagi sandiq — XAZINA, taxta — TOPSHIRIQLAR...) */
+  tab?: GuildTab;
+}) {
   const a = useAccount();
   const v = useGuild();
   useEffect(() => {
@@ -894,7 +937,7 @@ export function GuildWindow({ onClose }: { onClose: () => void }) {
       {!st ? (
         <p className="text-muted-foreground">{v.loading ? "Yuklanmoqda..." : "Ma'lumot yo'q"}</p>
       ) : st.guild ? (
-        <InGuild key={st.guild.id} st={st} me={a.me.id} />
+        <InGuild key={st.guild.id} st={st} me={a.me.id} first={tab} />
       ) : (
         <NoGuild st={st} />
       )}

@@ -43,7 +43,10 @@ import {
 } from "../protocol";
 import { GOLD_BURST, GOLD_PER_HOUR } from "../limits";
 import { levelOf } from "../xp";
+import { GIVE_DAILY } from "../guildRules";
+import { weekKey } from "../scoring";
 import { first, num, str, type Row } from "./db";
+import { GuildLife } from "./guildLife";
 import type { AccountStore, PlayerRow } from "./store";
 
 const DAY = 86_400_000;
@@ -121,8 +124,12 @@ export interface CreateInput {
 
 export class Guilds {
   private ridsPrunedAt = 0;
+  /** xazina, topshiriqlar, sovg'alar va chat */
+  readonly life: GuildLife;
 
-  constructor(private store: AccountStore) {}
+  constructor(private store: AccountStore) {
+    this.life = new GuildLife(store, this);
+  }
 
   private get db() {
     return this.store.db;
@@ -185,7 +192,7 @@ export class Guilds {
           player,
         )?.["n"],
       );
-      return { guild: null, pending };
+      return { guild: null, pending, reward: this.life.lastReward(player) };
     }
     const role = roleOf(r.role);
     const pending = canManage(role)
@@ -207,6 +214,8 @@ export class Guilds {
         role,
       },
       pending,
+      reward: this.life.lastReward(player),
+      chat: this.life.lastChat(num(r.id)),
     };
   }
 
@@ -358,11 +367,22 @@ export class Guilds {
     const g = m ? this.info(num(m.guild), now) : null;
     if (m && g) {
       const role = roleOf(m.role);
+      const quests = this.life.quests(g.id, now);
+      // topshiriq bajarilgan bo'lsa gildiya XP o'zgargan — qayta o'qiladi
+      const fresh = quests.some((q) => q.done) ? (this.info(g.id, now) ?? g) : g;
       return {
-        guild: g,
+        guild: fresh,
         role,
         members: this.members(g.id, now),
         requests: canManage(role) ? this.requests(g.id) : [],
+        quests,
+        week: weekKey(now),
+        resets: GuildLife.resets(now),
+        given: this.life.givenToday(p.id, now),
+        giveCap: GIVE_DAILY,
+        rewards: this.life.rewards(p.id, now),
+        chat: this.life.lastChat(g.id),
+        muted: num(m.muted) > now ? num(m.muted) : 0,
       };
     }
     return this.none(p.id, now);
@@ -411,7 +431,8 @@ export class Guilds {
 
   // ---------------- yozish ----------------
 
-  private log(guild: number, player: number, kind: string, now: number, amount = 0, other = 0) {
+  /** Gildiya jurnaliga yozuv (gildiyaga oxirgi 200 tasi qoladi) */
+  addLog(guild: number, player: number, kind: string, now: number, amount = 0, other = 0) {
     this.db.exec(
       "INSERT INTO guild_log (guild, player, kind, amount, other, at) VALUES (?, ?, ?, ?, ?, ?)",
       guild,
@@ -431,7 +452,7 @@ export class Guilds {
   }
 
   /** Takroriy so'rov (rid) avval bajarilganmi */
-  private seen(player: number, rid: string) {
+  seen(player: number, rid: string) {
     return !!first(
       this.db,
       "SELECT 1 AS x FROM guild_rids WHERE player = ? AND rid = ?",
@@ -440,7 +461,7 @@ export class Guilds {
     );
   }
 
-  private remember(player: number, rid: string, now: number) {
+  remember(player: number, rid: string, now: number) {
     this.db.exec(
       "INSERT OR IGNORE INTO guild_rids (player, rid, at) VALUES (?, ?, ?)",
       player,
@@ -486,7 +507,7 @@ export class Guilds {
       role,
       now,
     );
-    this.log(guild, player, role === "leader" ? "create" : "join", now, 0, by);
+    this.addLog(guild, player, role === "leader" ? "create" : "join", now, 0, by);
   }
 
   private full(guild: number) {
@@ -733,7 +754,7 @@ export class Guilds {
     this.db.tx(() => {
       this.db.exec("DELETE FROM guild_members WHERE player = ?", p.id);
       this.setCooldown(p.id, now);
-      this.log(guild, p.id, "leave", now);
+      this.addLog(guild, p.id, "leave", now);
     });
     return { ok: true };
   }
@@ -763,7 +784,7 @@ export class Guilds {
       if ("ok" in r) return r;
       if (!canKick(r.mine, r.theirs)) return no("perm");
       this.db.exec("DELETE FROM guild_members WHERE player = ?", target);
-      this.log(r.guild, target, "kick", now, 0, p.id);
+      this.addLog(r.guild, target, "kick", now, 0, p.id);
       return { ok: true as const };
     });
   }
@@ -781,7 +802,7 @@ export class Guilds {
       if (!canSetRole(r.mine, r.theirs, to)) return no("perm");
       if (to === "officer" && this.count(r.guild, "officer") >= MAX_OFFICERS) return no("limit");
       this.db.exec("UPDATE guild_members SET role = ? WHERE player = ?", to, target);
-      this.log(r.guild, target, to === "officer" ? "promote" : "demote", now, 0, p.id);
+      this.addLog(r.guild, target, to === "officer" ? "promote" : "demote", now, 0, p.id);
       return { ok: true as const };
     });
   }
@@ -806,13 +827,14 @@ export class Guilds {
         officers < MAX_OFFICERS ? "officer" : "member",
         p.id,
       );
-      this.log(r.guild, target, "leader", now, 0, p.id);
+      this.addLog(r.guild, target, "leader", now, 0, p.id);
       return { ok: true as const };
     });
   }
 
   /** Gildiyani butunlay o'chirish (ichki: rahbar tarqatdi, oxirgi a'zo akkauntini o'chirdi) */
   private wipe(guild: number) {
+    this.life.wipe(guild);
     for (const q of [
       "DELETE FROM guild_members WHERE guild = ?",
       "DELETE FROM guild_requests WHERE guild = ?",
@@ -880,6 +902,7 @@ export class Guilds {
         this.db.exec("UPDATE guild_members SET role = 'leader' WHERE player = ?", next.player);
       else this.wipe(num(m.guild));
     }
+    this.life.forget(player);
     for (const q of [
       "DELETE FROM guild_members WHERE player = ?",
       "DELETE FROM guild_requests WHERE player = ?",

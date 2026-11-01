@@ -318,3 +318,164 @@ export const guildTagKey = (tag: string) => tag.trim().toUpperCase();
 
 /** Teg ko'rinishi: "[PQ]" */
 export const tagText = (tag: string) => `[${tag}]`;
+
+// ---------------- xazina ----------------
+
+/** Xazinaga bitta hissa kamida shuncha, bir o'yinchi kuniga (Toshkent kuni) ko'pi bilan shuncha */
+export const GIVE_MIN = 5;
+export const GIVE_DAILY = 100;
+/** 1 oltin hissa = shuncha gildiya XP */
+export const GUILD_XP_PER_GOLD = 1;
+
+// ---------------- haftalik topshiriqlar ----------------
+
+export const QUEST_KINDS = [
+  "kills",
+  "bosses",
+  "waves",
+  "runs",
+  "secrets",
+  "ashking",
+  "gold",
+  "xp",
+] as const;
+export type QuestKind = (typeof QUEST_KINDS)[number];
+
+export interface QuestDef {
+  /** gildiya kattaligiga qarab maqsad: kichik (1–5 a'zo), o'rta (6–14), katta (15+) */
+  targets: readonly [number, number, number];
+  /** bajarilganda har a'zoga oltin va gildiyaga XP */
+  gold: number;
+  gxp: number;
+  /** "5000 dushman yenging" */
+  text: (n: number) => string;
+  /** hissa birligi ("dushman", "boss"...) */
+  unit: string;
+}
+
+export const QUEST_DEFS: Record<QuestKind, QuestDef> = {
+  kills: {
+    targets: [1500, 3000, 5000],
+    gold: 25,
+    gxp: 400,
+    text: (n) => `${n} ta dushman yenging`,
+    unit: "dushman",
+  },
+  bosses: {
+    targets: [10, 25, 50],
+    gold: 30,
+    gxp: 500,
+    text: (n) => `${n} ta boss yenging`,
+    unit: "boss",
+  },
+  waves: {
+    targets: [150, 300, 600],
+    gold: 20,
+    gxp: 300,
+    text: (n) => `${n} ta to'lqinni tozalang`,
+    unit: "to'lqin",
+  },
+  runs: {
+    targets: [20, 50, 100],
+    gold: 20,
+    gxp: 300,
+    text: (n) => `${n} ta o'yinni oxiriga yetkazing`,
+    unit: "o'yin",
+  },
+  secrets: {
+    targets: [5, 10, 20],
+    gold: 35,
+    gxp: 500,
+    text: (n) => `Abadiyat olamida ${n} ta sir toping`,
+    unit: "sir",
+  },
+  ashking: {
+    targets: [2, 5, 10],
+    gold: 50,
+    gxp: 800,
+    text: (n) => `Kul qirolini ${n} marta yenging`,
+    unit: "g'alaba",
+  },
+  gold: {
+    targets: [500, 1200, 2500],
+    gold: 20,
+    gxp: 300,
+    text: (n) => `Xazinaga ${n} oltin to'plang`,
+    unit: "oltin",
+  },
+  xp: {
+    targets: [3000, 8000, 15000],
+    gold: 25,
+    gxp: 400,
+    text: (n) => `Birgalikda ${n} XP to'plang`,
+    unit: "XP",
+  },
+};
+
+/** Haftalik 3 topshiriq: oddiy, o'rta va maxsus guruhdan bittadan */
+const QUEST_GROUPS: readonly (readonly QuestKind[])[] = [
+  ["kills", "xp", "waves", "runs"],
+  ["bosses", "gold"],
+  ["ashking", "secrets"],
+];
+
+/** Maqsad kattaligi: a'zolar soniga qarab */
+export const questTier = (members: number) => (members >= 15 ? 2 : members >= 6 ? 1 : 0);
+
+/** Satr xeshi (FNV-1a) — har gildiyaga har hafta o'z topshiriqlari, lekin hamma joyda bir xil */
+function hash(s: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** Shu haftaning topshiriqlari (gildiya va hafta bo'yicha aniq) */
+export function weeklyQuests(guild: number, week: string): QuestKind[] {
+  return QUEST_GROUPS.map((g, i) => g[hash(`${guild}:${week}:${i}`) % g.length]!);
+}
+
+// ---------------- chat ----------------
+
+/** Erkin matn uzunligi, serverda saqlanadigan xabarlar va yuborish oralig'i */
+export const CHAT_MAX = 120;
+export const CHAT_KEEP = 100;
+export const CHAT_GAP_MS = 2000;
+/** Jim qilish muddatlari (daqiqa) */
+export const MUTE_MINUTES = [10, 60, 24 * 60] as const;
+
+/** Gildiya chatidagi tayyor iboralar */
+export const GUILD_PHRASES = [
+  "Salom, gildiya!",
+  "Olamga kiraman, kim bor?",
+  "Kul qirolini birga yengamizmi?",
+  "Zalda yig'ilamiz!",
+  "Xazinaga hissa qo'shdim!",
+  "Topshiriqni bajaramiz!",
+  "Yordam kerak!",
+  "Rahmat!",
+  "Zo'r ish, gildiya!",
+  "Xayr!",
+] as const;
+
+/**
+ * Chat matni: boshqaruv belgilari va ortiqcha bo'shliqlar olib tashlanadi, havolalar yashiriladi,
+ * haqoratli so'zlar yulduzcha bilan almashtiriladi.
+ */
+export function cleanChat(raw: string) {
+  const text = raw
+    // boshqaruv va ko'rinmas belgilar (yozuvni buzuvchi) — bo'shliqqa
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069]/g, " ")
+    .replace(/(https?:\/\/|www\.)\S+/gi, "[havola]")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [...text]
+    .slice(0, CHAT_MAX)
+    .join("")
+    .split(/(\s+)/)
+    .map((w) => (w.trim() && isRude(w) ? "*".repeat([...w].length) : w))
+    .join("");
+}

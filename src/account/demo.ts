@@ -15,8 +15,11 @@ import type {
   BackupInfo,
   FriendInfo,
   GuildCard,
+  GuildChatMsg,
   GuildInfo,
+  GuildLogEntry,
   GuildMember,
+  GuildQuest,
   GuildState,
   Me,
   ScoreRow,
@@ -208,8 +211,117 @@ function demoState(inGuild: boolean): GuildState {
         by: "Dilnoza",
       },
     ],
+    quests: QUESTS(),
+    week: weekKey(Date.now()),
+    resets: nextWeekStart(Date.now()),
+    given: 40,
+    giveCap: 100,
+    rewards: [],
+    chat: CHAT().length,
+    muted: 0,
   };
 }
+
+const contrib = (pairs: [number, string, number][]) =>
+  pairs.map(([id, nick, amount]) => ({ id, nick, amount }));
+
+const QUESTS = (): GuildQuest[] => [
+  {
+    slot: 0,
+    kind: "kills",
+    target: 3000,
+    progress: 2140,
+    done: 0,
+    gold: 25,
+    gxp: 400,
+    top: contrib([
+      [1, "Ulugbek", 620],
+      [4, "Malika", 480],
+      [2, "Dilnoza", 410],
+      [10, "Aziza", 300],
+      [3, "Sardor_07", 210],
+      [11, "Jamshid", 120],
+    ]),
+  },
+  {
+    slot: 1,
+    kind: "gold",
+    target: 1200,
+    progress: 1200,
+    done: Date.now() - 20 * H,
+    gold: 20,
+    gxp: 300,
+    top: contrib([
+      [1, "Ulugbek", 400],
+      [2, "Dilnoza", 300],
+      [4, "Malika", 250],
+      [9, "Temur_99", 150],
+      [10, "Aziza", 100],
+    ]),
+  },
+  {
+    slot: 2,
+    kind: "ashking",
+    target: 5,
+    progress: 3,
+    done: 0,
+    gold: 50,
+    gxp: 800,
+    top: contrib([
+      [1, "Ulugbek", 3],
+      [2, "Dilnoza", 2],
+      [9, "Temur_99", 2],
+      [4, "Malika", 1],
+    ]),
+  },
+];
+
+const CHAT = (): GuildChatMsg[] => {
+  const t = Date.now();
+  const m = (
+    id: number,
+    from: number,
+    nick: string,
+    role: GuildRole | null,
+    text: string,
+    phrase: number,
+    ago: number,
+  ): GuildChatMsg => ({ id, from, nick, role, text, phrase, at: t - ago * 60_000 });
+  return [
+    m(1, 2, "Dilnoza", "officer", "", 0, 95),
+    m(2, 3, "Sardor_07", "member", "Bugun kechqurun Kul qiroliga boramizmi?", -1, 80),
+    m(3, 1, "Ulugbek", "leader", "Ha, 21:00 da zalda yig'ilamiz. Tank — Temur", -1, 78),
+    m(4, 9, "Temur_99", "officer", "", 2, 60),
+    m(5, 4, "Malika", "officer", "Xazinaga 50 tashladim, oltin topshiriq bajarildi!", -1, 41),
+    m(6, 10, "Aziza", "member", "", 8, 39),
+    m(7, 11, "Jamshid", "member", "Kim menga Kul tog'idagi plitalarda yordam beradi?", -1, 12),
+    m(8, 2, "Dilnoza", "officer", "Men boraman, olamda K7QW2M xonasidaman", -1, 9),
+    m(9, 3, "Sardor_07", "member", "", 1, 2),
+  ];
+};
+
+const LOG = (): GuildLogEntry[] => {
+  const t = Date.now();
+  const e = (
+    id: number,
+    kind: string,
+    nick: string,
+    amount: number,
+    hours: number,
+    other = "",
+  ): GuildLogEntry => ({ id, kind, nick, other, amount, at: t - hours * H });
+  return [
+    e(20, "give", "Malika", 50, 0.7),
+    e(19, "quest:gold", "", 300, 20, "1200"),
+    e(18, "give", "Ulugbek", 100, 21),
+    e(17, "give", "Dilnoza", 60, 23),
+    e(16, "join", "Gulnora", 0, 26, "Dilnoza"),
+    e(15, "promote", "Temur_99", 0, 30, "Ulugbek"),
+    e(14, "give", "Aziza", 25, 31),
+    e(13, "quest:kills", "", 400, 50, "3000"),
+    e(12, "give", "Temur_99", 80, 52),
+  ];
+};
 
 function card(
   id: number,
@@ -310,6 +422,25 @@ function transport(pending: boolean, inGuild: boolean): Transport {
         return { ok: true, guild: demoGuild(), members: MEMBERS() };
       case "guild/create":
         return { ok: true, guild: { ...demoGuild(), level: 1, members: 1, xp: 0 }, cost: 500 };
+      case "guild/give":
+        return { ok: true, given: 40 + Number(body["amount"] ?? 0), cap: 100, treasury: 7470 };
+      case "guild/log":
+        return { ok: true, entries: LOG() };
+      case "guild/chat":
+        return { ok: true, messages: CHAT(), rev: 0, full: true, muted: 0 };
+      case "guild/say":
+        return {
+          ok: true,
+          message: {
+            id: 10,
+            from: 1,
+            nick: "Ulugbek",
+            role: "leader",
+            text: String(body["text"] ?? ""),
+            phrase: typeof body["phrase"] === "number" ? body["phrase"] : -1,
+            at: now,
+          },
+        };
       case "scores/top": {
         const board = String(body["board"] ?? "w1:knight");
         const rows = top(board);

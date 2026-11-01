@@ -7,33 +7,49 @@
  * yangilanishda aynan shu rid bilan qayta yuboriladi: server uni bir marta hisoblaydi.
  *
  * Gildiya qisqachasi (teg, gerb, daraja, rol) qurilmada saqlanadi — menyu belgisi va daraja
- * foydalari (+XP %, kunlik sovg'a) internet bo'lmasa ham ishlaydi. Batafsil: docs/guilds.md
+ * foydalari (+XP %, kunlik sovg'a) internet bo'lmasa ham ishlaydi. Xazinaga hissa ham tuzish kabi
+ * (rid bilan). Topshiriq sovg'alari: olingan oxirgi sovg'a raqami progressda (GUILD_PROGRESS_KEY,
+ * bulutga ham ketadi) — bir sovg'a ikki marta olinmaydi. Chat — oyna ochiq turganda 5 s da bir.
+ * Batafsil: docs/guilds.md
  */
 import { useSyncExternalStore } from "react";
-import { loadGold, saveGold } from "@/game/shop";
+import { addGold, loadGold, saveGold } from "@/game/shop";
+import { setGiftBonus } from "@/game/gift";
 import { account, type AccountManager } from "./account";
 import { ERROR_TEXT, call, type ApiResult } from "./api";
 import { friends, type FriendsManager } from "./friends";
 import {
+  GIVE_MIN,
   GUILD_COST,
   GUILD_NAME_ERROR,
   GUILD_TAG_ERROR,
   MAX_APPLICATIONS,
   MAX_OFFICERS,
+  guildGiftBonus,
+  guildXpBonus,
   type GuildLang,
   type GuildNameError,
   type JoinMode,
 } from "./guildRules";
-import { GUILD_CACHE_KEY, GUILD_SPEND_KEY } from "./keys";
+import { GUILD_CACHE_KEY, GUILD_READ_KEY, GUILD_SPEND_KEY } from "./keys";
 import type {
   ErrCode,
   GuildCard,
+  GuildChatMsg,
   GuildInfo,
+  GuildLogEntry,
   GuildMember,
   GuildPing,
+  GuildReward,
   GuildState,
   Op,
 } from "./protocol";
+import { setXpBonus } from "./xp";
+
+/** Olingan topshiriq sovg'alari (progress — bulutga ham ketadi): { r: oxirgi olingan raqam } */
+export const GUILD_PROGRESS_KEY = "pixel-rpg-guild";
+/** Chat oyna ochiq turganda shuncha vaqtda bir yangilanadi */
+export const CHAT_POLL_MS = 5000;
 
 /** Javobi kelmagan oltinli so'rov shuncha vaqt ichida qayta yuboriladi */
 const SPEND_RETRY_MS = 10 * 60_000;
@@ -48,6 +64,13 @@ export interface GuildView {
   /** qisqacha: gildiya (yoki null) va kutilayotgan arizalar/takliflar soni */
   brief: GuildBrief | null;
   pending: number;
+  /** olinmagan topshiriq sovg'asi bor (serverdagi oxirgi raqam olinganidan katta) */
+  reward: boolean;
+  /** chat: xabarlar (eskisi birinchi), versiya, o'qilmagan bormi, jim qilinganmi */
+  chat: GuildChatMsg[];
+  chatRev: number;
+  unread: boolean;
+  muted: number;
 }
 
 export interface GuildResult {
@@ -65,10 +88,11 @@ export interface CreateGuildInput {
 
 interface PendingSpend {
   rid: string;
-  op: "create";
+  op: "create" | "give";
   amount: number;
   at: number;
-  input: CreateGuildInput;
+  /** tuzish: nom, teg, gerb... */
+  input?: CreateGuildInput;
 }
 
 function read<T>(key: string): T | null {
@@ -158,7 +182,30 @@ export function guildErrorText(r: Fail, ctx: "create" | "join" | "invite" | "man
   }
 }
 
-const EMPTY: GuildView = { state: null, loading: false, error: null, brief: null, pending: 0 };
+const EMPTY: GuildView = {
+  state: null,
+  loading: false,
+  error: null,
+  brief: null,
+  pending: 0,
+  reward: false,
+  chat: [],
+  chatRev: 0,
+  unread: false,
+  muted: 0,
+};
+
+/** Olingan oxirgi topshiriq sovg'asi raqami (progress) */
+function claimedReward() {
+  const v = read<{ r?: unknown }>(GUILD_PROGRESS_KEY);
+  const n = Math.floor(Number(v?.r));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function readChat() {
+  const n = Math.floor(Number(read<number>(GUILD_READ_KEY)));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 
 export class GuildManager {
   view: GuildView = { ...EMPTY, brief: cachedGuild() };
@@ -174,12 +221,21 @@ export class GuildManager {
     acc.onSessionEnd(() => {
       write(GUILD_CACHE_KEY, null);
       write(GUILD_SPEND_KEY, null);
+      this.closeChat();
       this.set({ ...EMPTY });
     });
     fr.onPresence((r) => {
       if (r.guild) this.gotPing(r.guild);
     });
+    // daraja foydalari: o'yinchi XP'siga va kunlik sovg'aga qo'shimcha
+    setXpBonus(() => guildXpBonus(this.level));
+    setGiftBonus(() => guildGiftBonus(this.level));
   }
+
+  /** Topshiriq sovg'asi olindi (menyu: oltin yangilanadi, xabar) */
+  onReward: (gold: number, rewards: GuildReward[]) => void = () => {};
+  private chatTimer: ReturnType<typeof setInterval> | null = null;
+  private chatBusy = false;
 
   subscribe = (fn: () => void) => {
     this.subs.add(fn);
@@ -215,6 +271,9 @@ export class GuildManager {
     const old = this.view.brief;
     if (JSON.stringify(old) !== JSON.stringify(p.guild) || p.pending !== this.view.pending)
       this.setBrief(p.guild, p.pending);
+    const reward = (p.reward ?? 0) > claimedReward();
+    const unread = !!p.guild && (p.chat ?? 0) > readChat();
+    if (reward !== this.view.reward || unread !== this.view.unread) this.set({ reward, unread });
     // gildiyaga qabul qilindi yoki chiqarildi — oyna ochiq bo'lsa ma'lumot yangilansin
     if ((old?.id ?? 0) !== (p.guild?.id ?? 0) && this.view.state) void this.refresh();
   }
@@ -233,6 +292,25 @@ export class GuildManager {
     const { ok: _ok, ...state } = r;
     this.set({ loading: false, state });
     this.syncBrief(state);
+    if (state.guild) {
+      this.claim(state.rewards);
+      this.set({ unread: state.chat > readChat(), muted: state.muted });
+    } else this.set({ reward: false, unread: false });
+  }
+
+  /**
+   * Topshiriq sovg'alari: olinmaganlari (raqami olingan oxirgisidan katta) oltinga qo'shiladi,
+   * oxirgi raqam progressda saqlanadi — boshqa qurilmada ham qayta berilmaydi.
+   */
+  private claim(rewards: GuildReward[]) {
+    const last = claimedReward();
+    const fresh = rewards.filter((r) => r.id > last);
+    if (!fresh.length) return this.set({ reward: false });
+    const gold = fresh.reduce((n, r) => n + Math.max(0, r.gold), 0);
+    write(GUILD_PROGRESS_KEY, { r: Math.max(...fresh.map((r) => r.id)) });
+    addGold(gold);
+    this.set({ reward: false });
+    this.onReward(gold, fresh);
   }
 
   private syncBrief(state: GuildState) {
@@ -281,7 +359,9 @@ export class GuildManager {
   }
 
   private async sendCreate(token: string, pend: PendingSpend, gold: number): Promise<GuildResult> {
-    const r = await call("guild/create", { token, ...pend.input, gold, rid: pend.rid });
+    const input = pend.input;
+    if (!input) return { ok: false, text: ERROR_TEXT.bad };
+    const r = await call("guild/create", { token, ...input, gold, rid: pend.rid });
     if (!r.ok && (r.error === "net" || r.error === "rate" || r.error === "server"))
       return {
         ok: false,
@@ -299,11 +379,139 @@ export class GuildManager {
     const pend = read<PendingSpend>(GUILD_SPEND_KEY);
     const token = this.acc.sessionToken;
     if (!pend || !token) return;
-    if (Date.now() - pend.at > SPEND_RETRY_MS || pend.op !== "create") {
+    if (Date.now() - pend.at > SPEND_RETRY_MS || (pend.op === "create" && !pend.input)) {
       write(GUILD_SPEND_KEY, null);
       return;
     }
-    await this.sendCreate(token, pend, loadGold());
+    if (pend.op === "create") await this.sendCreate(token, pend, loadGold());
+    else await this.sendGive(token, pend, loadGold());
+  }
+
+  /** Xazinaga hissa (kuniga chegarali): oltin faqat server "ok" degandan keyin yechiladi */
+  async give(amount: number): Promise<GuildResult> {
+    const token = this.acc.sessionToken;
+    if (!token) return { ok: false, text: ERROR_TEXT.auth };
+    const n = Math.floor(amount);
+    if (!(n >= GIVE_MIN)) return { ok: false, text: `Kamida ${GIVE_MIN} oltin` };
+    const gold = loadGold();
+    if (gold < n) return { ok: false, text: `Oltin yetmaydi: sizda ${gold}` };
+    if (read<PendingSpend>(GUILD_SPEND_KEY))
+      return { ok: false, text: "Oldingi so'rov hali yetib bormadi — biroz kuting" };
+    const pend: PendingSpend = { rid: newRid(), op: "give", amount: n, at: Date.now() };
+    write(GUILD_SPEND_KEY, pend);
+    return this.sendGive(token, pend, gold);
+  }
+
+  private async sendGive(token: string, pend: PendingSpend, gold: number): Promise<GuildResult> {
+    const r = await call("guild/give", { token, amount: pend.amount, gold, rid: pend.rid });
+    if (!r.ok && (r.error === "net" || r.error === "rate" || r.error === "server"))
+      return {
+        ok: false,
+        text: "Internet yo'q yoki server band — ulanganda so'rov o'zi qayta yuboriladi",
+      };
+    write(GUILD_SPEND_KEY, null);
+    if (!r.ok)
+      return {
+        ok: false,
+        text:
+          r.error === "limit"
+            ? "Bugungi chegaraga yetdingiz — ertaga yana qo'sha olasiz"
+            : r.error === "bad"
+              ? `Kamida ${GIVE_MIN} oltin`
+              : guildErrorText(r, "manage"),
+      };
+    spendGold(pend.amount);
+    await this.refresh();
+    return {
+      ok: true,
+      text: `Xazinaga ${pend.amount} oltin qo'shildi (+${pend.amount} gildiya XP). Bugun: ${r.given}/${r.cap}`,
+    };
+  }
+
+  /** Gildiya jurnali */
+  async log(): Promise<GuildLogEntry[] | null> {
+    const token = this.acc.sessionToken;
+    if (!token) return null;
+    const r = await call("guild/log", { token });
+    return r.ok ? r.entries : null;
+  }
+
+  // ---------------- chat ----------------
+
+  /** Chat oynasi ochildi: darhol va 5 s da bir yangilanadi */
+  openChat() {
+    void this.pollChat();
+    if (this.chatTimer) clearInterval(this.chatTimer);
+    this.chatTimer = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible")
+        void this.pollChat();
+    }, CHAT_POLL_MS);
+  }
+
+  closeChat() {
+    if (this.chatTimer) clearInterval(this.chatTimer);
+    this.chatTimer = null;
+  }
+
+  async pollChat() {
+    const token = this.acc.sessionToken;
+    if (!token || this.chatBusy) return;
+    this.chatBusy = true;
+    const v = this.view;
+    const since = v.chat.length ? v.chat[v.chat.length - 1]!.id : 0;
+    const r = await call("guild/chat", { token, since, rev: v.chatRev });
+    this.chatBusy = false;
+    if (!r.ok) {
+      if (r.error === "guild") this.closeChat();
+      return;
+    }
+    const list = r.full ? r.messages : [...this.view.chat, ...r.messages].slice(-100);
+    const top = list.length ? list[list.length - 1]!.id : 0;
+    if (top > readChat()) write(GUILD_READ_KEY, top);
+    this.set({ chat: list, chatRev: r.rev, unread: false, muted: r.muted });
+  }
+
+  /** Chatga yozish: erkin matn yoki tayyor ibora raqami */
+  async say(msg: string | number): Promise<GuildResult> {
+    const token = this.acc.sessionToken;
+    if (!token) return { ok: false, text: ERROR_TEXT.auth };
+    const body = typeof msg === "number" ? { token, phrase: msg } : { token, text: msg.trim() };
+    if ("text" in body && !body.text) return { ok: false, text: "Xabar bo'sh" };
+    const r = await call("guild/say", body);
+    if (!r.ok)
+      return {
+        ok: false,
+        text:
+          r.error === "muted"
+            ? `Siz chatda jim qilingansiz — yana ${leftText((r.until ?? Date.now()) - Date.now())}`
+            : r.error === "limit"
+              ? "Juda tez — biroz kuting"
+              : r.error === "bad"
+                ? "Xabar bo'sh yoki ruxsat etilmagan"
+                : guildErrorText(r, "manage"),
+      };
+    await this.pollChat();
+    return { ok: true, text: "" };
+  }
+
+  unsay(id: number) {
+    return this.act(
+      (token) => call("guild/unsay", { token, id }),
+      () => "Xabar o'chirildi",
+    ).then(async (r) => {
+      await this.pollChat();
+      return r;
+    });
+  }
+
+  mute(player: number, minutes: number) {
+    return this.act(
+      (token) => call("guild/mute", { token, player, minutes }),
+      () =>
+        minutes > 0
+          ? `Chatda ${minutes >= 60 ? `${minutes / 60} soat` : `${minutes} daqiqa`} jim qilindi`
+          : "Jimlik olib tashlandi",
+    );
   }
 
   /** Bitta amal: natija matni va (muvaffaqiyatda) ma'lumot yangilanadi */

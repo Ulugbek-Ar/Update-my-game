@@ -187,6 +187,72 @@ export const SCHEMA: readonly string[] = [
     at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS guild_log_guild ON guild_log (guild, id)`,
+  // xazinaga kunlik hissa (o'yinchi bo'yicha — gildiya almashtirsa ham chegara bir xil)
+  `CREATE TABLE IF NOT EXISTS guild_gifts (
+    player INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    PRIMARY KEY (player, day)
+  ) WITHOUT ROWID`,
+  // gildiya haftasi (dushanba, Toshkent): olingan gildiya XP, bajarilgan topshiriqlar, Kul qiroli
+  // g'alabalari va eng tez vaqti (soniyaning o'ndan biri) — topshiriqlar va reyting shundan
+  `CREATE TABLE IF NOT EXISTS guild_week (
+    guild INTEGER NOT NULL,
+    week TEXT NOT NULL,
+    gxp INTEGER NOT NULL DEFAULT 0,
+    quests INTEGER NOT NULL DEFAULT 0,
+    ashking INTEGER NOT NULL DEFAULT 0,
+    ashbest INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild, week)
+  ) WITHOUT ROWID`,
+  // haftalik topshiriqlar (3 ta): turi, maqsadi va bajarilgan vaqti (0 — hali)
+  `CREATE TABLE IF NOT EXISTS guild_quests (
+    guild INTEGER NOT NULL,
+    week TEXT NOT NULL,
+    slot INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    target INTEGER NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild, week, slot)
+  ) WITHOUT ROWID`,
+  // har a'zoning haftalik hissasi (bitta qator — yozuvlar tejaladi)
+  `CREATE TABLE IF NOT EXISTS guild_qc (
+    guild INTEGER NOT NULL,
+    week TEXT NOT NULL,
+    player INTEGER NOT NULL,
+    kills INTEGER NOT NULL DEFAULT 0,
+    bosses INTEGER NOT NULL DEFAULT 0,
+    waves INTEGER NOT NULL DEFAULT 0,
+    runs INTEGER NOT NULL DEFAULT 0,
+    secrets INTEGER NOT NULL DEFAULT 0,
+    ashking INTEGER NOT NULL DEFAULT 0,
+    gold INTEGER NOT NULL DEFAULT 0,
+    xp INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (guild, week, player)
+  ) WITHOUT ROWID`,
+  // topshiriq sovg'asi (oltin): klient oladi va olingan oxirgi raqamni progressida saqlaydi
+  `CREATE TABLE IF NOT EXISTS guild_rewards (
+    id INTEGER PRIMARY KEY,
+    player INTEGER NOT NULL,
+    guild INTEGER NOT NULL,
+    gold INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    week TEXT NOT NULL,
+    at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS guild_rewards_player ON guild_rewards (player, id)`,
+  // gildiya chati: oxirgi 100 ta xabar; phrase — tayyor ibora raqami (-1 — erkin matn)
+  `CREATE TABLE IF NOT EXISTS guild_chat (
+    id INTEGER PRIMARY KEY,
+    guild INTEGER NOT NULL,
+    player INTEGER NOT NULL,
+    text TEXT NOT NULL DEFAULT '',
+    phrase INTEGER NOT NULL DEFAULT -1,
+    at INTEGER NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS guild_chat_guild ON guild_chat (guild, id)`,
+  // chat o'zgarishi (xabar o'chirildi): klient to'liq ro'yxatni qayta oladi
+  `CREATE TABLE IF NOT EXISTS guild_chatrev (guild INTEGER PRIMARY KEY, rev INTEGER NOT NULL)`,
 ];
 
 export function initSchema(db: Db) {

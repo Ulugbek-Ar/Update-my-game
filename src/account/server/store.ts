@@ -489,6 +489,13 @@ export class AccountStore {
         player,
       );
       this.setXp(player, xpFromRaw(req.data[XP_KEY]));
+      // gildiya topshiriqlari: oldingisidan davom etgan saqlanishdagi o'sish (dushmanlar, XP...)
+      if (follows && prev)
+        try {
+          this.guilds.life.onSave(player, prev, req.data, now);
+        } catch (e) {
+          console.error("guild onSave", e);
+        }
       return { ok: true as const, version };
     });
   }

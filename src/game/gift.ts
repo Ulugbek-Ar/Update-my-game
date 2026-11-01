@@ -56,9 +56,19 @@ export function giftStatus(today = todayKey()): GiftStatus {
 
 export interface GiftClaim {
   day: number;
+  /** jami oltin (gildiya qo'shimchasi bilan) */
   gold: number;
+  /** gildiya darajasi qo'shimchasi (yo'q bo'lsa — maydon ham yo'q) */
+  bonus?: number;
   /** 7-kun: "Sodiq o'yinchi" yutug'i (birinchi marta) */
   achievement: Achievement | null;
+}
+
+/** Gildiya darajasi foydasi: kunlik sovg'aga qo'shimcha oltin — src/account/guild.ts o'rnatadi */
+let giftBonus: () => number = () => 0;
+
+export function setGiftBonus(fn: () => number) {
+  giftBonus = fn;
 }
 
 /** Bugungi sovg'ani oladi (kuniga bir marta); allaqachon olingan bo'lsa null. */
@@ -70,7 +80,8 @@ export function claimGift(today = todayKey()): GiftClaim | null {
   } catch {
     return null;
   }
-  addGold(st.reward);
+  const bonus = Math.max(0, Math.min(20, Math.floor(Number(giftBonus()) || 0)));
+  addGold(st.reward + bonus);
   const achievement = st.day === GIFT_REWARDS.length ? unlockAchievement("loyal") : null;
-  return { day: st.day, gold: st.reward, achievement };
+  return { day: st.day, gold: st.reward + bonus, ...(bonus ? { bonus } : {}), achievement };
 }

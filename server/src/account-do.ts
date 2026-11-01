@@ -83,10 +83,20 @@ export class AccountDO extends DurableObject<Env> {
     return { id: me.id, nick: me.nick, level: me.level, ...(g ? { guild: g } : {}) };
   }
 
-  /** Olam xonasi (RoomDO): Kul qiroli yengildi — jamoadagi kirgan o'yinchilar reytingga */
+  /**
+   * Olam xonasi (RoomDO): Kul qiroli yengildi — jamoadagi kirgan o'yinchilar reytingga, ularning
+   * gildiyalari — haftalik topshiriq va gildiyalar reytingiga
+   */
   async raidWin(team: number[], secs: number) {
     this.count();
-    return this.store.scores.raid(team, secs, Date.now());
+    const now = Date.now();
+    const r = this.store.scores.raid(team, secs, now);
+    try {
+      this.store.guilds.life.raid(team, now);
+    } catch (e) {
+      console.error("guild raid", e);
+    }
+    return r;
   }
 
   /** Bot username va raqami: getMe (bir marta, keyin SQLite meta'da) */

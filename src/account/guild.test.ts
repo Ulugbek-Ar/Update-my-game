@@ -8,10 +8,13 @@ import { setTransport, type Transport } from "./api";
 import { AccountManager } from "./account";
 import { CloudSync } from "./cloud";
 import { FriendsManager } from "./friends";
-import { GuildManager, cachedGuild } from "./guild";
+import { GUILD_PROGRESS_KEY, GuildManager, cachedGuild } from "./guild";
+import { GUILD_LEVEL_XP } from "./guildRules";
 import { GUILD_SPEND_KEY } from "./keys";
 import { MemoryStorage, testServer } from "./server/testing";
+import { addXp, loadXp } from "./xp";
 import { GOLD_KEY, loadGold } from "@/game/shop";
+import { GIFT_REWARDS, claimGift } from "@/game/gift";
 
 const g = globalThis as { localStorage?: Storage };
 
@@ -103,5 +106,88 @@ describe("gildiya tuzish (klient)", () => {
     expect(st && !st.guild && st.cooldown).toBeGreaterThan(Date.now());
     await m.acc.dropSession();
     expect(cachedGuild()).toBeNull();
+  });
+});
+
+describe("gildiya hayoti (klient)", () => {
+  let srv: ReturnType<typeof testServer>;
+  beforeEach(() => {
+    srv = testServer();
+    setTransport(srv.transport);
+  });
+  afterEach(() => setTransport(null));
+
+  it("daraja foydalari: +XP % (kasr qoldig'i yig'iladi) va kunlik sovg'aga qo'shimcha", async () => {
+    const d = await device(srv, 601, 900);
+    await d.guild.create(input);
+    expect(addXp(10)).toBe(10);
+    // 4-daraja: +4 % XP
+    srv.store.db.exec("UPDATE guilds SET xp = ?", GUILD_LEVEL_XP[3]!);
+    await d.guild.refresh();
+    expect(d.guild.level).toBe(4);
+    const before = loadXp().xp;
+    for (let i = 0; i < 5; i++) addXp(10);
+    // 5 × 10 = 50, +4 % = 2 (0.4 dan yig'ilib)
+    expect(loadXp().xp - before).toBe(52);
+    // 6-daraja: kunlik sovg'aga +5 oltin
+    srv.store.db.exec("UPDATE guilds SET xp = ?", GUILD_LEVEL_XP[5]!);
+    await d.guild.refresh();
+    const gold = loadGold();
+    const c = claimGift();
+    expect(c?.bonus).toBe(5);
+    expect(loadGold() - gold).toBe(c?.gold ?? 0);
+    expect(c!.gold).toBe(GIFT_REWARDS[0]! + 5);
+  });
+
+  it("xazinaga hissa: oltin faqat muvaffaqiyatdan keyin, chegara oshsa — joyida", async () => {
+    const d = await device(srv, 602, 1000);
+    await d.guild.create(input);
+    expect(loadGold()).toBe(500);
+    expect((await d.guild.give(60)).ok).toBe(true);
+    expect(loadGold()).toBe(440);
+    const over = await d.guild.give(60);
+    expect(over).toMatchObject({ ok: false });
+    expect(over.text).toContain("chegara");
+    expect(loadGold()).toBe(440);
+    const st = d.guild.view.state;
+    expect(st?.guild && st.given).toBe(60);
+  });
+
+  it("topshiriq sovg'asi bir marta olinadi (olingan oxirgi raqam progressda)", async () => {
+    const d = await device(srv, 603, 900);
+    await d.guild.create(input);
+    const me = d.acc.state.me!.id;
+    const gid = d.guild.view.state!.guild!.id;
+    for (const gold of [25, 50])
+      srv.store.db.exec(
+        "INSERT INTO guild_rewards (player, guild, gold, kind, week, at) VALUES (?, ?, ?, 'kills', 'w', ?)",
+        me,
+        gid,
+        gold,
+        Date.now(),
+      );
+    let got = 0;
+    d.guild.onReward = (g) => {
+      got += g;
+    };
+    const before = loadGold();
+    await d.guild.refresh();
+    expect(got).toBe(75);
+    expect(loadGold() - before).toBe(75);
+    await d.guild.refresh();
+    expect(loadGold() - before).toBe(75);
+    expect(JSON.parse(localStorage.getItem(GUILD_PROGRESS_KEY)!)).toEqual({
+      r: expect.any(Number),
+    });
+  });
+
+  it("chat: yozish, ro'yxat va o'qilmagan belgi", async () => {
+    const a = await device(srv, 604, 900);
+    await a.guild.create(input);
+    const gid = a.guild.view.state!.guild!.id;
+    const b = await device(srv, 605, 0);
+    await b.guild.join(gid);
+    expect((await b.guild.say("Salom hammaga!")).ok).toBe(true);
+    expect(b.guild.view.chat.map((m) => m.text)).toEqual(["Salom hammaga!"]);
   });
 });
