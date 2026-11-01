@@ -1,0 +1,171 @@
+[
+  {
+    "title": "Telegram orqali kirish — parol kerak emas: bot havolasi yoki QR, botda «Tasdiqlash» va o'yin o'zi kiradi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-gold": "240",
+          "pixel-rpg-best": "3120",
+          "pixel-rpg-achievements": ["first", "boss", "clean"],
+          "pixel-rpg-xp": {
+            "xp": 1700,
+            "lvl": 10,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo({ pending: true })"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "click": "KIRISH"
+      },
+      {
+        "wait": 700
+      }
+    ]
+  },
+  {
+    "title": "Profil: taxallus, avatar-qahramon, daraja va unvon, XP chizig'i, statistika va eng yaxshi rekordlar",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "512",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          },
+          "pixel-rpg-stats": {
+            "time": 41200,
+            "kills": 6834,
+            "bosses": 57,
+            "runs": 212,
+            "waves": 930
+          },
+          "pixel-rpg-best": "4210",
+          "pixel-rpg-best-paladin": "4380",
+          "pixel-rpg-best-ch2-paladin": "9120",
+          "pixel-rpg-endless-best-paladin": "48200",
+          "pixel-rpg-best-mage": "3650",
+          "pixel-rpg-achievements": ["first", "boss", "clean", "combo10", "winPaladin"]
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "Profil: Ulugbek, 20-daraja"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Yangi daraja: har darajada oltin sovg'asi, har 10 darajada yangi unvon",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "512",
+          "pixel-rpg-xp": {
+            "xp": 5400,
+            "lvl": 19,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Do'stlar: kim onlayn va qayerda, «Yoniga kirish», tez xabar va so'rovlar",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-achievements": ["boss"],
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "DO'STLAR"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Haftalik reyting: har qahramon bo'yicha eng zo'rlar, cheksiz rejim, kunlik sinov va Kul qiroli",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "REYTING"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "click": "PALADIN"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  }
+]

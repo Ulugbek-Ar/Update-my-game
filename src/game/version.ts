@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.1.0";
+export const GAME_VERSION = "3.2.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.2.0",
+    date: "2026-11-01",
+    notes:
+      "Telegram orqali kirish — parol kerak emas. Progressingiz bulutda saqlanadi: sayt, Telegram, telefon va kompyuterda bir xil. Yangi: o'yinchi darajasi, unvonlar va profil. Do'stlar ro'yxati — kim onlayn ekanini ko'ring va yoniga kiring. Haftalik reyting: har qahramon bo'yicha eng zo'rlar. Akkauntsiz ham avvalgidek o'ynash mumkin.",
+  },
   {
     version: "3.1.0",
     date: "2026-10-31",
