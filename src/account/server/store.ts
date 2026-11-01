@@ -24,6 +24,7 @@ export const REALM_KEY = "pixel-rpg-realm";
 import { first, initSchema, num, str, type Db, type Row } from "./db";
 import { sha256Hex, type TgUser } from "./telegram";
 import { Friends } from "./friends";
+import { Scores } from "./scores";
 
 const DAY = 86_400_000;
 /** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
@@ -111,10 +112,13 @@ export interface PutRequest {
 export class AccountStore {
   /** do'stlar, onlayn holat va tez xabarlar */
   readonly friends: Friends;
+  /** reyting (haftalik va umumiy) */
+  readonly scores: Scores;
 
   constructor(readonly db: Db) {
     initSchema(db);
     this.friends = new Friends(this);
+    this.scores = new Scores(this);
   }
 
   // ---------------- o'yinchilar ----------------

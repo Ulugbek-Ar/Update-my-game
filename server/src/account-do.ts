@@ -81,6 +81,12 @@ export class AccountDO extends DurableObject<Env> {
     return { id: me.id, nick: me.nick, level: me.level };
   }
 
+  /** Olam xonasi (RoomDO): Kul qiroli yengildi — jamoadagi kirgan o'yinchilar reytingga */
+  async raidWin(team: number[], secs: number) {
+    this.count();
+    return this.store.scores.raid(team, secs, Date.now());
+  }
+
   /** Bot username va raqami: getMe (bir marta, keyin SQLite meta'da) */
   private async botInfo() {
     const token = this.token;

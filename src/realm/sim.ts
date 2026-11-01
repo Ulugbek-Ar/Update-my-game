@@ -150,6 +150,9 @@ export type RealmEvent =
       n?: number;
       dx?: number;
       dy?: number;
+      /** win: jang davomiyligi (s) va jamoa (o'yinchi id'lari) — reyting uchun */
+      secs?: number;
+      team?: string[];
     }
   /** yangi unvon (birinchi g'alaba) */
   | { type: "title"; pid: string; title: string }

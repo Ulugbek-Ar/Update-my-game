@@ -348,7 +348,14 @@ export class AshKingRaid {
     this.engaged.clear();
     this.enraged = false;
     this.rebornT = KING_REBORN;
-    sim.event({ type: "raid", what: "win", x: boss.x, y: boss.y });
+    sim.event({
+      type: "raid",
+      what: "win",
+      x: boss.x,
+      y: boss.y,
+      secs: Math.round(this.elapsed * 10) / 10,
+      team: [...ids],
+    });
   }
 
   private onPhase(sim: RealmSim, boss: RealmMob, ph: number) {

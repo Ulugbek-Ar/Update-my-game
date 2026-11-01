@@ -346,6 +346,21 @@ function save(key: string, v: number) {
   }
 }
 
+/** Tugagan o'yin natijasi (reyting uchun; faqat kirgan o'yinchida yuboriladi) */
+export interface RunResult {
+  /** world — 1-dunyodan boshlangan o'yinning 1-dunyo qismi; endless; daily — kunlik sinov */
+  mode: "world" | "endless" | "daily";
+  hero: Hero;
+  score: number;
+  /** dunyo/kunlik — 1..5, cheksiz — cheksiz to'lqin raqami */
+  wave: number;
+  /** o'yin vaqti, soniya (pauzasiz) */
+  time: number;
+  won: boolean;
+  /** kunlik sinov sanasi */
+  date: string | null;
+}
+
 /** O'yin oxiridagi statistika hisoblagichlari */
 export interface RunStats {
   waves: number;
@@ -498,6 +513,10 @@ export class Game {
   private offSettings: (() => void) | null = null;
   /** "Bosh menyuga qaytish" bosilganda React menyusini ko'rsatadi. */
   onExit: (() => void) | null = null;
+  /** O'yin tugadi (o'lim, g'alaba, kunlik sinovdan chiqish) — reyting uchun */
+  onRunEnd: ((r: RunResult) => void) | null = null;
+  /** cheksiz rejim boshlangan paytdagi o'yin vaqti (cheksiz natija vaqti shundan) */
+  private endlessFrom = 0;
   msgTimer = 0;
   time = 0;
   /** Sozlamalar: ekran silkinishi */
@@ -1029,7 +1048,10 @@ export class Game {
 
   /** O'yinni to'xtatib, React bosh menyusiga qaytish. */
   exitToMenu() {
-    if (this.daily && this.phase === "play") this.saveDailyResult(false);
+    if (this.daily && this.phase === "play") {
+      this.saveDailyResult(false);
+      this.reportRun(false);
+    }
     this.bankGold();
     this.flushStats(this.phase === "play");
     this.setPaused(false);
@@ -1216,6 +1238,7 @@ export class Game {
   /** G'alabadan so'ng: kuchlar saqlanadi, ochko 0 dan, to'lqinlar cheksiz. */
   private startEndless() {
     this.endless = true;
+    this.endlessFrom = this.stats.time;
     this.phase = "play";
     this.score = 0;
     this.newBest = false;
@@ -1880,6 +1903,7 @@ export class Game {
         this.bankGold();
         this.saveDailyResult(false);
         this.flushStats(true);
+        this.reportRun(false);
         this.noDeathRun = false;
         // cheksiz rejimda o'yin allaqachon yutilgan, kunlik sinov alohida — urinish oshmaydi
         if (!this.endless && !this.daily) {
@@ -1933,6 +1957,7 @@ export class Game {
             }
             this.stats.waves++;
             this.flushStats(true);
+            this.reportRun(true);
             this.phase = "victory";
             sfx.stopMusic();
             sfx.victory();
@@ -2258,6 +2283,38 @@ export class Game {
     addXp(n);
     this.runXp += n;
     this.fx.text(x, y, `+${n} XP`, "#9fd0ef");
+  }
+
+  /** Reyting: 1-dunyo (1-dunyodan boshlangan o'yinning 1-dunyo qismi), cheksiz va kunlik */
+  private reportRun(won: boolean) {
+    const cb = this.onRunEnd;
+    if (!cb) return;
+    const base = { hero: this.hero, score: this.score, won };
+    if (this.daily)
+      return cb({
+        ...base,
+        mode: "daily",
+        wave: Math.min(this.wave + 1, TOTAL_WAVES),
+        time: this.stats.time,
+        date: this.daily,
+      });
+    if (this.endless)
+      return cb({
+        ...base,
+        mode: "endless",
+        wave: Math.max(1, endlessNumber(this.wave)),
+        time: this.stats.time - this.endlessFrom,
+        won: false,
+        date: null,
+      });
+    if (this.startWorld === 1 && this.chapter === 1)
+      cb({
+        ...base,
+        mode: "world",
+        wave: Math.min(this.wave + 1, TOTAL_WAVES),
+        time: this.stats.time,
+        date: null,
+      });
   }
 
   /** Profil statistikasi: shu o'yinning hali yozilmagan qismi (run — o'yin tugadi) */

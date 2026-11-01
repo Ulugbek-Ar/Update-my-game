@@ -39,10 +39,15 @@ export class Limiter {
 }
 
 export class Limiters {
-  /** har o'yinchi (yoki IP) — daqiqasiga 40 ta so'rov */
+  /** har o'yinchi (sessiya) — daqiqasiga 40 ta so'rov */
   general = new Limiter(60, 40);
-  /** yangi kirish urinishlari — IP bo'yicha daqiqasiga 4 ta */
-  login = new Limiter(6, 4);
+  /**
+   * kirmagan so'rovlar (reyting ko'rish, kirish) — IP bo'yicha. Mobil operatorlarda ko'p
+   * foydalanuvchi bitta IP'da (CGNAT) — shuning uchun keng.
+   */
+  anon = new Limiter(240, 240);
+  /** yangi kirish urinishlari — IP bo'yicha daqiqasiga 20 ta */
+  login = new Limiter(30, 20);
 }
 
 const fail = (error: ErrCode, extra: Record<string, unknown> = {}) => ({
@@ -75,7 +80,14 @@ export async function handleApi(
   if (!parsed.success) return fail("bad");
   const body = parsed.data as Record<string, unknown>;
   const token = typeof body["token"] === "string" ? body["token"] : null;
-  if (!lim.general.allow(token ?? `ip:${env.ip}`, env.now)) return fail("rate");
+  // bot kodi tasdig'ini so'rash — kod bo'yicha (bitta IP'da ko'p qurilma bo'lishi mumkin)
+  const key = token
+    ? `t:${token}`
+    : op === "auth/poll" && typeof body["code"] === "string"
+      ? `poll:${body["code"]}`
+      : null;
+  if (key ? !lim.general.allow(key, env.now) : !lim.anon.allow(`ip:${env.ip}`, env.now))
+    return fail("rate");
 
   const authed = async (): Promise<PlayerRow | null> =>
     token ? store.authenticate(token, env.now) : null;
@@ -198,6 +210,20 @@ export async function handleApi(
       if (!p) return fail("auth");
       const r = store.friends.message(p, b.to, b.phrase, env.now);
       return r.ok ? r : fail(r.error);
+    }
+    case "scores/submit": {
+      const b = body as ReqOf<"scores/submit">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.scores.submit(p, b, env.now);
+      return r.ok ? r : fail(r.error);
+    }
+    case "scores/top": {
+      const b = body as ReqOf<"scores/top">;
+      // ko'rish — hamma uchun; o'z o'rni — kirgan o'yinchiga
+      const p = token ? await authed() : null;
+      const top = store.scores.top(b.board, b.period, p, env.now);
+      return top ? { ok: true, ...top } : fail("bad");
     }
     case "presence": {
       const b = body as ReqOf<"presence">;

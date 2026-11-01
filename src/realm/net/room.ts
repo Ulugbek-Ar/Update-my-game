@@ -363,13 +363,26 @@ export class RealmRoom {
       for (const cmd of b.c) cmds.push({ pid: m.pid, cmd });
     }
     this.sim.step(cmds);
-    for (const e of this.sim.events)
+    for (const e of this.sim.events) {
       for (const m of this.members.values()) if (this.wants(m, e)) m.events.push(e);
+      if (e.type === "raid" && e.what === "win" && e.secs !== undefined && e.team)
+        this.raidWin(e.secs, e.team);
+    }
     // jarima ballari asta kamayadi
     if (this.sim.tick % 20 === 0)
       for (const m of this.members.values()) m.strikes = Math.max(0, m.strikes - 2);
     if (this.sim.tick % SNAPSHOT_EVERY === 0)
       for (const m of this.members.values()) this.snapshot(m);
+  }
+
+  /** Kul qiroli yengildi: jamoadagi kirgan o'yinchilar (akkaunt raqami) reytingga (RoomDO yuboradi) */
+  onRaidWin: ((secs: number, team: number[]) => void) | null = null;
+
+  private raidWin(secs: number, pids: string[]) {
+    const team = [
+      ...new Set(pids.map((pid) => this.members.get(pid)?.acc ?? 0).filter((a) => a > 0)),
+    ];
+    if (team.length) this.onRaidWin?.(secs, team);
   }
 
   private wants(m: Member, e: RealmEvent) {

@@ -190,6 +190,27 @@ export const REQ = {
       .min(0)
       .max(FRIEND_PHRASES.length - 1),
   }),
+  /** O'yin natijasi (faqat kirgan o'yinchi): server tekshiradi va reytingga yozadi */
+  "scores/submit": z.object({
+    token,
+    mode: z.enum(["world", "endless", "daily"]),
+    hero,
+    score: z.number().int().min(0).max(100_000_000),
+    wave: z.number().int().min(0).max(100_000),
+    time: z.number().min(0).max(1_000_000),
+    won: z.boolean(),
+    /** kunlik sinov sanasi (YYYY-MM-DD) */
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+  }),
+  /** Top-50 va o'z o'rni (token bo'lsa) */
+  "scores/top": z.object({
+    token: token.optional(),
+    board: z.string().max(24),
+    period: z.enum(["week", "all"]),
+  }),
   /** Onlayn holat (har daqiqada va o'zgarganda): javobda yangi xabarlar va so'rovlar soni */
   presence: z.object({
     token,
@@ -247,6 +268,31 @@ export interface FriendLists {
   blocked: FriendInfo[];
 }
 
+/** Reyting qatori */
+export interface ScoreRow {
+  rank: number;
+  id: number;
+  nick: string;
+  avatar: Hero;
+  level: number;
+  /** ochko yoki (Kul qiroli) vaqt — soniyaning o'ndan biri */
+  score: number;
+  /** qaysi qahramon bilan (cheksiz, kunlik) */
+  hero?: Hero;
+  wave?: number;
+  /** Kul qiroli: jamoadagi kirgan o'yinchilar taxallusi */
+  team?: string[];
+}
+
+export interface ScoreTop {
+  rows: ScoreRow[];
+  /** o'z natijasi; hidden — shubhali, tekshiruvda (o'rni yo'q) */
+  me: (ScoreRow & { hidden: boolean }) | null;
+  /** haftalik davr (dushanba, Toshkent) va keyingi yangilanish (ms) */
+  week: string;
+  resets: number;
+}
+
 export interface FriendMessage {
   id: number;
   from: number;
@@ -277,7 +323,11 @@ export type Reply<O extends Op> = O extends "auth/webapp" | "auth/widget"
                     ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
                     : O extends "presence"
                       ? { ok: true; messages: FriendMessage[]; requests: number } | Fail
-                      : { ok: true } | Fail;
+                      : O extends "scores/top"
+                        ? ({ ok: true } & ScoreTop) | Fail
+                        : O extends "scores/submit"
+                          ? { ok: true; hidden: boolean; best: number; rank: number | null } | Fail
+                          : { ok: true } | Fail;
 
 /** /acc/config (GET) — saytdagi Login Widget va bot havolasi uchun */
 export interface AccConfig {

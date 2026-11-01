@@ -116,6 +116,19 @@ export const SCHEMA: readonly string[] = [
     at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS messages_to ON messages (receiver, id)`,
+  // reyting: jadval (w1:<qahramon>, endless, daily, ashking), davr (all, w:<dushanba>, d:<sana>),
+  // har o'yinchiga eng yaxshisi; hidden — shubhali (ommaviy ro'yxatda ko'rinmaydi)
+  `CREATE TABLE IF NOT EXISTS scores (
+    board TEXT NOT NULL,
+    period TEXT NOT NULL,
+    player INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    meta TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (board, period, player)
+  ) WITHOUT ROWID`,
+  `CREATE INDEX IF NOT EXISTS scores_rank ON scores (board, period, hidden, score)`,
 ];
 
 export function initSchema(db: Db) {

@@ -92,6 +92,24 @@ o'rniga taxallusi va yonida darajasi ko'rinadi (server tokenni akkauntlar DO'sid
 Onlayn holat daqiqada bir (va o'zgarganda) yuboriladi; serverga faqat o'zgarganda yoki 3
 daqiqada bir yoziladi. Ilova yopilsa yoki fonga o'tsa — darhol "oflayn".
 
+## Reyting
+
+Haftalik (har **dushanba 00:00, Toshkent vaqti** bilan yangilanadi) va umumiy. Faqat kirgan
+o'yinchilar qatnashadi; ko'rish — hamma uchun. Top-50 va o'yinchining o'z o'rni.
+
+| Jadval             | Natija                                                                       |
+| ------------------ | ---------------------------------------------------------------------------- |
+| 1-DUNYO (qahramon) | 1-dunyodan boshlangan o'yinning 1-dunyo ochkosi (o'lim yoki Iblis g'alabasi) |
+| CHEKSIZ            | cheksiz rejim ochkosi (qaysi qahramon bilan — belgisi)                       |
+| KUNLIK             | kunlik sinov ochkosi; **bir kunda bitta urinish** (server ham tekshiradi)    |
+| KUL QIROLI         | eng tez yenggan jamoa — vaqtni **olam serveri** yuboradi, klient emas        |
+
+Firibgarlikka qarshi (`src/account/scoring.ts`): imkonsiz natija rad etiladi — 1-dunyo ochkosi
+12 000 dan yoki 2 000 + 100×soniya dan katta, 30 soniyadan tez g'alaba, cheksiz rejimda to'lqin
+soniga nisbatan imkonsiz ochko yoki vaqt; Kul qiroli 10 soniyadan tez. Shubhali natija (chegaraga
+yaqin, juda tez g'alaba) saqlanadi, lekin reytingda **yashirin** — o'yinchining o'ziga
+"tekshiruvda" deb ko'rinadi. Internet yo'q bo'lsa natija qurilmada navbatda turadi.
+
 ## BotFather va server sozlamasi
 
 1. Kanal boti (TELEGRAM_BOT_TOKEN — kanalga post ham shu bot bilan).

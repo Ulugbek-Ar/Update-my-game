@@ -71,6 +71,8 @@ import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
+import { LeaderboardWindow } from "@/components/game/LeaderboardWindow";
+import { flushScores, submitRun } from "@/account/scores";
 import { friends, useFriends } from "@/account/friends";
 import type { FriendInfo } from "@/account/protocol";
 import { checkLevelUp } from "@/account/progression";
@@ -202,6 +204,8 @@ function Index() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(true);
+  /** REYTING oynasi */
+  const [boardOpen, setBoardOpen] = useState(false);
   /** DO'STLAR oynasi; "yoniga kirish" — shu do'st (akkaunt) yoniga */
   const [friendsOpen, setFriendsOpen] = useState(false);
   const fr = useFriends();
@@ -266,6 +270,9 @@ function Index() {
     cloud.start();
     // do'stlar: onlayn holat (daqiqada bir) va tez xabarlar
     friends.start();
+    // internet yo'qligida qolgan reyting natijalari
+    void flushScores();
+    window.addEventListener("online", () => void flushScores());
     // do'st chaqiruvi: sayt havolasi ?xona=KOD — kod kiritish oynasi to'lib ochiladi
     const invited = normalizeRoomCode(new URLSearchParams(location.search).get("xona"));
     if (invited && SERVER_URL) {
@@ -412,6 +419,8 @@ function Index() {
     );
     g.touch = touch;
     g.onSettings = () => setSettingsOpen(true);
+    // reyting: tugagan o'yin natijasi (faqat kirgan o'yinchida yuboriladi)
+    g.onRunEnd = (r) => void submitRun(r);
     g.onExit = () => {
       setBest(g.best);
       setEndlessBest(g.endlessBest);
@@ -473,6 +482,7 @@ function Index() {
       [exitOpen, () => setExitOpen(false)],
       [loginOpen, () => setLoginOpen(false)],
       [friendsOpen, () => setFriendsOpen(false)],
+      [boardOpen, () => setBoardOpen(false)],
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
@@ -815,6 +825,16 @@ function Index() {
                   {acc.me && fr.requests + fr.unread > 0 ? ` (${fr.requests + fr.unread})` : ""}
                 </Button>
               )}
+              {account.enabled && (
+                <Button
+                  variant="pixelLink"
+                  onClick={() => setBoardOpen(true)}
+                  title="Haftalik va umumiy reyting: har qahramon bo'yicha eng zo'rlar"
+                  className="text-[9px] sm:text-[10px]"
+                >
+                  REYTING
+                </Button>
+              )}
               <Button
                 variant="pixelLink"
                 onClick={() => setAchOpen(true)}
@@ -928,6 +948,16 @@ function Index() {
           rev={progressRev}
           onClose={() => setProfileOpen(false)}
           onRestored={refreshProgress}
+        />
+      )}
+      {boardOpen && !started && !realm && (
+        <LeaderboardWindow
+          hero={hero}
+          onClose={() => setBoardOpen(false)}
+          onLogin={() => {
+            setBoardOpen(false);
+            setLoginOpen(true);
+          }}
         />
       )}
       {friendsOpen && acc.me && !started && !realm && (

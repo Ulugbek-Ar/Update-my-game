@@ -283,7 +283,7 @@ describe("bot login code (APK and Windows)", () => {
   it("rate-limits new login attempts per IP", async () => {
     const { api } = setup();
     let refused = 0;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 40; i++) {
       const r = (await api("auth/bot", { device: "windows" })) as { ok: boolean; error?: string };
       if (!r.ok && r.error === "rate") refused++;
     }

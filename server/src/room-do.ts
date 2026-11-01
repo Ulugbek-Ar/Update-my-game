@@ -58,6 +58,15 @@ export class RoomDO extends DurableObject<Env> {
       this.code = (await ctx.storage.get<string>("code")) ?? "";
       const world = (await ctx.storage.get<RealmWorldSave>("world")) ?? null;
       this.room = new RealmRoom(this.code, { world });
+      // Kul qiroli: tez yenggan jamoa reytingga (natijani klient emas, server beradi)
+      this.room.onRaidWin = (secs, team) => {
+        this.used += 1;
+        this.ctx.waitUntil(
+          this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName("accounts"))
+            .raidWin(team, secs)
+            .catch((e: unknown) => console.error("raidWin", e)),
+        );
+      };
     });
   }
 

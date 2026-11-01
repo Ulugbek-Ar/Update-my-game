@@ -11,10 +11,13 @@ export const CLOUD_KEY = "pixel-rpg-cloud";
 export const LOGIN_KEY = "pixel-rpg-login";
 /** Shu qurilmaning tasodifiy raqami (zaxiralarda "qaysi qurilmadan") */
 export const DEVICE_ID_KEY = "pixel-rpg-device";
+/** Internet yo'qligida yuborilmagan reyting natijalari */
+export const SCORE_QUEUE_KEY = "pixel-rpg-scoreq";
 
 export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   ACCOUNT_KEY,
   CLOUD_KEY,
   LOGIN_KEY,
   DEVICE_ID_KEY,
+  SCORE_QUEUE_KEY,
 ];
