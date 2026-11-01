@@ -11,12 +11,16 @@ import {
   LOGIN_TTL,
   MAX_SAVE,
   SESSION_DAYS,
+  type BackupInfo,
   type CloudSave,
   type Device,
   type Me,
 } from "../protocol";
 import { checkNick, nickFromTelegram, nickKey } from "../nick";
-import { levelOf } from "../xp";
+import { XP_KEY, levelOf, xpFromRaw } from "../xp";
+import { checkSave, type LimitField } from "../limits";
+/** Olam saqlanishi kaliti (src/game/realmLink.ts REALM_SAVE_KEY; u server build'iga kirmaydi) */
+export const REALM_KEY = "pixel-rpg-realm";
 import { first, initSchema, num, str, type Db, type Row } from "./db";
 import { sha256Hex, type TgUser } from "./telegram";
 
@@ -27,6 +31,15 @@ const MAX_SESSIONS = 10;
 const MAX_PENDING_LOGINS = 500;
 /** Klient soati shundan ko'p oldinda bo'lsa — server vaqti bilan cheklanadi */
 const CLOCK_SKEW = 5 * 60_000;
+/** Zaxira: o'yinchiga 5 ta joy; bir qurilmada o'ynalsa ham har 30 daqiqada bir nusxa */
+export const BACKUP_SLOTS = 5;
+const BACKUP_EVERY = 30 * 60_000;
+
+/**
+ * Zaxira sababi: force — tanlov oynasi, conflict — boshqa qurilma orada saqlagan, device —
+ * boshqa qurilmadan, time — davriy, stale — rad etilgan (eski) nusxa, restore — tiklashdan oldingi
+ */
+export type BackupReason = "force" | "conflict" | "device" | "time" | "stale" | "restore";
 
 export interface PlayerRow extends Row {
   id: number;
@@ -83,7 +96,7 @@ export type PutResult =
   | { ok: true; version: number }
   | { ok: false; error: "conflict"; save: CloudSave }
   | { ok: false; error: "big" }
-  | { ok: false; error: "invalid"; field: string };
+  | { ok: false; error: "invalid"; field: LimitField };
 
 export interface PutRequest {
   base: number;
@@ -375,8 +388,10 @@ export class AccountStore {
    * Saqlanish. Ziddiyat qoidasi — versiya + vaqt:
    *  - klient oxirgi ko'rgan versiyadan davom etsa (base = joriy) — qabul;
    *  - boshqa qurilma orada saqlagan bo'lsa — progressi keyinroq o'zgargani qoladi (time);
-   *    bulutdagisi yangiroq bo'lsa — rad, javobda bulutdagi nusxa (klient uni yuklaydi);
+   *    bulutdagisi yangiroq bo'lsa — rad, javobda bulutdagi nusxa (klient uni yuklaydi), rad
+   *    etilgan nusxa esa zaxiraga tushadi (yo'qolmaydi);
    *  - force — tanlov oynasida "shu qurilmadagini saqlash" bosilgan.
+   * Imkonsiz qiymatlar (limits.ts) — rad. Almashtirilgan nusxa kerak bo'lsa zaxiralanadi.
    */
   putSave(player: number, req: PutRequest, now: number): PutResult {
     const json = JSON.stringify(req.data);
@@ -384,6 +399,11 @@ export class AccountStore {
     const time = Math.min(req.time, now + CLOCK_SKEW);
     return this.db.tx(() => {
       const cur = this.saveRow(player);
+      const prev = cur && !req.force ? parseData(str(cur.data)) : null;
+      const hours = cur ? (now - num(cur.at)) / 3_600_000 : 0;
+      const bad = checkSave(req.data, prev, hours);
+      if (bad) return { ok: false as const, error: "invalid" as const, field: bad };
+      const dev = req.dev ?? "";
       if (!cur) {
         this.db.exec(
           "INSERT INTO saves (player, version, time, at, device, dev, data) VALUES (?, 1, ?, ?, ?, ?, ?)",
@@ -391,15 +411,34 @@ export class AccountStore {
           time,
           now,
           req.device,
-          req.dev ?? "",
+          dev,
           json,
         );
+        this.setXp(player, xpFromRaw(req.data[XP_KEY]));
         return { ok: true as const, version: 1 };
       }
       const curVersion = num(cur.version);
       const follows = req.base === curVersion;
-      if (!follows && !req.force && time <= num(cur.time))
+      if (!follows && !req.force && time <= num(cur.time)) {
+        // bulutdagisi yangiroq: rad etilgan qurilma progressi ham zaxirada qoladi
+        this.backup(
+          player,
+          { ...cur, version: req.base, time, device: req.device, data: json },
+          "stale",
+          now,
+        );
         return { ok: false as const, error: "conflict" as const, save: this.getSave(player)! };
+      }
+      const reason = req.force
+        ? "force"
+        : !follows
+          ? "conflict"
+          : str(cur.dev) && dev && str(cur.dev) !== dev
+            ? "device"
+            : now - this.lastBackupAt(player) > BACKUP_EVERY
+              ? "time"
+              : null;
+      if (reason) this.backup(player, cur, reason, now);
       const version = curVersion + 1;
       this.db.exec(
         "UPDATE saves SET version = ?, time = ?, at = ?, device = ?, dev = ?, data = ? WHERE player = ?",
@@ -407,11 +446,105 @@ export class AccountStore {
         time,
         now,
         req.device,
-        req.dev ?? "",
+        dev,
         json,
         player,
       );
+      this.setXp(player, xpFromRaw(req.data[XP_KEY]));
       return { ok: true as const, version };
+    });
+  }
+
+  private lastBackupAt(player: number) {
+    return num(first(this.db, "SELECT MAX(at) AS t FROM backups WHERE player = ?", player)?.["t"]);
+  }
+
+  /** Zaxira halqasi: bo'sh joy yoki eng eskisi ustiga (o'yinchiga BACKUP_SLOTS ta) */
+  private backup(
+    player: number,
+    row: Pick<SaveRow, "version" | "time" | "device" | "data">,
+    reason: BackupReason,
+    now: number,
+    slot?: number,
+  ) {
+    if (slot === undefined) {
+      const rows = this.db
+        .exec<{ slot: number; at: number }>("SELECT slot, at FROM backups WHERE player = ?", player)
+        .toArray();
+      const used = new Set(rows.map((r) => num(r.slot)));
+      slot = 0;
+      if (rows.length < BACKUP_SLOTS) while (used.has(slot)) slot++;
+      else slot = num(rows.reduce((a, b) => (num(b.at) < num(a.at) ? b : a)).slot);
+    }
+    this.db.exec(
+      `INSERT INTO backups (player, slot, version, time, at, device, reason, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (player, slot) DO UPDATE SET version = excluded.version, time = excluded.time,
+         at = excluded.at, device = excluded.device, reason = excluded.reason, data = excluded.data`,
+      player,
+      slot,
+      num(row.version),
+      num(row.time),
+      now,
+      str(row.device),
+      reason,
+      str(row.data),
+    );
+  }
+
+  /** Zaxiralar (yangisi birinchi). Olam saqlanishi ro'yxatda yuborilmaydi — faqat "bor" belgisi. */
+  backups(player: number): BackupInfo[] {
+    return this.db
+      .exec<SaveRow & { slot: number; reason: string }>(
+        "SELECT * FROM backups WHERE player = ? ORDER BY at DESC",
+        player,
+      )
+      .toArray()
+      .map((r) => {
+        const data = parseData(str(r.data));
+        if (data[REALM_KEY]) data[REALM_KEY] = "1";
+        return {
+          slot: num(r.slot),
+          version: num(r.version),
+          time: num(r.time),
+          at: num(r.at),
+          device: isDevice(str(r.device)) ? (str(r.device) as Device) : "web",
+          reason: str(r.reason),
+          data,
+        };
+      });
+  }
+
+  /**
+   * Zaxiradan tiklash: zaxiradagi nusxa joriy bo'ladi (versiya +1, vaqt — hozir: boshqa
+   * qurilmalar ham uni oladi), joriysi esa o'sha zaxira joyiga tushadi (almashinadi).
+   */
+  restore(player: number, slot: number, now: number): CloudSave | null {
+    return this.db.tx(() => {
+      const b = first<SaveRow & { slot: number }>(
+        this.db,
+        "SELECT * FROM backups WHERE player = ? AND slot = ?",
+        player,
+        slot,
+      );
+      if (!b) return null;
+      const cur = this.saveRow(player);
+      if (cur) this.backup(player, cur, "restore", now, slot);
+      else this.db.exec("DELETE FROM backups WHERE player = ? AND slot = ?", player, slot);
+      const version = (cur ? num(cur.version) : 0) + 1;
+      this.db.exec(
+        `INSERT INTO saves (player, version, time, at, device, dev, data) VALUES (?, ?, ?, ?, ?, '', ?)
+         ON CONFLICT (player) DO UPDATE SET version = excluded.version, time = excluded.time,
+           at = excluded.at, device = excluded.device, dev = '', data = excluded.data`,
+        player,
+        version,
+        now,
+        now,
+        str(b.device),
+        str(b.data),
+      );
+      const data = parseData(str(b.data));
+      this.setXp(player, xpFromRaw(data[XP_KEY]));
+      return this.getSave(player);
     });
   }
 }

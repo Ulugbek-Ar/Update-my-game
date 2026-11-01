@@ -296,6 +296,11 @@ export class AccountManager {
     for (const h of this.endHooks) h();
   }
 
+  /** Menyuda bir necha soniya ko'rinadigan xabar */
+  notify(text: string) {
+    this.set({ notice: text });
+  }
+
   takeNotice() {
     const n = this.state.notice;
     if (n) this.set({ notice: null });

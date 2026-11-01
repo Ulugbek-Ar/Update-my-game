@@ -248,8 +248,10 @@ function Index() {
       /* saqlash imkonsiz */
     }
     setTouch(window.matchMedia("(pointer: coarse)").matches);
-    // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach)
+    // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach);
+    // bulutli saqlanish: kirgan bo'lsa — yangiroq progress yuklanadi, o'zgarishlar yuboriladi
     account.init();
+    cloud.start();
     // do'st chaqiruvi: sayt havolasi ?xona=KOD — kod kiritish oynasi to'lib ochiladi
     const invited = normalizeRoomCode(new URLSearchParams(location.search).get("xona"));
     if (invited && SERVER_URL) {
@@ -298,6 +300,10 @@ function Index() {
     const id = window.setTimeout(() => setNotice(null), 4500);
     return () => window.clearTimeout(id);
   }, [notice]);
+  // o'yin yoki olamdan menyuga qaytildi: bulutdagi yangiroq progress (boshqa qurilmadan) shu yerda
+  useEffect(() => {
+    if (!started && !realm) cloud.resume();
+  }, [started, realm]);
   // yangi tanlov (birinchi kirish) — oyna o'zi ochiladi
   useEffect(() => {
     if (cloudView.decision) setDecisionOpen(true);
@@ -467,6 +473,8 @@ function Index() {
       const panel = realmClient?.view.panel;
       if (realmClient && panel !== "pause" && panel !== "intro") realmClient.setPanel("pause");
       realmClient?.save();
+      // ilova fonga o'tdi — saqlanmagan progress darhol bulutga
+      cloud.flush();
       sfx.suspend();
     } else if (!game?.paused) sfx.resume();
   };
@@ -857,7 +865,9 @@ function Index() {
       )}
       {exitOpen && <ExitWindow onClose={() => setExitOpen(false)} />}
       {loginOpen && !started && !realm && <LoginWindow onClose={() => setLoginOpen(false)} />}
-      {profileOpen && !started && !realm && <ProfileWindow onClose={() => setProfileOpen(false)} />}
+      {profileOpen && !started && !realm && (
+        <ProfileWindow onClose={() => setProfileOpen(false)} onRestored={refreshProgress} />
+      )}
       {cloudView.decision && decisionOpen && !started && !realm && !loginOpen && (
         <MigrateWindow decision={cloudView.decision} onLater={() => setDecisionOpen(false)} />
       )}

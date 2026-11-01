@@ -37,9 +37,10 @@ export function when(ms: number) {
 
 const CLOUD_TEXT: Record<CloudStatus, string> = {
   off: "",
-  syncing: "Bulut: saqlanmoqda...",
+  syncing: "Bulut: sinxronlanmoqda...",
   saved: "Bulut: saqlangan",
-  pending: "Bulut: tanlov kutilmoqda",
+  pending: "Bulut: o'zgarish tez orada saqlanadi",
+  choose: "Bulut: progress tanlovi kutilmoqda",
   offline: "Bulut: internet yo'q — keyin saqlanadi",
   error: "Bulut: saqlanmadi",
 };

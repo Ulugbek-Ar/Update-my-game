@@ -142,6 +142,18 @@ export async function handleApi(
         );
       return { ok: true, version: r.version };
     }
+    case "save/backups": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      return { ok: true, backups: store.backups(p.id) };
+    }
+    case "save/restore": {
+      const b = body as ReqOf<"save/restore">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const save = store.restore(p.id, b.slot, env.now);
+      return save ? { ok: true, save } : fail("none");
+    }
     case "profile": {
       const b = body as ReqOf<"profile">;
       const p = await authed();

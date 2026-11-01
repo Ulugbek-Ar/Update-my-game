@@ -25,6 +25,31 @@ Birinchi kirishda:
   rekord, qahramonlar), tanlanmagani zaxiraga tushadi;
 - qurilma bo'sh — bulutdagisi yuklanadi.
 
+## Bulutli saqlanish
+
+Kirgan o'yinchining progressi (`pixel-rpg-*` kalitlari) serverda ham saqlanadi:
+
+- **yuklash** — ilova ochilganda, menyuga qaytganda va internet qaytganda (`save/get`, faqat
+  versiya o'zgargan bo'lsa ma'lumot keladi);
+- **saqlash** — o'zgarishdan 10 soniya keyin (faqat olam joyi o'zgargan bo'lsa — daqiqada bir),
+  o'yin yopilganda yoki fonga o'tganda darhol (`keepalive`), akkauntdan chiqishdan oldin;
+- **oflayn** — progress qurilmada qoladi, internet qaytganda yuboriladi (urinishlar 10 s dan
+  5 daqiqagacha uzayadi);
+- **qurilmaga xos** narsalar bulutga kirmaydi: boshqaruv sozlamalari, ovoz, sessiya tokeni,
+  sinxron holati (`src/game/transfer.ts` — `DEVICE_KEYS`).
+
+**Ziddiyat qoidasi — versiya + vaqt.** Har saqlanishga server tartib raqami beradi. Qurilma oxirgi
+ko'rgan versiyadan davom etsa — saqlanadi. Orada boshqa qurilma saqlagan bo'lsa — progressi
+**keyinroq o'zgargani** qoladi; ikkinchisi yo'qolmaydi, serverdagi zaxiraga tushadi. O'yin
+paytida kelgan bulut nusxasi menyuga qaytganda qo'llanadi.
+
+**Zaxira (serverda, oxirgi 5 ta):** boshqa qurilmadan saqlanganda, ziddiyatda, tanlov oynasida,
+tiklashdan oldin va har 30 daqiqada. Profil → BULUT → ZAXIRALAR → TIKLASH.
+
+**Chegaralar** (`src/account/limits.ts`): oltin ≤ 1 000 000 va oldingi saqlanishdan beri
+≤ 3 000 + soatiga 2 000; bitta o'yin ochkosi ≤ 300 000 (cheksiz ≤ 3 000 000); XP ≤ 1 000 000
+va ≤ 5 000 + soatiga 3 000. Imkonsiz qiymat — saqlanish rad etiladi, bulutda eskisi qoladi.
+
 ## BotFather va server sozlamasi
 
 1. Kanal boti (TELEGRAM_BOT_TOKEN — kanalga post ham shu bot bilan).
