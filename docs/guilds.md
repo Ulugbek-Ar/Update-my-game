@@ -72,11 +72,71 @@ joy bo'lmasa — a'zo). Yolg'iz rahbar chiqsa — gildiya tarqaladi.
 
 Foydalar kichik: oltin narxlari, jang kuchi va bosslar o'zgarmaydi.
 
+Foydalar klientda qo'llanadi (gildiya qisqachasi qurilmada saqlanadi): XP qo'shimchasi —
+`src/account/xp.ts` (`setXpBonus`; kasr qoldig'i yig'iladi — 10 XP ning 2 % i ham yo'qolmaydi),
+kunlik sovg'a — `src/game/gift.ts` (`setGiftBonus`).
+
+## Xazina
+
+- A'zo xazinaga oltin qo'shadi: kamida 5, **kuniga ko'pi bilan 100** (Toshkent kuni, o'yinchi
+  bo'yicha — gildiya almashtirsa ham chegara bir xil). **1 oltin = 1 gildiya XP**. Xazinadan
+  oltin olinmaydi (gildiya darajasi uchun yig'iladi).
+- Oltin tuzishdagidek: server bulut bilan solishtiradi, klient faqat "ok" dan keyin yechadi,
+  `rid` bilan takroriy so'rov bir marta.
+- **Jurnal** (XAZINA bo'limi): hissalar, qo'shilish/chiqish, rollar, bajarilgan topshiriqlar —
+  gildiyaga oxirgi 200 yozuv (oynada 60 tasi).
+
+## Haftalik gildiya topshiriqlari
+
+Har dushanba 00:00 (Toshkent) yangilanadi. Har gildiyaga 3 ta: oddiy (dushmanlar, XP,
+to'lqinlar, o'yinlar), o'rta (bosslar, xazina) va maxsus (Kul qiroli, olam sirlari) guruhidan
+bittadan — gildiya va hafta bo'yicha aniq (`weeklyQuests`). Maqsad hafta boshidagi a'zolar
+soniga qarab: kichik (1–5), o'rta (6–14), katta (15+).
+
+| Topshiriq                 | Maqsad (kichik / o'rta / katta) | Har a'zoga | Gildiyaga |
+| ------------------------- | ------------------------------- | ---------- | --------- |
+| N ta dushman yenging      | 1 500 / 3 000 / 5 000           | 25 oltin   | 400 XP    |
+| N ta boss yenging         | 10 / 25 / 50                    | 30 oltin   | 500 XP    |
+| N ta to'lqinni tozalang   | 150 / 300 / 600                 | 20 oltin   | 300 XP    |
+| N ta o'yinni tugating     | 20 / 50 / 100                   | 20 oltin   | 300 XP    |
+| Olamda N ta sir toping    | 5 / 10 / 20                     | 35 oltin   | 500 XP    |
+| Kul qirolini N marta yeng | 2 / 5 / 10                      | 50 oltin   | 800 XP    |
+| Xazinaga N oltin to'plang | 500 / 1 200 / 2 500             | 20 oltin   | 300 XP    |
+| Birgalikda N XP to'plang  | 3 000 / 8 000 / 15 000          | 25 oltin   | 400 XP    |
+
+- **Hissani klient yubormaydi**: a'zoning bulutli saqlanishi qabul qilinganda (oldingi
+  versiyadan davom etgan bo'lsa) statistika (dushman, boss, to'lqin, o'yin), XP va olam
+  sirlaridagi o'sish hisoblanadi (`GuildLife.onSave`). Bitta saqlanishdagi o'sish cheklangan
+  (masalan, 3 000 dushman), ziddiyatli (boshqa qurilma) saqlanish hisobga kirmaydi.
+- **Kul qiroli** — olam serveri xabar qiladi: bir jangda bir gildiyadan bir nechta a'zo —
+  gildiyaga bitta g'alaba, har biriga ishtirok hissasi.
+- Har a'zoning hissasi topshiriq ostida ko'rinadi. Bajarilganda **hamma a'zolarga** oltin
+  sovg'asi va gildiyaga XP. Sovg'ani klient gildiya oynasi ochilganda o'zi oladi: olingan
+  oxirgi sovg'a raqami progressda (`pixel-rpg-guild`, bulutga ham ketadi) — ikki marta
+  berilmaydi. Menyuda GILDIYA miltillaydi (sovg'a, yangi xabar yoki ariza/taklif).
+- Yozuvlar tejamli: a'zoning haftalik hissasi — bitta qator (`guild_qc`), faqat shu haftaning
+  topshiriq turlari yoziladi.
+
+## Gildiya chati
+
+- Faqat gildiya ichida: 10 ta tayyor ibora va erkin matn (120 belgigacha). Haqoratli so'zlar
+  yulduzcha bilan yopiladi, havolalar `[havola]` bo'ladi, ko'rinmas belgilar olib tashlanadi
+  (`cleanChat`). 2 soniyada bitta xabar.
+- Serverda oxirgi **100 ta** xabar saqlanadi. Oyna ochiq turganda 5 s da bir yangilanadi
+  (faqat yangi xabarlar; xabar o'chirilsa — chat versiyasi o'zgaradi va ro'yxat to'liq keladi).
+- Xabarni o'chirish: o'zinikini — har kim; boshqanikini — rahbar va o'rinbosar (o'zidan past
+  roldagini). **Jim qilish** (10 daqiqa, 1 soat, 24 soat) — A'ZOLAR bo'limida, chiqarish
+  huquqi bilan bir xil: rahbar — hammani, o'rinbosar — a'zoni.
+
 ## Server jadvallari (`src/account/server/db.ts`)
 
 `guilds`, `guild_members`, `guild_requests` (ariza/taklif), `guild_cooldown` (24 soat),
-`guild_rids` (takroriy so'rovlar, 7 kun), `guild_log` (jurnal: gildiyaga oxirgi 200 yozuv).
-Akkaunt o'chirilsa: a'zolik, arizalar va jurnal yozuvlari o'chadi; rahbar bo'lsa — rahbarlik eng
+`guild_rids` (takroriy so'rovlar, 7 kun), `guild_log` (jurnal: gildiyaga oxirgi 200 yozuv),
+`guild_gifts` (kunlik hissa, 3 kun), `guild_week` (haftalik gildiya XP, topshiriqlar, Kul
+qiroli), `guild_quests` va `guild_qc` (topshiriqlar va hissalar, 5 hafta), `guild_rewards`
+(sovg'alar, 30 kun), `guild_chat` (gildiyaga 100 xabar) va `guild_chatrev`.
+Akkaunt o'chirilsa: a'zolik, arizalar, jurnal yozuvlari, hissalar, sovg'alar va chatdagi
+xabarlari o'chadi; rahbar bo'lsa — rahbarlik eng
 eski o'rinbosarga (yo'q bo'lsa — eng eski a'zoga) o'tadi, yolg'iz bo'lsa — gildiya tarqaladi.
 
 ## API (`POST /acc/<op>`, `src/account/protocol.ts`)
@@ -92,6 +152,9 @@ eski o'rinbosarga (yo'q bo'lsa — eng eski a'zoga) o'tadi, yolg'iz bo'lsa — g
 | `guild/leave`, `guild/kick`       | chiqish, chiqarish                                  |
 | `guild/role`, `guild/transfer`    | rol berish, rahbarlikni topshirish                  |
 | `guild/disband`, `guild/settings` | tarqatish; usul, til va gerb                        |
+| `guild/give`, `guild/log`         | xazinaga hissa (`gold`, `rid`), jurnal              |
+| `guild/chat`, `guild/say`         | chat (since, rev), yozish (matn yoki ibora)         |
+| `guild/unsay`, `guild/mute`       | xabarni o'chirish, jim qilish (daqiqa; 0 — olish)   |
 
 `presence` javobida `guild` — qisqacha (teg, gerb, daraja, rol va kutilayotgan arizalar/takliflar
 soni): menyudagi GILDIYA nishoni va daraja foydalari shu bilan ishlaydi (qurilmada saqlanadi).
