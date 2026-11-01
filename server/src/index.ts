@@ -4,6 +4,7 @@
  *   GET  /health          — versiya, xonalar soni, onlayn o'yinchilar, bugungi so'rovlar
  *   GET  /join?xona=&v=   — xona tanlash (kod bo'lmasa — avtomatik, to'la xonadan keyingisiga)
  *   GET  /ws?xona=KOD     — WebSocket: shu xonaning Durable Object'iga
+ *   GET  /zal?g=ID&v=     — Gildiya zali: versiya va bandlik tekshiruvi (JSON), WebSocket — zal DO'siga
  *   GET  /acc/config      — bot username (saytdagi Login Widget va bot havolasi)
  *   POST /acc/<op>        — akkaunt API: kirish, bulutli saqlanish, profil (AccountDO)
  *   POST /tg/<secret>     — Telegram bot webhook'i (yashirin yo'l, deploy workflow o'rnatadi)
@@ -11,14 +12,21 @@
  * Batafsil: docs/server.md, docs/accounts.md
  */
 import { GAME_VERSION } from "../../src/game/version";
-import { NET_VERSION, normalizeRoomCode, type JoinReply } from "../../src/realm/net/protocol";
+import {
+  NET_VERSION,
+  hallCode,
+  normalizeRoomCode,
+  type JoinReply,
+} from "../../src/realm/net/protocol";
 import { MAX_BODY, isOp } from "../../src/account/protocol";
 import { webhookSecret } from "../../src/account/server/telegram";
 import type { AccountDO } from "./account-do";
+import type { HallDO } from "./hall-do";
 import type { LobbyDO } from "./lobby-do";
 import type { RoomDO } from "./room-do";
 
 export { AccountDO } from "./account-do";
+export { HallDO } from "./hall-do";
 export { LobbyDO } from "./lobby-do";
 export { RoomDO } from "./room-do";
 
@@ -26,6 +34,8 @@ export interface Env {
   ROOM: DurableObjectNamespace<RoomDO>;
   LOBBY: DurableObjectNamespace<LobbyDO>;
   ACCOUNTS: DurableObjectNamespace<AccountDO>;
+  /** Gildiya zallari: har gildiyaga bitta DO ("hall:<raqam>") */
+  HALL: DurableObjectNamespace<HallDO>;
   /** Kanal boti tokeni: `wrangler secret put TELEGRAM_BOT_TOKEN` (deploy workflow'ida) */
   TELEGRAM_BOT_TOKEN?: string;
   /** Ixtiyoriy: bot username (berilmasa — getMe). Lokal sinov uchun .dev.vars'da */
@@ -90,6 +100,22 @@ export default {
         if (!code || req.headers.get("Upgrade") !== "websocket")
           return new Response("WebSocket va xona kodi kerak", { status: 400, headers: CORS });
         return env.ROOM.get(env.ROOM.idFromName(code)).fetch(req);
+      }
+      case "/zal": {
+        // Gildiya zali: a'zolikni zal DO'si (token orqali) tekshiradi
+        const g = Number(url.searchParams.get("g"));
+        if (!Number.isInteger(g) || g <= 0 || g > 1e9)
+          return json({ ok: false, reason: "bad" } satisfies JoinReply);
+        if (req.headers.get("Upgrade") === "websocket")
+          return env.HALL.get(env.HALL.idFromName(`hall:${g}`)).fetch(req);
+        if (Number(url.searchParams.get("v")) !== NET_VERSION)
+          return json({ ok: false, reason: "version" } satisfies JoinReply);
+        const { busy } = await lobby().extra(1);
+        return json(
+          busy
+            ? ({ ok: false, reason: "busy" } satisfies JoinReply)
+            : { ok: true, code: hallCode(g) },
+        );
       }
     }
     return new Response("Topilmadi", { status: 404, headers: CORS });

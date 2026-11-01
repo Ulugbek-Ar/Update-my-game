@@ -99,6 +99,12 @@ export class AccountDO extends DurableObject<Env> {
     return r;
   }
 
+  /** Gildiya zali xonasi (HallDO): zal bezagi — nom, teg, gerb, daraja va trofeylar */
+  async hallInfo(guild: number) {
+    this.count();
+    return this.store.guilds.hallInfo(guild);
+  }
+
   /** Bot username va raqami: getMe (bir marta, keyin SQLite meta'da) */
   private async botInfo() {
     const token = this.token;

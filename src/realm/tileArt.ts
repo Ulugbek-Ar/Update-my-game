@@ -54,6 +54,9 @@ export const TILE_COLOR: Record<TileName, string> = {
   cinder: "#4a2e24",
   opillar: "#4a3f66",
   cobs: "#2a2236",
+  hfloor: "#7a5230",
+  carpet: "#8a1e2a",
+  hwall: "#4a4452",
 };
 
 /** Kul tog'i: kul bilan qoplangan yer (dark — to'qroq dog'lar) */
@@ -492,6 +495,51 @@ export function drawTile(
       px(c, "#56282c", x + 1, y + 1, 6, 1);
       px(c, "#56282c", x + 9, y + 7, 5, 1);
       px(c, "#160909", x, y + 14, TILE, 2);
+      return;
+    }
+    case "hfloor": {
+      // Gildiya zali: ikki qator yog'och taxta, tirqishlar va mix
+      px(c, "#7a5230", x, y, TILE, TILE);
+      px(c, "#5a3a1e", x, y + 7, TILE, 1);
+      px(c, "#5a3a1e", x, y + 15, TILE, 1);
+      px(c, "#5a3a1e", x + ((tx * 5) % 13) + 1, y, 1, 7);
+      px(c, "#5a3a1e", x + ((tx * 7 + 6) % 13) + 1, y + 8, 1, 7);
+      px(c, "#8e6238", x + 1, y + 1, 5, 1);
+      px(c, "#8e6238", x + 8, y + 9, 6, 1);
+      if (r(3) < 0.3) px(c, "#3a2412", x + 3 + Math.floor(r(4) * 9), y + 3, 1, 1);
+      return;
+    }
+    case "carpet": {
+      // qizil gilam: chetlari oltin hoshiya (qo'shnisi gilam bo'lmasa), ichida naqsh
+      px(c, "#8a1e2a", x, y, TILE, TILE);
+      const left = at(-1, 0) !== TILE_IDS.carpet,
+        right = at(1, 0) !== TILE_IDS.carpet;
+      if (left) {
+        px(c, "#c9a25a", x, y, 2, TILE);
+        px(c, "#5a0e16", x + 2, y, 1, TILE);
+      }
+      if (right) {
+        px(c, "#c9a25a", x + 14, y, 2, TILE);
+        px(c, "#5a0e16", x + 13, y, 1, TILE);
+      }
+      if (ty % 2 === 0) {
+        px(c, "#c9a25a", x + 7, y + 6, 2, 4);
+        px(c, "#c9a25a", x + 6, y + 7, 4, 2);
+      } else px(c, "#a8323a", x + 4, y + 7, 8, 2);
+      return;
+    }
+    case "hwall": {
+      // qasr devori: kulrang tosh g'isht, pastida soya
+      px(c, "#4a4452", x, y, TILE, TILE);
+      px(c, "#2e2a36", x, y + 4, TILE, 1);
+      px(c, "#2e2a36", x, y + 9, TILE, 1);
+      px(c, "#2e2a36", x, y + 14, TILE, 1);
+      px(c, "#2e2a36", x + (ty % 2 ? 5 : 11), y, 1, 4);
+      px(c, "#2e2a36", x + (ty % 2 ? 12 : 2), y + 5, 1, 4);
+      px(c, "#2e2a36", x + (ty % 2 ? 7 : 14), y + 10, 1, 4);
+      px(c, "#5e5868", x + 1, y + 1, 4, 1);
+      px(c, "#5e5868", x + 8, y + 6, 3, 1);
+      if (at(0, 1) !== TILE_IDS.hwall) px(c, "#1c1a22", x, y + 14, TILE, 2);
       return;
     }
   }

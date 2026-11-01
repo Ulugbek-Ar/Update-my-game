@@ -13,8 +13,11 @@ import type { MobKind } from "../schema";
 import type { Mark, MobState } from "../mobs";
 import type { RaidNet } from "../raid";
 
-/** Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi (v3: Kul tog'i, olov sharlari) */
-export const NET_VERSION = 3;
+/**
+ * Protokol versiyasi: klient va server mos kelmasa — ulanish rad etiladi (v3: Kul tog'i, olov
+ * sharlari; v4: gildiyalar — ism yonida teg va gerb, Gildiya zali, vodiydagi gildiya darvozasi)
+ */
+export const NET_VERSION = 4;
 /** Xona sig'imi: to'lsa — avtomatik keyingi xona */
 export const ROOM_CAP = 8;
 /** Klient buyruqlarni ko'pi bilan shu chastotada yuboradi (va faqat o'zgarganda) */
@@ -338,10 +341,44 @@ export interface SnapshotMsg {
   ev?: RealmEvent[];
 }
 
-export type ErrReason = "full" | "busy" | "version" | "bad" | "rate";
+/** "member" — Gildiya zaliga faqat shu gildiya a'zolari kiradi */
+export type ErrReason = "full" | "busy" | "version" | "bad" | "rate" | "member";
+
+/** Gildiya zali bezagi: nom, teg, gerb, daraja (bayroqlar) va trofeylar (yengilgan bosslar) */
+export interface HallInfo {
+  id: number;
+  name: string;
+  tag: string;
+  emblem: string;
+  level: number;
+  trophies: string[];
+}
+
+/** O'tgan hafta eng kuchli gildiyasi — bayrog'i vodiy maydonida */
+export interface ChampInfo {
+  name: string;
+  tag: string;
+  emblem: string;
+  /** o'sha haftada to'plagan gildiya XP */
+  xp: number;
+  week: string;
+}
 
 export type ServerMsg =
-  | { t: "welcome"; pid: string; name: string; code: string; tick: number; n: number }
+  | {
+      t: "welcome";
+      pid: string;
+      name: string;
+      code: string;
+      tick: number;
+      n: number;
+      /** Gildiya zali (faqat zal xonasida) */
+      hall?: HallInfo;
+      /** hafta g'olibi (vodiy xonasida) */
+      champ?: ChampInfo | null;
+    }
+  /** zal bezagi o'zgardi (daraja, gerb, yangi trofey) */
+  | { t: "hall"; hall: HallInfo }
   | SnapshotMsg
   | { t: "pong"; id: number }
   | { t: "chat"; pid: string; name: string; p: number }
@@ -358,4 +395,8 @@ export const ERR_TEXT: Record<ErrReason, string> = {
   version: "Yangi versiyani yuklang — server yangilangan",
   bad: "Ulanish xatosi",
   rate: "Juda ko'p buyruq — ulanish uzildi",
+  member: "Gildiya zaliga faqat shu gildiya a'zolari kiradi",
 };
+
+/** Gildiya zali xonasining kodi (lobbi va HUD uchun) */
+export const hallCode = (guild: number) => `G${guild}`;

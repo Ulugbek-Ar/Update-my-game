@@ -20,7 +20,8 @@ import { XP, addXp, awardRealm } from "@/account/xp";
 import { addStats } from "@/account/stats";
 import { account } from "@/account/account";
 import { REALM_SAVE_KEY, loadBossKeys, takeRealmInbox } from "@/game/realmLink";
-import { loadRealmData } from "./data";
+import { cachedGuild } from "@/account/guild";
+import { loadHallData, loadRealmData } from "./data";
 import {
   RealmSim,
   TICK_DT,
@@ -31,9 +32,9 @@ import {
   type RealmWorldSave,
 } from "./sim";
 import { RARITY_COLOR } from "./icons";
-import { MOB_STATS } from "./mobs";
+import { DUMMY_RESET, MOB_STATS } from "./mobs";
 import { KING_INTRO, TITLE_TEXT } from "./raid";
-import { RealmRenderer, VIEW_H, VIEW_W, type Panel, type RealmView } from "./render";
+import { RealmRenderer, VIEW_H, VIEW_W, type HallView, type Panel, type RealmView } from "./render";
 import {
   ANIMS,
   NET_VERSION,
@@ -42,7 +43,7 @@ import {
   type HelloMsg,
   type ServerMsg,
 } from "./net/protocol";
-import { NetSession, browserDeps, type NetDeps, type NetStatus } from "./net/session";
+import { NetSession, browserDeps, hallDeps, type NetDeps, type NetStatus } from "./net/session";
 import { RealmMirror } from "./net/mirror";
 import { Predictor, SNAP_DIST } from "./net/predict";
 import { SERVER_URL, guestTag, inviteLink, onlineWanted } from "./net/config";
@@ -61,6 +62,17 @@ export interface RealmOptions {
   room?: string | null;
   /** "Yoniga kirish" (do'stlar ro'yxati): shu akkaunt yoniga */
   nearAcc?: number | null;
+  /** Gildiya zali (v3.3): shu gildiyaning xonasi — faqat onlayn, olamdagi joy saqlanib qoladi */
+  hall?: { guild: number } | null;
+}
+
+/** Gildiya obyektlari (sim "guild" voqeasi): oyna bo'limi */
+export type GuildPanel = "treasury" | "quests" | "members";
+
+/** Qurilmadagi gildiya qisqachasidan zal bezagi (server welcome'gacha) */
+function hallFromCache(): HallView | null {
+  const g = cachedGuild();
+  return g ? { name: g.name, tag: g.tag, emblem: g.emblem, level: g.level, trophies: [] } : null;
 }
 /** Har shuncha soniyada avtomatik saqlash */
 const SAVE_EVERY = 10;
@@ -118,6 +130,14 @@ export class RealmClient {
   onSettings: (() => void) | null = null;
   /** Onlayn xonaga ulandi (kod) yoki oflayn (null) — do'stlar "yoniga kirish" uchun */
   onRoom: ((code: string | null) => void) | null = null;
+  /** Gildiya zali rejimi (null — oddiy olam) */
+  readonly hall: { guild: number } | null;
+  /** Vodiydagi gildiya darvozasi: shu gildiya zaliga o'tish (menyu klientni almashtiradi) */
+  onEnterHall: ((guild: number) => void) | null = null;
+  /** Zaldan chiqish (eshik, pauza yoki ulanish uzildi): vodiyga qaytish, xabar bilan */
+  onLeaveHall: ((notice: string | null) => void) | null = null;
+  /** Zaldagi sandiq, taxta va kitob: GILDIYA oynasining bo'limi */
+  onGuildPanel: ((tab: GuildPanel) => void) | null = null;
   private offSettings: (() => void) | null = null;
   view: RealmView;
   private renderer = new RealmRenderer();
@@ -153,6 +173,7 @@ export class RealmClient {
   ) {
     this.room = opts.room ?? null;
     this.nearAcc = opts.nearAcc ?? null;
+    this.hall = opts.hall ?? null;
     // olamda ham faqat ochilgan (sotib olingan) qahramon o'ynaydi
     hero = this.hero = playableHero(hero);
     this.ctx = canvas.getContext("2d")!;
@@ -162,12 +183,19 @@ export class RealmClient {
     const settings = loadSettings();
     this.shakeOn = settings.shake;
     sfx.setVolumes(settings.music, settings.sfx);
-    this.sim = new RealmSim(loadRealmData());
+    this.sim = new RealmSim(this.hall ? loadHallData() : loadRealmData());
     const save = loadRealmSave();
-    if (save) this.sim.loadWorld(save.world);
-    this.me = this.sim.addPlayer(this.pid, hero, save?.player ?? null);
+    if (save && !this.hall) this.sim.loadWorld(save.world);
+    // zalda — eshik oldida (olamdagi joy realm saqlanishida qoladi)
+    const [hx, hy] = this.sim.region.spawn;
+    const player = save?.player
+      ? this.hall
+        ? { ...save.player, x: hx * 16 + 8, y: hy * 16 + 8 }
+        : save.player
+      : null;
+    this.me = this.sim.addPlayer(this.pid, hero, player);
     // oltin asosiy o'yin bilan umumiy: eski saqlanishdagi olam oltini bir marta hisobga qo'shiladi
-    if (save && !save.sharedGold && save.player.gold > 0) addGold(save.player.gold);
+    if (save && !save.sharedGold && save.player.gold > 0 && !this.hall) addGold(save.player.gold);
     this.me.gold = this.gold = loadGold();
     this.me.keys = [...loadBossKeys()];
     this.view = {
@@ -178,7 +206,7 @@ export class RealmClient {
       fx: this.fx,
       touch: false,
       keys: this.input.keyBinds,
-      panel: save?.intro ? "none" : "intro",
+      panel: save?.intro || this.hall ? "none" : "intro",
       sel: 0,
       hover: null,
       cracks: [],
@@ -190,6 +218,10 @@ export class RealmClient {
       shake: 0,
       buttons: [],
       net: { mode: "offline", n: 1, ping: 0, code: null },
+      hall: this.hall ? hallFromCache() : null,
+      myGuild: cachedGuild(),
+      champ: null,
+      dps: null,
       names: new Map(),
       bubbles: new Map(),
       chatOpen: false,
@@ -211,10 +243,11 @@ export class RealmClient {
         chat: () => this.toggleChat(),
         say: (i) => this.say(i),
         reconnect: () => this.connect(),
+        leaveHall: () => this.leaveHall(null),
       },
     };
-    // asosiy o'yindan kelgan buyumlar (masalan, Iblis shoxi)
-    for (const item of takeRealmInbox()) {
+    // asosiy o'yindan kelgan buyumlar (masalan, Iblis shoxi) — zalda emas (zal saqlanmaydi)
+    for (const item of this.hall ? [] : takeRealmInbox()) {
       this.sim.grant(this.me, item);
       const def = this.sim.data.items[item];
       if (def) this.toast(`Asosiy o'yindan keldi: ${def.name}`, RARITY_COLOR[def.rarity]);
@@ -237,7 +270,12 @@ export class RealmClient {
   }
 
   /** Server bilan ulanish (start'da avtomatik). deps — test/dev uchun boshqa tarmoq. */
-  connect(deps: NetDeps = browserDeps(SERVER_URL, NET_VERSION), room = this.room) {
+  connect(
+    deps: NetDeps = this.hall
+      ? hallDeps(SERVER_URL, NET_VERSION, this.hall.guild)
+      : browserDeps(SERVER_URL, NET_VERSION),
+    room = this.room,
+  ) {
     this.net?.close();
     this.goOffline();
     this.room = room;
@@ -268,7 +306,11 @@ export class RealmClient {
   }
 
   private onNet(m: ServerMsg) {
-    if (m.t === "welcome") this.goOnline(m.pid, m.code, m.tick, m.n);
+    if (m.t === "welcome") {
+      if (m.hall) this.view.hall = m.hall;
+      if (m.champ !== undefined) this.view.champ = m.champ;
+      this.goOnline(m.pid, m.code, m.tick, m.n);
+    } else if (m.t === "hall") this.view.hall = m.hall;
     else if (m.t === "s") this.mirror?.apply(m, performance.now() / 1000);
     else if (m.t === "chat") this.onChat(m.pid, m.name, m.p);
   }
@@ -278,6 +320,11 @@ export class RealmClient {
     const v = this.view.net;
     if (s === "online") {
       v.mode = "online";
+      return;
+    }
+    // Gildiya zali faqat onlayn: ulanib bo'lmadi yoki uzildi — vodiyga qaytiladi
+    if (this.hall && s === "offline") {
+      this.leaveHall(net.notice ?? "Gildiya zali faqat onlayn ochiladi — internetni tekshiring");
       return;
     }
     // uzildi yoki rad etildi: shu joydan oflayn davom etadi
@@ -291,7 +338,8 @@ export class RealmClient {
 
   /** Onlaynga o'tish: ko'zgu joriy progressdan quriladi, keyin server holati bilan to'ladi */
   private goOnline(pid: string, code: string, tick: number, n: number) {
-    this.onRoom?.(code);
+    // zal kodi do'stlarga "yoniga kirish" uchun emas (faqat a'zolar)
+    this.onRoom?.(this.hall ? null : code);
     const keys = this.me.keys;
     const mirror = new RealmMirror(
       this.sim.data,
@@ -311,7 +359,13 @@ export class RealmClient {
     Object.assign(this.view.net, { mode: "online", n, code });
     const notice = this.net?.notice;
     if (notice && this.net) this.net.notice = null;
-    this.toast(notice ?? `Onlayn: ${code} xonasi`, notice ? "#ff9a3c" : "#7be07b");
+    if (this.hall)
+      this.banner(
+        "GILDIYA ZALI",
+        this.view.hall ? `[${this.view.hall.tag}] ${this.view.hall.name}` : "",
+        "#ffd97a",
+      );
+    else this.toast(notice ?? `Onlayn: ${code} xonasi`, notice ? "#ff9a3c" : "#7be07b");
   }
 
   /** Oflaynga o'tish: ko'zgudagi dunyo va progress bilan mahalliy RealmSim */
@@ -619,6 +673,8 @@ export class RealmClient {
 
   save() {
     this.flushProfile();
+    // Gildiya zali olam saqlanishiga yozilmaydi (olamdagi joy va dunyo o'zgarmaydi)
+    if (this.hall) return;
     const player = this.sim.savePlayer(this.pid);
     if (!player) return;
     writeRealmSave({
@@ -633,6 +689,58 @@ export class RealmClient {
   /** Tashqaridan xabar (do'stdan tayyor ibora) — olam ichida qisqa yozuv */
   notify(text: string) {
     this.toast(text, "#9fd0ef");
+  }
+
+  /** Gildiya obyekti bosildi (sim "guild" voqeasi) */
+  private onGuild(what: "gate" | "flag" | "treasury" | "quests" | "members" | "exit") {
+    if (what === "gate") return this.enterHall();
+    if (what === "exit") return this.leaveHall(null);
+    if (what === "flag") return this.showChampion();
+    this.onGuildPanel?.(what);
+  }
+
+  /** Vodiydagi gildiya darvozasi: faqat kirgan, gildiyadagi va onlayn o'yinchi kiradi */
+  private enterHall() {
+    if (this.hall) return;
+    const g = cachedGuild();
+    if (!account.loggedIn)
+      return this.toast("Gildiya zali: avval Telegram bilan kiring", "#ff9a3c");
+    if (!g)
+      return this.toast(
+        "Gildiya darvozasi faqat gildiya a'zolari uchun — menyuda GILDIYA",
+        "#ff9a3c",
+      );
+    if (!SERVER_URL || !onlineWanted())
+      return this.toast("Gildiya zali faqat onlayn ochiladi", "#ff9a3c");
+    // olamdagi joy shu yerda saqlanadi — qaytganda darvoza oldida
+    this.save();
+    this.onEnterHall?.(g.id);
+  }
+
+  /** Zaldan vodiyga (eshik, HUD tugmasi yoki ulanish uzildi) */
+  private leaveHall(notice: string | null) {
+    if (!this.hall) return;
+    this.flushProfile();
+    this.onLeaveHall?.(notice);
+  }
+
+  /** Hafta g'olibi bayrog'i (4-bosqich) */
+  private showChampion() {
+    const c = this.view.champ;
+    this.me.ui = {
+      kind: "sign",
+      title: "HAFTA G'OLIBI",
+      text: c
+        ? [
+            `[${c.tag}] ${c.name}`,
+            `O'tgan haftada ${c.xp} gildiya XP to'pladi — eng kuchli gildiya.`,
+            "Bayrog'i hafta davomida shu maydonda hilpiraydi.",
+          ]
+        : [
+            "Bayroq hali bo'sh.",
+            "Hafta yakunida eng ko'p gildiya XP to'plagan gildiya bayrog'i shu yerda hilpiraydi.",
+          ],
+    };
   }
 
   /** O'yinchi darajasi va profil: olamdagi vaqt, o'ldirishlar, topshiriq va sirlar uchun XP */
@@ -1019,7 +1127,18 @@ export class RealmClient {
     const fx = this.fx;
     const mine = !("pid" in e) || e.pid === this.pid;
     switch (e.type) {
+      case "guild":
+        if (mine) this.onGuild(e.what);
+        return;
       case "hit":
+        // mashq qo'g'irchog'i: o'zi bergan zarar hisobi (4 s urilmasa — yangidan)
+        if (e.kind === "dummy" && e.pid === this.pid) {
+          const d = this.view.dps;
+          this.view.dps =
+            d && this.time - d.last < DUMMY_RESET
+              ? { total: d.total + e.dmg, start: d.start, last: this.time, hits: d.hits + 1 }
+              : { total: e.dmg, start: this.time, last: this.time, hits: 1 };
+        }
         if (e.kind === "wall") {
           fx.burst(e.x, e.y, "#8a8692", 8, 50, 2);
           sfx.chestHit();

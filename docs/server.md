@@ -17,7 +17,8 @@ o'yin (brauzer, Telegram, Android)
 Worker (server/src/index.ts)
    ├─ LobbyDO   (bitta, "lobby")    — xonalar ro'yxati, kunlik limitlar hisobi, /health
    ├─ RoomDO    (har xona — bitta)  — RealmRoom → RealmSim, 20 Hz tick
-   └─ AccountDO (bitta, "accounts") — akkaunt, sessiya, bulutli saqlanish (SQLite)
+   ├─ HallDO    (har gildiya — bitta, "hall:<raqam>") — Gildiya zali: HallRoom → RealmSim
+   └─ AccountDO (bitta, "accounts") — akkaunt, sessiya, bulutli saqlanish, gildiyalar (SQLite)
                                       POST /acc/<op>, Telegram webhook POST /tg/<secret>
 ```
 
@@ -82,6 +83,9 @@ kodlari ishlatilgach o'chadi. Jadvallar — `src/account/server/db.ts` (`SCHEMA`
 - `GET /join?v=1[&xona=KOD]` — `{ ok: true, code }` yoki `{ ok: false, reason: "busy" | "full" | "version" | "bad" }`
 - `GET /ws?xona=KOD` — WebSocket. Birinchi xabar — `hello` (protokol versiyasi, mehmon raqami,
   qahramon, progress). Keyin `cmd` (buyruqlar), `ping`, `chat` (faqat tayyor ibora raqami).
+- `GET /zal?g=ID&v=4` — Gildiya zali: versiya va bandlik (`{ ok: true, code: "G<ID>" }`),
+  WebSocket (Upgrade) — shu gildiya zali DO'siga. Kirish faqat a'zolarga (hello'dagi `acct`),
+  aks holda `err: member`. Batafsil — [docs/guilds.md](guilds.md).
 - `GET /acc/config` — `{ ok, bot, botId }` (saytdagi Login Widget va bot havolasi uchun).
 - `POST /acc/<op>` — akkaunt API (`src/account/protocol.ts`): tana — JSON, `Content-Type: text/plain`
   (CORS preflight'siz), javob doim `{ ok, ... }` yoki `{ ok: false, error }`.
@@ -129,7 +133,9 @@ O'yin build'lari server manzilini `VITE_SERVER_URL` dan oladi (`pages.yml`, `and
 `telegram-post.yml`). Berilmasa — olam faqat oflayn.
 
 **Protokolni o'zgartirsangiz** (`protocol.ts`) — `NET_VERSION` ni oshiring: eski klientlar
-"Yangi versiyani yuklang" deb oflayn qoladi, yangilari serverga ulanadi.
+"Yangi versiyani yuklang" deb oflayn qoladi, yangilari serverga ulanadi. (v4 — v3.3 gildiyalar:
+ism yonida teg va gerb, Gildiya zali, vodiydagi gildiya darvozasi.) Yangi Durable Object klassi
+qo'shilsa — `wrangler.toml` ga yangi migratsiya (`v3` — `HallDO`).
 
 ## Lokal sinov
 

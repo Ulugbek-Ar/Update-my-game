@@ -94,6 +94,50 @@ export function counters(data: Record<string, string> | null): Record<Counter, n
   return out;
 }
 
+/** Gildiya zali trofeylari: yengilgan bosslar */
+export const TROPHIES = ["devil", "queen", "king", "warden", "ashking"] as const;
+
+/**
+ * Saqlanishdagi yengilgan bosslar: asosiy o'yin bosslari (darvoza kalitlari, yutuqlar, yutilgan
+ * dunyolar), olamda — Xaroba Sardori (Xaroba siri topshirig'i yoki Sardor qilichi) va Kul qiroli
+ * (unvon). A'zo saqlanganda gildiyaning trofeylariga qo'shiladi.
+ */
+export function trophiesIn(data: Record<string, string>): string[] {
+  const list = (k: string) => {
+    try {
+      const v = JSON.parse(data[k] ?? "[]") as unknown;
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+  const keys = list("pixel-rpg-realm-keys");
+  const ach = list("pixel-rpg-achievements");
+  const out = new Set<string>();
+  if (keys.includes("devil") || ach.includes("boss") || data["pixel-rpg-world1-won"])
+    out.add("devil");
+  if (keys.includes("queen") || ach.includes("queen") || data["pixel-rpg-world2-won"])
+    out.add("queen");
+  if (keys.includes("king") || data["pixel-rpg-world3-won"]) out.add("king");
+  try {
+    const p = (
+      JSON.parse(data[REALM_KEY] ?? "null") as {
+        player?: {
+          titles?: unknown;
+          quests?: Record<string, { status?: unknown }>;
+          inv?: ({ item?: unknown } | null)[];
+        };
+      } | null
+    )?.player;
+    if (Array.isArray(p?.titles) && p.titles.includes("ashking")) out.add("ashking");
+    if (p?.quests?.["ruins"]?.status === "done" || p?.inv?.some((s) => s?.item === "wardblade"))
+      out.add("warden");
+  } catch {
+    /* buzuq olam saqlanishi */
+  }
+  return TROPHIES.filter((t) => out.has(t));
+}
+
 /** Keyingi Toshkent yarim tuni (kunlik hissa chegarasi yangilanadi) */
 export function nextTashkentDay(now: number) {
   return Date.parse(`${tashkentDay(now)}T00:00:00Z`) - TASHKENT_OFFSET + DAY;
@@ -294,6 +338,8 @@ export class GuildLife {
     for (const k of Object.keys(DELTA_CAP) as Counter[])
       if (active.has(k)) d[k] = Math.max(0, Math.min(DELTA_CAP[k], b[k] - a[k]));
     if (this.contribute(guild, week, player, d)) this.check(guild, week, now);
+    // zal devoridagi trofeylar: a'zo yenggan bosslar
+    this.guilds.addTrophies(guild, trophiesIn(next));
     this.prune(now);
   }
 
@@ -312,6 +358,7 @@ export class GuildLife {
     }
     for (const [guild, ids] of byGuild) {
       this.addWeek(guild, week, "ashking", 1);
+      this.guilds.addTrophies(guild, ["ashking"]);
       const qs = this.ensureQuests(guild, week);
       if (qs.some((q) => kindOf(q.kind) === "ashking"))
         for (const id of ids) this.contribute(guild, week, id, { ashking: 1 });

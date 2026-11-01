@@ -83,7 +83,20 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     ghost: true,
     name: "KUL RUHI",
   },
+  // Gildiya zali: mashq qo'g'irchog'i — joyidan qimirlamaydi, hujum qilmaydi, o'lmaydi (sim.ts)
+  dummy: {
+    hp: 999,
+    speed: 0,
+    size: 16,
+    aggro: 0,
+    leash: 9999,
+    heavy: true,
+    name: "MASHQ QO'G'IRCHOG'I",
+  },
 };
+
+/** Mashq qo'g'irchog'i: shuncha vaqt urilmasa — zarar hisobi nollanadi */
+export const DUMMY_RESET = 4;
 
 /** Kul ruhi: masofa saqlab olov shari otadi */
 export const SPIRIT_SHOT_EVERY = 2.2;

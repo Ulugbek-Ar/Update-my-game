@@ -48,6 +48,7 @@ import { weekKey } from "../scoring";
 import { first, num, str, type Row } from "./db";
 import { GuildLife } from "./guildLife";
 import type { AccountStore, PlayerRow } from "./store";
+import type { HallInfo } from "@/realm/net/protocol";
 
 const DAY = 86_400_000;
 /** Faollik: shu oraliqda o'ynagan a'zolar */
@@ -217,6 +218,34 @@ export class Guilds {
       reward: this.life.lastReward(player),
       chat: this.life.lastChat(num(r.id)),
     };
+  }
+
+  /** Gildiya zali bezagi (zal xonasi so'raydi): nom, teg, gerb, daraja va trofeylar */
+  hallInfo(id: number): HallInfo | null {
+    const g = this.row(id);
+    if (!g) return null;
+    return {
+      id: num(g.id),
+      name: str(g.name),
+      tag: str(g.tag),
+      emblem: str(g.emblem),
+      level: guildLevel(num(g.xp)),
+      trophies: str(g.trophies).split(",").filter(Boolean),
+    };
+  }
+
+  /** Trofey (yengilgan boss boshi zal devorida): yangilari qo'shiladi */
+  addTrophies(guild: number, list: readonly string[]) {
+    const g = this.row(guild);
+    if (!g || !list.length) return;
+    const have = str(g.trophies).split(",").filter(Boolean);
+    const fresh = list.filter((t) => !have.includes(t));
+    if (!fresh.length) return;
+    this.db.exec(
+      "UPDATE guilds SET trophies = ? WHERE id = ?",
+      [...have, ...fresh].join(","),
+      guild,
+    );
   }
 
   /** Qachongacha qo'shila olmaydi (ms; 0 — hozir mumkin) */

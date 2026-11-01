@@ -38,6 +38,7 @@ import {
 import type { GuildCard, GuildInfo, GuildMember, GuildMine, GuildNone } from "@/account/protocol";
 import { useAccount } from "@/account/useAccount";
 import { loadGold } from "@/game/shop";
+import { lockGameKeys } from "@/game/input";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { EmblemEditor } from "./EmblemEditor";
 import { ChatTab, QuestsTab, TreasuryTab } from "./GuildLifeTabs";
@@ -916,9 +917,14 @@ export function GuildWindow({
   const v = useGuild();
   useEffect(() => {
     void guild.refresh();
+    // olamda (Gildiya zali) ochilganda: yozish va tugmalar qahramonni yurgizmasin
+    const release = lockGameKeys();
     // oyna ochiq turganda (a'zolar onlayn holati, arizalar) yangilanib turadi
     const id = window.setInterval(() => void guild.refresh(), 30_000);
-    return () => window.clearInterval(id);
+    return () => {
+      release();
+      window.clearInterval(id);
+    };
   }, []);
   if (!a.me) return null;
   const st = v.state;

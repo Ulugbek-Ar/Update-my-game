@@ -11,7 +11,8 @@ import type { RealmClient } from "../client";
 import { TICK_DT } from "../sim";
 import { Loopback } from "./loopback";
 import { NetSession } from "./session";
-import { NET_VERSION, type NetIdent } from "./protocol";
+import { NET_VERSION, hallCode, type HallInfo, type NetIdent } from "./protocol";
+import { HallRoom } from "./hall";
 import { account } from "@/account/account";
 import { cachedGuild } from "@/account/guild";
 
@@ -27,6 +28,8 @@ export interface DemoBot {
   nick?: string;
   level?: number;
   guild?: { tag: string; emblem: string };
+  /** shu plitkada turadi (masalan, zalda — sandiq yonida) */
+  at?: [number, number];
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -37,8 +40,16 @@ export async function startDemo(
     { hero: "mage", tag: "1357", say: 0 },
     { hero: "hunter", tag: "2468", walk: true },
   ],
+  hall: HallInfo | null = null,
 ) {
   const lb = new Loopback();
+  // Gildiya zali: sahifa ichidagi zal xonasi (a'zolar — o'zi va botlar)
+  if (hall)
+    lb.makeRoom = () => {
+      const r = new HallRoom(hall.id);
+      r.info = hall;
+      return r;
+    };
   // akkaunt: o'zi (demo akkaunt — __accountDemo) va taxallusli botlar
   const idents = new Map<string, NetIdent>();
   const me = account.state.me;
@@ -57,12 +68,13 @@ export async function startDemo(
         id: 100 + i,
         nick: b.nick,
         level: b.level ?? 1,
-        ...(b.guild ? { guild: { id: 7, ...b.guild } } : {}),
+        ...(b.guild ? { guild: { id: hall?.id ?? g?.id ?? 7, ...b.guild } } : {}),
       });
   });
   lb.identify = (t) => idents.get(t) ?? null;
   setInterval(() => lb.step(), TICK_DT * 1000);
-  client.connect(lb.deps(), null);
+  // zal — o'z kodi bilan (botlar ham shu xonaga), olam — avtomatik xona
+  client.connect(lb.deps(), hall ? hallCode(hall.id) : null);
   for (let i = 0; i < 50 && !client.online; i++) await wait(50);
   for (const [i, bot] of bots.entries()) {
     const net = new NetSession(lb.deps(), {
@@ -80,6 +92,13 @@ export async function startDemo(
     });
     net.start();
     for (let i = 0; i < 50 && net.status !== "online"; i++) await wait(20);
+    if (bot.at) {
+      const rp = lb.rooms.get(net.code ?? "")?.sim.players.get(net.pid);
+      if (rp) {
+        rp.p.x = rp.px = bot.at[0] * 16 + 8;
+        rp.p.y = rp.py = bot.at[1] * 16 + 8;
+      }
+    }
     let s = 0;
     if (bot.say !== undefined) setTimeout(() => net.chat(bot.say!), 400);
     if (bot.walk) {
@@ -96,4 +115,31 @@ export async function startDemo(
     }
   }
   return lb;
+}
+
+/**
+ * Gildiya zali (dev): olam ichida `window.__realm.onEnterHall(7)` dan keyin (zal klienti ochiladi)
+ *   await window.__hallDemo()  — sahifa ichidagi zal xonasi, gildiya a'zolari (botlar)
+ */
+export function startHallDemo(client: RealmClient, bots?: DemoBot[], info?: Partial<HallInfo>) {
+  const g = cachedGuild();
+  const hall: HallInfo = {
+    id: g?.id ?? 7,
+    name: g?.name ?? "Qal'a Qo'riqchilari",
+    tag: g?.tag ?? "PQ",
+    emblem: g?.emblem ?? "0-0-3-1",
+    level: g?.level ?? 6,
+    trophies: ["devil", "queen", "warden", "ashking"],
+    ...info,
+  };
+  const tag = { tag: hall.tag, emblem: hall.emblem };
+  return startDemo(
+    client,
+    bots ?? [
+      { hero: "mage", tag: "1357", say: 0, nick: "Dilnoza", level: 14, guild: tag, at: [9, 10] },
+      { hero: "paladin", tag: "2468", nick: "Temur_99", level: 27, guild: tag, at: [21, 17] },
+      { hero: "hunter", tag: "3579", nick: "Malika", level: 22, guild: tag, at: [19, 10] },
+    ],
+    hall,
+  );
 }

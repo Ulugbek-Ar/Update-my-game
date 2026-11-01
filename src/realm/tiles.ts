@@ -48,6 +48,10 @@ export const TILE_IDS = {
   cinder: 40,
   opillar: 41,
   cobs: 42,
+  // Gildiya zali (v3.3): yog'och pol, gilam va qasr devori
+  hfloor: 43,
+  carpet: 44,
+  hwall: 45,
 } as const;
 
 export type TileName = keyof typeof TILE_IDS;
@@ -78,6 +82,7 @@ const SOLID_NAMES: readonly TileName[] = [
   "twall",
   "opillar",
   "cobs",
+  "hwall",
 ];
 /** id -> devor/suv/daraxt (yurib bo'lmaydi) */
 export const SOLID: boolean[] = TILE_BY_ID.map((n) => SOLID_NAMES.includes(n));

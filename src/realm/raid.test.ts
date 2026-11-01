@@ -21,6 +21,7 @@ import {
 } from "./raid";
 import { RealmMirror } from "./net/mirror";
 import { RealmRoom } from "./net/room";
+import { NET_VERSION } from "./net/protocol";
 
 const data = loadRealmData();
 
@@ -372,7 +373,7 @@ describe("Onlayn: boss holati serverda, klient ko'zgusida bir xil", () => {
       conn,
       JSON.stringify({
         t: "hello",
-        v: 3,
+        v: NET_VERSION,
         tag: "1234",
         hero: "paladin",
         save: null,

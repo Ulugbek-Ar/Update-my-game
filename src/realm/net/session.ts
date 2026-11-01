@@ -273,3 +273,29 @@ export function browserDeps(base: string, version: number): NetDeps {
     now: () => performance.now(),
   };
 }
+
+/**
+ * Gildiya zali: /zal?g=ID&v= — versiya va bandlik (lobbi), keyin WebSocket shu gildiya zali
+ * DO'siga. A'zolikni zal o'zi tekshiradi (salomlashuvdagi akkaunt tokeni bilan).
+ */
+export function hallDeps(base: string, version: number, guild: number): NetDeps {
+  return {
+    async join() {
+      const q = new URLSearchParams({ g: String(guild), v: String(version) });
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), CONNECT_TIMEOUT);
+      try {
+        const r = await fetch(`${base}/zal?${q}`, { signal: ctl.signal, cache: "no-store" });
+        return (await r.json()) as JoinReply;
+      } finally {
+        clearTimeout(t);
+      }
+    },
+    open() {
+      return new WebSocket(
+        `${base.replace(/^http/, "ws")}/zal?g=${encodeURIComponent(String(guild))}`,
+      ) as unknown as SocketLike;
+    },
+    now: () => performance.now(),
+  };
+}

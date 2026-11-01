@@ -23,6 +23,11 @@ class_name = "LobbyDO"
 name = "ACCOUNTS"
 class_name = "AccountDO"
 
+# Gildiya zallari: har gildiyaga bitta DO ("hall:<raqam>"), bo'sh bo'lsa uxlaydi — docs/guilds.md
+[[durable_objects.bindings]]
+name = "HALL"
+class_name = "HallDO"
+
 # Bepul tarif faqat SQLite saqlashli Durable Object'larni qo'llaydi
 [[migrations]]
 tag = "v1"
@@ -31,6 +36,10 @@ new_sqlite_classes = ["RoomDO", "LobbyDO"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["AccountDO"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["HallDO"]
 
 # TELEGRAM_BOT_TOKEN — secret (`wrangler secret put`, .github/workflows/server.yml), bu yerga yozilmaydi.
 # Lokal sinov: server/.dev.vars faylida TELEGRAM_BOT_TOKEN=... (git'ga kirmaydi)

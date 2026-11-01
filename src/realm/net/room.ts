@@ -149,6 +149,8 @@ export class RealmRoom {
   readonly members = new Map<string, Member>();
   /** yangi o'yinchi qabul qilinmaydi (kunlik limitga yaqin) */
   busy = false;
+  /** xona sig'imi (olam — 8, Gildiya zali — gildiya a'zolari soniga yetadi) */
+  cap = ROOM_CAP;
   /** kiruvchi xabarlar soni (Cloudflare limiti: 20 xabar = 1 so'rov) */
   inbound = 0;
   private rand: () => number;
@@ -200,7 +202,8 @@ export class RealmRoom {
       case "ping":
         return send(conn, { t: "pong", id: msg.id });
       case "cmd":
-        m.queue.push({ s: msg.s, c: msg.c });
+        // ruxsatsiz buyruqlar tashlanadi (to'plam qoladi — klient tick hisobi buzilmasin)
+        m.queue.push({ s: msg.s, c: msg.c.filter((c) => this.allowCmd(c)) });
         if (m.queue.length > QUEUE_MAX) m.queue.shift();
         return;
       case "chat":
@@ -208,6 +211,31 @@ export class RealmRoom {
         m.chatAt = now;
         return this.broadcast({ t: "chat", pid: m.pid, name: m.name, p: msg.p });
     }
+  }
+
+  /** Kirishga ruxsat (Gildiya zali — faqat a'zolar); null — mumkin */
+  protected admit(_hello: HelloMsg, _ident: NetIdent | null): ErrReason | null {
+    return null;
+  }
+
+  /** Kirish joyi (Gildiya zali — eshik oldi; olamda — o'z saqlangan joyi) */
+  protected entry(save: RealmPlayerSave | null): RealmPlayerSave | null {
+    return save;
+  }
+
+  /** welcome xabaridagi qo'shimcha (zal bezagi, hafta g'olibi) */
+  protected welcomeExtra(): Partial<Extract<ServerMsg, { t: "welcome" }>> {
+    return {};
+  }
+
+  /** Buyruq ruxsatmi (zalda buyum ishlatish va savdo yo'q) */
+  protected allowCmd(_c: RealmCommand): boolean {
+    return true;
+  }
+
+  /** Hammaga xabar (zal bezagi o'zgardi) */
+  protected broadcastMsg(msg: ServerMsg) {
+    this.broadcast(msg);
   }
 
   /** Ulanish yopildi */
@@ -235,8 +263,10 @@ export class RealmRoom {
   ): ErrReason | null {
     if (hello.v !== NET_VERSION) return "version";
     if (this.busy) return "busy";
-    if (this.members.size >= ROOM_CAP) return "full";
-    const save = hello.save ? this.sanitize(hello.save, hello.hero) : null;
+    if (this.members.size >= this.cap) return "full";
+    const deny = this.admit(hello, ident);
+    if (deny) return deny;
+    const save = this.entry(hello.save ? this.sanitize(hello.save, hello.hero) : null);
     // do'st yoniga: aynan shu akkaunt (bo'lmasa — xonadagi birinchi o'yinchi)
     const host = hello.near
       ? ([...this.members.values()].find((m) => hello.nearAcc && m.acc === hello.nearAcc) ??
@@ -272,6 +302,7 @@ export class RealmRoom {
       code: this.code,
       tick: this.sim.tick,
       n: this.members.size,
+      ...this.welcomeExtra(),
     });
     // birinchi holat darhol (to'liq: baseline bo'sh)
     this.snapshot(m);

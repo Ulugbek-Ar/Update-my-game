@@ -99,7 +99,8 @@ export type RealmUi =
 
 export type RealmEvent =
   | MobEvent
-  | { type: "hit"; x: number; y: number; dmg: number; kind: MobKind | "wall" }
+  /** pid — kim urdi (faqat mashq qo'g'irchog'ida: o'z zararini hisoblash uchun) */
+  | { type: "hit"; x: number; y: number; dmg: number; kind: MobKind | "wall"; pid?: string }
   | { type: "kill"; x: number; y: number; kind: MobKind; pid: string }
   | { type: "pickup"; pid: string; item: string; n: number; x: number; y: number }
   | { type: "gold"; pid: string; n: number; x: number; y: number }
@@ -156,6 +157,15 @@ export type RealmEvent =
     }
   /** yangi unvon (birinchi g'alaba) */
   | { type: "title"; pid: string; title: string }
+  /**
+   * Gildiya obyekti bosildi (v3.3): darvoza — Gildiya zaliga kirish, bayroq — hafta g'olibi,
+   * zalda: xazina, topshiriqlar, a'zolar, chiqish. Klient oynani ochadi yoki xonani almashtiradi.
+   */
+  | {
+      type: "guild";
+      pid: string;
+      what: "gate" | "flag" | "treasury" | "quests" | "members" | "exit";
+    }
   /** osmondan meteor tushdi */
   | { type: "meteor"; x: number; y: number; r: number }
   /** Paladin: SHANG zarbasi (yo'lak), OSMON HUKMI, QASAM va MUQADDAS AURA */
@@ -460,8 +470,9 @@ export class RealmSim {
     return (this.tick / DAY_TICKS + DAY_START) % 1;
   }
 
-  /** 0 — kunduz, 1 — to'liq tun (o'tishlar silliq) */
+  /** 0 — kunduz, 1 — to'liq tun (o'tishlar silliq). Yopiq binoda (Gildiya zali) — doim yorug' */
   get darkness() {
+    if (this.region.indoor) return 0;
     const t = this.dayTime;
     if (t >= 0.6 && t < 0.95) return 1;
     if (t >= 0.55 && t < 0.6) return (t - 0.55) / 0.05;
@@ -1094,6 +1105,9 @@ export class RealmSim {
       case "chest":
         this.openChest(rp, o);
         return;
+      case "guild":
+        this.events.push({ type: "guild", pid: rp.id, what: o.what });
+        return;
       case "fragment":
         return this.takeFragment(rp, o.id);
       case "torch":
@@ -1309,6 +1323,14 @@ export class RealmSim {
 
   private hit(rp: RealmPlayer, m: RealmMob, dmg: number, knock: number) {
     if (m.dead || m.under || m.spawnT > 0.3) return false;
+    // mashq qo'g'irchog'i: zararni ko'rsatadi, o'zi o'lmaydi va javob bermaydi
+    if (m.kind === "dummy") {
+      m.flash = 0.25;
+      m.t = 0;
+      m.anim.set("hurt", true);
+      this.events.push({ type: "hit", x: m.x, y: m.y - 6, dmg, kind: "dummy", pid: rp.id });
+      return true;
+    }
     const evading = m.evading;
     if (m.kind === "warden" || m.kind === "ashking") m.hitters.add(rp.id);
     const killed = damageMob(m, dmg, rp.p.x, rp.p.y, knock, this);
@@ -1702,6 +1724,15 @@ export class RealmSim {
     for (const m of this.mobs) {
       // Kul qirolini reyd (raid.ts) boshqaradi
       if (m.kind === "ashking") continue;
+      // mashq qo'g'irchog'i: faqat silkinish (urilganda) — harakat va hujum yo'q
+      if (m.kind === "dummy") {
+        m.anim.update(dt);
+        if (m.spawnT > 0) m.spawnT -= dt;
+        if (m.flash > 0) m.flash -= dt;
+        m.t += dt;
+        if (m.anim.state !== "idle" && m.anim.done) m.anim.set("idle");
+        continue;
+      }
       const before = new Map(targets.map((t) => [t.id, t.p.hp]));
       updateMob(m, ctx);
       for (const t of targets)

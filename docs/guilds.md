@@ -128,6 +128,31 @@ soniga qarab: kichik (1–5), o'rta (6–14), katta (15+).
   roldagini). **Jim qilish** (10 daqiqa, 1 soat, 24 soat) — A'ZOLAR bo'limida, chiqarish
   huquqi bilan bir xil: rahbar — hammani, o'rinbosar — a'zoni.
 
+## Gildiya zali (Abadiyat olamida)
+
+- **Kirish:** vodiy qishlog'ining shimolida (QISHLOQ maydoni tepasida) **gildiya darvozasi** —
+  ustida o'z gildiyangiz gerbi. Faqat kirgan, gildiyadagi va onlayn o'yinchi o'tadi (aks holda
+  xabar). Olamdagi joy saqlanadi — zaldan chiqqach darvoza oldiga qaytasiz.
+- **Har gildiyaning o'z xonasi**: serverda alohida Durable Object (`HallDO`, nomi
+  `hall:<gildiya raqami>`), olam xonasi bilan bir xil `RealmSim` (`src/realm/net/hall.ts` —
+  `HallRoom`). Bo'sh bo'lsa tick to'xtaydi va DO uxlaydi. Kirish — faqat shu gildiya a'zolari:
+  salomlashuvdagi akkaunt tokeni akkauntlar DO'sida tekshiriladi (`identify` → gildiya raqami),
+  boshqalarga `member` xatosi ("Gildiya zaliga faqat shu gildiya a'zolari kiradi"). Sig'im — 30.
+- **Zal** (`src/realm/data/regions/guildhall.json`): yopiq bino (kecha-kunduz yo'q), yog'och pol,
+  qizil gilam, ustunlar. Shimoliy devorda gildiya nomi lavhasi, darajasi va **bayroqlar gerb
+  rangida**: 1–3-daraja — 2 ta, 4–6 — 4 ta, 7-darajadan — 6 ta va ikki baravar katta, 10-darajada
+  — oltin hoshiya va toj. **Trofeylar** — gildiya yenggan bosslar boshlari: Iblis, Qor Malikasi,
+  O'rmon Shohi, Xaroba Sardori, Kul qiroli (a'zo saqlanganda uning yengganlari va Kul qiroli
+  g'alabasi gildiyaga yoziladi — `trophiesIn`).
+- **Zalda:** xazina sandig'i (XAZINA — hissa qo'shish), topshiriqlar taxtasi (TOPSHIRIQLAR),
+  a'zolar ro'yxati — minbardagi kitob (A'ZOLAR); ular GILDIYA oynasining shu bo'limini ochadi.
+  **Mashq qo'g'irchog'i** — qimirlamaydi, hujum qilmaydi, o'lmaydi: ustida o'zingiz bergan jami
+  zarar, soniyasiga zarar va zarbalar soni (4 s urilmasa — nollanadi). Zalda buyum ishlatish va
+  savdo yo'q, zal olam saqlanishiga yozilmaydi. Chiqish — eshik (VODIYGA), HUD dagi VODIYGA yoki
+  pauzadagi ZALDAN CHIQISH; ulanish uzilsa ham vodiyga qaytiladi.
+- Zal bezagi (nom, gerb, daraja, trofeylar) — zal xonasi akkauntlar DO'sidan oladi
+  (`hallInfo`), 2 daqiqada bir yangilaydi va o'zgarsa zaldagilarga `hall` xabari yuboradi.
+
 ## Server jadvallari (`src/account/server/db.ts`)
 
 `guilds`, `guild_members`, `guild_requests` (ariza/taklif), `guild_cooldown` (24 soat),
@@ -162,9 +187,11 @@ soni): menyudagi GILDIYA nishoni va daraja foydalari shu bilan ishlaydi (qurilma
 ## Lokal sinov
 
 Serversiz: `bun run dev` da konsolda `await window.__accountDemo()` — gildiya rahbari (14 a'zo,
-arizalar), `await window.__accountDemo({ guild: false })` — gildiyasiz (qidirish, tuzish, gerb
-muharriri, taklif). Olamda teglar: `await window.__realmDemo([{ hero: "mage", tag: "1", nick:
+arizalar, topshiriqlar, chat), `await window.__accountDemo({ guild: false })` — gildiyasiz (qidirish, tuzish, gerb
+muharriri, taklif). Gildiya zali: olamda `window.__realm.onEnterHall(7)`, so'ng `await window.__hallDemo()`
+(sahifa ichidagi zal va a'zolar; `__hallDemo(undefined, { level: 10 })` — bezak). Olamda teglar: `await window.__realmDemo([{ hero: "mage", tag: "1", nick:
 "Dilnoza", level: 14, guild: { tag: "PQ", emblem: "0-0-3-1" } }])`.
 
 Haqiqiy server bilan — docs/accounts.md ("Lokal sinov"). Testlar: `src/account/server/guilds.test.ts`,
-`src/account/guild.test.ts`.
+`src/account/server/guildLife.test.ts`, `src/account/guild.test.ts`, `src/realm/hall.test.ts`,
+`src/realm/hall-client.test.ts`.

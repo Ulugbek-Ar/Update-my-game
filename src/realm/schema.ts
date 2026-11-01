@@ -22,6 +22,8 @@ export const MOB_KINDS = [
   // reyd boss va u chaqiradigan kul ruhlari
   "ashking",
   "ashspirit",
+  // Gildiya zalidagi mashq qo'g'irchog'i (v3.3): hujum qilmaydi, o'lmaydi — zarar sinash uchun
+  "dummy",
 ] as const;
 export type MobKind = (typeof MOB_KINDS)[number];
 export const NPC_SPRITES = ["elder", "merchant", "oldgunner", "monk"] as const;
@@ -125,6 +127,18 @@ const GameObject = z.discriminatedUnion("type", [
   }),
   /** Bosim plitasi (sir): ustida o'yinchi turganda bosiladi */
   z.object({ type: z.literal("plate"), id: z.string(), x: int, y: int }),
+  /**
+   * Gildiya (v3.3): vodiydagi gildiya darvozasi (gate) va hafta g'olibi bayrog'i (flag), Gildiya
+   * zalidagi xazina sandig'i, topshiriqlar taxtasi, a'zolar ro'yxati va chiqish eshigi.
+   * Bosilganda sim "guild" voqeasini chiqaradi — qolganini klient (va server) bajaradi.
+   */
+  z.object({
+    type: z.literal("guild"),
+    id: z.string(),
+    x: int,
+    y: int,
+    what: z.enum(["gate", "flag", "treasury", "quests", "members", "exit"]),
+  }),
   /** Reyd boss zali: x, y — chap-yuqori plitka, w x h maydon; entry — zal kirishi (qayta tug'ilish) */
   z.object({
     type: z.literal("arena"),
@@ -186,6 +200,8 @@ export const RegionSchema = z
     /** dunyodagi joyi (chunk'larda) — keyingi hududlar yonma-yon qo'shiladi */
     origin: z.object({ cx: int, cy: int }).default({ cx: 0, cy: 0 }),
     chunks: z.object({ w: int.min(1).max(16), h: int.min(1).max(16) }),
+    /** yopiq bino (Gildiya zali): kecha-kunduz yo'q — doim yorug' */
+    indoor: z.boolean().default(false),
     terrain: z.object({ base: Tile, layers: z.array(Layer).default([]) }),
     features: z.array(Feature).default([]),
     spawn: Pt,

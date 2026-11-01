@@ -72,7 +72,7 @@ import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
 import { LeaderboardWindow } from "@/components/game/LeaderboardWindow";
-import { GuildWindow } from "@/components/game/GuildWindow";
+import { GuildWindow, type GuildTab } from "@/components/game/GuildWindow";
 import { guild, useGuild } from "@/account/guild";
 import { flushScores, submitRun } from "@/account/scores";
 import { friends, useFriends } from "@/account/friends";
@@ -213,7 +213,13 @@ function Index() {
   const fr = useFriends();
   /** GILDIYA oynasi; nishon — kelgan takliflar (gildiyasiz) yoki arizalar (rahbar/o'rinbosar) */
   const [guildOpen, setGuildOpen] = useState(false);
+  /** oyna qaysi bo'limda ochiladi (Gildiya zalidagi sandiq — XAZINA...) */
+  const [guildTab, setGuildTab] = useState<GuildTab>("home");
   const gv = useGuild();
+  /** Abadiyat olamidagi Gildiya zali (gildiya raqami; null — oddiy olam) */
+  const [hall, setHall] = useState<number | null>(null);
+  /** zaldan chiqqanda vodiyda ko'rsatiladigan xabar ("ulanish uzildi" va h.k.) */
+  const hallNoticeRef = useRef<string | null>(null);
   const nearAccRef = useRef<number | null>(null);
   /** Daraja oshdi: oltin sovg'asi va unvon (menyuda, o'yin tugagach) */
   const [levelUp, setLevelUp] = useState<LevelUp | null>(null);
@@ -466,31 +472,56 @@ function Index() {
     const c = new RealmClient(canvasRef.current, hero, {
       room: realmRoomRef.current,
       nearAcc: nearAccRef.current,
+      hall: hall ? { guild: hall } : null,
     });
     realmRoomRef.current = null;
     nearAccRef.current = null;
     c.onRoom = (code) => friends.setPlace("realm", code);
+    // gildiya: vodiydagi darvoza — zalga, zal eshigi — vodiyga; sandiq, taxta, kitob — oyna
+    c.onEnterHall = (g) => setHall(g);
+    c.onLeaveHall = (notice) => {
+      hallNoticeRef.current = notice;
+      setHall(null);
+    };
+    c.onGuildPanel = (tab) => {
+      setGuildTab(tab);
+      setGuildOpen(true);
+    };
+    if (hallNoticeRef.current) {
+      c.notify(hallNoticeRef.current);
+      hallNoticeRef.current = null;
+    }
     c.touch = touch;
     c.onSettings = () => setSettingsOpen(true);
     c.onExit = () => {
       setGold(loadGold());
       checkGift();
       setRealmClient(null);
+      setHall(null);
       setRealm(false);
     };
     setRealmClient(c);
     if (import.meta.env.DEV) {
-      const w = window as unknown as { __realm?: RealmClient; __realmDemo?: unknown };
+      const w = window as unknown as {
+        __realm?: RealmClient;
+        __realmDemo?: unknown;
+        __hallDemo?: unknown;
+      };
       w.__realm = c;
       // serversiz onlayn sinov: sahifa ichidagi xona va botlar (net/demo.ts)
       w.__realmDemo = (bots?: import("@/realm/net/demo").DemoBot[]) =>
         import("@/realm/net/demo").then((m) => m.startDemo(c, bots));
+      // Gildiya zali (avval window.__realm.onEnterHall(7)): sahifa ichidagi zal va a'zolar
+      w.__hallDemo = (
+        bots?: import("@/realm/net/demo").DemoBot[],
+        info?: Partial<import("@/realm/net/protocol").HallInfo>,
+      ) => import("@/realm/net/demo").then((m) => m.startHallDemo(c, bots, info));
     }
     c.start();
     return () => c.stop();
     // qahramon faqat menyuda o'zgaradi
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realm, touch]);
+  }, [realm, touch, hall]);
 
   // Telefonning "Orqaga" tugmasi (ilovada; brauzerda — "app:back" hodisasi):
   // o'yinda — pauza, pauzada va oynalarda — yopish, bosh menyuda — chiqish so'rovi.
@@ -853,7 +884,11 @@ function Index() {
               {account.enabled && (
                 <Button
                   variant="pixelLink"
-                  onClick={() => (acc.me ? setGuildOpen(true) : setLoginOpen(true))}
+                  onClick={() => {
+                    if (!acc.me) return setLoginOpen(true);
+                    setGuildTab("home");
+                    setGuildOpen(true);
+                  }}
                   aria-label="GILDIYA"
                   title={
                     acc.me && gv.pending > 0
@@ -1029,8 +1064,16 @@ function Index() {
           }}
         />
       )}
-      {guildOpen && acc.me && !started && !realm && (
-        <GuildWindow onClose={() => setGuildOpen(false)} />
+      {/* menyuda va olamda (Gildiya zalidagi sandiq, taxta, kitob) */}
+      {guildOpen && acc.me && !started && (
+        <GuildWindow
+          tab={guildTab}
+          onClose={() => {
+            setGuildOpen(false);
+            setGuildTab("home");
+            setGold(loadGold());
+          }}
+        />
       )}
       {levelUp && !giftOpen && !newsOpen && !started && !realm && (
         <LevelUpWindow up={levelUp} onClose={() => setLevelUp(null)} />

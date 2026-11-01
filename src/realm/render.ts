@@ -21,7 +21,8 @@ import {
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP, parseNetGuild } from "./net/protocol";
-import { MINI_W, drawEmblemMini } from "@/game/emblem";
+import { MINI_W, drawEmblem, drawEmblemMini, emblemColors, shade } from "@/game/emblem";
+import { DUMMY_RESET } from "./mobs";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, LAVA, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
@@ -30,6 +31,16 @@ import { drawItemIcon, RARITY_COLOR, RARITY_NAME } from "./icons";
 import { MOB_STATS, RING_MAX, RING_W, WARDEN_SHIELD_ARC, type Mark, type RealmMob } from "./mobs";
 import { KING_ENRAGE, KING_RESPAWN, PHASE_TEXT, TITLE_TEXT } from "./raid";
 import type { GameObjectDef, RealmArea } from "./schema";
+
+/** Gildiya zali bezagi uchun ma'lumot */
+export interface HallView {
+  name: string;
+  tag: string;
+  emblem: string;
+  level: number;
+  /** yengilgan bosslar: devil, queen, king, warden, ashking */
+  trophies: string[];
+}
 
 export const VIEW_W = 320;
 export const VIEW_H = 240;
@@ -71,6 +82,18 @@ export interface RealmView {
   levels?: Map<string, number>;
   /** gildiya tegi va gerbi (id -> "TEG|gerb") — ism yonida */
   guilds?: Map<string, string>;
+  /**
+   * Gildiya zali bezagi (server welcome'da beradi; ulanguncha — qurilmadagi qisqacha):
+   * bayroqlar gerb rangida (darajaga qarab ko'payadi va kattalashadi), trofeylar — yengilgan
+   * bosslar boshlari devorda
+   */
+  hall?: HallView | null;
+  /** o'z gildiyasi (vodiydagi gildiya darvozasida gerbi ko'rinadi) */
+  myGuild?: { tag: string; emblem: string } | null;
+  /** o'tgan hafta eng kuchli gildiyasi — bayrog'i vodiy maydonida (4-bosqich) */
+  champ?: { name: string; tag: string; emblem: string; xp?: number } | null;
+  /** mashq qo'g'irchog'iga o'zi bergan zarar: jami, boshlanishi va oxirgi zarba vaqti (view.time) */
+  dps?: { total: number; start: number; last: number; hits: number } | null;
   /** chat pufakchalari (id -> ibora, qolgan vaqt) */
   bubbles: Map<string, { text: string; t: number }>;
   /** tayyor iboralar ro'yxati ochiq */
@@ -121,6 +144,8 @@ export interface RealmView {
     chat(): void;
     say(i: number): void;
     reconnect(): void;
+    /** Gildiya zalidan vodiyga */
+    leaveHall?(): void;
   };
 }
 
@@ -359,6 +384,8 @@ export class RealmRenderer {
     for (let cy = cy0; cy <= cy1; cy++)
       for (let cx = cx0; cx <= cx1; cx++)
         c.drawImage(this.chunk(sim, cx, cy), cx * CHUNK_PX, cy * CHUNK_PX);
+    // Gildiya zali: shimoliy devorda bayroqlar, trofeylar va gildiya nomi
+    if (sim.region.indoor && v.hall) drawHallDecor(c, v.hall, v.time);
 
     const tx0 = Math.floor(camX / TILE),
       ty0 = Math.floor(camY / TILE);
@@ -451,7 +478,10 @@ export class RealmRenderer {
       const x = tileCenter(o.x),
         y = tileCenter(o.y);
       if (!inView(x, y, camX, camY) || !sim.visible(me, o)) continue;
-      all.push({ y: y + (o.type === "gate" ? 14 : 4), r: () => this.object(c, v, o, x, y) });
+      const tall =
+        o.type === "gate" ||
+        (o.type === "guild" && (o.what === "gate" || o.what === "flag" || o.what === "exit"));
+      all.push({ y: y + (tall ? 14 : 4), r: () => this.object(c, v, o, x, y) });
     }
     // NPC'lar
     for (const n of sim.region.npcs) {
@@ -858,6 +888,8 @@ export class RealmRenderer {
         );
         return;
       }
+      case "guild":
+        return drawGuildObject(c, v, o.what, x, y);
       case "chest": {
         const open = me.opened.includes(o.id);
         px(c, "#1a0f08", x - 7, y - 6, 14, 12);
@@ -871,6 +903,7 @@ export class RealmRenderer {
   }
 
   private mob(c: CanvasRenderingContext2D, v: RealmView, m: RealmMob, x: number, y: number) {
+    if (m.kind === "dummy") return drawDummy(c, v, m, x, y);
     if (m.under) {
       // yer ostidagi lava qurti ko'rinmaydi; uyidagisi — qizigan do'nglik (shu yerda qurt bor)
       if (m.state === "dormant") {
@@ -968,10 +1001,27 @@ export class RealmRenderer {
       else if (o?.type === "torch") label = "YOQISH";
       else if (o?.type === "fragment") label = "OLISH";
       else if (o?.type === "gate") label = "KO'RISH";
+      else if (o?.type === "guild")
+        label =
+          o.what === "gate"
+            ? "ZALGA KIRISH"
+            : o.what === "exit"
+              ? "CHIQISH"
+              : o.what === "treasury"
+                ? "XAZINA"
+                : o.what === "quests"
+                  ? "TOPSHIRIQLAR"
+                  : o.what === "members"
+                    ? "A'ZOLAR"
+                    : "KO'RISH";
     }
     const s = v.touch ? label : `[${actionKey(v.keys, "interact")}] ${label}`;
     const w = s.length * 5 + 6;
-    const gate = t.kind === "object" && sim.object(t.id)?.type === "gate";
+    const tall = t.kind === "object" ? sim.object(t.id) : undefined;
+    const gate =
+      tall?.type === "gate" ||
+      (tall?.type === "guild" &&
+        (tall.what === "gate" || tall.what === "flag" || tall.what === "exit"));
     const y = t.y - (t.kind === "npc" ? 26 : gate ? 34 : 18) + Math.round(Math.sin(v.time * 4));
     px(c, "rgba(0,0,0,0.6)", t.x - w / 2, y - 7, w, 9);
     text(c, s, t.x, y, 5, "#ffe14d", "center");
@@ -1335,7 +1385,10 @@ export class RealmRenderer {
       v.buttons.push({ x, y, w, h: 12, act });
     };
     btn("CHAT", VIEW_W - 4 - 30, 30, () => v.act.chat(), v.chatOpen);
-    btn("+DO'ST", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.invite());
+    // Gildiya zalida do'st chaqirilmaydi (faqat a'zolar) — o'rniga vodiyga qaytish
+    if (v.sim?.region.indoor)
+      btn("VODIYGA", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.leaveHall?.());
+    else btn("+DO'ST", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.invite());
     if (!v.chatOpen) return;
     PHRASES.forEach((p, i) => {
       const w = 76,
@@ -1642,7 +1695,8 @@ export class RealmRenderer {
     };
     btn("DAVOM ETISH", 82, () => v.act.panel("none"));
     btn("SOZLAMALAR", 104, () => v.act.settings());
-    btn("DO'STNI CHAQIRISH", 126, () => v.act.invite());
+    if (v.sim?.region.indoor) btn("ZALDAN CHIQISH", 126, () => v.act.leaveHall?.());
+    else btn("DO'STNI CHAQIRISH", 126, () => v.act.invite());
     btn("BOSH MENYU", 148, () => v.act.exit());
     text(
       c,
@@ -2015,4 +2069,280 @@ export function touchIntro(hero: Hero) {
 export function keysIntro(k: KeyBinds) {
   const a = (x: Parameters<typeof actionKey>[1]) => actionKey(k, x);
   return `${moveLabel(k)} — yurish, ${a("attack")} — hujum, ${a("dash")} — qobiliyat, ${a("interact")} — gaplashish, ${a("journal")} — jurnal, ${a("map")} — xarita, 1-8 — buyum.`;
+}
+
+// ---------------- Gildiya (v3.3) ----------------
+
+/** Zal markazi (plitka 15 — gilam o'rtasi) va shimoliy devor (bayroqlar shu yerda osiladi) */
+const HALL_CX = 15 * TILE + TILE / 2;
+const HALL_WALL_Y = 50;
+
+/** Bayroqlar soni va kattaligi darajaga qarab: 2 → 4 → 6, 7-darajadan — ikki baravar katta */
+export function hallBanners(level: number) {
+  const n = level >= 7 ? 6 : level >= 4 ? 4 : 2;
+  const scale = level >= 7 ? 2 : 1;
+  const offs = [44, 92, 140].slice(0, n / 2);
+  return { scale, xs: offs.flatMap((o) => [HALL_CX - o, HALL_CX + o]), gold: level >= 10 };
+}
+
+/** Trofeylar tartibi va devordagi joyi (bayroqlar orasida) */
+export const TROPHY_ORDER = ["devil", "queen", "king", "warden", "ashking"] as const;
+const TROPHY_X = [HALL_CX - 68, HALL_CX + 68, HALL_CX - 116, HALL_CX + 116, HALL_CX];
+
+export const TROPHY_NAME: Record<string, string> = {
+  devil: "IBLIS",
+  queen: "QOR MALIKASI",
+  king: "O'RMON SHOHI",
+  warden: "XAROBA SARDORI",
+  ashking: "KUL QIROLI",
+};
+
+/** Yengilgan boss boshi — yog'och taxtachada (16x16) */
+function trophy(c: CanvasRenderingContext2D, id: string, x: number, y: number) {
+  // taxtacha (qalqon shaklida)
+  px(c, "#1a0f08", x - 8, y - 8, 16, 15);
+  px(c, "#6a4222", x - 7, y - 7, 14, 13);
+  px(c, "#8a5a34", x - 7, y - 7, 14, 1);
+  px(c, "#1a0f08", x - 5, y + 7, 10, 1);
+  px(c, "#6a4222", x - 4, y + 6, 8, 1);
+  switch (id) {
+    case "devil":
+      px(c, "#2a0a0e", x - 4, y - 4, 8, 8);
+      px(c, "#c1121f", x - 3, y - 3, 6, 6);
+      px(c, "#f4efe6", x - 5, y - 7, 1, 3);
+      px(c, "#f4efe6", x + 4, y - 7, 1, 3);
+      px(c, "#ffe14d", x - 2, y - 1, 1, 1);
+      px(c, "#ffe14d", x + 1, y - 1, 1, 1);
+      px(c, "#2a0a0e", x - 1, y + 2, 2, 1);
+      return;
+    case "queen":
+      px(c, "#0e2a40", x - 4, y - 3, 8, 8);
+      px(c, "#c4f3ff", x - 3, y - 2, 6, 6);
+      px(c, "#45b8e0", x - 4, y - 6, 1, 3);
+      px(c, "#45b8e0", x - 1, y - 7, 2, 4);
+      px(c, "#45b8e0", x + 3, y - 6, 1, 3);
+      px(c, "#0e2a40", x - 2, y, 1, 1);
+      px(c, "#0e2a40", x + 1, y, 1, 1);
+      return;
+    case "king":
+      px(c, "#10260e", x - 4, y - 3, 8, 8);
+      px(c, "#6a4a2a", x - 3, y - 2, 6, 6);
+      px(c, "#4a8a3a", x - 6, y - 6, 3, 1);
+      px(c, "#4a8a3a", x - 5, y - 5, 1, 2);
+      px(c, "#4a8a3a", x + 3, y - 6, 3, 1);
+      px(c, "#4a8a3a", x + 4, y - 5, 1, 2);
+      px(c, "#a6f08e", x - 2, y, 1, 1);
+      px(c, "#a6f08e", x + 1, y, 1, 1);
+      return;
+    case "warden":
+      px(c, "#1e1c24", x - 4, y - 5, 8, 10);
+      px(c, "#8a8692", x - 3, y - 4, 6, 8);
+      px(c, "#5a5662", x - 3, y - 4, 6, 2);
+      px(c, "#1e1c24", x - 3, y - 1, 6, 1);
+      px(c, "#5fe0c8", x - 2, y - 1, 1, 1);
+      px(c, "#5fe0c8", x + 1, y - 1, 1, 1);
+      return;
+    case "ashking":
+      px(c, "#0b0807", x - 4, y - 3, 8, 8);
+      px(c, "#2e2a2c", x - 3, y - 2, 6, 6);
+      px(c, "#ff5a1a", x - 4, y - 6, 1, 3);
+      px(c, "#ffb02e", x - 2, y - 7, 1, 4);
+      px(c, "#ff5a1a", x, y - 6, 1, 3);
+      px(c, "#ffb02e", x + 2, y - 7, 1, 4);
+      px(c, "#ff5a1a", x + 3, y - 6, 1, 3);
+      px(c, "#ffd36a", x - 2, y, 1, 1);
+      px(c, "#ffd36a", x + 1, y, 1, 1);
+      return;
+  }
+}
+
+/** Gildiya zali shimoliy devori: gildiya nomi lavhasi, bayroqlar (gerb rangida) va trofeylar */
+export function drawHallDecor(c: CanvasRenderingContext2D, h: HallView, time: number) {
+  const { scale, xs, gold } = hallBanners(h.level);
+  const { bg, fg } = emblemColors(h.emblem);
+  for (const [i, bx] of xs.entries()) {
+    const w = 16 * scale,
+      hh = 18 * scale;
+    const top = HALL_WALL_Y;
+    // xoda
+    px(c, "#1a0f08", bx - w / 2 - 3, top - 2, w + 6, 3);
+    px(c, gold ? "#e8b830" : "#8a5a34", bx - w / 2 - 2, top - 1, w + 4, 1);
+    // gerbli bayroq — shamolsiz, lekin uchi biroz tebranadi
+    drawEmblem(c, h.emblem.replace(/^\d+/, "1"), bx - w / 2, top + 1, scale);
+    const sway = Math.round(Math.sin(time * 1.6 + i) * scale);
+    px(c, shade(bg, -0.35), bx - w / 2 + 2 + sway, top + hh + 1, w - 4, 1);
+    if (gold)
+      for (let k = 0; k < w; k += 3) px(c, "#e8b830", bx - w / 2 + k, top + hh + 2, 1, 2 + (k % 2));
+    else px(c, fg, bx - 1, top + hh + 2, 2, 2 * scale);
+  }
+  // trofeylar: yengilgan bosslar boshlari
+  TROPHY_ORDER.forEach((id, i) => {
+    if (h.trophies.includes(id)) trophy(c, id, TROPHY_X[i]!, HALL_WALL_Y + 28);
+  });
+  // gildiya nomi lavhasi (markazda, gilam tepasida)
+  const label = `[${h.tag}] ${h.name}`;
+  c.font = `5px ${FONT}`;
+  const lw = Math.ceil(c.measureText(label).width) + 10;
+  const ly = HALL_WALL_Y + 4;
+  px(c, "#1a0f08", HALL_CX - lw / 2 - 1, ly - 1, lw + 2, 12);
+  px(c, gold ? "#8a6a1a" : "#5a3a1e", HALL_CX - lw / 2, ly, lw, 10);
+  px(c, gold ? "#e8b830" : "#8a5a34", HALL_CX - lw / 2, ly, lw, 1);
+  text(c, label, HALL_CX, ly + 8, 5, gold ? "#fff2b0" : "#ffd97a", "center");
+  text(c, `${h.level}-DARAJA`, HALL_CX, ly + 18, 4, "#c8c0d8", "center");
+  if (gold) {
+    // 10-daraja: lavha ustida oltin toj
+    px(c, "#e8b830", HALL_CX - 5, ly - 6, 10, 3);
+    px(c, "#e8b830", HALL_CX - 5, ly - 9, 1, 3);
+    px(c, "#e8b830", HALL_CX, ly - 10, 1, 4);
+    px(c, "#e8b830", HALL_CX + 4, ly - 9, 1, 3);
+  }
+}
+
+/** Gildiya obyektlari: vodiydagi darvoza va bayroq, zaldagi sandiq, kitob, taxta, eshik */
+function drawGuildObject(
+  c: CanvasRenderingContext2D,
+  v: RealmView,
+  what: "gate" | "flag" | "treasury" | "quests" | "members" | "exit",
+  x: number,
+  y: number,
+) {
+  switch (what) {
+    case "gate": {
+      // tosh ark, ichida iliq oltin nur; tepasida o'z gildiyasining gerbi
+      px(c, "#0d0c11", x - 12, y - 22, 24, 30);
+      px(c, "#6a6070", x - 11, y - 21, 22, 28);
+      px(c, "#8a8292", x - 11, y - 21, 22, 2);
+      px(c, "#3b3443", x - 7, y - 15, 14, 22);
+      const f = Math.floor(v.time * 3) % 3;
+      px(c, "#3a2a10", x - 6, y - 14, 12, 21);
+      px(c, "#c9a25a", x - 5, y - 12 + f, 10, 17 - f);
+      px(c, "#ffe08a", x - 2, y - 8 + f, 4, 9);
+      if (v.myGuild) drawEmblem(c, v.myGuild.emblem, x - 8, y - 42, 1);
+      else {
+        px(c, "#1a1820", x - 6, y - 38, 12, 13);
+        px(c, "#8a8692", x - 5, y - 37, 10, 11);
+      }
+      text(c, "GILDIYA ZALI", x, y - 46, 4, "#ffd97a", "center");
+      return;
+    }
+    case "flag": {
+      // hafta g'olibi bayrog'i (4-bosqich): xoda va g'olib gildiya gerbi
+      const champ = v.champ;
+      px(c, "#1a0f08", x - 1, y - 44, 3, 52);
+      px(c, "#8a8692", x, y - 44, 1, 52);
+      px(c, "#ffcc33", x - 1, y - 47, 3, 3);
+      px(c, "#1a0f08", x - 5, y + 6, 11, 3);
+      if (champ) {
+        const sway = Math.round(Math.sin(v.time * 2) * 1);
+        drawEmblem(c, champ.emblem.replace(/^\d+/, "1"), x + 2 + sway, y - 43, 1);
+        text(c, `[${champ.tag}]`, x + 10, y - 49, 4, "#ffd97a", "center");
+      } else {
+        px(c, "#5c4a6e", x + 2, y - 43, 14, 10);
+        px(c, "#3b2a3a", x + 2, y - 34, 14, 1);
+      }
+      return;
+    }
+    case "treasury": {
+      // katta sandiq: oltin hoshiya, ustida tangalar
+      px(c, "#1a0f08", x - 10, y - 9, 20, 16);
+      px(c, "#7a4a24", x - 9, y - 8, 18, 14);
+      px(c, "#5a3a1e", x - 9, y - 3, 18, 1);
+      px(c, "#e8b830", x - 9, y - 8, 18, 1);
+      px(c, "#e8b830", x - 9, y - 8, 1, 14);
+      px(c, "#e8b830", x + 8, y - 8, 1, 14);
+      px(c, "#ffcc33", x - 2, y - 4, 4, 4);
+      px(c, "#1a0f08", x - 1, y - 3, 2, 2);
+      const glint = Math.floor(v.time * 2) % 4 === 0;
+      px(c, "#ffcc33", x - 6, y - 11, 4, 2);
+      px(c, "#ffcc33", x + 2, y - 12, 4, 3);
+      px(c, glint ? "#ffffff" : "#ffe08a", x + 3, y - 12, 1, 1);
+      return;
+    }
+    case "members": {
+      // minbar ustida ochiq kitob (a'zolar ro'yxati)
+      px(c, "#1a0f08", x - 2, y - 2, 5, 10);
+      px(c, "#6a4222", x - 1, y - 2, 3, 10);
+      px(c, "#1a0f08", x - 8, y - 9, 16, 8);
+      px(c, "#f4efe6", x - 7, y - 8, 7, 6);
+      px(c, "#e0d6c0", x, y - 8, 7, 6);
+      px(c, "#8a1e2a", x - 1, y - 8, 2, 7);
+      for (let k = 0; k < 3; k++) {
+        px(c, "#5a4026", x - 6, y - 7 + k * 2, 5, 1);
+        px(c, "#5a4026", x + 1, y - 7 + k * 2, 5, 1);
+      }
+      return;
+    }
+    case "quests": {
+      // e'lonlar taxtasi: oyoqlarda, uchta qog'oz (bajarilgani — yashil belgi)
+      px(c, "#1a0f08", x - 9, y - 2, 2, 10);
+      px(c, "#1a0f08", x + 7, y - 2, 2, 10);
+      px(c, "#1a0f08", x - 11, y - 16, 22, 15);
+      px(c, "#8a5a34", x - 10, y - 15, 20, 13);
+      for (let k = 0; k < 3; k++) {
+        const qx = x - 9 + k * 7;
+        px(c, "#f4efe6", qx, y - 13, 5, 8);
+        px(c, "#5a4026", qx + 1, y - 11, 3, 1);
+        px(c, "#5a4026", qx + 1, y - 9, 3, 1);
+        px(c, "#c1121f", qx + 2, y - 14, 1, 1);
+      }
+      return;
+    }
+    case "exit": {
+      // devordagi ikki tabaqali eshik
+      px(c, "#0d0c11", x - 12, y - 18, 24, 26);
+      px(c, "#5a3a1e", x - 11, y - 17, 22, 25);
+      px(c, "#3a2412", x, y - 17, 1, 25);
+      px(c, "#7a4a24", x - 11, y - 17, 22, 2);
+      px(c, "#c9a25a", x - 3, y - 4, 2, 2);
+      px(c, "#c9a25a", x + 2, y - 4, 2, 2);
+      text(c, "VODIYGA", x, y - 21, 4, "#c8c0d8", "center");
+      return;
+    }
+  }
+}
+
+/** Mashq qo'g'irchog'i (pastda — o'z zararingiz) */
+function drawDummy(c: CanvasRenderingContext2D, v: RealmView, m: RealmMob, x: number, y: number) {
+  const ground = y + m.size / 2;
+  shadow(c, x, ground, 14);
+  const wob = m.flash > 0 ? Math.round(Math.sin(v.time * 45) * 2) : 0;
+  px(c, "#1a0f08", x - 7, ground - 3, 14, 3);
+  px(c, "#5a3a1e", x - 6, ground - 2, 12, 1);
+  px(c, "#3a2412", x - 1, ground - 16, 3, 14);
+  const bx = x + wob;
+  px(c, "#1a0f08", bx - 12, ground - 24, 24, 4);
+  px(c, "#8a5a34", bx - 11, ground - 23, 22, 2);
+  px(c, "#1a0f08", bx - 6, ground - 29, 12, 16);
+  px(c, "#c8a86a", bx - 5, ground - 28, 10, 14);
+  px(c, "#a8884a", bx - 5, ground - 16, 10, 2);
+  px(c, "#e0c88a", bx - 7, ground - 26, 1, 2);
+  px(c, "#e0c88a", bx + 6, ground - 25, 1, 2);
+  px(c, "#c1121f", bx - 3, ground - 25, 6, 6);
+  px(c, "#f4efe6", bx - 2, ground - 24, 4, 4);
+  px(c, "#c1121f", bx - 1, ground - 23, 2, 2);
+  px(c, "#1a0f08", bx - 4, ground - 37, 8, 9);
+  px(c, "#d8bc80", bx - 3, ground - 36, 6, 7);
+  px(c, "#3a2412", bx - 2, ground - 34, 1, 1);
+  px(c, "#3a2412", bx + 1, ground - 34, 1, 1);
+  px(c, "#3a2412", bx - 1, ground - 31, 2, 1);
+  if (m.flash > 0 && Math.floor(m.flash * 25) % 2 === 0) {
+    c.globalAlpha = 0.5;
+    px(c, "#ffffff", bx - 5, ground - 36, 10, 22);
+    c.globalAlpha = 1;
+  }
+  // o'z zararingiz: jami va soniyasiga (so'nggi zarbadan 4 s o'tsa — nollanadi)
+  const d = v.dps;
+  if (d && v.time - d.last < DUMMY_RESET) {
+    const secs = Math.max(1, d.last - d.start + 0.5);
+    text(c, `ZARAR: ${d.total}`, x, ground - 48, 4, "#ffe14d", "center");
+    text(
+      c,
+      `${(d.total / secs).toFixed(1)}/s · ${d.hits} zarba`,
+      x,
+      ground - 42,
+      4,
+      "#c8c0d8",
+      "center",
+    );
+  } else text(c, "MASHQ", x, ground - 42, 4, "#c8c0d8", "center");
 }

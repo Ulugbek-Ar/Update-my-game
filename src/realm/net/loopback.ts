@@ -25,9 +25,12 @@ export class Loopback {
 
   constructor(private clock: () => number = () => performance.now()) {}
 
+  /** Xona yasash (Gildiya zali sinovi — HallRoom) */
+  makeRoom: (code: string) => RealmRoom = (code) => new RealmRoom(code);
+
   room(code: string) {
     let r = this.rooms.get(code);
-    if (!r) this.rooms.set(code, (r = new RealmRoom(code)));
+    if (!r) this.rooms.set(code, (r = this.makeRoom(code)));
     return r;
   }
 
