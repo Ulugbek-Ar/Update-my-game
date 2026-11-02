@@ -96,6 +96,8 @@ export class Scores {
 
   /** O'yin natijasi. Imkonsiz — rad; shubhali — yashirin saqlanadi. */
   submit(p: PlayerRow, r: SubmitInput, now: number): SubmitResult {
+    // muallif reytingda qatnashmaydi: natijasi yozilmaydi (boshqa o'yinchilar uchun adolatli)
+    if (this.store.admin.is(p)) return { ok: true, hidden: false, best: r.score, rank: null };
     const verdict = judgeRun(r);
     if (verdict === "reject") return { ok: false, error: "invalid" };
     const board: BoardId =
@@ -145,7 +147,9 @@ export class Scores {
   }
 
   /** Olam serveri: Kul qiroli yengildi (jamoadagi kirgan o'yinchilar, vaqt — soniya) */
-  raid(team: number[], secs: number, now: number) {
+  raid(all: number[], secs: number, now: number) {
+    // muallif jamoada bo'lsa ham reytingga yozilmaydi
+    const team = all.filter((id) => !this.store.admin.isId(id));
     const verdict = judgeRaid(secs);
     if (verdict === "reject" || !team.length) return { ok: false as const };
     const score = Math.round(secs * 10);
@@ -219,6 +223,9 @@ export class Scores {
     const board = boardId;
     const key = period === "week" ? `w:${weekKey(now)}` : "all";
     const order = lowerIsBetter(board) ? "ASC" : "DESC";
+    // muallif (admin) natijalari ro'yxatda ko'rinmaydi
+    const admins = this.store.admin.playerIds();
+    const notAdmin = admins.length ? `AND s.player NOT IN (${admins.join(",")})` : "";
     const list = this.db
       .exec<
         ScoreDbRow & {
@@ -234,7 +241,7 @@ export class Scores {
            FROM scores s JOIN players p ON p.id = s.player
            LEFT JOIN guild_members gm ON gm.player = s.player
            LEFT JOIN guilds g ON g.id = gm.guild
-          WHERE s.board = ? AND s.period = ? AND s.hidden = 0
+          WHERE s.board = ? AND s.period = ? AND s.hidden = 0 ${notAdmin}
           ORDER BY s.score ${order}, s.at ASC LIMIT ?`,
         board,
         key,

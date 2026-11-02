@@ -642,6 +642,24 @@ export class Game {
     sfx.playMusic(this.chapter === 3 ? "forest" : "ice");
   }
 
+  /**
+   * Muallif paneli (server admin deb tasdiqlagan o'yinchi): o'yin tanlangan dunyoning shu
+   * to'lqinidan boshlanadi (0 — 1-to'lqin, BOSS_WAVE — boss). Oddiy o'yinda chaqirilmaydi;
+   * muallif natijalari reytingga yozilmaydi (server).
+   */
+  jumpToWave(i: number) {
+    const w = Math.max(0, Math.min(BOSS_WAVE, Math.floor(i)));
+    this.hints = [];
+    if (this.startPick) {
+      // 2-3-dunyo: bepul kuch tanlovisiz to'g'ri jangga
+      this.startPick = false;
+      this.chStart = { powers: savePowers(this.player), score: this.score };
+      this.choices = [];
+      this.enterChapter();
+    }
+    this.startWave(w);
+  }
+
   /** Bepul kuch tanlangach: dunyo boshidagi holat saqlanadi va 1-to'lqin boshlanadi. */
   private beginWorld() {
     this.startPick = false;

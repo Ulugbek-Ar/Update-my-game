@@ -6,6 +6,8 @@ name: Server
 # Kerakli secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (docs/server.md),
 # TELEGRAM_BOT_TOKEN — "Telegram bilan kirish" (docs/accounts.md): serverga `wrangler secret put`
 # bilan beriladi va bot webhook'i o'rnatiladi (kanalga post yuborish bunga bog'liq emas, buzilmaydi).
+# ADMIN_TELEGRAM_IDS — muallif paneli (docs/admin.md): Telegram ID'lar vergul bilan, serverga
+# `wrangler secret put` bilan beriladi. Berilmasa yoki bo'sh bo'lsa — hech kim admin emas.
 # Secrets bo'lmasa — ogohlantirish, workflow yiqilmaydi (faqat tekshiruv bajariladi).
 on:
   push:
@@ -96,6 +98,21 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: printf '%s' "$TELEGRAM_BOT_TOKEN" | npx wrangler secret put TELEGRAM_BOT_TOKEN
+
+      # Muallif(lar): faqat secret (kodda ham, wrangler.toml'da ham yo'q). Secret yo'q bo'lsa — "none"
+      # yoziladi (ID emas): avval tayinlangan admin ham o'chadi, hech kim admin emas.
+      - name: Muallif ID'lari serverga (wrangler secret put)
+        if: steps.secrets.outputs.ok == 'true'
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ADMIN_TELEGRAM_IDS: ${{ secrets.ADMIN_TELEGRAM_IDS }}
+        run: |
+          if [ -z "$ADMIN_TELEGRAM_IDS" ]; then
+            echo "::warning title=Muallif::ADMIN_TELEGRAM_IDS bo'sh — muallif paneli hech kimga ochilmaydi (docs/admin.md)"
+          fi
+          printf '%s' "${ADMIN_TELEGRAM_IDS:-none}" | npx wrangler secret put ADMIN_TELEGRAM_IDS
 
       # Bot -> server: "/start login_<kod>" va "Tasdiqlash" tugmasi shu yerga keladi. Yo'l va
       # X-Telegram-Bot-Api-Secret-Token tokendan yasaladi (src/account/server/telegram.ts webhookSecret).

@@ -8,6 +8,7 @@ import { AUTH_MAX_AGE, REQ, isOp, type ErrCode, type Op, type ReqOf } from "../p
 import type { AccountStore, PlayerRow } from "./store";
 import { verifyInitData, verifyLoginWidget } from "./telegram";
 import { handleGuild } from "./guildApi";
+import { handleAdmin } from "./adminApi";
 
 export interface ApiEnv {
   now: number;
@@ -17,6 +18,8 @@ export interface ApiEnv {
   botToken: string | null;
   /** bot username (t.me havolasi uchun) */
   bot: string | null;
+  /** muallif(lar) Telegram ID'lari (ADMIN_TELEGRAM_IDS); yo'q yoki bo'sh — hech kim admin emas */
+  admins?: ReadonlySet<number>;
 }
 
 /** Token bucket: burst — zaxira, perMin — daqiqasiga to'ladi. Xotirada (DO uxlasa — nollanadi). */
@@ -93,8 +96,13 @@ export async function handleApi(
   const authed = async (): Promise<PlayerRow | null> =>
     token ? store.authenticate(token, env.now) : null;
 
+  // admin huquqi faqat server sozlamasidan (har so'rovda yangilanadi)
+  store.admin.ids = env.admins ?? new Set();
+
   // gildiyalar — alohida faylda (guildApi.ts)
   if (op.startsWith("guild/")) return handleGuild(store, op, body, env.now, authed, !!token);
+  // muallif paneli (adminApi.ts) — huquq o'sha yerda tekshiriladi
+  if (op.startsWith("admin/")) return handleAdmin(store, op, body, env.now, authed);
 
   switch (op as Op) {
     case "auth/webapp": {

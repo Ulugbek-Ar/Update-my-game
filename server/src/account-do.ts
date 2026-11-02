@@ -11,6 +11,7 @@ import { AccountStore } from "../../src/account/server/store";
 import { Limiters, handleApi } from "../../src/account/server/api";
 import { botUpdate } from "../../src/account/server/bot";
 import { botIdOf } from "../../src/account/server/telegram";
+import { parseAdminIds } from "../../src/account/server/admin";
 import type { Db, Row, SqlCursor, SqlValue } from "../../src/account/server/db";
 import type { AccConfig } from "../../src/account/protocol";
 import type { Env } from "./index";
@@ -39,6 +40,19 @@ export class AccountDO extends DurableObject<Env> {
     this.store = new AccountStore(db);
   }
 
+  private adminRaw: string | null = null;
+  private adminSet: ReadonlySet<number> = new Set();
+
+  /** ADMIN_TELEGRAM_IDS (secret o'zgarsa — qayta o'qiladi) */
+  private get admins() {
+    const raw = this.env.ADMIN_TELEGRAM_IDS ?? "";
+    if (raw !== this.adminRaw) {
+      this.adminRaw = raw;
+      this.adminSet = parseAdminIds(raw);
+    }
+    return this.adminSet;
+  }
+
   private get token() {
     return this.env.TELEGRAM_BOT_TOKEN?.trim() || null;
   }
@@ -51,7 +65,14 @@ export class AccountDO extends DurableObject<Env> {
       this.store,
       op,
       body,
-      { now: Date.now(), ip, botToken: this.token, bot: bot?.username ?? null },
+      {
+        now: Date.now(),
+        ip,
+        botToken: this.token,
+        bot: bot?.username ?? null,
+        // muallif(lar): Telegram ID'lar (wrangler secret, docs/admin.md); bo'sh — hech kim
+        admins: this.admins,
+      },
       this.lim,
     );
   }
@@ -90,11 +111,15 @@ export class AccountDO extends DurableObject<Env> {
   async raidWin(team: number[], secs: number) {
     this.count();
     const now = Date.now();
+    this.store.admin.ids = this.admins;
     const r = this.store.scores.raid(team, secs, now);
     try {
-      this.store.guilds.life.raid(team, now);
-      // bitta gildiya jamoasi: gildiyalar reytingiga eng tez vaqt va gildiya XP
-      this.store.guilds.ranks.raid(team, secs, now);
+      // muallif (admin) hissasi gildiya topshiriqlari va reytingiga hisoblanmaydi
+      const fair = team.filter((id) => !this.store.admin.isId(id));
+      this.store.guilds.life.raid(fair, now);
+      // bitta gildiya jamoasi: gildiyalar reytingiga eng tez vaqt va gildiya XP (muallif
+      // yordam bergan jang gildiyalar reytingiga kirmaydi)
+      if (fair.length && fair.length === team.length) this.store.guilds.ranks.raid(fair, secs, now);
     } catch (e) {
       console.error("guild raid", e);
     }

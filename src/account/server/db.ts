@@ -261,6 +261,35 @@ export const SCHEMA: readonly string[] = [
     controlled_by INTEGER,
     since INTEGER NOT NULL DEFAULT 0
   ) WITHOUT ROWID`,
+  // ---------------- muallif paneli, sovg'alar, ekspeditsiya (v3.4, docs/admin.md) ----------------
+  // admin amallari jurnali: kim (admin), nima, kimga va tafsilot; denied — admin bo'lmagan urinish
+  `CREATE TABLE IF NOT EXISTS admin_log (
+    id INTEGER PRIMARY KEY,
+    at INTEGER NOT NULL,
+    admin INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    target INTEGER NOT NULL DEFAULT 0,
+    detail TEXT NOT NULL DEFAULT ''
+  )`,
+  // sovg'alar: muallifdan o'yinchiga (oltin, XP, qahramon, xat); claimed — olingan vaqt (0 — hali)
+  `CREATE TABLE IF NOT EXISTS gifts (
+    id INTEGER PRIMARY KEY,
+    sender INTEGER NOT NULL,
+    receiver INTEGER NOT NULL,
+    gold INTEGER NOT NULL DEFAULT 0,
+    xp INTEGER NOT NULL DEFAULT 0,
+    hero TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    at INTEGER NOT NULL,
+    claimed INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS gifts_receiver ON gifts (receiver, claimed)`,
+  // ekspeditsiya: o'yinchiga bitta (qahramon va boshlangan vaqt — server soati)
+  `CREATE TABLE IF NOT EXISTS expeditions (
+    player INTEGER PRIMARY KEY,
+    hero TEXT NOT NULL,
+    start INTEGER NOT NULL
+  )`,
 ];
 
 export function initSchema(db: Db) {

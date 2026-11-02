@@ -331,9 +331,16 @@ export class Guilds {
   members(guild: number, now: number): GuildMember[] {
     return this.db
       .exec<
-        MemberRow & { nick: string; avatar: string; xp: number; pat: number | null; place: string }
+        MemberRow & {
+          nick: string;
+          avatar: string;
+          xp: number;
+          tg: number;
+          pat: number | null;
+          place: string;
+        }
       >(
-        `SELECT m.*, p.nick, p.avatar, p.xp, pr.at AS pat, pr.place
+        `SELECT m.*, p.nick, p.avatar, p.xp, p.tg, pr.at AS pat, pr.place
            FROM guild_members m
            JOIN players p ON p.id = m.player
            LEFT JOIN presence pr ON pr.player = m.player
@@ -355,6 +362,8 @@ export class Guilds {
           seen: at,
           given: num(r.given),
           muted: num(r.muted) > now ? num(r.muted) : 0,
+          // o'yin muallifi: ism yonida "MUALLIF" belgisi
+          ...(this.store.admin.is({ tg: num(r.tg) }) ? { author: true } : {}),
         };
       })
       .sort(
@@ -559,6 +568,8 @@ export class Guilds {
     p: PlayerRow,
     req: CreateInput,
     now: number,
+    /** free — muallif panelidagi test gildiyasi (oltin talab qilinmaydi va yechilmaydi) */
+    opts: { free?: boolean } = {},
   ): { ok: true; guild: GuildInfo; cost: number; dup?: boolean } | GuildFail {
     return this.db.tx(() => {
       const mine = this.member(p.id);
@@ -575,8 +586,9 @@ export class Guilds {
       if (!tag.ok) return no("name", { field: "tag", why: tag.error });
       const e = parseEmblem(req.emblem);
       if (!e || !emblemAllowed(e, 1)) return no("bad", { field: "emblem" });
-      if (req.gold < GUILD_COST) return no("gold");
-      if (!this.goldPlausible(p.id, req.gold, now)) return no("invalid", { field: "gold" });
+      if (!opts.free && req.gold < GUILD_COST) return no("gold");
+      if (!opts.free && !this.goldPlausible(p.id, req.gold, now))
+        return no("invalid", { field: "gold" });
       if (first(this.db, "SELECT 1 AS x FROM guilds WHERE name_key = ?", guildNameKey(name.name)))
         return no("taken", { field: "name" });
       if (first(this.db, "SELECT 1 AS x FROM guilds WHERE tag_key = ?", guildTagKey(tag.name)))
@@ -598,7 +610,7 @@ export class Guilds {
       );
       this.addMember(id, p.id, "leader", now);
       this.remember(p.id, req.rid, now);
-      return { ok: true as const, guild: this.info(id, now)!, cost: GUILD_COST };
+      return { ok: true as const, guild: this.info(id, now)!, cost: opts.free ? 0 : GUILD_COST };
     });
   }
 

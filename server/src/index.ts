@@ -40,6 +40,11 @@ export interface Env {
   TELEGRAM_BOT_TOKEN?: string;
   /** Ixtiyoriy: bot username (berilmasa — getMe). Lokal sinov uchun .dev.vars'da */
   TELEGRAM_BOT_NAME?: string;
+  /**
+   * Muallif(lar) Telegram ID'lari, vergul bilan: `wrangler secret put ADMIN_TELEGRAM_IDS`
+   * (deploy workflow'ida GitHub secret'dan). Bo'sh — hech kim admin emas. docs/admin.md
+   */
+  ADMIN_TELEGRAM_IDS?: string;
 }
 
 // o'yin GitHub Pages, Telegram va Android ilovadan (boshqa domen) so'raydi.

@@ -19,7 +19,7 @@ import { CloudDot } from "./AccountCorner";
 import { EmblemIcon } from "./GuildBadge";
 import { useGuild } from "@/account/guild";
 import { ROLE_NAME } from "@/account/guildRules";
-import { HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
+import { AuthorBadge, HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
 import { ago, btn, cloudText, tabBtn, when } from "./pixelUi";
 
 type Tab = "profile" | "cloud";
@@ -31,6 +31,8 @@ const REASON: Record<string, string> = {
   time: "davriy nusxa",
   stale: "rad etilgan (eskiroq) nusxa",
   restore: "tiklashdan oldin",
+  admin: "muallif paneli o'zgarishidan oldin",
+  gift: "sovg'a olishdan oldin",
 };
 
 function CloudTab({ onRestored }: { onRestored: () => void }) {
@@ -282,6 +284,7 @@ function ProfileTab({ me, rev }: { me: Me; rev: number }) {
           <span className="inline-flex flex-wrap items-center gap-2 text-foreground text-xs sm:text-sm">
             <span className="truncate">{me.nick}</span>
             <LevelBadge level={level} />
+            {me.admin && <AuthorBadge />}
             <button
               onClick={() => setEdit("nick")}
               aria-label="Taxallusni o'zgartirish"
@@ -380,8 +383,11 @@ export function ProfileWindow({
   onClose,
   onRestored = () => {},
   rev = 0,
+  onAdmin,
 }: {
   onClose: () => void;
+  /** muallif paneli (tugma faqat server "admin" degan akkauntda; panel o'zi ham serverdan so'raydi) */
+  onAdmin?: () => void;
   /** zaxiradan tiklandi — menyu holati qayta o'qilsin */
   onRestored?: () => void;
   /** progress almashtirilganda oshadi */
@@ -443,6 +449,14 @@ export function ProfileWindow({
           <button onClick={onClose} className={btn("pixel")}>
             YOPISH
           </button>
+          {me.admin && onAdmin && (
+            <button
+              onClick={onAdmin}
+              className={btn("pixelOutline", "border-[#ff7ab6] text-[#ff9fcb]")}
+            >
+              MUALLIF PANELI
+            </button>
+          )}
           <button onClick={() => setConfirmOut(true)} className={btn("pixelOutline")}>
             CHIQISH
           </button>

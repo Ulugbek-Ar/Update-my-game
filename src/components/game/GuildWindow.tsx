@@ -43,7 +43,7 @@ import { pixelFocus } from "@/lib/pixel-ui";
 import { EmblemEditor } from "./EmblemEditor";
 import { ChatTab, QuestsTab, TreasuryTab } from "./GuildLifeTabs";
 import { EmblemIcon } from "./GuildBadge";
-import { HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
+import { AuthorBadge, HeroAvatar, Icon, LevelBadge, PixelWindow } from "./pixel";
 import { ago, btn, tabBtn, when } from "./pixelUi";
 
 export type GuildTab =
@@ -189,6 +189,7 @@ function MemberLine({ m, children }: { m: GuildMember; children?: ReactNode }) {
         <span className="inline-flex flex-wrap items-center gap-2 text-foreground">
           <span className="truncate">{m.nick}</span>
           <LevelBadge level={m.level} />
+          {m.author && <AuthorBadge />}
           <RoleBadge role={m.role} />
           {m.muted > Date.now() && (
             <span className="text-[#ff9a3c]">jim: {leftText(m.muted - Date.now())}</span>

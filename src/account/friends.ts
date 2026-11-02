@@ -55,7 +55,7 @@ export class FriendsManager {
   private started = false;
   private beating = false;
   /** holat javobini kutayotganlar (gildiya qisqachasi — guild.ts) */
-  private presenceHooks: ((r: { guild?: GuildPing }) => void)[] = [];
+  private presenceHooks: ((r: { guild?: GuildPing; gifts?: number }) => void)[] = [];
 
   constructor(private acc: AccountManager = account) {
     acc.onLogin(() => {
@@ -79,7 +79,7 @@ export class FriendsManager {
   }
 
   /** Har holat javobida (daqiqada bir): javobdagi qo'shimchalar (gildiya) shu yerga */
-  onPresence(fn: (r: { guild?: GuildPing }) => void) {
+  onPresence(fn: (r: { guild?: GuildPing; gifts?: number }) => void) {
     this.presenceHooks.push(fn);
   }
 

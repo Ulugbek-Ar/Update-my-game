@@ -42,7 +42,8 @@ tag = "v3"
 new_sqlite_classes = ["HallDO"]
 
 # TELEGRAM_BOT_TOKEN — secret (`wrangler secret put`, .github/workflows/server.yml), bu yerga yozilmaydi.
-# Lokal sinov: server/.dev.vars faylida TELEGRAM_BOT_TOKEN=... (git'ga kirmaydi)
+# ADMIN_TELEGRAM_IDS — muallif(lar) Telegram ID'lari, vergul bilan (secret, docs/admin.md).
+# Lokal sinov: server/.dev.vars faylida TELEGRAM_BOT_TOKEN=... va ADMIN_TELEGRAM_IDS=... (git'ga kirmaydi)
 
 [observability]
 enabled = true

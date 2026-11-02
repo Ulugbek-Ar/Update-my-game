@@ -69,6 +69,8 @@ import { AccountCorner } from "@/components/game/AccountCorner";
 import { LoginWindow } from "@/components/game/LoginWindow";
 import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
+import { AdminWindow } from "@/components/game/AdminWindow";
+import type { AdminStart } from "@/account/admin";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
 import { LeaderboardWindow } from "@/components/game/LeaderboardWindow";
@@ -205,6 +207,10 @@ function Index() {
   /** Akkaunt: kirish va profil oynalari, progress tanlovi (birinchi kirishda) */
   const [loginOpen, setLoginOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** Muallif paneli (faqat server admin deb tasdiqlasa ichi ko'rinadi) */
+  const [adminOpen, setAdminOpen] = useState(false);
+  /** Muallif paneli: keyingi o'yin shu dunyo/to'lqindan (bir martalik) */
+  const adminStartRef = useRef<AdminStart | null>(null);
   const [decisionOpen, setDecisionOpen] = useState(true);
   /** REYTING oynasi */
   const [boardOpen, setBoardOpen] = useState(false);
@@ -461,6 +467,10 @@ function Index() {
     setGame(g);
     if (import.meta.env.DEV) (window as unknown as { __game?: Game }).__game = g;
     g.start();
+    // muallif paneli: tanlangan to'lqindan
+    const jump = adminStartRef.current;
+    adminStartRef.current = null;
+    if (jump) g.jumpToWave(jump.wave);
     return () => g.stop();
     // qahramon faqat menyuda o'zgaradi — o'yin davomida qayta yaratilmaydi
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -534,6 +544,7 @@ function Index() {
       [guildOpen, () => setGuildOpen(false)],
       [boardOpen, () => setBoardOpen(false)],
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
+      [adminOpen, () => setAdminOpen(false)],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
       [joinOpen, () => setJoinOpen(false)],
@@ -1034,6 +1045,25 @@ function Index() {
           rev={progressRev}
           onClose={() => setProfileOpen(false)}
           onRestored={refreshProgress}
+          onAdmin={() => {
+            setProfileOpen(false);
+            setAdminOpen(true);
+          }}
+        />
+      )}
+      {adminOpen && acc.me && !started && !realm && (
+        <AdminWindow
+          onClose={() => setAdminOpen(false)}
+          onChanged={refreshProgress}
+          onStart={(s) => {
+            sfx.unlock();
+            if (touch) void enterLandscape();
+            adminStartRef.current = s;
+            dailyRef.current = null;
+            setWorld(s.world);
+            setAdminOpen(false);
+            setStarted(true);
+          }}
         />
       )}
       {boardOpen && !started && !realm && (

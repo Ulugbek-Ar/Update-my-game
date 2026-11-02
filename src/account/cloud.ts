@@ -24,7 +24,7 @@ import { account, type AccountManager } from "./account";
 import { ERROR_TEXT, call, currentDevice } from "./api";
 import { FIELD_TEXT, type LimitField } from "./limits";
 import { CLOUD_KEY, DEVICE_ID_KEY } from "./keys";
-import type { CloudSave } from "./protocol";
+import type { CloudSave, ErrCode } from "./protocol";
 import { XP_KEY, levelOf, xpFromRaw } from "./xp";
 
 export type Keys = Record<string, string>;
@@ -513,6 +513,42 @@ export class CloudSync {
     // qurilmada o'zgarish bor — server vaqt bo'yicha hal qiladi; aks holda bulutdagisi
     if (this.isDirty()) return this.push();
     this.apply(cloud, st.acc);
+  }
+
+  /**
+   * Server o'zi progressni o'zgartiradigan so'rov (muallif paneli, sovg'a olish): avval
+   * qurilmadagi o'zgarish bulutga yoziladi, so'ng so'rov joriy versiya (base) bilan yuboriladi va
+   * javobdagi yangi nusxa qurilmaga qo'llanadi. Ziddiyatda bulutdagisi yuklanib, bir marta qayta
+   * uriniladi. Faqat menyuda (o'yin/olam ketmayotganda).
+   */
+  async mutate<R extends { ok: true; save: CloudSave }>(
+    send: (base: number) => Promise<R | { ok: false; error: ErrCode; save?: CloudSave }>,
+  ): Promise<R | { ok: false; error: ErrCode }> {
+    const me = this.acc.state.me;
+    if (!me || !this.acc.sessionToken) return { ok: false, error: "auth" };
+    if (!this.canApply()) return { ok: false, error: "bad" };
+    for (let i = 0; i < 50 && this.busy; i++) await new Promise((f) => setTimeout(f, 100));
+    if (this.busy) return { ok: false, error: "rate" };
+    if (this.isDirty()) await this.push();
+    if (this.isDirty()) return { ok: false, error: "net" };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const st = this.active();
+      if (!st) return { ok: false, error: "auth" };
+      this.busy = true;
+      const r = await send(st.base);
+      this.busy = false;
+      if (r.ok) {
+        this.apply(r.save, me.id);
+        return r;
+      }
+      if (r.error === "conflict" && r.save) {
+        this.apply(r.save, me.id);
+        continue;
+      }
+      if (r.error === "auth") void this.sessionLost();
+      return r;
+    }
+    return { ok: false, error: "conflict" };
   }
 
   /** Zaxiralar ro'yxati (profil) */

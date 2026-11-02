@@ -26,6 +26,8 @@ import { sha256Hex, type TgUser } from "./telegram";
 import { Friends } from "./friends";
 import { Guilds } from "./guilds";
 import { Scores } from "./scores";
+import { Admin } from "./admin";
+import { Gifts } from "./gifts";
 
 const DAY = 86_400_000;
 /** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
@@ -42,7 +44,17 @@ const BACKUP_EVERY = 30 * 60_000;
  * Zaxira sababi: force — tanlov oynasi, conflict — boshqa qurilma orada saqlagan, device —
  * boshqa qurilmadan, time — davriy, stale — rad etilgan (eski) nusxa, restore — tiklashdan oldingi
  */
-export type BackupReason = "force" | "conflict" | "device" | "time" | "stale" | "restore";
+export type BackupReason =
+  | "force"
+  | "conflict"
+  | "device"
+  | "time"
+  | "stale"
+  | "restore"
+  /** muallif paneli o'zgartirishidan oldingi */
+  | "admin"
+  /** sovg'a olishdan oldingi */
+  | "gift";
 
 export interface PlayerRow extends Row {
   id: number;
@@ -117,12 +129,18 @@ export class AccountStore {
   readonly scores: Scores;
   /** gildiyalar (docs/guilds.md) */
   readonly guilds: Guilds;
+  /** muallif paneli: admin huquqi (ADMIN_TELEGRAM_IDS), jurnal (docs/admin.md) */
+  readonly admin: Admin;
+  /** muallif sovg'alari (sovg'a qutisi) */
+  readonly gifts: Gifts;
 
   constructor(readonly db: Db) {
     initSchema(db);
     this.friends = new Friends(this);
     this.scores = new Scores(this);
     this.guilds = new Guilds(this);
+    this.admin = new Admin(this);
+    this.gifts = new Gifts(this);
   }
 
   // ---------------- o'yinchilar ----------------
@@ -193,6 +211,7 @@ export class AccountStore {
       code: str(p.code),
       created: num(p.created),
       tg: num(p.tg),
+      ...(this.admin.is(p) ? { admin: true } : {}),
     };
   }
 
@@ -244,6 +263,8 @@ export class AccountStore {
         "DELETE FROM messages WHERE receiver = ?",
         "DELETE FROM presence WHERE player = ?",
         "DELETE FROM scores WHERE player = ?",
+        "DELETE FROM gifts WHERE receiver = ?",
+        "DELETE FROM expeditions WHERE player = ?",
         "DELETE FROM players WHERE id = ?",
       ])
         this.db.exec(q, id);
@@ -489,8 +510,9 @@ export class AccountStore {
         player,
       );
       this.setXp(player, xpFromRaw(req.data[XP_KEY]));
-      // gildiya topshiriqlari: oldingisidan davom etgan saqlanishdagi o'sish (dushmanlar, XP...)
-      if (follows && prev)
+      // gildiya topshiriqlari: oldingisidan davom etgan saqlanishdagi o'sish (dushmanlar, XP...).
+      // Muallif hissasi hisoblanmaydi — boshqa gildiyalar uchun adolatli
+      if (follows && prev && !this.admin.isId(player))
         try {
           this.guilds.life.onSave(player, prev, req.data, now);
         } catch (e) {
@@ -498,6 +520,30 @@ export class AccountStore {
         }
       return { ok: true as const, version };
     });
+  }
+
+  /**
+   * Server o'zi yozadigan saqlanish (muallif paneli, sovg'a): tekshiruvsiz, versiya +1, vaqt —
+   * hozir (boshqa qurilmalar ham oladi); oldingisi zaxiraga tushadi. Chaqiruvchi tranzaksiyada.
+   */
+  writeSave(player: number, data: Record<string, string>, now: number, reason: BackupReason) {
+    const cur = this.saveRow(player);
+    if (cur) this.backup(player, cur, reason, now);
+    const version = (cur ? num(cur.version) : 0) + 1;
+    const json = JSON.stringify(data);
+    this.db.exec(
+      `INSERT INTO saves (player, version, time, at, device, dev, data) VALUES (?, ?, ?, ?, ?, '', ?)
+       ON CONFLICT (player) DO UPDATE SET version = excluded.version, time = excluded.time,
+         at = excluded.at, device = excluded.device, dev = '', data = excluded.data`,
+      player,
+      version,
+      now,
+      now,
+      cur ? str(cur.device) : "web",
+      json,
+    );
+    this.setXp(player, xpFromRaw(data[XP_KEY]));
+    return this.getSave(player)!;
   }
 
   private lastBackupAt(player: number) {

@@ -191,3 +191,18 @@ export function TelegramIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
+
+/** "MUALLIF" belgisi: o'yin muallifi (admin) ismi yonida — profil, do'stlar, gildiya, sovg'a */
+export function AuthorBadge({ className }: { className?: string }) {
+  return (
+    <span
+      title="O'yin muallifi"
+      className={cn(
+        "inline-flex shrink-0 items-center border-2 border-[#ff7ab6] bg-[#ff7ab6]/15 px-1 text-[8px] leading-3 text-[#ff9fcb]",
+        className,
+      )}
+    >
+      MUALLIF
+    </span>
+  );
+}

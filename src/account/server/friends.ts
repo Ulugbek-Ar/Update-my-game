@@ -84,6 +84,7 @@ export class Friends {
     };
     const guild = this.store.guilds.tagOf(num(p.id));
     if (guild) out.guild = guild;
+    if (this.store.admin.is(p)) out.author = true;
     return out;
   }
 
@@ -308,6 +309,14 @@ export class Friends {
         "n"
       ],
     );
-    return { ok: true as const, messages, requests, guild: this.store.guilds.ping(me.id, now) };
+    const gifts = this.store.gifts.pending(me.id);
+    return {
+      ok: true as const,
+      messages,
+      requests,
+      guild: this.store.guilds.ping(me.id, now),
+      // sovg'a qutisi: kutayotgan sovg'alar (bo'lmasa — maydon yo'q)
+      ...(gifts ? { gifts } : {}),
+    };
   }
 }

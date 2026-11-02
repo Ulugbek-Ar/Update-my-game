@@ -63,6 +63,11 @@ export interface Me {
   created: number;
   /** Telegram ID (faqat o'ziga ko'rinadi) */
   tg: number;
+  /**
+   * Muallif (admin): ism yonida "MUALLIF" belgisi. Faqat ko'rinish uchun — admin so'rovlarining
+   * har birini server o'zi tekshiradi (ADMIN_TELEGRAM_IDS), bu maydonga ishonilmaydi.
+   */
+  admin?: boolean;
 }
 
 /** Bulutdagi saqlanish: progress kalitlari (qurilmaga xoslarisiz) */
@@ -161,6 +166,9 @@ export const FRIEND_PHRASES = [
   "Hozir bandman, keyinroq",
   "Xayr!",
 ] as const;
+
+/** Sovg'a xatining eng ko'p uzunligi */
+export const GIFT_NOTE_MAX = 120;
 
 /** Do'stlar soni va kutilayotgan so'rovlar chegarasi */
 export const MAX_FRIENDS = 100;
@@ -361,6 +369,62 @@ export const REQ = {
       .int()
       .refine((m) => m === 0 || (MUTE_MINUTES as readonly number[]).includes(m)),
   }),
+  // ---------------- muallif paneli (faqat ADMIN_TELEGRAM_IDS — serverda tekshiriladi) ----------------
+  /** Panel ma'lumoti: admin ekanligi, yuborilgan sovg'alar va jurnal */
+  "admin/info": z.object({ token }),
+  /** "HAMMASINI OCHISH" (base — klientdagi bulut versiyasi: avval saqlangan bo'lishi kerak) */
+  "admin/unlock": z.object({ token, base: z.number().int().min(0) }),
+  /** O'zining progressi: oltin, XP, daraja, qahramon ochish/yopish, kunlik sovg'ani tiklash */
+  "admin/grant": z.object({
+    token,
+    base: z.number().int().min(0),
+    gold: z.number().int().min(-1_000_000).max(1_000_000).optional(),
+    xp: z.number().int().min(0).max(1_000_000).optional(),
+    level: z.number().int().min(1).max(50).optional(),
+    hero: hero.optional(),
+    lock: hero.optional(),
+    daily: z.literal(true).optional(),
+  }),
+  /** Progressni nolga qaytarish (ikki bosqichli tasdiq: confirm — "NOL") */
+  "admin/reset": z.object({ token, base: z.number().int().min(0), confirm: z.literal("NOL") }),
+  /** Test gildiyasi (oltinsiz) */
+  "admin/guild": z.object({
+    token,
+    name: z.string().max(64),
+    tag: z.string().max(16),
+    emblem: emblem,
+  }),
+  /** O'z gildiyasi darajasini o'rnatish (1..10) */
+  "admin/guildlevel": z.object({ token, level: z.number().int().min(1).max(10) }),
+  /** O'yinchini taxallus yoki do'st kodi bo'yicha qidirish (sovg'a uchun) */
+  "admin/find": z.object({ token, query: z.string().min(1).max(32) }),
+  /** Sovg'a yuborish: oltin, XP, qahramon (kamida bittasi) va ixtiyoriy xat */
+  "admin/gift": z
+    .object({
+      token,
+      to: z.number().int().positive(),
+      gold: z.number().int().min(0).max(1_000_000),
+      xp: z.number().int().min(0).max(100_000),
+      hero: hero.optional(),
+      note: z.string().max(GIFT_NOTE_MAX).optional(),
+    })
+    .refine((b) => b.gold > 0 || b.xp > 0 || !!b.hero),
+  // ---------------- sovg'a qutisi (qabul qiluvchi) ----------------
+  /** Kutayotgan sovg'alar */
+  "gifts/list": z.object({ token }),
+  /** Sovg'ani olish: server bulutdagi progressga yozadi (base — klientdagi bulut versiyasi) */
+  "gifts/claim": z.object({
+    token,
+    id: z.number().int().positive(),
+    base: z.number().int().min(0),
+  }),
+  // ---------------- ekspeditsiya (vaqt — server soati) ----------------
+  /** Joriy ekspeditsiya (bo'lsa) va server vaqti */
+  "exp/get": z.object({ token }),
+  /** Qahramonni ekspeditsiyaga yuborish (allaqachon ketgan bo'lsa — o'sha qoladi) */
+  "exp/start": z.object({ token, hero }),
+  /** Qaytarish: o'tgan vaqtga qarab mukofot (end — qahramon bilan o'ynash boshlandi) */
+  "exp/claim": z.object({ token, end: z.boolean().optional() }),
 } as const;
 
 export type Op = keyof typeof REQ;
@@ -400,6 +464,8 @@ export interface FriendInfo {
   seen: number;
   /** gildiya tegi va gerbi (gildiyada bo'lsa) */
   guild?: GuildTag;
+  /** o'yin muallifi (ism yonida "MUALLIF" belgisi) */
+  author?: boolean;
 }
 
 export interface FriendLists {
@@ -496,6 +562,8 @@ export interface GuildMember {
   given: number;
   /** chatda jim (shu vaqtgacha, ms; 0 — yo'q) */
   muted: number;
+  /** o'yin muallifi (ism yonida "MUALLIF" belgisi) */
+  author?: boolean;
 }
 
 /** Ariza (o'yinchi so'radi) yoki yuborilgan taklif — rahbar va o'rinbosarga ko'rinadi */
@@ -635,6 +703,80 @@ export interface GuildPing {
   champ?: ChampInfo | null;
 }
 
+// ---------------- muallif paneli, sovg'alar, ekspeditsiya ----------------
+
+/** Qidiruvdagi o'yinchi (sovg'a yuborishdan oldin — adashmaslik uchun) */
+export interface PlayerCard {
+  id: number;
+  nick: string;
+  avatar: Hero;
+  level: number;
+  /** do'st kodi */
+  code: string;
+  /** ochilgan qahramonlar (qahramon sovg'asi — faqat hali ochmaganlaridan) */
+  heroes: Hero[];
+  author?: boolean;
+}
+
+/** Qabul qiluvchidagi sovg'a */
+export interface GiftInfo {
+  id: number;
+  /** kimdan */
+  from: { nick: string; avatar: Hero; author: boolean };
+  gold: number;
+  xp: number;
+  hero: Hero | null;
+  note: string;
+  at: number;
+}
+
+/** Muallif panelidagi "Yuborilgan sovg'alar" */
+export interface SentGift {
+  id: number;
+  to: { id: number; nick: string };
+  gold: number;
+  xp: number;
+  hero: Hero | null;
+  note: string;
+  at: number;
+  /** olingan vaqt (0 — hali olinmagan) */
+  claimed: number;
+}
+
+/** Admin jurnali yozuvi */
+export interface AdminLogEntry {
+  id: number;
+  at: number;
+  /** amal: unlock, grant, reset, guild, guildlevel, gift, denied... */
+  action: string;
+  /** kimga (taxallus) */
+  target: string;
+  detail: string;
+}
+
+export interface AdminInfo {
+  gifts: SentGift[];
+  log: AdminLogEntry[];
+}
+
+/** Ekspeditsiyadagi qahramon: boshlangan vaqt va server soati (ms) */
+export interface ExpeditionState {
+  hero: Hero;
+  start: number;
+  now: number;
+}
+
+/** Ekspeditsiya mukofoti */
+export interface ExpeditionReward {
+  hero: Hero;
+  /** hisobga olingan vaqt (daqiqa, ko'pi bilan 8 soat) */
+  minutes: number;
+  gold: number;
+  xp: number;
+  /** sandiq: olam uchun noyob buyum (yo'q — null) */
+  chest: string | null;
+}
+
 type GuildReply<O extends Op> = O extends "guild/get"
   ? ({ ok: true } & GuildState) | Fail
   : O extends "guild/create"
@@ -669,42 +811,68 @@ type GuildReply<O extends Op> = O extends "guild/get"
                         ? ({ ok: true } & GuildTop) | Fail
                         : { ok: true } | Fail;
 
+type ExtraReply<O extends Op> = O extends "admin/info"
+  ? ({ ok: true } & AdminInfo) | Fail
+  : O extends "admin/unlock" | "admin/grant" | "admin/reset"
+    ? { ok: true; save: CloudSave } | Fail
+    : O extends "admin/guild" | "admin/guildlevel"
+      ? { ok: true; guild: GuildInfo } | Fail
+      : O extends "admin/find"
+        ? { ok: true; players: PlayerCard[] } | Fail
+        : O extends "admin/gift"
+          ? { ok: true; gift: SentGift } | Fail
+          : O extends "gifts/list"
+            ? { ok: true; gifts: GiftInfo[] } | Fail
+            : O extends "gifts/claim"
+              ? { ok: true; save: CloudSave; gift: GiftInfo } | Fail
+              : O extends "exp/get" | "exp/start"
+                ? { ok: true; exp: ExpeditionState | null; now: number } | Fail
+                : O extends "exp/claim"
+                  ? { ok: true; reward: ExpeditionReward | null } | Fail
+                  : { ok: true } | Fail;
+
 export type Reply<O extends Op> = O extends `guild/${string}`
   ? GuildReply<O>
-  : O extends "auth/webapp" | "auth/widget"
-    ? { ok: true; token: string; me: Me } | Fail
-    : O extends "auth/bot"
-      ? { ok: true; code: string; secret: string; link: string; expires: number } | Fail
-      : O extends "auth/poll"
-        ? { ok: true; status: "wait" } | { ok: true; status: "done"; token: string; me: Me } | Fail
-        : O extends "me" | "profile"
-          ? { ok: true; me: Me } | Fail
-          : O extends "save/get"
-            ? { ok: true; save: CloudSave | null; same?: boolean } | Fail
-            : O extends "save/put"
-              ? { ok: true; version: number } | Fail
-              : O extends "save/backups"
-                ? { ok: true; backups: BackupInfo[] } | Fail
-                : O extends "save/restore"
-                  ? { ok: true; save: CloudSave } | Fail
-                  : O extends "friends/list"
-                    ? ({ ok: true } & FriendLists) | Fail
-                    : O extends "friends/add"
-                      ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
-                      : O extends "presence"
-                        ? | {
-                              ok: true;
-                              messages: FriendMessage[];
-                              requests: number;
-                              guild?: GuildPing;
-                            }
-                          | Fail
-                        : O extends "scores/top"
-                          ? ({ ok: true } & ScoreTop) | Fail
-                          : O extends "scores/submit"
-                            ? | { ok: true; hidden: boolean; best: number; rank: number | null }
-                              | Fail
-                            : { ok: true } | Fail;
+  : O extends `admin/${string}` | `gifts/${string}` | `exp/${string}`
+    ? ExtraReply<O>
+    : O extends "auth/webapp" | "auth/widget"
+      ? { ok: true; token: string; me: Me } | Fail
+      : O extends "auth/bot"
+        ? { ok: true; code: string; secret: string; link: string; expires: number } | Fail
+        : O extends "auth/poll"
+          ? | { ok: true; status: "wait" }
+            | { ok: true; status: "done"; token: string; me: Me }
+            | Fail
+          : O extends "me" | "profile"
+            ? { ok: true; me: Me } | Fail
+            : O extends "save/get"
+              ? { ok: true; save: CloudSave | null; same?: boolean } | Fail
+              : O extends "save/put"
+                ? { ok: true; version: number } | Fail
+                : O extends "save/backups"
+                  ? { ok: true; backups: BackupInfo[] } | Fail
+                  : O extends "save/restore"
+                    ? { ok: true; save: CloudSave } | Fail
+                    : O extends "friends/list"
+                      ? ({ ok: true } & FriendLists) | Fail
+                      : O extends "friends/add"
+                        ? { ok: true; friend: FriendInfo; accepted: boolean } | Fail
+                        : O extends "presence"
+                          ? | {
+                                ok: true;
+                                messages: FriendMessage[];
+                                requests: number;
+                                guild?: GuildPing;
+                                /** kutayotgan sovg'alar soni (sovg'a qutisi) */
+                                gifts?: number;
+                              }
+                            | Fail
+                          : O extends "scores/top"
+                            ? ({ ok: true } & ScoreTop) | Fail
+                            : O extends "scores/submit"
+                              ? | { ok: true; hidden: boolean; best: number; rank: number | null }
+                                | Fail
+                              : { ok: true } | Fail;
 
 /** /acc/config (GET) — saytdagi Login Widget va bot havolasi uchun */
 export interface AccConfig {

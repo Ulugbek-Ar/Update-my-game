@@ -7,7 +7,7 @@ import { friends, placeText, useFriends } from "@/account/friends";
 import { FRIEND_PHRASES, formatFriendCode, type FriendInfo } from "@/account/protocol";
 import { useAccount } from "@/account/useAccount";
 import { pixelFocus } from "@/lib/pixel-ui";
-import { HeroAvatar, LevelBadge, PixelWindow } from "./pixel";
+import { AuthorBadge, HeroAvatar, LevelBadge, PixelWindow } from "./pixel";
 import { GuildTagBadge } from "./GuildBadge";
 import { ago, btn, tabBtn } from "./pixelUi";
 
@@ -22,6 +22,7 @@ function Row({ f, children }: { f: FriendInfo; children?: ReactNode }) {
           <GuildTagBadge guild={f.guild} />
           <span className="truncate">{f.nick}</span>
           <LevelBadge level={f.level} />
+          {f.author && <AuthorBadge />}
         </span>
         <span className={f.online ? "text-[#a6f08e]" : "text-muted-foreground"}>
           {f.online ? "● " : "○ "}
