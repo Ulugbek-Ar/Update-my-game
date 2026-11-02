@@ -115,6 +115,13 @@ yaqin, juda tez g'alaba) saqlanadi, lekin reytingda **yashirin** — o'yinchinin
 Kirgan o'yinchilar gildiya tuzadi (500 oltin) yoki qo'shiladi: rollar, qo'shilish usullari, gerb,
 24 soatlik cheklov — batafsil [docs/guilds.md](guilds.md).
 
+## Muallif paneli, sovg'alar va ekspeditsiya (v3.4)
+
+Muallif (admin) paneli va sovg'a yuborish — [docs/admin.md](admin.md). Sovg'a qutisi: muallifdan
+kelgan sovg'a server tomonidan bulutdagi progressga yoziladi (bir marta, qurilma almashsa ham
+yo'qolmaydi). Ekspeditsiya: kirgan o'yinchida vaqt server soati bo'yicha (`exp/*`), mehmonda —
+qurilma soati; hisob `src/account/expeditionRules.ts` izohida.
+
 ## Maxfiylik va akkauntni o'chirish
 
 Serverda faqat: Telegram ID, taxallus, avatar, progress (va 5 ta zaxira), do'stlar, xabarlar

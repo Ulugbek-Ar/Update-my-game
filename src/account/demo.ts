@@ -5,6 +5,8 @@
  *   await window.__accountDemo()                 // kirgan o'yinchi, do'stlar, reyting
  *   await window.__accountDemo({ pending: true }) // "Tasdiq kutilmoqda" (bot havolasi va QR)
  *   await window.__accountDemo({ guild: false })  // gildiyasiz (qidirish, tuzish, gerb muharriri)
+ *   await window.__accountDemo({ as: "friend", gift: true }) // do'st: "Sovg'a keldi!" (muallifdan)
+ *   await window.__accountDemo({ exp: "back" })   // "Ekspeditsiyadan qaytdi" (5 soat 12 daqiqa)
  */
 import { account } from "./account";
 import { setTransport, type Transport } from "./api";
@@ -26,9 +28,14 @@ import type {
 } from "./protocol";
 import type { GuildRole } from "./guildRules";
 import { XP_KEY, levelOf, xpFromRaw } from "./xp";
+import { applyGift } from "./grants";
+import { collectProgress, packProgress } from "@/game/transfer";
 import type { Hero } from "@/game/hero";
 
 const H = 3600_000;
+
+/** Demo kimning nomidan: muallif (Ulugbek) yoki uning do'sti (sovg'a qabul qiluvchi) */
+let demoAs: "author" | "friend" = "author";
 
 function me(): Me {
   let xp = 0;
@@ -37,6 +44,17 @@ function me(): Me {
   } catch {
     /* yo'q */
   }
+  if (demoAs === "friend")
+    return {
+      id: 2,
+      nick: "Dilnoza",
+      avatar: "mage",
+      xp,
+      level: levelOf(xp),
+      code: "D1LN0ZA2",
+      created: Date.now() - 12 * 24 * H,
+      tg: 2,
+    };
   return {
     id: 1,
     nick: "Ulugbek",
@@ -48,6 +66,17 @@ function me(): Me {
     tg: 1,
   };
 }
+
+/** Muallifdan sovg'a (qabul qiluvchi tomoni) */
+const GIFT = () => ({
+  id: 31,
+  from: { nick: "Ulugbek", avatar: "paladin" as Hero, author: true },
+  gold: 500,
+  xp: 0,
+  hero: "paladin" as Hero,
+  note: "Sinovda yordam berganing uchun rahmat! Paladin endi seniki.",
+  at: Date.now() - 4 * 60_000,
+});
 
 const friend = (
   id: number,
@@ -381,7 +410,14 @@ function backups(): BackupInfo[] {
 }
 
 /** Soxta server: kirish, saqlanish, profil, do'stlar, reyting, gildiya */
-function transport(pending: boolean, inGuild: boolean): Transport {
+function transport(
+  pending: boolean,
+  inGuild: boolean,
+  gift: boolean,
+  exp: "none" | "back",
+): Transport {
+  let gifts = gift ? [GIFT()] : [];
+  let away = exp === "back" ? { hero: "paladin" as Hero, start: Date.now() - 312 * 60_000 } : null;
   return async (op, raw) => {
     const body = (raw ?? {}) as Record<string, unknown>;
     const now = Date.now();
@@ -415,6 +451,7 @@ function transport(pending: boolean, inGuild: boolean): Transport {
           ok: true,
           messages: [],
           requests: 1,
+          ...(gifts.length ? { gifts: gifts.length } : {}),
           guild: inGuild
             ? {
                 guild: { id: 7, name: "Qal'a Qo'riqchilari", ...PQ, level: 6, role: "leader" },
@@ -497,18 +534,57 @@ function transport(pending: boolean, inGuild: boolean): Transport {
           resets: nextWeekStart(now),
         };
       }
+      case "gifts/list":
+        return { ok: true, gifts };
+      case "gifts/claim": {
+        const g = gifts.find((x) => x.id === body["id"]);
+        if (!g) return { ok: false, error: "none" };
+        gifts = gifts.filter((x) => x !== g);
+        const data = applyGift(packProgress(collectProgress()), g);
+        return { ok: true, save: { version: 43, time: now, device: "web", data }, gift: g };
+      }
+      case "exp/get":
+        return { ok: true, exp: away ? { ...away, now } : null, now };
+      case "exp/start":
+        away ??= { hero: (body["hero"] as Hero) ?? "knight", start: now };
+        return { ok: true, exp: { ...away, now }, now };
+      case "exp/claim": {
+        if (!away) return { ok: true, reward: null };
+        const minutes = Math.floor((now - away.start) / 60_000);
+        const reward =
+          minutes < 10
+            ? null
+            : { hero: away.hero, minutes, gold: 63, xp: 94, chest: minutes > 120 ? "star" : null };
+        away = null;
+        return { ok: true, reward };
+      }
       default:
         return { ok: true };
     }
   };
 }
 
-export async function startAccountDemo(opts: { pending?: boolean; guild?: boolean } = {}) {
-  setTransport(transport(!!opts.pending, opts.guild !== false), async () => ({
-    ok: true,
-    bot: "PikselQalaBot",
-    botId: 1,
-  }));
+export async function startAccountDemo(
+  opts: {
+    pending?: boolean;
+    guild?: boolean;
+    /** kimning nomidan: muallif (standart) yoki do'st */
+    as?: "author" | "friend";
+    /** muallifdan sovg'a kutmoqda */
+    gift?: boolean;
+    /** "back" — qahramon 5 soatdan beri ekspeditsiyada (kirganda qaytadi) */
+    exp?: "none" | "back";
+  } = {},
+) {
+  demoAs = opts.as ?? "author";
+  setTransport(
+    transport(!!opts.pending, opts.guild !== false, !!opts.gift, opts.exp ?? "none"),
+    async () => ({
+      ok: true,
+      bot: "PikselQalaBot",
+      botId: 1,
+    }),
+  );
   if (account.loggedIn) return;
   await account.startBotLogin(false);
   if (opts.pending) return;

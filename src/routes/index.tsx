@@ -295,10 +295,9 @@ function Index() {
     setTouch(window.matchMedia("(pointer: coarse)").matches);
     // dev: serversiz akkaunt (skrinshotlar) — await window.__accountDemo()
     if (import.meta.env.DEV)
-      (window as unknown as { __accountDemo?: unknown }).__accountDemo = (o?: {
-        pending?: boolean;
-        guild?: boolean;
-      }) => import("@/account/demo").then((m) => m.startAccountDemo(o));
+      (window as unknown as { __accountDemo?: unknown }).__accountDemo = (
+        o?: Parameters<typeof import("@/account/demo").startAccountDemo>[0],
+      ) => import("@/account/demo").then((m) => m.startAccountDemo(o));
     // akkaunt: saqlangan sessiya, kutilayotgan bot kodi (Telegram ichida — skript yuklangach);
     // bulutli saqlanish: kirgan bo'lsa — yangiroq progress yuklanadi, o'zgarishlar yuboriladi
     account.init();

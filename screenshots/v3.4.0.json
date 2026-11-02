@@ -1,0 +1,72 @@
+[
+  {
+    "title": "Ekspeditsiya: menyuda \"EKSPEDITSIYAGA YUBORISH\" — tanlangan qahramon sarguzashtga ketadi, kartasida \"EKSPEDITSIYADA\" belgisi va o'tgan vaqt",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": { "xp": 5600, "lvl": 20, "q": [], "s": [] }
+        }
+      },
+      { "eval": "return window.__accountDemo()" },
+      { "wait": 4800 },
+      { "click": "EKSPEDITSIYAGA YUBORISH" },
+      { "wait": 900 }
+    ]
+  },
+  {
+    "title": "\"Ekspeditsiyadan qaytdi\": o'yinda yo'qligingizda qahramon oltin, tajriba va sandiqdagi noyob buyum olib keladi (ko'pi bilan 8 soatlik mukofot)",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": { "xp": 5600, "lvl": 20, "q": [], "s": [] }
+        }
+      },
+      { "eval": "return window.__accountDemo({ exp: 'back' })" },
+      { "wait": 5200 }
+    ]
+  },
+  {
+    "title": "Sovg'a qutisi: \"Sovg'a keldi!\" — muallifdan (MUALLIF belgisi bilan) oltin, qahramon va xat; \"OLISH\" bosiladi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-gold": "120",
+          "pixel-rpg-xp": { "xp": 1700, "lvl": 10, "q": [], "s": [] }
+        }
+      },
+      { "eval": "return window.__accountDemo({ as: 'friend', gift: true })" },
+      { "wait": 5200 }
+    ]
+  },
+  {
+    "title": "Sovg'a olindi: yangi qahramon nur ichida paydo bo'ladi, oltin tanga yomg'iri bilan hisobga tushadi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-gold": "120",
+          "pixel-rpg-xp": { "xp": 1700, "lvl": 10, "q": [], "s": [] }
+        }
+      },
+      { "eval": "return window.__accountDemo({ as: 'friend', gift: true })" },
+      { "wait": 5200 },
+      { "click": "OLISH" },
+      { "wait": 1100 }
+    ]
+  }
+]
