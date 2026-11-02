@@ -28,6 +28,7 @@ import { Guilds } from "./guilds";
 import { Scores } from "./scores";
 import { Admin } from "./admin";
 import { Gifts } from "./gifts";
+import { Expeditions } from "./expeditions";
 
 const DAY = 86_400_000;
 /** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
@@ -133,6 +134,8 @@ export class AccountStore {
   readonly admin: Admin;
   /** muallif sovg'alari (sovg'a qutisi) */
   readonly gifts: Gifts;
+  /** ekspeditsiya (server soati) */
+  readonly exp: Expeditions;
 
   constructor(readonly db: Db) {
     initSchema(db);
@@ -141,6 +144,7 @@ export class AccountStore {
     this.guilds = new Guilds(this);
     this.admin = new Admin(this);
     this.gifts = new Gifts(this);
+    this.exp = new Expeditions(this);
   }
 
   // ---------------- o'yinchilar ----------------

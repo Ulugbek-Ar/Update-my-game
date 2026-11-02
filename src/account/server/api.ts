@@ -261,6 +261,27 @@ export async function handleApi(
       const r = store.gifts.claim(p, b.id, b.base, env.now);
       return r.ok ? r : fail(r.error, r.save ? { save: r.save } : {});
     }
+    case "exp/get": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      const e = store.exp.get(p);
+      return { ok: true, exp: e ? { ...e, now: env.now } : null, now: env.now };
+    }
+    case "exp/start": {
+      const b = body as ReqOf<"exp/start">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.exp.start(p, b.hero, env.now);
+      if (!r.ok) return fail(r.error);
+      const e = store.exp.get(p);
+      return { ok: true, exp: e ? { ...e, now: env.now } : null, now: env.now };
+    }
+    case "exp/claim": {
+      const b = body as ReqOf<"exp/claim">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      return { ok: true, reward: store.exp.claim(p, env.now, !!b.end) };
+    }
     case "profile": {
       const b = body as ReqOf<"profile">;
       const p = await authed();

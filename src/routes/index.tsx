@@ -73,6 +73,8 @@ import { AdminWindow } from "@/components/game/AdminWindow";
 import { CoinRain } from "@/components/game/pixel";
 import { GiftInboxWindow } from "@/components/game/GiftInboxWindow";
 import { giftBox, useGiftBox } from "@/account/giftbox";
+import { expedition, useExpedition } from "@/account/expedition";
+import { ExpeditionBadge, ExpeditionWindow } from "@/components/game/ExpeditionWindow";
 import type { AdminStart } from "@/account/admin";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
@@ -219,6 +221,8 @@ function Index() {
   const box = useGiftBox();
   /** o'yin/olam paytida kelgan sovg'a — menyuga qaytganda ochiladi */
   const giftWaitRef = useRef(false);
+  /** Ekspeditsiya: qaysi qahramon sarguzashtda va ko'rsatilmagan mukofot */
+  const ex = useExpedition();
   const [decisionOpen, setDecisionOpen] = useState(true);
   /** REYTING oynasi */
   const [boardOpen, setBoardOpen] = useState(false);
@@ -301,6 +305,11 @@ function Index() {
     cloud.start();
     // do'stlar: onlayn holat (daqiqada bir) va tez xabarlar
     friends.start();
+    // ekspeditsiya: yopilganda tanlangan qahramon sarguzashtga ketadi, qaytganda — mukofot
+    expedition.start(
+      () => (startedRef.current ? null : loadPlayableHero()),
+      () => !startedRef.current,
+    );
     // internet yo'qligida qolgan reyting natijalari
     void flushScores();
     window.addEventListener("online", () => void flushScores());
@@ -356,6 +365,16 @@ function Index() {
   useEffect(() => {
     if (!realm) friends.setPlace(started ? "world" : "menu");
   }, [started, realm]);
+  // ekspeditsiyadagi qahramon bilan o'ynash boshlandi: ekspeditsiya tugaydi (mukofot — menyuda)
+  useEffect(() => {
+    if (started || realm) void expedition.endFor(hero);
+    // qahramon faqat menyuda o'zgaradi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, realm]);
+  // ekspeditsiya mukofoti qo'shildi: menyudagi oltin va daraja qayta o'qiladi
+  useEffect(() => {
+    if (ex.reward) refreshRef.current();
+  }, [ex.reward]);
   // muallifdan sovg'a keldi: menyuda — darhol "Sovg'a keldi!", o'yinda — menyuga qaytganda
   useEffect(() => {
     giftBox.onArrive = () => {
@@ -566,6 +585,13 @@ function Index() {
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [adminOpen, () => setAdminOpen(false)],
       [inboxOpen, () => setInboxOpen(false)],
+      [
+        !!ex.reward && !started && !realm,
+        () => {
+          expedition.dismiss();
+          refreshProgress();
+        },
+      ],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
       [joinOpen, () => setJoinOpen(false)],
@@ -683,6 +709,7 @@ function Index() {
                     <HeroPreview hero={h} active={hero === h} locked={locked} />
                     {name}
                     <RoleBadge hero={h} />
+                    {ex.hero === h && <ExpeditionBadge hero={h} />}
                     {locked && (
                       <span className="inline-flex items-center gap-1 text-primary">
                         <LockIcon />
@@ -830,6 +857,35 @@ function Index() {
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
                 {daily ? `KUNLIK: ${daily.score}` : "KUNLIK SINOV"}
+              </Button>
+              <Button
+                onClick={() => {
+                  const name = HERO_LIST.find((x) => x.id === (ex.hero ?? hero))?.name ?? "";
+                  if (ex.hero)
+                    void expedition.claim(true).then((r) => {
+                      if (!r) account.notify(`${name} qaytdi — 10 daqiqadan qisqa, o'ljasiz`);
+                    });
+                  else
+                    void expedition
+                      .send(hero)
+                      .then((r) =>
+                        account.notify(
+                          r.ok
+                            ? `${name} ekspeditsiyaga ketdi — qaytganda oltin, XP va sovg'a olib keladi`
+                            : "Ekspeditsiyaga yuborib bo'lmadi (internet?)",
+                        ),
+                      );
+                }}
+                disabled={!ready}
+                title={
+                  ex.hero
+                    ? "Qahramonni qaytarish: to'plangan mukofot beriladi"
+                    : "Tanlangan qahramon sarguzashtga ketadi: o'yinda yo'qligingizda oltin, XP va sovg'a to'playdi (8 soatgacha)"
+                }
+                variant="pixelOutline"
+                className="px-5 py-2 text-[10px] sm:text-xs"
+              >
+                {ex.hero ? "EKSPEDITSIYADAN QAYTARISH" : "EKSPEDITSIYAGA YUBORISH"}
               </Button>
               <Button
                 onClick={() => {
@@ -1085,6 +1141,9 @@ function Index() {
           }}
         />
       )}
+      {ex.reward && !inboxOpen && !newsOpen && !started && !realm && (
+        <ExpeditionWindow reward={ex.reward} onClose={refreshProgress} />
+      )}
       {inboxOpen && acc.me && !started && !realm && (
         <GiftInboxWindow
           onClose={() => setInboxOpen(false)}
@@ -1151,7 +1210,7 @@ function Index() {
           }}
         />
       )}
-      {levelUp && !giftOpen && !inboxOpen && !newsOpen && !started && !realm && (
+      {levelUp && !giftOpen && !inboxOpen && !ex.reward && !newsOpen && !started && !realm && (
         <LevelUpWindow up={levelUp} onClose={() => setLevelUp(null)} />
       )}
       {cloudView.decision && decisionOpen && !started && !realm && !loginOpen && (

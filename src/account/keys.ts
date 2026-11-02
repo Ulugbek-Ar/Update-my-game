@@ -22,6 +22,12 @@ export const GUILD_READ_KEY = "pixel-rpg-guild-read";
 /** O'tgan hafta g'olibi (vodiydagi bayroq — olam oflayn bo'lsa ham) */
 export const CHAMP_KEY = "pixel-rpg-champ";
 
+/**
+ * Ekspeditsiya: kirgan o'yinchida — server ekspeditsiyasi nusxasi (vaqt server soatidan),
+ * mehmonda — qurilma soati bo'yicha yig'ilgan vaqt. Qurilmaga xos (bulut — serverda alohida).
+ */
+export const EXP_KEY = "pixel-rpg-expedition";
+
 export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   ACCOUNT_KEY,
   CLOUD_KEY,
@@ -32,4 +38,5 @@ export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   GUILD_SPEND_KEY,
   GUILD_READ_KEY,
   CHAMP_KEY,
+  EXP_KEY,
 ];
