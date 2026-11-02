@@ -7,6 +7,7 @@ import { LOGIN_KEY } from "../keys";
 import { Limiters, handleApi } from "./api";
 import { memoryDb } from "./memory-db";
 import { AccountStore } from "./store";
+import { parseAdminIds } from "./admin";
 
 /** Node muhitidagi testlar uchun localStorage (jsdom'siz: node:sqlite faqat Node'da yuklanadi) */
 export class MemoryStorage implements Storage {
@@ -40,8 +41,10 @@ export function installStorage() {
 
 export const TEST_BOT_TOKEN = "123456789:AAFakeBotTokenForTests_abcdefghijk";
 
-export function testServer() {
+/** admins — ADMIN_TELEGRAM_IDS kabi ("777,778") */
+export function testServer(opts: { admins?: string } = {}) {
   const store = new AccountStore(memoryDb());
+  const admins = parseAdminIds(opts.admins);
   const lim = new Limiters();
   const clock = { now: () => Date.now() };
   /** IP har so'rovda boshqa (sinovda kirish tezligi cheklanmasin) */
@@ -56,6 +59,7 @@ export function testServer() {
         ip: `10.0.0.${n++ % 250}`,
         botToken: TEST_BOT_TOKEN,
         bot: "PikselQalaBot",
+        admins,
       },
       lim,
     );

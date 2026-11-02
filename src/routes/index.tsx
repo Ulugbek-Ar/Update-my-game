@@ -70,6 +70,9 @@ import { LoginWindow } from "@/components/game/LoginWindow";
 import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { AdminWindow } from "@/components/game/AdminWindow";
+import { CoinRain } from "@/components/game/pixel";
+import { GiftInboxWindow } from "@/components/game/GiftInboxWindow";
+import { giftBox, useGiftBox } from "@/account/giftbox";
 import type { AdminStart } from "@/account/admin";
 import { LevelUpWindow } from "@/components/game/LevelUpWindow";
 import { FriendsWindow } from "@/components/game/FriendsWindow";
@@ -211,6 +214,11 @@ function Index() {
   const [adminOpen, setAdminOpen] = useState(false);
   /** Muallif paneli: keyingi o'yin shu dunyo/to'lqindan (bir martalik) */
   const adminStartRef = useRef<AdminStart | null>(null);
+  /** Sovg'a qutisi ("Sovg'a keldi!"): muallifdan kelgan sovg'alar */
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const box = useGiftBox();
+  /** o'yin/olam paytida kelgan sovg'a — menyuga qaytganda ochiladi */
+  const giftWaitRef = useRef(false);
   const [decisionOpen, setDecisionOpen] = useState(true);
   /** REYTING oynasi */
   const [boardOpen, setBoardOpen] = useState(false);
@@ -347,6 +355,18 @@ function Index() {
   // do'stlarga: qayerdaman (menyu / dunyo / olam — xona kodi RealmClient.onRoom dan)
   useEffect(() => {
     if (!realm) friends.setPlace(started ? "world" : "menu");
+  }, [started, realm]);
+  // muallifdan sovg'a keldi: menyuda — darhol "Sovg'a keldi!", o'yinda — menyuga qaytganda
+  useEffect(() => {
+    giftBox.onArrive = () => {
+      if (startedRef.current) giftWaitRef.current = true;
+      else setInboxOpen(true);
+    };
+  }, []);
+  useEffect(() => {
+    if (started || realm || !giftWaitRef.current) return;
+    giftWaitRef.current = false;
+    if (giftBox.state.pending > 0) setInboxOpen(true);
   }, [started, realm]);
   // gildiya topshirig'i sovg'asi (oyna ochilganda o'zi olinadi): oltin va xabar
   useEffect(() => {
@@ -545,6 +565,7 @@ function Index() {
       [boardOpen, () => setBoardOpen(false)],
       [!!levelUp && !started && !realm, () => setLevelUp(null)],
       [adminOpen, () => setAdminOpen(false)],
+      [inboxOpen, () => setInboxOpen(false)],
       [profileOpen, () => setProfileOpen(false)],
       [!!cloudView.decision && decisionOpen && !started && !realm, () => setDecisionOpen(false)],
       [joinOpen, () => setJoinOpen(false)],
@@ -864,6 +885,19 @@ function Index() {
                 <PixelIcon id="gift" color="#ffcc33" size={12} />
                 SOVG'A
               </Button>
+              {/* sovg'a qutisi: muallifdan sovg'a kutayotgan bo'lsa — kichik belgi */}
+              {acc.me && box.pending > 0 && (
+                <Button
+                  variant="pixelLink"
+                  onClick={() => setInboxOpen(true)}
+                  aria-label={`SOVG'A QUTISI: ${box.pending} ta sovg'a`}
+                  title="Muallifdan sovg'a sizni kutmoqda"
+                  className="gift-blink gap-1 text-[9px] text-[#ff9fcb] sm:text-[10px]"
+                >
+                  <PixelIcon id="gift" color="#ff9fcb" size={12} />
+                  SOVG'A QUTISI ({box.pending})
+                </Button>
+              )}
               <Button
                 variant="pixelLink"
                 onClick={() => setSettingsOpen(true)}
@@ -1051,6 +1085,18 @@ function Index() {
           }}
         />
       )}
+      {inboxOpen && acc.me && !started && !realm && (
+        <GiftInboxWindow
+          onClose={() => setInboxOpen(false)}
+          onClaimed={() => {
+            refreshProgress();
+            // XP sovg'asi: yangi daraja bo'lsa — oyna yopilgach ko'rinadi
+            const up = checkLevelUp();
+            if (up) setLevelUp(up);
+            setGold(loadGold());
+          }}
+        />
+      )}
       {adminOpen && acc.me && !started && !realm && (
         <AdminWindow
           onClose={() => setAdminOpen(false)}
@@ -1105,7 +1151,7 @@ function Index() {
           }}
         />
       )}
-      {levelUp && !giftOpen && !newsOpen && !started && !realm && (
+      {levelUp && !giftOpen && !inboxOpen && !newsOpen && !started && !realm && (
         <LevelUpWindow up={levelUp} onClose={() => setLevelUp(null)} />
       )}
       {cloudView.decision && decisionOpen && !started && !realm && !loginOpen && (
@@ -1734,35 +1780,6 @@ function CheckIcon() {
         fill="currentColor"
       />
     </svg>
-  );
-}
-
-/** 7-kun: ekran bo'ylab tushadigan tangalar (bir marta). */
-function CoinRain() {
-  const coins = Array.from({ length: 28 }, (_, i) => ({
-    left: (i * 37 + 11) % 100,
-    delay: ((i * 53) % 18) / 10,
-    dur: 1.6 + ((i * 29) % 12) / 10,
-    size: 14 + ((i * 17) % 3) * 6,
-  }));
-  return (
-    <div
-      aria-hidden="true"
-      className="coin-rain pointer-events-none fixed inset-0 z-[56] overflow-hidden"
-    >
-      {coins.map((c, i) => (
-        <span
-          key={i}
-          style={{
-            left: `${c.left}%`,
-            animationDelay: `${c.delay}s`,
-            animationDuration: `${c.dur}s`,
-          }}
-        >
-          <PixelIcon id="coin" color="#ffcc33" size={c.size} />
-        </span>
-      ))}
-    </div>
   );
 }
 

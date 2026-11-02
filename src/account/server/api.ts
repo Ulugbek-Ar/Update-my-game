@@ -249,6 +249,18 @@ export async function handleApi(
       if (!p) return fail("auth");
       return store.friends.presence(p, b.place, b.room ?? null, env.now);
     }
+    case "gifts/list": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      return { ok: true, gifts: store.gifts.list(p.id) };
+    }
+    case "gifts/claim": {
+      const b = body as ReqOf<"gifts/claim">;
+      const p = await authed();
+      if (!p) return fail("auth");
+      const r = store.gifts.claim(p, b.id, b.base, env.now);
+      return r.ok ? r : fail(r.error, r.save ? { save: r.save } : {});
+    }
     case "profile": {
       const b = body as ReqOf<"profile">;
       const p = await authed();

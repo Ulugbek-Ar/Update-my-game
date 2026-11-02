@@ -328,10 +328,42 @@ html.in-game body {
   transform: translateY(-40px);
   animation: coin-fall 2s linear both;
 }
+/* Sovg'a qutisi: qahramon sovg'asi — nur ichida paydo bo'ladi */
+@keyframes hero-appear {
+  from {
+    transform: scale(0);
+    opacity: 0;
+    filter: brightness(3);
+  }
+  70% {
+    transform: scale(1.2);
+    opacity: 1;
+    filter: brightness(1.6);
+  }
+  to {
+    transform: scale(1);
+    filter: none;
+  }
+}
+.hero-appear {
+  animation: hero-appear 0.9s ease-out both;
+}
+@keyframes hero-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.hero-rays {
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(255 230 140 / 0.45) 0 12deg, transparent 12deg 30deg);
+  animation: hero-rays 6s linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .gift-blink,
   .gift-today,
-  .gift-pop {
+  .gift-pop,
+  .hero-appear,
+  .hero-rays {
     animation: none;
   }
   .coin-rain {

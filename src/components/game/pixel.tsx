@@ -206,3 +206,32 @@ export function AuthorBadge({ className }: { className?: string }) {
     </span>
   );
 }
+
+/** Ekran bo'ylab tushadigan tangalar (bir marta): kunlik sovg'aning 7-kuni, oltin sovg'asi */
+export function CoinRain() {
+  const coins = Array.from({ length: 28 }, (_, i) => ({
+    left: (i * 37 + 11) % 100,
+    delay: ((i * 53) % 18) / 10,
+    dur: 1.6 + ((i * 29) % 12) / 10,
+    size: 14 + ((i * 17) % 3) * 6,
+  }));
+  return (
+    <div
+      aria-hidden="true"
+      className="coin-rain pointer-events-none fixed inset-0 z-[56] overflow-hidden"
+    >
+      {coins.map((c, i) => (
+        <span
+          key={i}
+          style={{
+            left: `${c.left}%`,
+            animationDelay: `${c.delay}s`,
+            animationDuration: `${c.dur}s`,
+          }}
+        >
+          <Icon id="coin" color="#ffcc33" size={c.size} />
+        </span>
+      ))}
+    </div>
+  );
+}
