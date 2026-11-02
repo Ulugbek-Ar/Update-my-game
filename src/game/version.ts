@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.2.0";
+export const GAME_VERSION = "3.3.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.3.0",
+    date: "2026-11-02",
+    notes:
+      "Gildiyalar keldi! O'z gildiyangizni tuzing — nomi, tegi va gerbini o'zingiz yarating. 20 tagacha a'zo, rahbar va o'rinbosarlar. Gildiya xazinasi, darajalari va haftalik umumiy topshiriqlar. Gildiya chati va Abadiyat olamida o'z Gildiya zalingiz. Gildiyalar reytingi — eng kuchli gildiya bayrog'i vodiyda hilpiraydi.",
+  },
   {
     version: "3.2.0",
     date: "2026-11-01",

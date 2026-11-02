@@ -221,6 +221,20 @@ muharriri, taklif). Gildiya zali: olamda `window.__realm.onEnterHall(7)`, so'ng 
 (sahifa ichidagi zal va a'zolar; `__hallDemo(undefined, { level: 10 })` — bezak). Olamda teglar: `await window.__realmDemo([{ hero: "mage", tag: "1", nick:
 "Dilnoza", level: 14, guild: { tag: "PQ", emblem: "0-0-3-1" } }])`.
 
-Haqiqiy server bilan — docs/accounts.md ("Lokal sinov"). Testlar: `src/account/server/guilds.test.ts`,
+Haqiqiy server bilan — docs/accounts.md ("Lokal sinov"): `wrangler dev` (8787) va
+`VITE_SERVER_URL=http://127.0.0.1:8787 bun run dev`. Uch akkaunt bilan qo'lda sinov (uchta brauzer
+oynasi yoki inkognito — har birida alohida Telegram kirishi):
+
+1. **A** — GILDIYA → TUZISH: nom, teg, gerb, GILDIYA TUZISH (500 oltin yechiladi).
+2. **B** — GILDIYA → QIDIRISH → QO'SHILISH (ochiq gildiya). **A** SOZLAMALAR'da "ARIZA BILAN" ni
+   tanlaydi; **C** ARIZA YUBORISH, **A** ARIZALAR → QABUL.
+3. CHAT: tayyor ibora va erkin matn (qo'pol so'z yulduzcha bo'ladi), boshqa oynalarda ~5 soniyada
+   ko'rinadi. **A** xabarni o'chiradi yoki a'zoni jim qiladi.
+4. XAZINA: hissa (kuniga 100 oltingacha) — jurnalda va gildiya XP'da ko'rinadi.
+5. Uchalasi OLAM → vodiy qishlog'i shimolidagi darvoza ([E] ZALGA KIRISH) → Gildiya zali: bir-birini
+   ko'radi (ONLAYN: 3). Gildiyasiz o'yinchi darvozadan kirolmaydi.
+6. REYTING → GILDIYALAR: gildiya XP jadvalida ko'rinadi.
+
+Testlar: `src/account/server/guilds.test.ts`,
 `src/account/server/guildLife.test.ts`, `src/account/guild.test.ts`, `src/realm/hall.test.ts`,
 `src/realm/hall-client.test.ts`, `src/account/server/guildTop.test.ts`.

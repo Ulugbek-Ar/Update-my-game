@@ -1,0 +1,370 @@
+[
+  {
+    "title": "Gildiya tuzish (500 oltin): nomi, tegi va gerbi — qalqon, bayroq yoki doira, 2 rang va belgi (qilich, toj, ajdar, yulduz, bosh suyagi, quyosh...)",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo({ guild: false })"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 800
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"TUZISH\")); t.click();"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "eval": "const fill = (label, v) => { const el = document.querySelector('[aria-label=\"' + label + '\"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); }; fill('Gildiya nomi', \"Qal'a Qo'riqchilari\"); fill('Gildiya tegi', 'PQ');"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "click": "QIZIL"
+      },
+      {
+        "wait": 200
+      },
+      {
+        "click": "TOJ"
+      },
+      {
+        "wait": 600
+      }
+    ]
+  },
+  {
+    "title": "Gildiya oynasi: gerb va teg, gildiya darajasi (1–10) va XP, daraja foydalari — +XP, kunlik sovg'aga qo'shimcha, yangi ranglar va belgilar, 30 o'ringacha",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 1200
+      }
+    ]
+  },
+  {
+    "title": "A'zolar: rahbar, 3 tagacha o'rinbosar va a'zolar — kim onlayn, xazinaga hissasi; rol berish, chiqarish, rahbarlikni topshirish",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"A'ZOLAR\")); t.click();"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "click": "Dilnoza: amallar"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  },
+  {
+    "title": "Gildiya xazinasi: har kuni 100 oltingacha hissa, jurnalda kim qancha qo'shgani — xazina va topshiriqlar gildiya darajasini oshiradi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"XAZINA\")); t.click();"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Haftalik umumiy topshiriqlar: har a'zoning hissasi ko'rinadi, bajarilsa — hammaga oltin va gildiyaga XP",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"TOPSHIRIQLAR\")); t.click();"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Gildiya chati: tayyor iboralar va erkin matn, faqat gildiya a'zolariga ko'rinadi; qo'pol so'zlar yashiriladi, rahbar xabarni o'chira oladi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "GILDIYA"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"CHAT\")); t.click();"
+      },
+      {
+        "wait": 900
+      }
+    ]
+  },
+  {
+    "title": "Gildiya zali — Abadiyat olamida gildiyangizning o'z xonasi: daraja bilan ko'payuvchi bayroqlar, yengilgan bosslar boshlari, xazina sandig'i, topshiriqlar taxtasi va mashq qo'g'irchog'i",
+    "target": "canvas",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter", "paladin"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-offline": "1",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r = window.__realm; r.view.panel = 'none'; r.onEnterHall(7);"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "return (async () => { const lb = await window.__hallDemo(); const r = window.__realm; const room = [...lb.rooms.values()][0]; const rp = room.sim.players.get(r.pid); rp.p.x = rp.px = 15 * 16 + 8; rp.p.y = rp.py = 10 * 16 + 8; r.me.p.x = r.me.px = rp.p.x; r.me.p.y = r.me.py = rp.p.y; r.view.panel = 'none'; setTimeout(() => { r.view.banner.t = 0; r.view.toasts.length = 0; }, 1200); })()"
+      },
+      {
+        "wait": 1700
+      }
+    ]
+  },
+  {
+    "title": "Gildiyalar reytingi: haftalik va umumiy — gildiya XP, bajarilgan topshiriqlar va Kul qirolini eng tez yengan gildiya",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "REYTING"
+      },
+      {
+        "wait": 500
+      },
+      {
+        "eval": "const t = [...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim().startsWith(\"GILDIYALAR\")); t.click();"
+      },
+      {
+        "wait": 1000
+      }
+    ]
+  },
+  {
+    "title": "Hafta g'olibi: eng kuchli gildiya bayrog'i vodiy maydonida hilpiraydi, yonida — Gildiya zali darvozasi (faqat a'zolar kiradi)",
+    "target": "canvas",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": ["gunner", "hunter", "paladin"],
+          "pixel-rpg-realm-keys": ["devil"],
+          "pixel-rpg-offline": "1",
+          "pixel-rpg-xp": {
+            "xp": 5600,
+            "lvl": 20,
+            "q": [],
+            "s": []
+          }
+        }
+      },
+      {
+        "eval": "return window.__accountDemo()"
+      },
+      {
+        "wait": 4800
+      },
+      {
+        "click": "OLAM (SINOV)"
+      },
+      {
+        "wait": 900
+      },
+      {
+        "eval": "const r = window.__realm; r.view.panel = 'none'; const p = r.me.p; p.x = r.me.px = 46 * 16 + 8; p.y = r.me.py = 86 * 16 + 8; p.fx = -1; p.fy = 0; r.sim.explore(r.me); r.view.banner.t = 0;"
+      },
+      {
+        "wait": 2600
+      }
+    ]
+  }
+]

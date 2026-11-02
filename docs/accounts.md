@@ -118,12 +118,16 @@ Kirgan o'yinchilar gildiya tuzadi (500 oltin) yoki qo'shiladi: rollar, qo'shilis
 ## Maxfiylik va akkauntni o'chirish
 
 Serverda faqat: Telegram ID, taxallus, avatar, progress (va 5 ta zaxira), do'stlar, xabarlar
-(yetkazilgach o'chadi), onlayn holat va reyting. Telefon raqami, ism, rasm saqlanmaydi.
-Batafsil — `public/privacy.html` (saytda `privacy.html`).
+(yetkazilgach o'chadi), onlayn holat, reyting va gildiya ma'lumotlari (a'zolik va rol, arizalar,
+xazina va topshiriq hissalari, jurnal, gildiya chati — faqat gildiya a'zolariga ko'rinadi, har
+gildiyada oxirgi 100 ta xabar). Telefon raqami, ism, rasm saqlanmaydi. Batafsil —
+`public/privacy.html` (saytda `privacy.html`).
 
 Profil → **Akkauntni o'chirish** (taxallusni yozib tasdiqlanadi): serverdagi hamma narsa darhol
-o'chadi (`account/delete`), sessiya ham. Qurilmadagi progress qoladi — mehmon sifatida davom
-etiladi. Shu Telegram bilan qayta kirilsa — yangi, bo'sh akkaunt.
+o'chadi (`account/delete`), sessiya ham — gildiya a'zoligi, hissalar va chatdagi xabarlar ham
+(rahbarlik o'rinbosarga yoki eng eski a'zoga o'tadi, yolg'iz bo'lsa gildiya tarqaladi).
+Qurilmadagi progress qoladi — mehmon sifatida davom etiladi. Shu Telegram bilan qayta kirilsa —
+yangi, bo'sh akkaunt.
 
 ## BotFather va server sozlamasi
 
