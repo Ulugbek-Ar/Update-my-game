@@ -670,7 +670,7 @@ function Index() {
             {/* 10 tagacha qahramon: sig'masa gorizontal aylanadi */}
             <div
               aria-label="Qahramon tanlash"
-              className="hero-row flex max-w-full snap-x gap-3 overflow-x-auto p-1"
+              className="hero-row flex max-w-full shrink-0 snap-x gap-3 overflow-x-auto p-1"
             >
               {HERO_LIST.map(({ id: h, name, price }) => {
                 const locked = !unlocked.has(h);
@@ -699,7 +699,7 @@ function Index() {
                           }
                         : undefined
                     }
-                    className={`flex shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-3 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                    className={`hero-card flex w-[6.75rem] shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-1 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
                       hero === h
                         ? ""
                         : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
@@ -720,76 +720,86 @@ function Index() {
                 );
               })}
             </div>
-            <p className="text-foreground text-xs sm:text-sm leading-6">
-              {touch ? (
-                <>
-                  {/* telefonda — tugma nomlari (SOZLAMALAR -> BOSHQARUV ga mos) */}
-                  {ts.stickMode === "floating"
-                    ? `Ekranning ${ts.leftHanded ? "o'ng" : "chap"} yarmi — yurish`
-                    : `${ts.leftHanded ? "O'ngdagi" : "Chapdagi"} joystik — yurish`}
-                  <br />
-                  {hero === "paladin"
-                    ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
-                    : hero === "mage"
-                      ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                      : hero === "hunter"
-                        ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                        : hero === "gunner"
-                          ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
-                          : "ZARBA — hujum, DASH — sirpanish"}
-                  <br />
-                  {hero === "paladin"
-                    ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
-                    : hero === "mage"
-                      ? "SHAR ni bosib turing — sehrli halqa"
-                      : hero === "hunter"
-                        ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                        : hero === "gunner"
-                          ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
-                          : "ZARBA ni bosib turing — aylana zarba"}
-                </>
-              ) : (
-                <>
-                  {/* kompyuterda — qayta belgilangan tugmalar */}
-                  {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} — yurish
-                  <br />
-                  {actionKeys(kb, "attack")} —{" "}
-                  {hero === "paladin"
-                    ? "SHANG (yo'lak bo'ylab zarba)"
-                    : hero === "mage"
-                      ? "sehrli shar"
-                      : hero === "hunter"
-                        ? "o'q"
-                        : hero === "gunner"
-                          ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
-                          : "hujum"}
-                  <br />
-                  {actionKey(kb, "attack")} ni bosib turish —{" "}
-                  {hero === "paladin"
-                    ? "osmon hukmi (gangitadi)"
-                    : hero === "mage"
-                      ? "sehrli halqa"
-                      : hero === "hunter"
-                        ? "teshuvchi o'q"
-                        : hero === "gunner"
-                          ? "barabanni bo'shatish"
-                          : "aylana zarba"}
-                  <br />
-                  {actionKeys(kb, "dash")} —{" "}
-                  {hero === "paladin"
-                    ? "muqaddas hamla, bosib turish — qasam"
-                    : hero === "mage"
-                      ? "teleport"
-                      : hero === "hunter"
-                        ? "orqaga sakrash, bosib turish — tuzoq"
-                        : hero === "gunner"
-                          ? "sirpanish, bosib turish — tutun bombasi"
-                          : "dash"}
-                  <br />
-                  {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
-                </>
-              )}
-            </p>
+            {/* ko'rsatma: hamma qahramon matni bir katakda — blok balandligi eng uzuniga teng,
+                qahramon almashtirilganda menyu siljimaydi */}
+            <div className="menu-hint grid w-full max-w-[34rem] shrink-0 items-center px-2">
+              {HERO_LIST.map(({ id: h }) => (
+                <p
+                  key={h}
+                  aria-hidden={h !== hero}
+                  className={`[grid-area:1/1] text-foreground text-xs sm:text-sm leading-6 ${h === hero ? "" : "invisible"}`}
+                >
+                  {touch ? (
+                    <>
+                      {/* telefonda — tugma nomlari (SOZLAMALAR -> BOSHQARUV ga mos) */}
+                      {ts.stickMode === "floating"
+                        ? `Ekranning ${ts.leftHanded ? "o'ng" : "chap"} yarmi — yurish`
+                        : `${ts.leftHanded ? "O'ngdagi" : "Chapdagi"} joystik — yurish`}
+                      <br />
+                      {h === "paladin"
+                        ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
+                        : h === "mage"
+                          ? "SHAR — sehrli shar, TELEPORT — sakrash"
+                          : h === "hunter"
+                            ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
+                            : h === "gunner"
+                              ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
+                              : "ZARBA — hujum, DASH — sirpanish"}
+                      <br />
+                      {h === "paladin"
+                        ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
+                        : h === "mage"
+                          ? "SHAR ni bosib turing — sehrli halqa"
+                          : h === "hunter"
+                            ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
+                            : h === "gunner"
+                              ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
+                              : "ZARBA ni bosib turing — aylana zarba"}
+                    </>
+                  ) : (
+                    <>
+                      {/* kompyuterda — qayta belgilangan tugmalar */}
+                      {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} — yurish
+                      <br />
+                      {actionKeys(kb, "attack")} —{" "}
+                      {h === "paladin"
+                        ? "SHANG (yo'lak bo'ylab zarba)"
+                        : h === "mage"
+                          ? "sehrli shar"
+                          : h === "hunter"
+                            ? "o'q"
+                            : h === "gunner"
+                              ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
+                              : "hujum"}
+                      <br />
+                      {actionKey(kb, "attack")} ni bosib turish —{" "}
+                      {h === "paladin"
+                        ? "osmon hukmi (gangitadi)"
+                        : h === "mage"
+                          ? "sehrli halqa"
+                          : h === "hunter"
+                            ? "teshuvchi o'q"
+                            : h === "gunner"
+                              ? "barabanni bo'shatish"
+                              : "aylana zarba"}
+                      <br />
+                      {actionKeys(kb, "dash")} —{" "}
+                      {h === "paladin"
+                        ? "muqaddas hamla, bosib turish — qasam"
+                        : h === "mage"
+                          ? "teleport"
+                          : h === "hunter"
+                            ? "orqaga sakrash, bosib turish — tuzoq"
+                            : h === "gunner"
+                              ? "sirpanish, bosib turish — tutun bombasi"
+                              : "dash"}
+                      <br />
+                      {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
+                    </>
+                  )}
+                </p>
+              ))}
+            </div>
             <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
               5 to'lqin · har to'lqindan so'ng kuch tanlang · oxirida Boss
               <br />
@@ -1060,7 +1070,7 @@ function Index() {
               v{GAME_VERSION}
             </span>
             {/* chap yuqori: akkaunt (kirish / profil); sarlavha (o'rtada) va oy (o'ngda) yopilmaydi */}
-            <div className="absolute left-2 top-2 z-10 flex max-w-[30%] flex-col items-start gap-2 text-[8px] sm:text-[10px]">
+            <div className="menu-corner absolute left-2 top-2 z-10 flex max-w-[30%] flex-col items-start gap-2 text-[8px] sm:text-[10px]">
               <AccountCorner
                 rev={progressRev}
                 onLogin={() => setLoginOpen(true)}

@@ -1,0 +1,21 @@
+[
+  {
+    "title": "Telefonda bosh menyu: profil belgisi burchakda, qahramon kartalari bir xil o'lchamda, ko'rsatma ekran markazida — hech narsa qirqilmaydi",
+    "target": "screen",
+    "phone": { "width": 915, "height": 412 },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.4.1",
+          "pixel-rpg-hero": "hunter",
+          "pixel-rpg-unlocked-heroes": ["knight", "mage", "hunter", "gunner", "paladin"],
+          "pixel-rpg-gold": "640",
+          "pixel-rpg-xp": { "xp": 5600, "lvl": 20, "q": [], "s": [] }
+        }
+      },
+      { "eval": "return window.__accountDemo()" },
+      { "wait": 4800 }
+    ]
+  }
+]

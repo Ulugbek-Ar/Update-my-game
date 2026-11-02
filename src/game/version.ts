@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.4.0";
+export const GAME_VERSION = "3.4.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.4.1",
+    date: "2026-11-02",
+    notes:
+      "Telefonda bosh menyu tartibga keltirildi: qahramon kartalari endi siljimaydi va qirqilmaydi.",
+  },
   {
     version: "3.4.0",
     date: "2026-11-02",
