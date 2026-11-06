@@ -4407,6 +4407,42 @@ export function renderSprite(
   ctx.restore();
 }
 
+/**
+ * O'lgan dushman bo'laklari: sprite'ning har `step`-chi to'r pikseli (markazga nisbatan, chizilgan px)
+ * va rangi. Bo'laklar soni `max` dan oshmaydi — katta mob ham telefonni sekinlashtirmaydi.
+ */
+export function spriteShards(
+  kind: SpriteKind,
+  state: AnimState,
+  frame: number,
+  flip = false,
+  max = 48,
+): { dx: number; dy: number; color: string; size: number }[] {
+  const n = spriteGrid(kind);
+  const data = spritePixels(kind, state, frame);
+  const palette = PALETTES[kind];
+  const k = spriteSize(kind) / n;
+  let filled = 0;
+  for (let i = 0; i < data.length; i++) if (data[i]) filled++;
+  const step = Math.max(2, Math.ceil(Math.sqrt(filled / max)));
+  // bo'lak o'lchami — tanlangan piksellar orasidagi masofa: birga tanani to'liq qoplaydi
+  const size = Math.max(2, Math.round(step * k));
+  const out: { dx: number; dy: number; color: string; size: number }[] = [];
+  for (let py = 0; py < n; py += step)
+    for (let px = 0; px < n; px += step) {
+      const color = data[py * n + px];
+      if (!color) continue;
+      const dx = (px + 0.5 - n / 2) * k;
+      out.push({
+        dx: flip ? -dx : dx,
+        dy: (py + 0.5 - n / 2) * k,
+        color: palette[color - 1] ?? palette[0] ?? "#000000",
+        size,
+      });
+    }
+  return out.slice(0, max);
+}
+
 /** Chizilgan o'lcham (px) */
 export function spriteSize(kind: SpriteKind) {
   return (

@@ -8,7 +8,34 @@ interface Particle {
   max: number;
   color: string;
   size: number;
+  /** Og'irlik (px/s²): o'lgan dushman bo'laklari pastga to'kiladi */
+  g?: number;
 }
+
+/** Zarar raqami: dushman ustidan sakrab chiqib so'nadi */
+interface DamageNum {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  n: number;
+  crit: boolean;
+  life: number;
+}
+
+/** O'lgan dushman sprite'ining bitta pikseli: markazdan siljish va rangi */
+export interface Shard {
+  dx: number;
+  dy: number;
+  color: string;
+  /** Bo'lak o'lchami (px), standart 2 */
+  size?: number;
+}
+
+export const DAMAGE_LIFE = 0.75;
+/** Oddiy silkinish kuchi (px); boss zarbasi va o'limda kattaroq */
+export const SHAKE_SMALL = 3;
+export const SHAKE_BIG = 6;
 
 interface Flake {
   x: number;
@@ -37,6 +64,9 @@ export class Effects {
   particles: Particle[] = [];
   texts: FloatText[] = [];
   shake = 0;
+  /** Joriy silkinish kuchi (px) — silkinish tugaguncha eng kattasi saqlanadi */
+  shakePower = SHAKE_SMALL;
+  damages: DamageNum[] = [];
   /** 2-dunyo: xonada sekin qor yog'adi */
   snowOn = false;
   /** Bo'ron yo'nalishi (-1, 0, 1): qor ko'payadi va yon tomonga uchadi */
@@ -125,16 +155,62 @@ export class Effects {
     this.texts.push({ x, y, s, color, life: 0.9 });
   }
 
-  addShake(v: number) {
+  addShake(v: number, power = SHAKE_SMALL) {
+    if (this.shake <= 0) this.shakePower = power;
+    else this.shakePower = Math.max(this.shakePower, power);
     this.shake = Math.max(this.shake, v);
+  }
+
+  /** Silkinish siljishi (px): vaqt tugashiga qarab so'nadi */
+  shakeAmount() {
+    return Math.min(1, this.shake * 6) * this.shakePower;
+  }
+
+  /** Zarar raqami: kritik — sariq va kattaroq, balandroq sakraydi */
+  damage(x: number, y: number, n: number, crit = false) {
+    if (!(n > 0)) return;
+    this.damages.push({
+      x: x + (Math.random() - 0.5) * 6,
+      y,
+      vx: 8 + Math.random() * 22,
+      vy: crit ? -75 : -55,
+      n: Math.round(n * 10) / 10,
+      crit,
+      life: DAMAGE_LIFE,
+    });
+  }
+
+  /** Dushman o'ldi: sprite piksellari bo'lak-bo'lak bo'lib sochiladi va pastga to'kiladi. */
+  shatter(cx: number, cy: number, shards: readonly Shard[], speed = 70) {
+    for (const s of shards) {
+      const l = Math.hypot(s.dx, s.dy) || 1;
+      const v = speed * (0.5 + Math.random() * 0.8);
+      const life = 0.45 + Math.random() * 0.45;
+      this.particles.push({
+        x: cx + s.dx,
+        y: cy + s.dy,
+        vx: (s.dx / l) * v + (Math.random() - 0.5) * 30,
+        vy: (s.dy / l) * v - 40 - Math.random() * 40,
+        life,
+        max: life,
+        color: s.color,
+        size: s.size ?? 2,
+        g: 260,
+      });
+    }
   }
 
   update(dt: number) {
     for (const p of this.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vx *= 0.9;
-      p.vy *= 0.9;
+      if (p.g) {
+        p.vy += p.g * dt;
+        p.vx *= 0.96;
+      } else {
+        p.vx *= 0.9;
+        p.vy *= 0.9;
+      }
       p.life -= dt;
     }
     this.particles = this.particles.filter((p) => p.life > 0);
@@ -143,6 +219,14 @@ export class Effects {
       t.life -= dt;
     }
     this.texts = this.texts.filter((t) => t.life > 0);
+    for (const d of this.damages) {
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.vy += 140 * dt;
+      d.vx *= 0.95;
+      d.life -= dt;
+    }
+    this.damages = this.damages.filter((d) => d.life > 0);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt);
     this.updateSnow(dt);
   }
@@ -151,9 +235,29 @@ export class Effects {
     for (const p of this.particles) {
       c.globalAlpha = Math.max(0, p.life / p.max);
       c.fillStyle = p.color;
-      c.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+      const h = p.g ? p.size / 2 : 0;
+      c.fillRect(Math.round(p.x - h), Math.round(p.y - h), p.size, p.size);
     }
     c.globalAlpha = 1;
+  }
+
+  /** Zarar raqamlari: chiqishda biroz kattalashib "pop" qiladi, oxirida so'nadi. */
+  renderDamages(
+    draw: (s: string, x: number, y: number, size: number, color: string, alpha: number) => void,
+  ) {
+    for (const d of this.damages) {
+      const age = DAMAGE_LIFE - d.life;
+      const pop = age < 0.08 ? 1.35 - (age / 0.08) * 0.35 : 1;
+      const size = Math.round((d.crit ? 9 : 6) * pop);
+      draw(
+        d.crit ? `${d.n}!` : `${d.n}`,
+        d.x,
+        d.y,
+        size,
+        d.crit ? "#ffd83a" : "#ffffff",
+        Math.min(1, d.life * 3),
+      );
+    }
   }
 
   renderTexts(draw: (s: string, x: number, y: number, color: string, alpha: number) => void) {

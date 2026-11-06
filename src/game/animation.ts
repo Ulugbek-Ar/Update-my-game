@@ -63,10 +63,15 @@ export interface Body {
 
 export const ROOM = { w: 320, h: 240, wall: 16 };
 
+/** Zarba tekkanda flash shu qiymatdan boshlanadi (onlayn olam ham shu qiymatni uzatadi) */
+export const HIT_FLASH = 0.3;
+/** Dushman zarbadan keyin shuncha vaqt (~2 kadr, 60 FPS) to'liq oq bo'ladi */
+export const HIT_WHITE = 0.034;
+
 export function applyHit(b: Body, dmg: number, fromX: number, fromY: number, force: number) {
   if (b.anim.state === "death") return;
   b.hp -= dmg;
-  b.flash = 0.3;
+  b.flash = HIT_FLASH;
   b.anim.set(b.hp <= 0 ? "death" : "hurt", true);
   if (b.heavy) return;
   const dx = b.x - fromX;
@@ -120,6 +125,11 @@ export function separate(a: Body, b: Body, ratio = 0.5) {
   a.y -= uy * push * ratio;
   b.x += ux * push * (1 - ratio);
   b.y += uy * push * (1 - ratio);
+}
+
+/** Dushman/boss zarba olgan dastlabki ~2 kadrda oq yonadi. */
+export function hitFlash(b: Body) {
+  return b.flash > HIT_FLASH - HIT_WHITE;
 }
 
 export function isFlashing(b: Body) {

@@ -1,6 +1,6 @@
-import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
+import { Animator, Body, updatePhysics, hitFlash, clampToRoom, ROOM } from "./animation";
 import type { Target } from "./player";
-import { renderSprite, type SpriteKind } from "./sprites";
+import { renderSprite, spriteShards, type SpriteKind } from "./sprites";
 
 export type EnemyKind =
   | "blob"
@@ -945,6 +945,15 @@ export class Enemy implements Body {
     this.anim.set("walk");
   }
 
+  /** O'lim bo'laklari: joriy kadrdagi sprite piksellari (faqat effekt) */
+  shards() {
+    const k = this.kind;
+    const tall =
+      k === "rammer" || k === "archer" || k === "shield" || k === "golem" || k === "treant";
+    const lift = tall ? (k === "golem" || k === "treant" ? 6 : 0) : 3 + Math.round(this.alt);
+    return { y: this.y - lift, list: spriteShards(SPRITE[k], "hurt", 0, this.facingLeft) };
+  }
+
   render(ctx: CanvasRenderingContext2D) {
     const { state, frame } = this.anim;
     if (this.kind === "imp" && this.impWindup > 0 && !this.dead) {
@@ -1012,7 +1021,7 @@ export class Enemy implements Body {
       tall
         ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
         : this.y - 3 - Math.round(this.alt),
-      isFlashing(this) || state === "hurt",
+      hitFlash(this),
       this.facingLeft,
     );
     if (this.kind === "shield" && !this.dead && this.spawn <= 0) {
