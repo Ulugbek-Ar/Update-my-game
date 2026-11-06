@@ -1,4 +1,5 @@
 /** Sarguzasht xaritasi: bosh menyudan keyin dunyo tanlanadigan piksel ekran (kod bilan chiziladi). */
+import { skinPalette } from "./skins";
 import { ROOM, px } from "./animation";
 import { gameKeysLocked } from "./input";
 import { actionKey, normKey, type KeyBinds } from "./keys";
@@ -508,7 +509,7 @@ export function renderMap(
     if (sel) {
       // qahramon dunyo yonida turadi, ustida miltillovchi strelka
       const frame = Math.floor(t * 2) % 2;
-      renderSprite(c, hero, "idle", frame, x + 22, y - 9, false, true);
+      renderSprite(c, hero, "idle", frame, x + 22, y - 9, false, true, false, skinPalette(hero));
       const by = y - 34 + Math.round(Math.sin(t * 5) * 2);
       px(c, "#ffcc33", x - 3, by, 7, 2);
       px(c, "#ffcc33", x - 2, by + 2, 5, 1);

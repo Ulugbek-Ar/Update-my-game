@@ -6,6 +6,7 @@
  * tushadi va RealmSim tick'ida qo'llanadi. Har 2 tickda (10 Hz) har bir o'yinchiga faqat o'zgargan
  * narsa (delta) va uning yaqinidagi narsalar yuboriladi.
  */
+import { DEFAULT_SKIN, isSkinId } from "@/game/skins";
 import type { Hero } from "@/game/hero";
 import { loadRealmData } from "../data";
 import {
@@ -283,6 +284,8 @@ export class RealmRoom {
       : undefined;
     const rp = this.sim.addPlayer(pid, hello.hero, save);
     rp.keys = [...new Set(hello.keys)];
+    // skin: faqat shu qahramonda mavjud id (noma'lum — asl ranglar)
+    rp.skin = isSkinId(hello.hero, hello.skin) && hello.skin !== DEFAULT_SKIN ? hello.skin : "";
     if (host) this.placeNear(rp, this.sim.players.get(host.pid));
     const m: Member = {
       pid,
@@ -460,7 +463,7 @@ export class RealmRoom {
       const mem = this.members.get(o.id);
       if (!mem) continue;
       seenP.add(o.id);
-      const t = netPlayer(o, mem.name, mem.level, mem.guild);
+      const t = netPlayer(o, mem.name, mem.level, mem.guild, o.skin);
       const k = JSON.stringify(t);
       if (b.players.get(o.id) !== k) {
         b.players.set(o.id, k);
@@ -636,14 +639,20 @@ function send(conn: RoomConn, msg: ServerMsg) {
 const loopFrame = (state: string, frame: number) =>
   state === "idle" || state === "walk" ? -1 : frame;
 
-export function netPlayer(o: RealmPlayer, name: string, level = 0, guild = ""): NetPlayer {
+export function netPlayer(
+  o: RealmPlayer,
+  name: string,
+  level = 0,
+  guild = "",
+  skin = "",
+): NetPlayer {
   const p = o.p;
   const flags =
     (p.dashing ? PF_DASH : 0) |
     (p.guarded ? PF_GUARD : 0) |
     (p.hidden ? PF_HIDDEN : 0) |
     (p.vowing ? PF_VOW : 0);
-  return [
+  const out: NetPlayer = [
     o.id,
     o.hero,
     name,
@@ -661,6 +670,9 @@ export function netPlayer(o: RealmPlayer, name: string, level = 0, guild = ""): 
     level,
     guild,
   ];
+  // skinsiz o'yinchida maydon yuborilmaydi (eski klientlar bilan bir xil)
+  if (skin) out[16] = skin;
+  return out;
 }
 
 export function netMob(m: RealmMob): NetMob {

@@ -5,6 +5,7 @@
  * Boshqa o'yinchilar va moblar INTERP_DELAY orqada, ikki server holati orasida interpolatsiya bilan
  * silliq ko'rsatiladi (ping 200 ms bo'lsa ham). O'z qahramoni — klient bashorati (predict.ts).
  */
+import { isSkinId } from "@/game/skins";
 import type { Hero } from "@/game/hero";
 import type { Animator, AnimState } from "@/game/animation";
 import { RealmPlayer, RealmSim, TICK_DT, type RealmEvent, type RealmPlayerSave } from "../sim";
@@ -264,6 +265,7 @@ export class RealmMirror {
       p.vowT = a[11] & PF_VOW ? 1 : 0;
       p.flash = a[12];
       rp.titles = a[13] ? [a[13]] : [];
+      rp.skin = isSkinId(rp.hero, a[16]) ? a[16] : "";
     }
     for (const [id, list] of this.mobs) {
       const { a, b, k } = at(list, rt);

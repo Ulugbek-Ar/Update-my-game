@@ -4348,6 +4348,17 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
 
 const cache = new Map<string, HTMLCanvasElement>();
 
+/** Qahramon skini: id (kesh kaliti) va PALETTES tartibidagi 5 rang */
+export interface SpritePalette {
+  id: string;
+  colors: readonly string[];
+}
+
+/** Kesh kaliti (sinov: skinlar aralashmasligi) */
+export function spriteCacheKeys() {
+  return [...cache.keys()];
+}
+
 /** Ochiq olam personajlari chiziladigan o'lcham (to'qnashuv o'lchamidan mustaqil) */
 const REALM_SIZES: Partial<Record<SpriteKind, number>> = {
   boar: 30,
@@ -4376,8 +4387,10 @@ export function renderSprite(
   flash: boolean,
   flip = false,
   back = false,
+  /** Skin (skins.ts): boshqa 5 rang; kesh kalitiga id kiradi — skinlar aralashmaydi */
+  palette?: SpritePalette,
 ) {
-  const key = `${kind}:${state}:${frame}:${flash}:${back}`;
+  const key = `${kind}:${state}:${frame}:${flash}:${back}:${palette?.id ?? ""}`;
   let canvas = cache.get(key);
   if (!canvas) {
     canvas = document.createElement("canvas");
@@ -4386,13 +4399,13 @@ export function renderSprite(
     const raster = canvas.getContext("2d");
     if (!raster) return;
     const data = spritePixels(kind, state, frame, back);
-    const palette = PALETTES[kind];
+    const colors = palette?.colors ?? PALETTES[kind];
     for (let py = 0; py < n; py++)
       for (let px = 0; px < n; px++) {
         const color = data[py * n + px];
         if (!color) continue;
         raster.fillStyle =
-          flash && color > 1 ? "#ffffff" : (palette[color - 1] ?? palette[0] ?? "#000000");
+          flash && color > 1 ? "#ffffff" : (colors[color - 1] ?? colors[0] ?? "#000000");
         raster.fillRect(px, py, 1, 1);
       }
     cache.set(key, canvas);

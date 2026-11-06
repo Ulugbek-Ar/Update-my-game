@@ -406,9 +406,15 @@ export const REQ = {
       gold: z.number().int().min(0).max(1_000_000),
       xp: z.number().int().min(0).max(100_000),
       hero: hero.optional(),
+      /** skin id'si (v3.6, skins.ts) */
+      skin: z
+        .string()
+        .max(32)
+        .regex(/^[a-z0-9_-]+$/)
+        .optional(),
       note: z.string().max(GIFT_NOTE_MAX).optional(),
     })
-    .refine((b) => b.gold > 0 || b.xp > 0 || !!b.hero),
+    .refine((b) => b.gold > 0 || b.xp > 0 || !!b.hero || !!b.skin),
   // ---------------- sovg'a qutisi (qabul qiluvchi) ----------------
   /** Kutayotgan sovg'alar */
   "gifts/list": z.object({ token }),
@@ -726,6 +732,8 @@ export interface GiftInfo {
   gold: number;
   xp: number;
   hero: Hero | null;
+  /** skin id'si (eski sovg'alarda yo'q) */
+  skin?: string | null;
   note: string;
   at: number;
 }
@@ -737,6 +745,7 @@ export interface SentGift {
   gold: number;
   xp: number;
   hero: Hero | null;
+  skin?: string | null;
   note: string;
   at: number;
   /** olingan vaqt (0 — hali olinmagan) */

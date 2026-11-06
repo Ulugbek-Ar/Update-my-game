@@ -284,6 +284,11 @@ export const SCHEMA: readonly string[] = [
     claimed INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE INDEX IF NOT EXISTS gifts_receiver ON gifts (receiver, claimed)`,
+  // sovg'adagi skin (v3.6): alohida jadval — gifts jadvaliga ustun qo'shilmaydi
+  `CREATE TABLE IF NOT EXISTS gift_skins (
+    gift INTEGER PRIMARY KEY,
+    skin TEXT NOT NULL
+  )`,
   // ekspeditsiya: o'yinchiga bitta (qahramon va boshlangan vaqt — server soati)
   `CREATE TABLE IF NOT EXISTS expeditions (
     player INTEGER PRIMARY KEY,

@@ -3,6 +3,7 @@
  * Olinganda: oltin — tanga yomg'iri, qahramon — nur ichida paydo bo'ladi. Bir nechta sovg'a
  * bo'lsa — navbatma-navbat.
  */
+import { skinName } from "@/game/skins";
 import { useEffect, useState } from "react";
 import { adminErrorText } from "@/account/admin";
 import { giftBox, useGiftBox } from "@/account/giftbox";
@@ -41,6 +42,11 @@ function GiftCard({ g }: { g: GiftInfo }) {
           >
             <HeroAvatar hero={hero.id} size={20} />
             Qahramon: {hero.name}
+          </li>
+        )}
+        {g.skin && (
+          <li className="inline-flex items-center gap-1 border-2 border-[#c99ae8] px-2 py-1 text-[#c99ae8]">
+            Skin: {skinName(g.skin)}
           </li>
         )}
       </ul>
@@ -121,6 +127,11 @@ export function GiftInboxWindow({
             </p>
           )}
           {got.xp > 0 && <p className="gift-pop self-start text-[#9fd0ef]">+{got.xp} XP</p>}
+          {got.skin && (
+            <p className="gift-pop self-start text-[#c99ae8]">
+              YANGI SKIN: {skinName(got.skin)}! (Do'kon — SKINLAR)
+            </p>
+          )}
           {hero && (
             <p className="text-muted-foreground">
               <span style={{ color: HERO_THEME[hero.id].uiText }}>{hero.name}</span> endi menyudagi

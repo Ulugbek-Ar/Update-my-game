@@ -12,6 +12,7 @@ import {
   type SentGift,
 } from "@/account/protocol";
 import { HERO_LIST, HERO_THEME, type Hero } from "@/game/hero";
+import { SKINS, skinName } from "@/game/skins";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { AuthorBadge, HeroAvatar, Icon, LevelBadge } from "./pixel";
 import { btn, tabBtn, when } from "./pixelUi";
@@ -22,11 +23,18 @@ export const GUEST_GIFT_TEXT =
   "Bunday o'yinchi topilmadi. Mehmon (akkauntsiz) o'yinchiga sovg'a yuborib bo'lmaydi — u avval menyudagi \"KIRISH\" orqali Telegram bilan akkaunt ochishi kerak. Taxallus yoki do'st kodini (profilida) tekshiring.";
 
 /** "500 oltin + 100 XP + PALADIN + xat" */
-export function giftText(g: { gold: number; xp: number; hero: Hero | null; note: string }) {
+export function giftText(g: {
+  gold: number;
+  xp: number;
+  hero: Hero | null;
+  skin?: string | null | undefined;
+  note: string;
+}) {
   const parts: string[] = [];
   if (g.gold > 0) parts.push(`${g.gold} oltin`);
   if (g.xp > 0) parts.push(`${g.xp} XP`);
   if (g.hero) parts.push(`qahramon ${HERO_LIST.find((h) => h.id === g.hero)?.name ?? g.hero}`);
+  if (g.skin) parts.push(`skin ${skinName(g.skin)}`);
   if (g.note) parts.push("xat");
   return parts.join(" + ");
 }
@@ -50,13 +58,14 @@ export function GiftSender({ from, onSent }: { from: string; onSent: (g: SentGif
   const [gold, setGold] = useState("500");
   const [xp, setXp] = useState("0");
   const [hero, setHero] = useState<Hero | null>(null);
+  const [skin, setSkin] = useState("");
   const [note, setNote] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const n = (s: string) => Math.max(0, Math.floor(Number(s) || 0));
-  const gift = { gold: n(gold), xp: n(xp), hero, note: note.trim() };
-  const empty = !gift.gold && !gift.xp && !gift.hero;
+  const gift = { gold: n(gold), xp: n(xp), hero, skin: skin || null, note: note.trim() };
+  const empty = !gift.gold && !gift.xp && !gift.hero && !gift.skin;
 
   const search = async () => {
     const q = query.trim();
@@ -79,6 +88,7 @@ export function GiftSender({ from, onSent }: { from: string; onSent: (g: SentGif
       gold: gift.gold,
       xp: gift.xp,
       ...(hero ? { hero } : {}),
+      ...(skin ? { skin } : {}),
       ...(gift.note ? { note: gift.note } : {}),
     });
     setBusy(false);
@@ -90,7 +100,7 @@ export function GiftSender({ from, onSent }: { from: string; onSent: (g: SentGif
           r.error === "none"
             ? GUEST_GIFT_TEXT
             : r.error === "bad"
-              ? "Bu qahramon o'yinchida allaqachon ochiq"
+              ? "Bu qahramon yoki skin o'yinchida allaqachon ochiq"
               : r.error === "limit"
                 ? "O'yinchida olinmagan sovg'alar juda ko'p"
                 : adminErrorText(r),
@@ -98,6 +108,7 @@ export function GiftSender({ from, onSent }: { from: string; onSent: (g: SentGif
     setMsg({ ok: true, text: `Yuborildi: ${to.nick} — ${giftText(gift)}` });
     onSent(r.gift);
     setHero(null);
+    setSkin("");
     setNote("");
   };
 
@@ -193,6 +204,28 @@ export function GiftSender({ from, onSent }: { from: string; onSent: (g: SentGif
               <span className="text-muted-foreground">hammasi ochiq</span>
             )}
           </div>
+          <label className="flex flex-wrap items-center gap-2 text-foreground">
+            Skin:
+            <select
+              value={skin}
+              aria-label="Sovg'a: skin"
+              onChange={(e) => setSkin(e.target.value)}
+              className={`${input} max-w-full`}
+            >
+              <option value="">YO'Q</option>
+              {HERO_LIST.map((h) => (
+                <optgroup key={h.id} label={h.name}>
+                  {SKINS[h.id]
+                    .filter((s) => s.price > 0)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1 text-foreground">
             Xat (ixtiyoriy, {note.length}/{GIFT_NOTE_MAX})
             <textarea

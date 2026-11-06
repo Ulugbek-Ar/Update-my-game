@@ -71,6 +71,8 @@ import { MigrateWindow } from "@/components/game/MigrateWindow";
 import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { AdminWindow } from "@/components/game/AdminWindow";
 import { CoinRain } from "@/components/game/pixel";
+import { SkinsShop } from "@/components/game/SkinsShop";
+import { skinPalette } from "@/game/skins";
 import { GiftInboxWindow } from "@/components/game/GiftInboxWindow";
 import { giftBox, useGiftBox } from "@/account/giftbox";
 import { expedition, useExpedition } from "@/account/expedition";
@@ -1398,6 +1400,7 @@ function HeroPreview({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [frame, setFrame] = useState(0);
+  const pal = skinPalette(hero);
   // Paladinning ulkan qilichi 32 px kartaga sig'maydi — kattaroq ko'rinish (tana biroz kichrayadi)
   const view = hero === "paladin" ? 48 : 32;
   useEffect(() => {
@@ -1412,8 +1415,9 @@ function HeroPreview({
     const [state, f] = showcase
       ? SHOWCASE[frame % SHOWCASE.length]!
       : (["idle", frame % 2] as const);
-    renderSprite(c, hero, state, f, view / 2, view / 2, false);
-  }, [hero, frame, showcase, view]);
+    // tanlangan skin (do'kondan qaytganda menyu qayta chiziladi)
+    renderSprite(c, hero, state, f, view / 2, view / 2, false, false, false, pal);
+  }, [hero, frame, showcase, view, pal]);
   return (
     <canvas
       ref={ref}
@@ -1481,7 +1485,7 @@ function PixelIcon({ id, color, size }: { id: string; color: string; size: numbe
 }
 
 /** Do'kon bo'limlari: doimiy kuchaytirishlar va qahramonlar */
-type ShopTab = "upgrades" | "heroes";
+type ShopTab = "upgrades" | "heroes" | "skins";
 
 function ShopWindow({
   onClose,
@@ -1559,10 +1563,13 @@ function ShopWindow({
           <div role="tablist" aria-label="Do'kon bo'limlari" className="flex flex-wrap gap-2">
             {tabBtn("upgrades", "KUCHAYTIRISHLAR")}
             {tabBtn("heroes", "QAHRAMONLAR")}
+            {tabBtn("skins", "SKINLAR")}
           </div>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
-          {tab === "upgrades" ? (
+          {tab === "skins" ? (
+            <SkinsShop gold={gold} onGold={setGold} startHero={focusHero ?? loadPlayableHero()} />
+          ) : tab === "upgrades" ? (
             <>
               <p className="text-muted-foreground">
                 Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.

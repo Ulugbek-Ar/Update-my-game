@@ -4,6 +4,7 @@
  * almashsa ham yo'qolmaydi. Mehmon (akkauntsiz) o'yinchi serverda yo'q — unga yuborib bo'lmaydi.
  */
 import { applyGift, heroesIn } from "../grants";
+import { SKINS_KEY, paidSkinIds, parseSkins } from "@/game/skins";
 import { GIFT_NOTE_MAX, HERO_IDS, type CloudSave, type GiftInfo, type SentGift } from "../protocol";
 import type { Hero } from "@/game/hero";
 import { first, num, str, type Row } from "./db";
@@ -52,6 +53,16 @@ export class Gifts {
     return this.store.db;
   }
 
+  /** Sovg'adagi skin (gift_skins jadvali) */
+  private skinOf(id: number): string | null {
+    const r = first<Row & { skin: string }>(
+      this.db,
+      "SELECT skin FROM gift_skins WHERE gift = ?",
+      id,
+    );
+    return r ? str(r.skin) || null : null;
+  }
+
   private info(r: GiftRow): GiftInfo {
     const s = this.store.player(num(r.sender));
     return {
@@ -64,6 +75,7 @@ export class Gifts {
       gold: num(r.gold),
       xp: num(r.xp),
       hero: heroOf(str(r.hero)),
+      skin: this.skinOf(num(r.id)),
       note: str(r.note),
       at: num(r.at),
     };
@@ -77,6 +89,7 @@ export class Gifts {
       gold: num(r.gold),
       xp: num(r.xp),
       hero: heroOf(str(r.hero)),
+      skin: this.skinOf(num(r.id)),
       note: str(r.note),
       at: num(r.at),
       claimed: num(r.claimed),
@@ -86,7 +99,14 @@ export class Gifts {
   /** Muallif yuboradi (huquq adminApi.ts da tekshirilgan) */
   send(
     admin: PlayerRow,
-    b: { to: number; gold: number; xp: number; hero?: Hero | undefined; note?: string | undefined },
+    b: {
+      to: number;
+      gold: number;
+      xp: number;
+      hero?: Hero | undefined;
+      skin?: string | undefined;
+      note?: string | undefined;
+    },
     now: number,
   ): { ok: true; gift: SentGift } | GiftFail {
     return this.db.tx(() => {
@@ -99,7 +119,13 @@ export class Gifts {
       // qahramon — faqat hali ochmaganlaridan (ochgan bo'lsa — rad, adashib yuborilmasin)
       if (hero && heroesIn(this.store.getSave(to.id)?.data ?? {}).includes(hero))
         return { ok: false as const, error: "bad" as const };
-      if (!gold && !xp && !hero) return { ok: false as const, error: "bad" as const };
+      // skin — faqat mavjud pullik skin va o'yinchida hali yo'q bo'lsa
+      const skin = b.skin ?? null;
+      if (skin && !paidSkinIds().includes(skin))
+        return { ok: false as const, error: "bad" as const };
+      if (skin && parseSkins(this.store.getSave(to.id)?.data?.[SKINS_KEY]).owned.includes(skin))
+        return { ok: false as const, error: "bad" as const };
+      if (!gold && !xp && !hero && !skin) return { ok: false as const, error: "bad" as const };
       if (this.pending(to.id) >= MAX_PENDING_GIFTS)
         return { ok: false as const, error: "limit" as const };
       hero ??= null;
@@ -119,10 +145,13 @@ export class Gifts {
         "SELECT * FROM gifts WHERE receiver = ? ORDER BY id DESC LIMIT 1",
         to.id,
       )!;
+      if (skin)
+        this.db.exec("INSERT INTO gift_skins (gift, skin) VALUES (?, ?)", num(row.id), skin);
       const what = [
         gold ? `${gold} oltin` : "",
         xp ? `${xp} XP` : "",
         hero ? `qahramon ${hero}` : "",
+        skin ? `skin ${skin}` : "",
       ]
         .filter(Boolean)
         .join(" + ");
@@ -194,6 +223,7 @@ export class Gifts {
         gold: num(r.gold),
         xp: num(r.xp),
         hero: heroOf(str(r.hero)),
+        skin: this.skinOf(num(r.id)),
       });
       const save = this.store.writeSave(p.id, data, now, "gift");
       this.db.exec("UPDATE gifts SET claimed = ? WHERE id = ?", now, id);

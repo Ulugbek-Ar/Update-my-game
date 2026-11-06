@@ -18,6 +18,7 @@ import {
 } from "@/game/progress";
 import { UNLOCKED_HEROES_KEY } from "@/game/save";
 import { GOLD_KEY, SHOP_ITEMS, SHOP_KEY } from "@/game/shop";
+import { SKINS_KEY, grantSkinsIn, paidSkinIds } from "@/game/skins";
 import valley from "@/realm/data/regions/valley.json";
 import ashmount from "@/realm/data/regions/ashmount.json";
 import { GOLD_CAP, XP_CAP } from "./limits";
@@ -50,6 +51,8 @@ export interface UnlockLists {
   shop: readonly { id: string; costs: readonly number[] }[];
   achievements: readonly { id: string }[];
   secrets: readonly string[];
+  /** pullik skinlar (skins.ts) */
+  skins: readonly string[];
 }
 
 export const defaultLists = (): UnlockLists => ({
@@ -57,6 +60,7 @@ export const defaultLists = (): UnlockLists => ({
   shop: SHOP_ITEMS,
   achievements: ACHIEVEMENTS,
   secrets: realmSecretIds(),
+  skins: paidSkinIds(),
 });
 
 function json<T>(raw: string | undefined, fallback: T): T {
@@ -189,17 +193,28 @@ export function unlockAll(data: Keys, lists: UnlockLists = defaultLists()): Keys
     realm.player.secrets = [...new Set([...got, ...lists.secrets])];
     out[REALM_SAVE_KEY] = JSON.stringify(realm);
   }
+  // skinlar: hammasi sotib olingan (tanlangani o'zgarmaydi)
+  out[SKINS_KEY] = grantSkinsIn(out[SKINS_KEY], lists.skins);
   // daraja va oltin
   if (xpIn(out) < xpForLevel(MAX_LEVEL)) out = setLevel(out, MAX_LEVEL);
   if (goldIn(out) < UNLOCK_GOLD) out[GOLD_KEY] = String(UNLOCK_GOLD);
   return out;
 }
 
-/** Sovg'a: oltin, XP va qahramon bitta yozuvda */
-export function applyGift(data: Keys, g: { gold: number; xp: number; hero: string | null }): Keys {
+/** Skin sovg'asi: sotib olingan ro'yxatga (faqat mavjud pullik skin) */
+export function grantSkin(data: Keys, skin: string): Keys {
+  return { ...data, [SKINS_KEY]: grantSkinsIn(data[SKINS_KEY], [skin]) };
+}
+
+/** Sovg'a: oltin, XP, qahramon va skin bitta yozuvda */
+export function applyGift(
+  data: Keys,
+  g: { gold: number; xp: number; hero: string | null; skin?: string | null | undefined },
+): Keys {
   let out = data;
   if (g.gold > 0) out = grantGold(out, g.gold);
   if (g.xp > 0) out = grantXp(out, g.xp);
   if (g.hero) out = grantHero(out, g.hero);
+  if (g.skin) out = grantSkin(out, g.skin);
   return out;
 }

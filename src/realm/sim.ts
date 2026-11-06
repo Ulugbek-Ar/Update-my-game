@@ -316,6 +316,8 @@ export class RealmPlayer {
   deadT = 0;
   /** tunda yorug'lik radiusi ko'paytuvchisi (Tungi uzuk) */
   light = 1;
+  /** Skin id'si (skins.ts; "" — asl ranglar). Faqat ko'rinish: server faqat mavjud id'ni oladi */
+  skin = "";
   /** qaysi tunda yulduz tushdi (bir tunda bitta) */
   starNight = -1;
   starAt = -1;

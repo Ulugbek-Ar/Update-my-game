@@ -157,6 +157,12 @@ export const HelloSchema = z.object({
     .optional(),
   /** "Yoniga kirish": aynan shu akkaunt (do'st) yoniga tushish */
   nearAcc: z.number().int().positive().optional(),
+  /** Skin id'si (v3.6; eski klient yubormaydi). Server faqat shu qahramonda mavjud id'ni oladi */
+  skin: z
+    .string()
+    .max(32)
+    .regex(/^[a-z0-9_-]+$/)
+    .optional(),
 });
 
 export const ClientMsgSchema = z.discriminatedUnion("t", [
@@ -232,7 +238,7 @@ export const PF_DASH = 1,
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,
  * flash, unvon ("" — yo'q), o'yinchi darajasi (0 — mehmon), gildiya ("TEG|gerb", "" — yo'q;
- * eski server yubormaydi)]
+ * eski server yubormaydi), skin ("" — asl ranglar; eski server yubormaydi)]
  */
 export type NetPlayer = [
   string,
@@ -250,6 +256,7 @@ export type NetPlayer = [
   number,
   string,
   number,
+  string?,
   string?,
 ];
 /**

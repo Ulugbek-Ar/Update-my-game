@@ -1,6 +1,6 @@
 import { Animator, Body, ROOM, updatePhysics, isFlashing, clampToRoom } from "./animation";
 import type { Input } from "./input";
-import { renderSprite } from "./sprites";
+import { renderSprite, type SpritePalette } from "./sprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
 
@@ -268,6 +268,8 @@ export class Player implements Body {
   warded = false;
   /** POROX sinergiyasi: barabanni bo'shatishdagi o'qlar teshib o'tadi */
   fanPierce = false;
+  /** Skin palitrasi (skins.ts; undefined — asl ranglar). Faqat ko'rinish */
+  skin: SpritePalette | undefined = undefined;
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -1020,6 +1022,7 @@ export class Player implements Body {
       isFlashing(this) || this.anim.state === "hurt",
       this.fx < 0,
       this.fy < 0,
+      this.skin,
     );
     ctx.globalAlpha = 1;
   }

@@ -5,6 +5,7 @@
 import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
 import { HERO_ROLE, HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
+import { skinPalette } from "@/game/skins";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
 import {
@@ -557,6 +558,8 @@ export class RealmRenderer {
           c.translate(Math.round(x - p.x), Math.round(y - p.y));
           // Paladin QASAMi: oltin aura (boshqalar ham ko'radi — tank bossni ushlab turibdi)
           if (p.paladin && p.vowing && !p.dead) renderVowAura(c, p, v.time);
+          // skin: qayta tug'ilishda Player yangilanadi — har chizishda RealmPlayer'dan
+          p.skin = rp.skin ? skinPalette(rp.hero, rp.skin) : undefined;
           p.render(c);
           c.restore();
         },

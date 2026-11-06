@@ -7,6 +7,7 @@
  * darhol ko'rsatiladi (net/predict.ts) va server bilan solishtirib tuzatiladi. Ulanish uzilsa —
  * o'sha joydan oflayn davom etadi; progress (inventar, topshiriqlar, oltin) yo'qolmaydi.
  */
+import { DEFAULT_SKIN, selectedSkin } from "@/game/skins";
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
@@ -105,6 +106,12 @@ function writeRealmSave(s: RealmSave) {
   }
 }
 
+/** Tanlangan skin id'si ("" — asl ranglar) */
+function mySkin(hero: Hero) {
+  const s = selectedSkin(hero);
+  return s.id === DEFAULT_SKIN ? "" : s.id;
+}
+
 export class RealmClient {
   input = new Input();
   sim: RealmSim;
@@ -194,6 +201,7 @@ export class RealmClient {
         : save.player
       : null;
     this.me = this.sim.addPlayer(this.pid, hero, player);
+    this.me.skin = mySkin(hero);
     // vodiydagi bayroq yozuvi (oflayn — qurilmadagi keshdan; onlayn — server)
     this.sim.champ = cachedChamp();
     // oltin asosiy o'yin bilan umumiy: eski saqlanishdagi olam oltini bir marta hisobga qo'shiladi
@@ -304,6 +312,8 @@ export class RealmClient {
       // kirgan o'yinchi: server tokenni tekshirib, taxallus va darajani ko'rsatadi
       ...(account.sessionToken ? { acct: account.sessionToken } : {}),
       ...(near && this.nearAcc ? { nearAcc: this.nearAcc } : {}),
+      // skin: asl ranglarda yuborilmaydi (eski server ham qabul qiladi)
+      ...(this.me.skin ? { skin: this.me.skin } : {}),
     };
   }
 
@@ -396,6 +406,7 @@ export class RealmClient {
   private useSim(sim: RealmSim, me: RealmPlayer, pid: string) {
     this.sim = sim;
     this.me = me;
+    me.skin = mySkin(this.hero);
     this.pid = pid;
     this.view.sim = sim;
     this.view.me = me;

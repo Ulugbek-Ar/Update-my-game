@@ -94,8 +94,9 @@ function UnlockTab({
       <Section title="HAMMASINI OCHISH">
         <p className="text-muted-foreground">
           Barcha qahramonlar, do'kon kuchaytirishlari maksimal, dunyolar va bosslar yengilgan, olam
-          kalitlari va hududlar, sirlar (olamga bir marta kirilgan bo'lsa), yutuqlar, 50-daraja va
-          99 999 oltin. Yangi versiyadan keyin qayta bosing — yangi qo'shilganlar ham ochiladi.
+          kalitlari va hududlar, sirlar (olamga bir marta kirilgan bo'lsa), yutuqlar, barcha
+          skinlar, 50-daraja va 99 999 oltin. Yangi versiyadan keyin qayta bosing — yangi
+          qo'shilganlar ham ochiladi.
         </p>
         <button
           disabled={busy}

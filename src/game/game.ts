@@ -93,6 +93,7 @@ import {
   type TagCounts,
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
+import { skinPalette } from "./skins";
 import {
   COIN_RAIN,
   CRIT_AVG,
@@ -665,6 +666,7 @@ export class Game {
   /** Boshlang'ich holat: 1-to'lqin, HP to'liq. */
   reset() {
     this.player = new Player(this.hero);
+    this.player.skin = skinPalette(this.hero);
     const shop = loadShop();
     applyShop(this.player, shop);
     this.dropBonus = dropBonus(shop);
@@ -1026,6 +1028,7 @@ export class Game {
     const s = this.chStart;
     if (!s) return this.reset();
     this.player = new Player(this.hero);
+    this.player.skin = skinPalette(this.hero);
     Object.assign(this.player, s.powers);
     this.score = s.score;
     this.tagCounts = { ...s.tags };
