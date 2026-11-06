@@ -5,9 +5,10 @@
  *
  *   Ritsar, Sehrgar, Ovchi:
  *     oddiy = zarar × sharlar_soni / zarba_orasi
- *     kuchli zarba (aylana / halqa / kuchli o'q) har (spinCd + CHARGE_TIME) da bir marta:
- *       Ritsar va Sehrgar: 2 × zarar,  Ovchi: 2 × zarar × o'qlar_soni
- *     sikl = (oddiy × spinCd + kuchli) / (spinCd + CHARGE_TIME)
+ *     kuchli zarba (aylana / halqa / kuchli o'q) har (spinCd + zaryad) da bir marta:
+ *       Ritsar va Sehrgar: K × zarar,  Ovchi: K × zarar × o'qlar_soni
+ *       (K = strongMul: odatda 2, sinergiya bilan 3; zaryad = chargeTime, bonus bilan qisqaradi)
+ *     sikl = (oddiy × spinCd + kuchli) / (spinCd + zaryad)
  *     DPS = max(oddiy, sikl)  (+1 Ovchining zaharli uchi: har soniya 1 zarar)
  *
  *   Mergan:
@@ -15,7 +16,7 @@
  *
  *   Paladin:
  *     SHANG = 2 × zarar / zarba_orasi (0.9 s, tayyorgarlik ichida),
- *     OSMON HUKMI = 3 × zarar har (spinCd + 1 s zaryad) da — sikl yuqoridagidek
+ *     OSMON HUKMI = K × zarar (K = 3, NUR sinergiyasi bilan 4) har (spinCd + 1 s zaryad) da
  *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
@@ -25,7 +26,7 @@
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
  */
-import { CHARGE_TIME, type Player } from "./player";
+import type { Player } from "./player";
 
 /** Ideal urib turishda boss shuncha soniyada o'ladi */
 export const BOSS_FIGHT_TIME = 60;
@@ -62,13 +63,13 @@ export function heroDps(p: Player) {
   }
   if (p.paladin) {
     const basic = (2 * p.damage) / p.attackCd;
-    const cycle = (basic * p.spinCd + 3 * p.damage) / (p.spinCd + p.chargeTime);
+    const cycle = (basic * p.spinCd + p.strongMul * p.damage) / (p.spinCd + p.chargeTime);
     return Math.max(basic, cycle);
   }
   const multi = Math.max(1, p.multishot);
   const basic = (p.damage * multi) / p.attackCd;
-  const strong = p.hunter ? 2 * p.damage * multi : 2 * p.damage;
-  const cycle = (basic * p.spinCd + strong) / (p.spinCd + CHARGE_TIME);
+  const strong = p.hunter ? p.strongMul * p.damage * multi : p.strongMul * p.damage;
+  const cycle = (basic * p.spinCd + strong) / (p.spinCd + p.chargeTime);
   return Math.max(basic, cycle) + (p.hunter && p.poisonTip ? 1 : 0);
 }
 

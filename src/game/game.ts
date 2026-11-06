@@ -73,6 +73,26 @@ import { ThreatTable } from "./threat";
 import { HORN_ITEM, hornWanted, recordBossKey, sendToRealm } from "./realmLink";
 import { XP, addXp } from "@/account/xp";
 import { addStats } from "@/account/stats";
+import {
+  BLAST_DMG,
+  BLAST_RADIUS,
+  DASH_BOOST,
+  DROP_BONUS,
+  GUARD_BONUS,
+  HERO_TAG,
+  TAGS,
+  TAG_ICONS,
+  TELE_BLAST_MUL,
+  TELE_BLAST_RADIUS,
+  WARD_EVERY,
+  addTag,
+  hasTag,
+  synergies,
+  tagProgress,
+  type Tag,
+  type TagCounts,
+} from "./synergy";
+import { renderPixelIcon } from "./pixelIcon";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 /** Uchuvchi yozuv markazi ekran (xona) chetidan chiqib ketmasin: half — yozuv kengligining yarmi */
@@ -400,6 +420,11 @@ const POWER_KEYS = [
   // Paladin kartalari
   "shockwave",
   "aura",
+  // sinergiya bonuslari (synergy.ts)
+  "spinCd",
+  "chargeTime",
+  "strongMul",
+  "fanPierce",
 ] as const;
 type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
 function savePowers(p: Player): Powers {
@@ -426,6 +451,8 @@ export class Game {
   /** Paladin: SHANG yoriqlari va OSMON HUKMI zarb to'lqinlari (faqat chizish) */
   cracks: Crack[] = [];
   quakes: Quake[] = [];
+  /** Portlash halqalari (sinergiya va artefaktlar; faqat chizish) */
+  rings: { x: number; y: number; r: number; life: number; max: number; color: string }[] = [];
   /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
   private threat = new ThreatTable();
   /** Boss to'lqinida o'yinchi hali jon yo'qotmagan ("Qalqonsiz devor" yutug'i) */
@@ -491,7 +518,13 @@ export class Game {
   ch3Best = 0;
   newCh3Best = false;
   /** Dunyo boshidagi kuchlar va ochko — 2-/3-dunyoda o'lganda shu holatdan qayta boshlanadi */
-  private chStart: { powers: Powers; score: number } | null = null;
+  private chStart: { powers: Powers; score: number; tags: TagCounts } | null = null;
+  /** Shu o'yinda olingan kartalar teglari (sinergiyalar — synergy.ts) */
+  tagCounts: TagCounts = {};
+  /** HIMOYA sinergiyasi: keyingi qalqongacha o'tgan vaqt */
+  private wardT = 0;
+  /** O'tgan kadrda dash/teleport/sakrash davom etayotgan edi (TEZLIK sinergiyasi) */
+  private wasDashing = false;
   /** 1-dunyo yutilgan va 2-dunyoda hali o'lmagan ("Ikki dunyo" yutug'i) */
   private noDeathRun = false;
   /** Shu to'lqinda sovuq nafas tegdimi / to'lqinda Muz ruhi bormidi ("Sovuqqa chidam") */
@@ -583,6 +616,10 @@ export class Game {
     this.cracks = [];
     this.quakes = [];
     this.threat.clear();
+    this.tagCounts = {};
+    this.wardT = 0;
+    this.wasDashing = false;
+    this.rings = [];
     this.darkness = 0;
     this.drops = [];
     this.coins = [];
@@ -653,7 +690,11 @@ export class Game {
     if (this.startPick) {
       // 2-3-dunyo: bepul kuch tanlovisiz to'g'ri jangga
       this.startPick = false;
-      this.chStart = { powers: savePowers(this.player), score: this.score };
+      this.chStart = {
+        powers: savePowers(this.player),
+        score: this.score,
+        tags: { ...this.tagCounts },
+      };
       this.choices = [];
       this.enterChapter();
     }
@@ -663,7 +704,11 @@ export class Game {
   /** Bepul kuch tanlangach: dunyo boshidagi holat saqlanadi va 1-to'lqin boshlanadi. */
   private beginWorld() {
     this.startPick = false;
-    this.chStart = { powers: savePowers(this.player), score: this.score };
+    this.chStart = {
+      powers: savePowers(this.player),
+      score: this.score,
+      tags: { ...this.tagCounts },
+    };
     this.enterChapter();
   }
 
@@ -895,7 +940,7 @@ export class Game {
     this.chapter = n;
     const p = this.player;
     p.heal(1);
-    this.chStart = { powers: savePowers(p), score: this.score };
+    this.chStart = { powers: savePowers(p), score: this.score, tags: { ...this.tagCounts } };
     this.enterChapter();
   }
 
@@ -914,6 +959,8 @@ export class Game {
     this.player = new Player(this.hero);
     Object.assign(this.player, s.powers);
     this.score = s.score;
+    this.tagCounts = { ...s.tags };
+    this.wardT = 0;
     this.enterChapter();
   }
 
@@ -1279,6 +1326,7 @@ export class Game {
     sfx.upgrade();
     this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
     this.fx.burst(this.player.x, this.player.y, u.color, 18, 70);
+    for (const tag of u.tags) this.gainTag(tag);
     this.input.clearQueued();
     if (this.bonusPick) {
       // sandiqdagi bepul karta: to'lqin shu joyidan davom etadi
@@ -1288,6 +1336,37 @@ export class Game {
     }
     if (this.startPick) return this.beginWorld();
     this.startWave(this.wave + 1);
+  }
+
+  /** Karta tegi: 2 ta — kichik bonus, 3 ta — SINERGIYA (qahramon rangida yozuv va uchqunlar). */
+  private gainTag(tag: Tag) {
+    const p = this.player;
+    const got = addTag(this.tagCounts, tag, p);
+    if (!got) return;
+    const def = TAGS[tag];
+    if (got === "two") {
+      this.fx.text(p.x, p.y - 26, `${def.name} 2/3: ${def.two}`, def.color);
+      return;
+    }
+    const theme = HERO_THEME[this.hero];
+    this.fx.text(p.x, p.y - 36, "SINERGIYA!", theme.accent);
+    this.fx.text(p.x, p.y - 26, `${def.name}: ${def.three}`, def.color);
+    this.fx.burst(p.x, p.y, theme.accent, 30, 110, 2);
+    this.fx.burst(p.x, p.y, theme.glow, 14, 70, 1);
+    this.fx.addShake(0.2);
+    if (tag === "himoya") {
+      p.ward = Math.max(p.ward, 1);
+      this.wardT = 0;
+    }
+    this.onSynergy();
+  }
+
+  /** Sinergiya ochildi (yutuqlar — artefaktlar bosqichida). */
+  private onSynergy() {}
+
+  /** Shu tegdan sinergiya ochilganmi */
+  syn(tag: Tag) {
+    return hasTag(this.tagCounts, tag);
   }
 
   private updateUpgrade(dt: number) {
@@ -1338,7 +1417,12 @@ export class Game {
       }
       this.fx.burst(e.x, e.y, "#d8ecf7", 16, 90, 2);
     }
-    if (Math.random() < DROP_CHANCE + this.dropBonus) this.drops.push({ x: e.x, y: e.y, life: 9 });
+    const dropExtra = hasTag(this.tagCounts, "hayot", 2) ? DROP_BONUS : 0;
+    if (Math.random() < DROP_CHANCE + this.dropBonus + dropExtra)
+      this.drops.push({ x: e.x, y: e.y, life: 9 });
+    // ZARAR sinergiyasi: o'lgan dushman kichik portlash bilan atrofdagilarga 1 zarar (zanjir yo'q)
+    if (this.syn("zarar") && !this.blasting)
+      this.blast(e.x, e.y, BLAST_RADIUS, BLAST_DMG, "#ff6a4d");
     this.coins.push({ x: e.x + 5, y: e.y + 3, life: COIN_LIFE, value: KILL_GOLD[e.kind] });
     const p = this.player;
     if (p.lifesteal) {
@@ -1350,8 +1434,24 @@ export class Game {
     }
   }
 
+  /** Atrofdagi dushmanlarga portlash (sinergiya/artefakt); undan o'lganlar yana portlamaydi. */
+  private blasting = false;
+  private blast(x: number, y: number, r: number, dmg: number, color: string, boss = true) {
+    this.fx.burst(x, y, color, 16, 90, 2);
+    this.fx.burst(x, y, "#fff2a8", 6, 50, 1);
+    this.rings.push({ x, y: y + 4, r, life: 0.3, max: 0.3, color });
+    const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+    if (boss && this.boss?.active) targets.push(this.boss);
+    this.blasting = true;
+    for (const t of targets)
+      if (Math.hypot(t.x - x, t.y - y) - t.size / 2 < r) this.damageTarget(t, dmg, 160);
+    this.blasting = false;
+  }
+
   private onPlayerHurt() {
     const p = this.player;
+    // HIMOYA bonusi: zarbadan keyin biroz uzoqroq daxlsizlik
+    if (hasTag(this.tagCounts, "himoya", 2) && p.hp > 0) p.invuln += GUARD_BONUS;
     // telefonda qisqa tebranish; boss jangida — kuchliroq
     if (this.touch) vibrate(this.boss?.active ? BOSS_BUZZ : HIT_BUZZ);
     this.waveHurt = true;
@@ -1530,6 +1630,7 @@ export class Game {
       py0 = p.y;
     p.update(dt, this.input);
     this.applySlip(px0, py0, dt);
+    this.updateSynergies(dt);
     if (p.brokeIce) {
       p.brokeIce = false;
       sfx.block();
@@ -1580,6 +1681,15 @@ export class Game {
       this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#ff3b3b", 6, 70, 1);
       this.fx.burst(p.x, p.y, "#2b1c2e", 8, 25, 3);
       this.fx.burst(p.x, p.y, "#ff5a3c", 10, 60, 1);
+      // SEHR sinergiyasi: chiqqan joyda olov portlaydi
+      if (this.syn(HERO_TAG.mage) && p.mage)
+        this.blast(
+          p.teleportFrom.x,
+          p.teleportFrom.y,
+          TELE_BLAST_RADIUS,
+          p.damage * TELE_BLAST_MUL,
+          "#ff5a3c",
+        );
       p.teleportFrom = null;
     }
     if (p.cutFree) {
@@ -1668,6 +1778,8 @@ export class Game {
         sfx.roar();
         this.fx.addShake(0.5);
         this.fx.burst(boss.x, boss.y, BOSS_CARDS[this.bossKind(boss)].color, 30, 110, 2);
+        // HAYOT sinergiyasi: faza almashganda +1 yurak
+        if (this.syn("hayot") && p.heal(1)) this.fx.text(p.x, p.y - 14, "+1 YURAK", "#ff4d6d");
       }
       if (boss.justBerserk) {
         boss.justBerserk = false;
@@ -1985,6 +2097,32 @@ export class Game {
           }
         }
       } else this.clearWave();
+    }
+  }
+
+  /** TEZLIK (dashdan keyin tezlashish) va HIMOYA (har 20 s qalqon) sinergiyalari. */
+  private updateSynergies(dt: number) {
+    const p = this.player;
+    for (const r of this.rings) r.life -= dt;
+    this.rings = this.rings.filter((r) => r.life > 0);
+    if (this.wasDashing && !p.dashing && this.syn("tezlik")) {
+      p.boost = Math.max(p.boost, DASH_BOOST);
+      this.fx.burst(p.x, p.y, TAGS.tezlik.color, 6, 50, 1);
+    }
+    this.wasDashing = p.dashing;
+    if (p.boost > 0 && Math.random() < 0.4) this.fx.trail(p.x, p.y + 4, "rgba(127,216,255,0.6)");
+    if (this.syn("himoya") && p.ward < 1) {
+      this.wardT += dt;
+      if (this.wardT >= WARD_EVERY) {
+        this.wardT = 0;
+        p.ward = 1;
+        this.fx.text(p.x, p.y - 18, "QALQON", TAGS.himoya.color);
+      }
+    }
+    if (p.warded) {
+      p.warded = false;
+      this.fx.burst(p.x, p.y - 4, TAGS.himoya.color, 10, 70, 1);
+      this.fx.text(p.x, p.y - 18, "TO'SILDI", TAGS.himoya.color);
     }
   }
 
@@ -2827,6 +2965,17 @@ export class Game {
     // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
     for (const k of this.cracks) renderCrack(c, k);
     for (const q of this.quakes) renderQuake(c, q);
+    for (const r of this.rings) {
+      const k = 1 - r.life / r.max;
+      const rad = r.r * (0.4 + 0.6 * k);
+      c.save();
+      c.strokeStyle = withAlpha(r.color, 0.9 * (1 - k));
+      c.lineWidth = 2;
+      c.beginPath();
+      c.ellipse(r.x, r.y, rad, rad * 0.7, 0, 0, Math.PI * 2);
+      c.stroke();
+      c.restore();
+    }
     if (this.player.paladin && this.player.vowing && !this.player.dead)
       renderVowAura(c, this.player, this.time);
 
@@ -3381,6 +3530,17 @@ export class Game {
       this.text(`${this.chapter}-DUNYO`, ROOM.w / 2, 20, 5, WORLD_COLORS[this.chapter]);
     this.text(String(this.score).padStart(6, "0"), ROOM.w - 4, 11, 7, "#ffcc33", "right");
     if (this.combo >= 2) this.text(`KOMBO x${this.combo}`, ROOM.w - 4, 21, 5, "#ff9a3c", "right");
+    // faol sinergiyalar: o'ng yuqorida kichik teg belgilari
+    synergies(this.tagCounts).forEach((t, i) => {
+      const x = ROOM.w - 11 - i * 9;
+      px(c, "#000", x - 1, 25, 9, 9);
+      this.tagIcon(t, x, 26);
+    });
+    // qalqon (HIMOYA sinergiyasi / artefakt): yuraklar yonida
+    if (p.ward > 0) {
+      const x = 4 + p.maxHp * 10 + 1;
+      this.tagIcon("himoya", x, 4);
+    }
     this.text(
       this.daily ? `KUNLIK ${this.daily}` : `URINISH ${this.attempt}`,
       4,
@@ -3655,6 +3815,24 @@ export class Game {
         this.wrap(u.desc, 15).forEach((l, j) =>
           this.text(l, r.x + r.w / 2, r.y + 62 + j * 8 + lift, 5, "#e0d6ee"),
         );
+        // teg: ikonka va "ZARAR 2/3" (shu kartani olsa nechta bo'ladi); 3/3 — sinergiya ochiladi
+        const tag = u.tags[0];
+        if (tag) {
+          const label = tagProgress(this.tagCounts, tag);
+          const ready = (this.tagCounts[tag] ?? 0) + 1 === 3;
+          c.font = `5px "Press Start 2P", monospace`;
+          const w = c.measureText(label).width + 9;
+          const tx = r.x + (r.w - w) / 2;
+          this.tagIcon(tag, tx, r.y + 88 + lift);
+          this.text(
+            label,
+            tx + 9,
+            r.y + 94 + lift,
+            5,
+            ready && Math.floor(this.time * 4) % 2 ? "#ffffff" : TAGS[tag].color,
+            "left",
+          );
+        }
       });
       if (!this.touch) {
         const k = this.input.keyBinds;
@@ -3784,6 +3962,18 @@ export class Game {
       this.renderGoldResult(226);
       this.text(`v${GAME_VERSION}`, ROOM.w - 34, ROOM.h - 8, 6, "rgba(255,255,255,0.45)");
     }
+  }
+
+  /** Teg ikonkasi 7x7 (synergy.ts) */
+  private tagIcon(tag: Tag, x: number, y: number) {
+    renderPixelIcon(
+      this.ctx,
+      `tag:${tag}`,
+      TAG_ICONS[tag],
+      { X: TAGS[tag].color, k: "#120a18", w: "#ffffff" },
+      x,
+      y,
+    );
   }
 
   /** Kuch tanlash ekrani ochiq: yutuq xabari kuch tanlangandan keyin chiqadi. */

@@ -91,6 +91,8 @@ export const ENCASE_MAX = 3.5;
 export const DASH_GUARD = 0.2;
 /** Dash oxirida dushman ichida qolsa — chiqquncha himoya, lekin shundan oshmaydi */
 export const DASH_GUARD_MAX = 0.35;
+/** Tezlashish (TEZLIK sinergiyasi, OLTIN SHAMOL artefakti): yurish tezligi shuncha baravar */
+export const BOOST_SPEED = 1.35;
 
 /** Player o'qiydigan boshqaruv: klaviatura/sensor (Input) yoki olamdagi buyruqlar (RealmSim). */
 export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" | "attackHeld"> & {
@@ -254,6 +256,18 @@ export class Player implements Body {
   aura = false;
   auraT = 0;
   auraPulse = false;
+  /**
+   * Kuchli zarba ko'paytuvchisi: aylana zarba / halqa / kuchli o'q 2x, OSMON HUKMI 3x.
+   * Sinergiya (synergy.ts) oshiradi; onlayn olamda doim asl qiymat.
+   */
+  strongMul = 2;
+  /** Tezlashish qolgan vaqti (yurish BOOST_SPEED baravar; dash qiymatlari o'zgarmaydi) */
+  boost = 0;
+  /** Bitta zarbani to'sadigan qalqonlar (HIMOYA sinergiyasi, artefakt) va shu kadrda to'sildi */
+  ward = 0;
+  warded = false;
+  /** POROX sinergiyasi: barabanni bo'shatishdagi o'qlar teshib o'tadi */
+  fanPierce = false;
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -298,6 +312,7 @@ export class Player implements Body {
       this.reach = PALADIN_REACH;
       this.spinCd = SKY_CD;
       this.chargeTime = SKY_CHARGE;
+      this.strongMul = 3;
       // hujum kadrlari (4 ta) qo'lda boshqariladi: ko'tarish, porlash, urish, qaytarish
       this.anim.defs.attack = { frames: 4, frameTime: 99, loop: false };
     }
@@ -383,13 +398,22 @@ export class Player implements Body {
 
   /** Joriy zarba zarari: aylana zarba 2x; Paladinda SHANG 2x, OSMON HUKMI 3x. */
   get hitDamage() {
-    if (this.paladin) return this.damage * (this.spinning ? 3 : 2);
-    return this.spinning ? this.damage * 2 : this.damage;
+    if (this.paladin) return this.damage * (this.spinning ? this.strongMul : 2);
+    return this.spinning ? this.damage * this.strongMul : this.damage;
   }
 
   /** Zarba tegsa true qaytaradi. Dash paytida va himoya dumida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
     if (this.invuln > 0 || this.dead || this.evading) return false;
+    if (this.ward > 0) {
+      // qalqon: zarba to'liq to'siladi, qisqa daxlsizlik
+      this.ward--;
+      this.warded = true;
+      this.invuln = INVULN / 2;
+      this.flash = 0.15;
+      sfx.block();
+      return true;
+    }
     if (this.paladin) {
       // og'ir zirh: katta (2+ yurakli) zarba bir yurakka kamayadi; QASAMda yana yarmi
       if (dmg >= 2) dmg -= 1;
@@ -508,6 +532,7 @@ export class Player implements Body {
     this.smokeCooldown -= dt;
     this.vowCooldown -= dt;
     if (this.vowT > 0) this.vowT -= dt;
+    if (this.boost > 0) this.boost -= dt;
     if (this.hideT > 0) this.hideT -= dt;
     if (this.gunner) this.updateGun(dt, input);
     if (this.chill > 0) this.chill -= dt;
@@ -675,7 +700,8 @@ export class Player implements Body {
     if (!busy) {
       if ((x || y) && this.snare <= 0) {
         const l = Math.max(1, Math.hypot(x, y));
-        const speed = this.speed * (this.chill > 0 ? CHILL_SPEED : 1);
+        const speed =
+          this.speed * (this.chill > 0 ? CHILL_SPEED : 1) * (this.boost > 0 ? BOOST_SPEED : 1);
         this.x += (x / l) * speed * dt;
         this.y += (y / l) * speed * dt;
         if (Math.abs(x) >= Math.abs(y)) {
@@ -708,20 +734,22 @@ export class Player implements Body {
         // kuchaytirilgan o'q hamma dushmandan o'tadi
         left: power ? 99 : 1 + this.pierce,
         hit: [],
-        ...(this.hunter ? { arrow: true, power: power ? 2 : 1, poison: this.poisonTip } : {}),
+        ...(this.hunter
+          ? { arrow: true, power: power ? this.strongMul : 1, poison: this.poisonTip }
+          : {}),
       });
     }
   }
 
   /** Mergan o'qi: qarab turgan tomonga (yelpig'ichda — a burchakka) tez uchadi; barabandan 1 o'q. */
-  private fire(a: number) {
+  private fire(a: number, fan = false) {
     this.bolts.push({
       x: this.x + Math.cos(a) * 9,
       y: this.y + Math.sin(a) * 9 - 2,
       vx: Math.cos(a) * this.boltSpeed,
       vy: Math.sin(a) * this.boltSpeed,
       size: this.boltSize,
-      left: 1 + this.pierce,
+      left: fan && this.fanPierce ? 99 : 1 + this.pierce,
       hit: [],
       bullet: true,
       range: this.range,
@@ -768,7 +796,7 @@ export class Player implements Body {
       const k = n - this.fanLeft;
       const spread = n > 1 ? (k / (n - 1) - 0.5) * 2 * FAN_SPREAD : 0;
       this.fanLeft--;
-      this.fire(Math.atan2(this.fy, this.fx) + spread);
+      this.fire(Math.atan2(this.fy, this.fx) + spread, true);
       sfx.gunshot();
       this.anim.set("attack", true);
       this.anim.frame = 1;

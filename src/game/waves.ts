@@ -94,6 +94,14 @@ export function waveEnemies(i: number, rand = Math.random, world: World = 1): En
   return Array.from({ length: count }, () => kinds[Math.floor(rand() * kinds.length)]!);
 }
 
+/**
+ * Kuch kartasi tegi: umumiy (ZARAR, TEZLIK, HIMOYA, HAYOT) yoki qahramonniki (PO'LAT — Ritsar,
+ * SEHR — Sehrgar, OV — Ovchi, POROX — Mergan, NUR — Paladin). Bir xil tegdan 2 ta — kichik bonus,
+ * 3 ta — SINERGIYA (synergy.ts).
+ */
+export type Tag =
+  "zarar" | "tezlik" | "himoya" | "hayot" | "polat" | "sehr" | "ov" | "porox" | "nur";
+
 /** Qahramonga xos karta: nom, tavsif, rang, ikonka va kerak bo'lsa alohida ta'sir. */
 export interface HeroCard {
   name: string;
@@ -103,6 +111,8 @@ export interface HeroCard {
   text?: string;
   /** Ikonka (sprites.ts dagi UPGRADE_ICONS kaliti) */
   icon: string;
+  /** Teg (har variantda alohida yoziladi — ma'nosi asl kartadan farq qilishi mumkin) */
+  tags: Tag[];
   apply?: (p: Player) => void;
   ok?: (p: Player) => boolean;
 }
@@ -116,6 +126,8 @@ export interface Upgrade {
   text?: string;
   /** Ikonka kaliti; berilmasa id ishlatiladi */
   icon?: string;
+  /** Teg: bitta (synergy.ts) */
+  tags: Tag[];
   apply: (p: Player) => void;
   ok: (p: Player) => boolean;
   /** Sehrgar uchun alohida karta */
@@ -157,12 +169,14 @@ export const UPGRADES: Upgrade[] = [
     name: "TEMIR YURAK",
     desc: "+1 yurak va to'liq davolanish",
     color: "#ff4d6d",
+    tags: ["himoya"],
     apply: (p) => {
       p.maxHp++;
       p.hp = p.maxHp;
     },
     ok: (p) => p.maxHp < 10,
     mage: {
+      tags: ["himoya"],
       name: "SEHRLI YURAK",
       desc: "+1 yurak va to'liq davolanish",
       color: "#c1121f",
@@ -170,18 +184,21 @@ export const UPGRADES: Upgrade[] = [
       icon: "mheart",
     },
     hunter: {
+      tags: ["himoya"],
       name: "OVCHI YURAGI",
       desc: "+1 yurak va to'liq davolanish",
       color: "#7bd14f",
       icon: "hheart",
     },
     gunner: {
+      tags: ["himoya"],
       name: "QAYSAR YURAK",
       desc: "+1 yurak va to'liq davolanish",
       color: "#c8743a",
       icon: "gheart",
     },
     paladin: {
+      tags: ["himoya"],
       name: "MUQADDAS YURAK",
       desc: "+1 yurak va to'liq davolanish",
       color: "#f2c14e",
@@ -193,17 +210,32 @@ export const UPGRADES: Upgrade[] = [
     name: "O'TKIR QILICH",
     desc: "Qilich zarari +1",
     color: "#68cde4",
+    tags: ["zarar"],
     apply: (p) => p.damage++,
     ok: (p) => p.damage < 3,
     mage: {
+      tags: ["zarar"],
       name: "KUCHLI SEHR",
       desc: "Shar va halqa zarari +1",
       color: "#ff9a3c",
       icon: "fireball",
     },
-    hunter: { name: "O'TKIR UCH", desc: "O'q zarari +1", color: "#c9a26b", icon: "arrowhead" },
-    gunner: { name: "OG'IR O'Q", desc: "O'q zarari +1", color: "#d9a441", icon: "slug" },
+    hunter: {
+      name: "O'TKIR UCH",
+      desc: "O'q zarari +1",
+      color: "#c9a26b",
+      icon: "arrowhead",
+      tags: ["zarar"],
+    },
+    gunner: {
+      name: "OG'IR O'Q",
+      desc: "O'q zarari +1",
+      color: "#d9a441",
+      icon: "slug",
+      tags: ["zarar"],
+    },
     paladin: {
+      tags: ["zarar"],
       name: "OG'IR TIG'",
       desc: "SHANG va osmon hukmi zarari oshadi",
       color: "#fff2b0",
@@ -215,9 +247,11 @@ export const UPGRADES: Upgrade[] = [
     name: "UZUN TIG'",
     desc: "Zarba maydoni kattaroq",
     color: "#c5e4ec",
+    tags: ["polat"],
     apply: (p) => (p.reach += 5),
     ok: (p) => p.reach < 31,
     mage: {
+      tags: ["sehr"],
       name: "KENG HALQA",
       desc: "Halqa kattaroq, shar biroz kattaroq",
       color: "#ff4d4d",
@@ -228,6 +262,7 @@ export const UPGRADES: Upgrade[] = [
       },
     },
     hunter: {
+      tags: ["ov"],
       name: "UZOQ NISHON",
       desc: "O'qlar tezroq va kattaroq uchadi",
       color: "#a6f08e",
@@ -239,6 +274,7 @@ export const UPGRADES: Upgrade[] = [
       ok: (p) => p.boltSpeed < 330,
     },
     gunner: {
+      tags: ["porox"],
       name: "UZOQ NISHON",
       desc: "O'q tezroq va uzoqroq uchadi",
       color: "#ffe2a0",
@@ -250,6 +286,7 @@ export const UPGRADES: Upgrade[] = [
       ok: (p) => p.boltSpeed < 420,
     },
     paladin: {
+      tags: ["nur"],
       name: "OSMON QILICHI",
       desc: "SHANG yo'lagi uzunroq",
       color: "#fff2b0",
@@ -263,11 +300,25 @@ export const UPGRADES: Upgrade[] = [
     name: "CHAQQON QO'L",
     desc: "Zarbalar orasi 25% qisqa",
     color: "#ffcc33",
+    tags: ["zarar"],
     apply: (p) => (p.attackCd *= 0.75),
     ok: (p) => p.attackCd > 0.2,
-    mage: { name: "TEZ AFSUN", desc: "Sharlar orasi 25% qisqa", color: "#ffd166", icon: "book" },
-    hunter: { name: "TEZ KAMON", desc: "O'qlar orasi 25% qisqa", color: "#e8c37a", icon: "bow" },
+    mage: {
+      name: "TEZ AFSUN",
+      desc: "Sharlar orasi 25% qisqa",
+      color: "#ffd166",
+      icon: "book",
+      tags: ["zarar"],
+    },
+    hunter: {
+      name: "TEZ KAMON",
+      desc: "O'qlar orasi 25% qisqa",
+      color: "#e8c37a",
+      icon: "bow",
+      tags: ["zarar"],
+    },
     gunner: {
+      tags: ["zarar"],
       name: "TEZ QO'L",
       desc: "Qayta o'qlash 30% tez",
       color: "#e0b04a",
@@ -276,6 +327,7 @@ export const UPGRADES: Upgrade[] = [
       ok: (p) => p.reloadTime > 0.6,
     },
     paladin: {
+      tags: ["zarar"],
       name: "QAT'IYAT",
       desc: "SHANG 25% tezroq qaytadi",
       color: "#f2c14e",
@@ -289,30 +341,35 @@ export const UPGRADES: Upgrade[] = [
     name: "SHAMOL QADAMI",
     desc: "Tezlik +15%, dash tezroq qaytadi",
     color: "#a6f08e",
+    tags: ["tezlik"],
     apply: (p) => {
       p.speed *= 1.15;
       p.dashCd *= 0.75;
     },
     ok: (p) => p.speed < 130,
     mage: {
+      tags: ["tezlik"],
       name: "EFIR QADAMI",
       desc: "Tezlik +15%, teleport tezroq qaytadi",
       color: "#d9d4e0",
       icon: "wstar",
     },
     hunter: {
+      tags: ["tezlik"],
       name: "O'RMON QADAMI",
       desc: "Tezlik +15%, sakrash tezroq qaytadi",
       color: "#7bd14f",
       icon: "leaf",
     },
     gunner: {
+      tags: ["tezlik"],
       name: "CHAQQON OYOQ",
       desc: "Tezlik +15%, sirpanish tezroq qaytadi",
       color: "#b07a48",
       icon: "spur",
     },
     paladin: {
+      tags: ["tezlik"],
       name: "HAQ YO'LI",
       desc: "Tezlik +15%, hamla tezroq qaytadi",
       color: "#fff2b0",
@@ -324,9 +381,11 @@ export const UPGRADES: Upgrade[] = [
     name: "QON TOMIRI",
     desc: "Har bir necha o'ldirishda +1 yurak",
     color: "#b23238",
+    tags: ["hayot"],
     apply: (p) => (p.lifesteal = p.lifesteal ? Math.max(3, p.lifesteal - 2) : 6),
     ok: (p) => p.lifesteal !== 3,
     mage: {
+      tags: ["hayot"],
       name: "RUH SO'RISH",
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#c1121f",
@@ -334,18 +393,21 @@ export const UPGRADES: Upgrade[] = [
       icon: "spirit",
     },
     hunter: {
+      tags: ["hayot"],
       name: "OV O'LJASI",
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#c9a26b",
       icon: "fang",
     },
     gunner: {
+      tags: ["hayot"],
       name: "OV PULI",
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#d9a441",
       icon: "bounty",
     },
     paladin: {
+      tags: ["hayot"],
       name: "IMON NURI",
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#f2c14e",
@@ -357,9 +419,11 @@ export const UPGRADES: Upgrade[] = [
     name: "TIKANLI ZIRH",
     desc: "Zarba yesang, yaqin dushmanga 1 zarar",
     color: "#c9a26b",
+    tags: ["himoya"],
     apply: (p) => (p.thorns = true),
     ok: (p) => !p.thorns,
     mage: {
+      tags: ["himoya"],
       name: "MUZ QALQONI",
       desc: "Jon yo'qotsang, atrofdagilar 1.5s sekinlashadi",
       color: "#d9d4e0",
@@ -368,18 +432,21 @@ export const UPGRADES: Upgrade[] = [
       ok: (p) => !p.frost,
     },
     hunter: {
+      tags: ["himoya"],
       name: "TIKANLI PLASH",
       desc: "Zarba yesang, yaqin dushmanga 1 zarar",
       color: "#a6f08e",
       icon: "thorn",
     },
     gunner: {
+      tags: ["himoya"],
       name: "TEMIR KAMZUL",
       desc: "Zarba yesang, yaqin dushmanga 1 zarar",
       color: "#9a948a",
       icon: "vest",
     },
     paladin: {
+      tags: ["himoya"],
       name: "QASOS ZIRHI",
       desc: "Zarba yesang, yaqin dushmanga 1 zarar",
       color: "#f2c14e",
@@ -391,27 +458,32 @@ export const UPGRADES: Upgrade[] = [
     name: "IKKI KARRA DASH",
     desc: "Ketma-ket 2 ta dash",
     color: "#7fd8ff",
+    tags: ["tezlik"],
     apply: (p) => (p.dashMax = 2),
     ok: (p) => p.dashMax < 2,
     mage: {
+      tags: ["tezlik"],
       name: "IKKI KARRA TELEPORT",
       desc: "Ketma-ket 2 ta teleport",
       color: "#ff4d4d",
       icon: "portal",
     },
     hunter: {
+      tags: ["tezlik"],
       name: "IKKI KARRA SAKRASH",
       desc: "Ketma-ket 2 ta orqaga sakrash",
       color: "#e8c37a",
       icon: "boots",
     },
     gunner: {
+      tags: ["tezlik"],
       name: "IKKI KARRA SIRPANISH",
       desc: "Ketma-ket 2 ta sirpanish",
       color: "#d9a441",
       icon: "slide2",
     },
     paladin: {
+      tags: ["tezlik"],
       name: "IKKI KARRA HAMLA",
       desc: "Ketma-ket 2 ta muqaddas hamla",
       color: "#f2c14e",
@@ -423,9 +495,11 @@ export const UPGRADES: Upgrade[] = [
     name: "SHIFO",
     desc: "Barcha yuraklarni tiklash",
     color: "#f2fbe4",
+    tags: ["hayot"],
     apply: (p) => (p.hp = p.maxHp),
     ok: (p) => p.hp < p.maxHp,
     mage: {
+      tags: ["hayot"],
       name: "SHIFOBAXSH IKSIR",
       desc: "Barcha yuraklarni tiklash",
       color: "#c1121f",
@@ -433,18 +507,21 @@ export const UPGRADES: Upgrade[] = [
       icon: "elixir",
     },
     hunter: {
+      tags: ["hayot"],
       name: "SHIFOBAXSH O'T",
       desc: "Barcha yuraklarni tiklash",
       color: "#7bd14f",
       icon: "herb",
     },
     gunner: {
+      tags: ["hayot"],
       name: "DORI SHISHASI",
       desc: "Barcha yuraklarni tiklash",
       color: "#c8743a",
       icon: "flask",
     },
     paladin: {
+      tags: ["hayot"],
       name: "DUO",
       desc: "Barcha yuraklarni tiklash",
       color: "#fff2b0",
@@ -457,6 +534,7 @@ export const UPGRADES: Upgrade[] = [
     name: "UCH SHAR",
     desc: "Bir otishda yelpig'ich bo'lib 3 ta shar",
     color: "#ff4d4d",
+    tags: ["sehr"],
     icon: "orbs",
     hero: "mage",
     apply: (p) => (p.multishot = 3),
@@ -467,6 +545,7 @@ export const UPGRADES: Upgrade[] = [
     name: "TESHUVCHI SHAR",
     desc: "Shar 1 dushmandan o'tib, keyingisiga ham tegadi",
     color: "#ff4d4d",
+    tags: ["sehr"],
     icon: "crystal",
     hero: "mage",
     apply: (p) => (p.pierce = 1),
@@ -478,6 +557,7 @@ export const UPGRADES: Upgrade[] = [
     name: "UCH O'Q",
     desc: "Bir otishda yelpig'ich bo'lib 3 ta o'q",
     color: "#e8c37a",
+    tags: ["ov"],
     icon: "arrows3",
     hero: "hunter",
     apply: (p) => (p.multishot = 3),
@@ -488,6 +568,7 @@ export const UPGRADES: Upgrade[] = [
     name: "ZAHARLI UCH",
     desc: "O'q tekkan dushman 3s zaharlanadi: har soniya 1 zarar",
     color: "#a6f08e",
+    tags: ["ov"],
     icon: "venom",
     hero: "hunter",
     apply: (p) => (p.poisonTip = true),
@@ -499,6 +580,7 @@ export const UPGRADES: Upgrade[] = [
     name: "KATTA BARABAN",
     desc: "Barabanda 8 ta o'q",
     color: "#d9a441",
+    tags: ["porox"],
     icon: "drum",
     hero: "gunner",
     apply: (p) => {
@@ -513,6 +595,7 @@ export const UPGRADES: Upgrade[] = [
     name: "RIKOSHET",
     desc: "O'q devordan 1 marta qaytadi",
     color: "#ffe2a0",
+    tags: ["porox"],
     icon: "ricochet",
     hero: "gunner",
     apply: (p) => (p.bounce = 1),
@@ -524,6 +607,7 @@ export const UPGRADES: Upgrade[] = [
     name: "ZARB TO'LQINI",
     desc: "SHANG zarbasidan keyin oldinga to'lqin uchadi",
     color: "#f2c14e",
+    tags: ["nur"],
     icon: "shockwave",
     hero: "paladin",
     apply: (p) => (p.shockwave = true),
@@ -534,6 +618,7 @@ export const UPGRADES: Upgrade[] = [
     name: "MUQADDAS AURA",
     desc: "Har 15s da 1 yurak tiklanadi (onlayn — yaqin do'stlarga ham)",
     color: "#fff2b0",
+    tags: ["nur"],
     icon: "aura",
     hero: "paladin",
     apply: (p) => (p.aura = true),
