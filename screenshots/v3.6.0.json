@@ -1,0 +1,108 @@
+[
+  {
+    "title": "SINERGIYA: bir xil tegdan 3 ta karta — yangi qoida",
+    "steps": [
+      { "start": true },
+      { "wave": 1 },
+      { "wait": 1700 },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.clearWave(); const t = g.choices[0].tags[0]; g.tagCounts = { [t]: 2, tezlik: 3 }; g.choose(0); g.banner.timer = 0;"
+      },
+      { "wait": 250 }
+    ]
+  },
+  {
+    "title": "Kuch kartalarida teg va hisob: ZARAR 3/3",
+    "steps": [
+      { "start": true },
+      { "wave": 2 },
+      { "wait": 1700 },
+      {
+        "eval": "g.enemies = []; g.hints = []; g.clearWave(); g.tagCounts = { zarar: 2, tezlik: 2, himoya: 2, hayot: 2, polat: 2 }; g.upgradeLock = 0; g.choiceIndex = 1;"
+      },
+      { "wait": 300 }
+    ]
+  },
+  {
+    "title": "Artefaktlar: burchakda ikonkalar, bosilsa tavsif",
+    "steps": [
+      { "start": true },
+      { "wave": 3 },
+      { "spawn": { "kind": "rammer", "count": 2, "dx": 90 } },
+      {
+        "eval": "g.artifacts = ['flame', 'tenth', 'magnet', 'aegis', 'chain', 'revenge']; g.player.ward = 1; g.tagCounts = { zarar: 3, tezlik: 3 }; g.artInfo = { id: 'flame', timer: 99 }; const p = g.player; for (let i = 0; i < 9; i++) g.flames.push({ x: p.x - 10 - i * 7, y: p.y + 4, life: 1.4 }); g.enemies.forEach((e) => (e.stun = 99));"
+      },
+      { "wait": 300 }
+    ]
+  },
+  {
+    "title": "Pauzada — shu o'yindagi barcha artefaktlar",
+    "steps": [
+      { "start": true },
+      { "wave": 1 },
+      { "wait": 1700 },
+      {
+        "eval": "g.artifacts = ['flame', 'lastbreath', 'goldwind', 'phasewave', 'key', 'combo', 'spinguard']; g.pauseArt = 1; g.setPaused(true);"
+      },
+      { "wait": 300 }
+    ]
+  },
+  {
+    "title": "KRIT! — 2 baravar zarar",
+    "steps": [
+      { "start": true },
+      { "wave": 1 },
+      { "spawn": { "kind": "golem", "dx": 18, "dy": 0 } },
+      {
+        "eval": "g.critRand = () => 0; g.player.fx = 1; g.player.fy = 0; g.enemies[0].hp = g.enemies[0].maxHp = 40; g.input.pressAttack();"
+      },
+      { "wait": 160 }
+    ]
+  },
+  {
+    "title": "Do'konda yangi SKINLAR bo'limi",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-gold": "420",
+          "pixel-rpg-skins": "{\"owned\":[\"knight-gold\"],\"sel\":{\"knight\":\"knight-gold\"}}"
+        }
+      },
+      { "click": "DO'KON" },
+      { "wait": 300 },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'SKINLAR').click();"
+      },
+      { "wait": 900 }
+    ]
+  },
+  {
+    "title": "OLTIN RITSAR o'yinda (telefon)",
+    "phone": { "width": 915, "height": 412 },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-skins": "{\"owned\":[\"knight-gold\"],\"sel\":{\"knight\":\"knight-gold\"}}"
+        }
+      },
+      { "start": true },
+      { "wave": 1 },
+      { "spawn": { "kind": "blob", "count": 3, "dx": 60 } },
+      { "eval": "g.artifacts = ['magnet', 'aegis', 'spinguard']; g.player.ward = 1;" },
+      { "wait": 600 }
+    ]
+  },
+  {
+    "title": "Boss o'lganda — sekin harakat va tanga yomg'iri",
+    "steps": [
+      { "start": true },
+      { "wave": 4 },
+      { "wait": 400 },
+      {
+        "eval": "g.skipIntro(); g.banner.timer = 0; g.enemies = []; g.boss.spawn = 0; g.damageTarget(g.boss, 99999);"
+      },
+      { "wait": 900 }
+    ]
+  }
+]

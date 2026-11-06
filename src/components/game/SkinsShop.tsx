@@ -95,6 +95,15 @@ export function SkinPreview({
   );
 }
 
+/** Nom rangi: skinning eng yorqin rangi (to'q fonda o'qilsin) */
+function brightest(colors: readonly string[]) {
+  const lum = (h: string) => {
+    const n = parseInt(h.slice(1), 16);
+    return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  };
+  return [...colors].sort((a, b) => lum(b) - lum(a))[0]!;
+}
+
 /** Rang namunalari (5 ta) */
 function Swatches({ colors }: { colors: readonly string[] }) {
   return (
@@ -179,7 +188,7 @@ export function SkinsShop({
             >
               <div className="flex w-full flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
                 <SkinPreview hero={hero} skin={s.id} dim={!open} />
-                <span style={{ color: s.colors[3] }}>{s.name}</span>
+                <span style={{ color: brightest(s.colors) }}>{s.name}</span>
                 <Swatches colors={s.colors} />
                 {chosen ? (
                   <span
@@ -209,9 +218,13 @@ export function SkinsShop({
                       "w-full gap-1 whitespace-normal px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
                     )}
                   >
-                    {open ? "SOTIB OL" : <Lock />}
-                    <Icon id="coin" color="#ffcc33" size={10} />
-                    {s.price}
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="whitespace-nowrap">{open ? "SOTIB OL" : <Lock />}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Icon id="coin" color="#ffcc33" size={10} />
+                        {s.price}
+                      </span>
+                    </span>
                   </button>
                 )}
               </div>

@@ -137,7 +137,9 @@ describe("expedition (account, server clock)", () => {
     srv.clock.now = () => serverNow;
     // Kirish kodi muddati (server soati) qurilma soati bilan solishtiriladi —
     // qurilma soatini ham shu sanaga qotiramiz, aks holda kun o'tgach testlar yiqiladi.
-    vi.useFakeTimers({ toFake: ["Date"] });
+    // Taymerlar ham soxta: oldingi testdagi kirish so'rovi va bulut taymerlari keyingi testga
+    // (boshqa server va saqlanishga) o'tib ketmaydi — useRealTimers ularni tashlab yuboradi.
+    vi.useFakeTimers();
     vi.setSystemTime(serverNow);
     setTransport(srv.transport);
   });

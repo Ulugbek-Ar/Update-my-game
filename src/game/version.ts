@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.5.0";
+export const GAME_VERSION = "3.6.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.6.0",
+    date: "2026-11-06",
+    notes:
+      "Kuch kartalari endi teglarga ega — bir xil tegdan 3 ta yig'sangiz SINERGIYA ochiladi. Yangi: artefaktlar — o'yin qoidasini o'zgartiradigan noyob buyumlar, sandiq va bossdan tushadi. Kritik zarba — 2 baravar zarar va KRIT! yozuvi. Boss o'lganda sekin harakat va tanga yomg'iri. Do'konda yangi SKINLAR bo'limi — har qahramonga 3 ta yangi ko'rinish.",
+  },
   {
     version: "3.5.0",
     date: "2026-11-06",

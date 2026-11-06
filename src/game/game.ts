@@ -391,6 +391,8 @@ const PHASE_BANNERS = {
 const ICE_GRIP = 2.2;
 /** HUD'da bir qatordagi artefakt ikonkalari */
 const ART_PER_ROW = 8;
+/** "SINERGIYA!" yozuvi shuncha turadi */
+const SYN_NOTE = 2.2;
 
 function load(key: string) {
   try {
@@ -564,6 +566,8 @@ export class Game {
   tagCounts: TagCounts = {};
   /** HIMOYA sinergiyasi: keyingi qalqongacha o'tgan vaqt */
   private wardT = 0;
+  /** Yangi ochilgan sinergiya yozuvi (ekran tepasida 2 s) */
+  synNote: { tag: Tag; timer: number } | null = null;
   /** O'tgan kadrda dash/teleport/sakrash davom etayotgan edi (TEZLIK sinergiyasi) */
   private wasDashing = false;
   /** Shu o'yindagi artefaktlar (artifacts.ts) — o'lim yoki qayta boshlashda yo'qoladi */
@@ -685,6 +689,7 @@ export class Game {
     this.tagCounts = {};
     this.wardT = 0;
     this.wasDashing = false;
+    this.synNote = null;
     this.rings = [];
     this.slowmo = 0;
     this.coinRain = [];
@@ -1436,8 +1441,8 @@ export class Game {
       return;
     }
     const theme = HERO_THEME[this.hero];
-    this.fx.text(p.x, p.y - 36, "SINERGIYA!", theme.accent);
-    this.fx.text(p.x, p.y - 26, `${def.name}: ${def.three}`, def.color);
+    this.synNote = { tag, timer: SYN_NOTE };
+    this.fx.text(p.x, p.y - 26, "SINERGIYA!", theme.accent);
     this.fx.burst(p.x, p.y, theme.accent, 30, 110, 2);
     this.fx.burst(p.x, p.y, theme.glow, 14, 70, 1);
     this.fx.addShake(0.2);
@@ -1550,7 +1555,8 @@ export class Game {
     if (crit) {
       mul *= CRIT_MUL;
       this.freeze = Math.max(this.freeze, CRIT_FREEZE);
-      this.fx.text(fitX(t.x), t.y - t.size / 2 - 18, "KRIT!", CRIT_COLOR);
+      // zarar raqamidan (t.y − size/2 − 10) yuqoriroqda
+      this.fx.text(fitX(t.x), t.y - t.size / 2 - 30, "KRIT!", CRIT_COLOR);
       this.fx.burst(t.x, t.y, CRIT_COLOR, 14, 100, 2);
       this.fx.burst(t.x, t.y, "#ffffff", 6, 70, 1);
     }
@@ -1743,7 +1749,8 @@ export class Game {
       if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
         this.fx.text(t.x, t.y - 44, "DARVOZA KALITI!", "#c9a25a");
       this.runBosses++;
-      this.gainArtifact(t.x, t.y - 64);
+      // yozuv boss ostida: tepada XP, kalit va ochko yozuvlari bor
+      this.gainArtifact(t.x, t.y + 40);
       this.gainXp(king ? XP.king : queen ? XP.queen : XP.devil, t.x, t.y - 54);
       if (!king && !queen && hornWanted()) {
         sendToRealm(HORN_ITEM);
@@ -2405,6 +2412,7 @@ export class Game {
   /** TEZLIK (dashdan keyin tezlashish) va HIMOYA (har 20 s qalqon) sinergiyalari. */
   private updateSynergies(dt: number) {
     const p = this.player;
+    if (this.synNote && (this.synNote.timer -= dt) <= 0) this.synNote = null;
     for (const r of this.rings) r.life -= dt;
     this.rings = this.rings.filter((r) => r.life > 0);
     if (this.wasDashing && !p.dashing && this.syn("tezlik")) {
@@ -3952,6 +3960,7 @@ export class Game {
     }
 
     if (this.hintsVisible()) this.renderHints();
+    if (this.synNote && this.stage === "fight" && !this.paused) this.renderSynNote(this.synNote);
 
     // pauzada banner pauza oynasi ustidan ko'rinmasin
     if (this.banner.timer > 0 && this.phase === "play" && this.stage === "fight" && !this.paused) {
@@ -4332,6 +4341,26 @@ export class Game {
   private artIcon(id: ArtifactId, x: number, y: number) {
     const a = artifactById(id);
     renderPixelIcon(this.ctx, `art:${id}`, a.icon, artifactColors(a), x, y);
+  }
+
+  /** Yangi sinergiya: qahramon rangida "SINERGIYA!", teg ikonkasi va yangi qoida */
+  private renderSynNote(n: { tag: Tag; timer: number }) {
+    const c = this.ctx;
+    const def = TAGS[n.tag];
+    const theme = HERO_THEME[this.hero];
+    const a = Math.min(1, n.timer * 3, (SYN_NOTE - n.timer) * 8);
+    c.globalAlpha = Math.max(0, a);
+    const lift = Math.round(Math.max(0, 0.12 - (SYN_NOTE - n.timer)) * 40);
+    px(c, "rgba(0,0,0,0.55)", 0, 58 - lift, ROOM.w, 30);
+    px(c, theme.accent, 0, 58 - lift, ROOM.w, 1);
+    px(c, theme.accent, 0, 87 - lift, ROOM.w, 1);
+    this.text("SINERGIYA!", ROOM.w / 2, 72 - lift, 10, theme.accent);
+    c.font = `6px "Press Start 2P", monospace`;
+    const line = `${def.name}: ${def.three}`;
+    const w = c.measureText(line).width + 10;
+    this.tagIcon(n.tag, ROOM.w / 2 - w / 2, 77 - lift);
+    this.text(line, ROOM.w / 2 + 5, 84 - lift, 6, def.color);
+    c.globalAlpha = 1;
   }
 
   /** Teg ikonkasi 7x7 (synergy.ts) */

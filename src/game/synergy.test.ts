@@ -18,6 +18,7 @@ import {
   type Tag,
 } from "./synergy";
 import { iconColorCount } from "./pixelIcon";
+import { loadAchievements } from "./achievements";
 
 beforeEach(() => localStorage.clear());
 
@@ -141,6 +142,7 @@ describe("Sinergiyalar", () => {
       pick();
       expect(g.syn(tag)).toBe(true);
       expect(g.fx.texts.some((t) => t.s === "SINERGIYA!")).toBe(true);
+      expect(g.synNote?.tag).toBe(tag);
       // qahramonning eng zo'r qobiliyati kuchaydi
       if (hero === "knight" || hero === "hunter") expect(p.strongMul).toBe(3);
       if (hero === "paladin") expect(p.strongMul).toBe(4);
@@ -183,6 +185,21 @@ describe("Sinergiyalar", () => {
     g.input.pressDash();
     for (let t = 0; t < 0.3; t += 0.02) g.update(0.02);
     expect(p.boost).toBeGreaterThan(0.8);
+  });
+
+  it("SINERGIYA USTASI: two synergies in one run", () => {
+    const { g, gi } = game("knight");
+    const take = (tag: Tag) => {
+      const c = cardsWith(g.player, tag).find((u) => u.ok(g.player))!;
+      g.choices = [c];
+      gi.choose(0);
+    };
+    for (let i = 0; i < 3; i++) take("zarar");
+    expect(loadAchievements().has("synergy2")).toBe(false);
+    g.player.hp = 1;
+    for (let i = 0; i < 3; i++) take("hayot");
+    expect(synergies(g.tagCounts)).toEqual(["zarar", "hayot"]);
+    expect(loadAchievements().has("synergy2")).toBe(true);
   });
 
   it("chapter retry restores the tags taken at the chapter start", () => {
