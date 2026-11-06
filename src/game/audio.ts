@@ -428,18 +428,6 @@ class SoundFX {
     this.tone(260, 0.12, "triangle", 0.05, 80, 0.04);
   }
 
-  /** Kritik zarba: yuqori "chink" va past zarb */
-  crit() {
-    this.tone(1200, 0.06, "square", 0.05, 600);
-    this.tone(110, 0.12, "square", 0.07, 50, 0.01);
-  }
-
-  /** Tanga terildi: qisqa ikki nota "dzin-dzin" */
-  coin() {
-    this.tone(1320, 0.05, "square", 0.045);
-    this.tone(1760, 0.09, "square", 0.045, undefined, 0.05);
-  }
-
   /** Yurak terildi */
   pickup() {
     this.tone(660, 0.08, "square", 0.06);

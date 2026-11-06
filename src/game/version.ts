@@ -14,7 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "3.5.0",
     date: "2026-11-06",
     notes:
-      "Jang endi ancha jonli: zarba tekkanda o'yin bir zum to'xtaydi, kritik zarbada uzoqroq. Dushman zarbadan oq yonib, orqaga itariladi. Zarar raqamlari dushman ustidan uchib chiqadi, kritik zarba sariq va katta. O'lgan dushman piksel bo'laklariga sochilib ketadi. Dash orqasida qahramonning xira izi qoladi. Boss zarbasi va o'limda ekran kuchliroq silkinadi, sozlamalarda o'chirsa bo'ladi. Kritik zarba va tanga terish uchun yangi ovozlar. Telefonda halok bo'lganda uzunroq tebranish.",
+      "Zarar raqamlari: dushmanga zarba tekkanda qancha jon ketgani uning ustidan uchib chiqadi va so'nadi. Bossga berilgan zarar ham raqam bilan ko'rinadi.",
   },
   {
     version: "3.4.1",

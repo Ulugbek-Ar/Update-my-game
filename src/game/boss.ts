@@ -1,4 +1,4 @@
-import { Animator, Body, ROOM, updatePhysics, isFlashing, hitFlash, overlap } from "./animation";
+import { Animator, Body, ROOM, updatePhysics, isFlashing, overlap } from "./animation";
 import type { Target } from "./player";
 import { renderSprite } from "./sprites";
 import { renderRoots } from "./enemy";
@@ -513,7 +513,7 @@ export class Boss implements Body {
       frame,
       this.x,
       this.y,
-      hitFlash(this) || state === "hurt",
+      isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
     ctx.globalAlpha = 1;
@@ -963,7 +963,7 @@ export class Queen extends Boss {
       frame,
       this.x,
       this.y,
-      hitFlash(this) || state === "hurt",
+      isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
     ctx.globalAlpha = 1;
@@ -1320,7 +1320,7 @@ export class ForestKing extends Boss {
       frame,
       this.x,
       this.y,
-      hitFlash(this) || state === "hurt",
+      isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
     ctx.globalAlpha = 1;

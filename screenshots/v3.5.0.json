@@ -1,6 +1,6 @@
 [
   {
-    "title": "Zarar raqamlari: dushman ustidan uchib chiqadi, kritik zarba sariq va kattaroq",
+    "title": "Zarar raqamlari: zarba tekkanda dushman ustidan qancha jon ketgani uchib chiqadi",
     "steps": [
       {
         "storage": {
@@ -24,7 +24,7 @@
         "wait": 900
       },
       {
-        "eval": "for (const e of g.enemies) { e.hp = 20; } const [a, b, c] = g.enemies; g.damageTarget(a, 1); g.damageTarget(b, 3, true, true); if (c) g.damageTarget(c, 2);"
+        "eval": "for (const e of g.enemies) e.hp = 20; const [a, b, c] = g.enemies; g.damageTarget(a, 1); g.damageTarget(b, 3); if (c) g.damageTarget(c, 2);"
       },
       {
         "wait": 90
@@ -37,7 +37,7 @@
     }
   },
   {
-    "title": "Zarba tekkanda dushman oq yonadi va orqaga itariladi",
+    "title": "Bossga berilgan zarar ham raqam bilan ko'rinadi",
     "steps": [
       {
         "storage": {
@@ -48,109 +48,17 @@
         "start": true
       },
       {
-        "wave": 0
+        "wave": 4
       },
       {
-        "spawn": {
-          "kind": "rammer",
-          "count": 1,
-          "dx": 30
-        }
+        "wait": 4500
       },
       {
-        "wait": 900
-      },
-      {
-        "eval": "const e = g.enemies[0]; e.hp = 20; g.damageTarget(e, 1); g.freeze = 2;"
-      },
-      {
-        "wait": 60
-      }
-    ],
-    "closeup": {
-      "x": 140,
-      "y": 120,
-      "w": 110
-    }
-  },
-  {
-    "title": "O'lgan dushman piksel bo'laklariga sochilib ketadi",
-    "steps": [
-      {
-        "storage": {
-          "pixel-rpg-tutorial-done": "1"
-        }
-      },
-      {
-        "start": true
-      },
-      {
-        "wave": 1
-      },
-      {
-        "spawn": {
-          "kind": "rammer",
-          "count": 4,
-          "dx": 60
-        }
-      },
-      {
-        "wait": 900
-      },
-      {
-        "eval": "g.enemies[3].hp = 99; for (const e of g.enemies.slice(0, 3)) g.damageTarget(e, 99);"
-      },
-      {
-        "wait": 70
-      }
-    ],
-    "closeup": {
-      "x": 205,
-      "y": 140,
-      "w": 180
-    }
-  },
-  {
-    "title": "Dash: qahramon orqasida xira iz qoladi",
-    "steps": [
-      {
-        "storage": {
-          "pixel-rpg-tutorial-done": "1"
-        }
-      },
-      {
-        "start": true
-      },
-      {
-        "wave": 0
-      },
-      {
-        "spawn": {
-          "kind": "blob",
-          "count": 1,
-          "dx": 120
-        }
-      },
-      {
-        "wait": 900
-      },
-      {
-        "eval": "const p = g.player; p.x = 90; p.dashX = 1; p.dashY = 0; p.fx = 1; p.dashTimer = 0.16;"
+        "eval": "const b = g.boss; if (b) { g.intro = 0; b.spawn = 0; g.player.takeHit = () => false; g.damageTarget(b, 2); }"
       },
       {
         "wait": 90
-      },
-      {
-        "eval": "g.freeze = 2;"
-      },
-      {
-        "wait": 40
       }
-    ],
-    "closeup": {
-      "x": 115,
-      "y": 120,
-      "w": 140
-    }
+    ]
   }
 ]

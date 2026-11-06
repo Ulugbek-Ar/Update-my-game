@@ -1,14 +1,4 @@
-import {
-  ROOM,
-  applyHit,
-  clampToRoom,
-  hitFlash,
-  overlap,
-  px,
-  separate,
-  type AnimState,
-  type Body,
-} from "./animation";
+import { ROOM, applyHit, clampToRoom, overlap, px, separate, type Body } from "./animation";
 import { Input } from "./input";
 import { Player } from "./player";
 import { Enemy, GOLEM_SPLIT, ICEBLOB_CHILL, OWL_ALT, type EnemyKind } from "./enemy";
@@ -30,9 +20,9 @@ import { sfx } from "./audio";
 import { loadSettings, onSettingsChange } from "./settings";
 import { actionKey, moveLabel } from "./keys";
 import { touchLabels } from "./touchLayout";
-import { BOSS_BUZZ, DEATH_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
-import { Effects, SHAKE_BIG, SHAKE_SMALL } from "./effects";
-import { renderSprite, renderUpgradeIcon, spriteShards, type SpriteKind } from "./sprites";
+import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
+import { Effects } from "./effects";
+import { renderUpgradeIcon } from "./sprites";
 import {
   WAVES,
   BOSS_WAVE,
@@ -314,25 +304,6 @@ const WORLD_COLORS: Record<World, string> = { 1: "#ffcc33", 2: "#9fd0ef", 3: "#a
 const FROST_RADIUS = 56;
 const FROST_TIME = 1.5;
 const COMBO_TIME = 2.5;
-/** Hit-stop (s): oddiy zarba, uzoqdan zarba va kritik (kuchaytirilgan) zarba */
-export const HIT_STOP = 0.06;
-export const RANGED_STOP = 0.05;
-export const CRIT_STOP = 0.1;
-/** Uzoqdan zarba hit-stoplari orasidagi eng kam vaqt (s) */
-export const RANGED_STOP_GAP = 0.2;
-/** Dash izi: nusxa shuncha soniyada bir qoladi va shuncha yashaydi */
-const GHOST_EVERY = 0.03;
-const GHOST_LIFE = 0.22;
-
-interface Ghost {
-  x: number;
-  y: number;
-  state: AnimState;
-  frame: number;
-  flip: boolean;
-  back: boolean;
-  life: number;
-}
 const DROP_CHANCE = 0.15;
 const COIN_LIFE = 12;
 const TOTAL_WAVES = WAVES.length;
@@ -560,13 +531,6 @@ export class Game {
   /** Birinchi o'yinda 1-to'lqindagi hali bajarilmagan harakat ko'rsatmalari */
   hints: Hint[] = [];
   private freeze = 0;
-  /** Oxirgi uzoqdan zarba hit-stopi qachon bo'lgan (o'yin vaqti): tez otishda o'yin "tutilib" qolmasin */
-  private rangedStopAt = -1;
-  /** Bo'laklarga sochilgan dushmanlar — jasadi qayta chizilmaydi */
-  private shattered = new WeakSet<Enemy>();
-  /** Dash izi: qahramonning xira nusxalari */
-  private ghosts: Ghost[] = [];
-  private ghostT = 0;
   private raf = 0;
   private last = 0;
   private ctx: CanvasRenderingContext2D;
@@ -1269,7 +1233,7 @@ export class Game {
   /** To'lqin yakunida yerda qolgan tangalar o'zi teriladi. */
   private collectCoins() {
     for (const c of this.coins) this.pickCoin(c);
-    if (this.coins.length) sfx.coin();
+    if (this.coins.length) sfx.pickup();
     this.coins = [];
   }
 
@@ -1363,11 +1327,6 @@ export class Game {
       mult > 1 ? "#ffcc33" : "#ffffff",
     );
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
-    // jasad piksel bo'laklariga sochiladi
-    const sh = e.shards();
-    this.fx.shatter(e.x, sh.y, sh.list);
-    this.shattered.add(e);
-    this.fx.addShake(0.08);
     sfx.kill();
     if (e.kind === "golem") {
       // qor odam 2 ta Muz slime'ga bo'linadi
@@ -1394,17 +1353,12 @@ export class Game {
   private onPlayerHurt() {
     const p = this.player;
     // telefonda qisqa tebranish; boss jangida — kuchliroq
-    if (this.touch && !p.dead) vibrate(this.boss?.active ? BOSS_BUZZ : HIT_BUZZ);
+    if (this.touch) vibrate(this.boss?.active ? BOSS_BUZZ : HIT_BUZZ);
     this.waveHurt = true;
     if (this.boss) this.bossClean = false;
     this.combo = 0;
     this.comboTimer = 0;
-    // boss zarbasi va o'lim — kattaroq silkinish
-    if (p.dead) {
-      this.fx.addShake(0.5, SHAKE_BIG);
-      if (this.touch) vibrate(DEATH_BUZZ);
-    } else if (this.boss?.active) this.fx.addShake(0.3, SHAKE_BIG - 1);
-    else this.fx.addShake(0.25, SHAKE_SMALL);
+    this.fx.addShake(0.25);
     this.fx.burst(p.x, p.y, "#ff4d6d", 10, 70);
     if (p.frost) {
       // muz qalqoni: atrofdagi dushmanlar 1.5s sekinlashadi
@@ -1454,20 +1408,8 @@ export class Game {
     }
   }
 
-  /**
-   * Hit-stop: zarba tekkanda o'yin bir zum to'xtaydi (faqat his — zarar va vaqtlar o'zgarmaydi).
-   * Uzoqdan otishda tez-tez to'xtab qolmasligi uchun oralig'i cheklanadi.
-   */
-  private hitStop(sec: number, ranged = false) {
-    if (ranged) {
-      if (this.stats.time - this.rangedStopAt < RANGED_STOP_GAP) return;
-      this.rangedStopAt = this.stats.time;
-    }
-    this.freeze = Math.max(this.freeze, sec);
-  }
-
-  /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. crit — kuchaytirilgan zarba (faqat ko'rinish). */
-  private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true, crit = false) {
+  /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
+  private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
     const p = this.player;
     this.threat.add(PLAYER_ID, dmg, this.hero);
     const hpBefore = t.hp;
@@ -1481,9 +1423,8 @@ export class Game {
         return;
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
-    // ochko yozuvi (+20) bilan ustma-ust tushmasligi uchun boshidan yuqoriroqda
-    this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp), crit);
-    if (crit) sfx.crit();
+    // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
+    this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp));
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
     else {
@@ -1505,9 +1446,7 @@ export class Game {
         this.fx.burst(t.x, t.y - 10, "#ff7a2a", 16, 80, 2);
       }
       this.fx.burst(t.x, t.y, king ? "#a6f08e" : queen ? "#7fe9ff" : "#f4cb45", 40, 120, 3);
-      const kind: SpriteKind = king ? "king" : queen ? "queen" : "demon";
-      this.fx.shatter(t.x, t.y, spriteShards(kind, "hurt", 0, false, 90), 110);
-      this.fx.addShake(0.6, SHAKE_BIG);
+      this.fx.addShake(0.6);
       this.shots = [];
       // Boss xazinasi: 5 ta tanga atrofga sochiladi
       const gold = king ? KING_GOLD : queen ? QUEEN_GOLD : BOSS_GOLD;
@@ -1667,7 +1606,6 @@ export class Game {
     }
     // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
     if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, HERO_THEME[this.hero].trail);
-    this.updateGhosts(dt);
     if (p.bolts.length) {
       // Mergan o'qi: og'izda uchqun va porox tutuni
       for (const b of p.bolts) if (b.bullet) this.muzzle(b);
@@ -1833,8 +1771,6 @@ export class Game {
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
-          const crit = (b.power ?? 1) > 1;
-          this.hitStop(crit ? CRIT_STOP : RANGED_STOP, true);
           this.fx.burst(
             b.x,
             b.y,
@@ -1853,7 +1789,7 @@ export class Game {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
           }
-          this.damageTarget(t, p.damage * (b.power ?? 1), true, crit);
+          this.damageTarget(t, p.damage * (b.power ?? 1));
           if (b.bullet && t instanceof Enemy && t.dead) this.drumKill(b.load ?? 0);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
@@ -1888,9 +1824,8 @@ export class Game {
             continue;
           }
           sfx.hit();
-          // Paladin zarbasi og'irroq: uzunroq hit-stop; aylana/zaryadli zarba — kritik
-          const crit = p.spinning;
-          this.hitStop(crit ? CRIT_STOP : p.paladin ? 0.07 : HIT_STOP);
+          // Paladin zarbasi og'irroq: uzunroq hit-stop
+          this.freeze = p.paladin ? 0.07 : 0.045;
           this.fx.addShake(p.spinning ? 0.14 : 0.08);
           this.fx.burst(
             t.x,
@@ -1908,7 +1843,7 @@ export class Game {
             this.fx.text(t.x, t.y - 14, "GANGIDI", HERO_THEME.paladin.glow);
           }
           const wasAlive = !t.dead;
-          this.damageTarget(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true, crit && !blocked);
+          this.damageTarget(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
           if (heavy && !p.spinning && wasAlive && t.dead && t instanceof Enemy) this.slamKill();
         }
       }
@@ -1977,7 +1912,7 @@ export class Game {
       if (co.life <= 0) return false;
       if (Math.hypot(co.x - p.x, co.y - p.y) > 11 || p.dead) return true;
       this.pickCoin(co);
-      sfx.coin();
+      sfx.pickup();
       this.fx.burst(co.x, co.y, "#ffcc33", 6, 40);
       return false;
     });
@@ -2147,41 +2082,9 @@ export class Game {
         sfx.hit();
         this.fx.addShake(0.1);
         this.fx.burst(t.x, t.y, accent, 6, 70, 1);
-        this.hitStop(HIT_STOP, true);
         this.damageTarget(t, HAMLA_DMG * p.damage, 300);
       }
     }
-  }
-
-  /** Dash paytida har GHOST_EVERY soniyada qahramonning xira nusxasi qoladi va so'nadi. */
-  private updateGhosts(dt: number) {
-    const p = this.player;
-    for (const g of this.ghosts) g.life -= dt;
-    this.ghosts = this.ghosts.filter((g) => g.life > 0);
-    if (!p.dashing || p.mage || p.dead) {
-      this.ghostT = 0;
-      return;
-    }
-    this.ghostT -= dt;
-    if (this.ghostT > 0) return;
-    this.ghostT = GHOST_EVERY;
-    this.ghosts.push({
-      x: p.x,
-      y: p.y,
-      state: p.anim.state,
-      frame: p.anim.frame,
-      flip: p.fx < 0,
-      back: p.fy < 0,
-      life: GHOST_LIFE,
-    });
-  }
-
-  private renderGhosts(c: CanvasRenderingContext2D) {
-    for (const g of this.ghosts) {
-      c.globalAlpha = 0.35 * (g.life / GHOST_LIFE);
-      renderSprite(c, this.hero, g.state, g.frame, g.x, g.y, false, g.flip, g.back);
-    }
-    c.globalAlpha = 1;
   }
 
   /** SHANG zarbasi dushmanni o'ldirdi: bitta zarbada 4 ta — "SHANG!" yutug'i. */
@@ -2881,7 +2784,7 @@ export class Game {
     c.rect(0, 0, ROOM.w, ROOM.h);
     c.clip();
     if (this.fx.shake > 0 && !this.paused && this.shakeOn) {
-      const s = this.fx.shakeAmount();
+      const s = Math.min(1, this.fx.shake * 6) * 3;
       c.translate(Math.round((Math.random() - 0.5) * s), Math.round((Math.random() - 0.5) * s));
     }
     if (this.intro > 0 && this.boss) {
@@ -2941,8 +2844,7 @@ export class Game {
             // baland uchayotgan boyo'g'lining soyasi kichikroq
             e.kind === "owl" ? e.size * (1 - (e.alt / OWL_ALT) * 0.45) : e.size,
           );
-        // bo'laklarga sochilgan jasad oq chaqnashdan keyin ko'rinmaydi
-        if (!e.dead || !this.shattered.has(e) || hitFlash(e)) e.render(c);
+        e.render(c);
         // Merganda sekinlashish faqat tutundan — muz uchqunlari chizilmaydi
         if (e.slow > 0 && !e.dead && !p.gunner && !p.paladin) this.frost(c, e.x, e.y, e.size);
         // Paladin OSMON HUKMIdan gangigan: boshi uzra oq-oltin yulduzchalar
@@ -2979,7 +2881,6 @@ export class Game {
         y: p.y,
         r: () => {
           if (!p.dead) this.shadow(c, p.x, p.y + 12, 12);
-          this.renderGhosts(c);
           p.render(c);
           // sovuq nafasdan sekinlashgan
           if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);

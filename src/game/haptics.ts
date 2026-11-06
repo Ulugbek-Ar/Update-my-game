@@ -10,8 +10,6 @@ onSettingsChange((s) => {
 export const HIT_BUZZ = 35;
 /** Boss zarbasi — kuchliroq */
 export const BOSS_BUZZ = [70, 40, 70];
-/** Qahramon halok bo'ldi — uzunroq */
-export const DEATH_BUZZ = [120, 60, 180];
 
 export function vibrate(pattern: number | number[]) {
   enabled ??= loadSettings().touch.vibrate;
