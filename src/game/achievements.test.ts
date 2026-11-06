@@ -35,7 +35,8 @@ function winCampaign(hero: "knight" | "mage") {
   g.enemies = [];
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
-  tick(g, 2);
+  // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+  tick(g, 3);
   // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
   g.artifacts = [];
   g.player.ward = 0;

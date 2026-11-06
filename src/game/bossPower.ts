@@ -21,7 +21,11 @@
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
- *   BOSS JONI = max(asosiy_jon, ceil(DPS × BOSS_FIGHT_TIME × (1 + 0.1 × cheksiz_sikl)))
+ *   BOSS JONI = max(asosiy_jon, ceil(DPS × K × BOSS_FIGHT_TIME × (1 + 0.1 × cheksiz_sikl)))
+ *
+ *   K = Game.powerFactor(): kritik zarbaning o'rtacha ulushi (crit.ts, ×1.08) × bossga ta'sir
+ *   qiladigan artefaktlar (O'NINCHI ZARB +10%, OXIRGI O'Q, OLOV IZI, QASOS). Sinergiyalar Player
+ *   ko'rsatkichlarini o'zgartiradi (strongMul, chargeTime, spinCd) — DPS ularni o'zi o'qiydi.
  *
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
@@ -74,7 +78,7 @@ export function heroDps(p: Player) {
 }
 
 /** Boss joni: asosiy jondan kam emas, o'yinchi kuchiga moslashgan (fayl boshidagi formula). */
-export function bossHpFor(p: Player, base: number, cycle = 0) {
-  const adaptive = Math.ceil(heroDps(p) * BOSS_FIGHT_TIME * (1 + 0.1 * cycle));
+export function bossHpFor(p: Player, base: number, cycle = 0, extra = 1) {
+  const adaptive = Math.ceil(heroDps(p) * extra * BOSS_FIGHT_TIME * (1 + 0.1 * cycle));
   return Math.max(base, adaptive);
 }

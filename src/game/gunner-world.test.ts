@@ -68,7 +68,8 @@ describe("Mergan hamma rejimlarda", () => {
     g.boss!.spawn = 0;
     g.score = 777;
     gi.damageTarget(g.boss, 999);
-    tick(g, 2);
+    // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+    tick(g, 3);
     expect(g.phase).toBe("victory");
     const got = loadAchievements();
     expect(got.has("winGunner")).toBe(true);

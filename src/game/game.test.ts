@@ -60,7 +60,8 @@ describe("Cheksiz rejim", () => {
     g.boss!.spawn = 0;
     g.score = 500;
     gi.damageTarget(g.boss, 999);
-    tick(g, 2);
+    // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+    tick(g, 3);
     // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
     g.artifacts = [];
     g.player.ward = 0;
@@ -87,11 +88,12 @@ describe("Cheksiz rejim", () => {
     gi.startEndless();
     g.enemies = [];
     gi.startWave(BOSS_WAVE + 5);
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 45, 1));
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 45, 1, g.powerFactor()));
     g.enemies = [];
     g.boss!.spawn = 0;
     gi.damageTarget(g.boss, 999);
-    tick(g, 2);
+    // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+    tick(g, 3);
     expect(g.phase).toBe("play");
     expect(g.stage).toBe("upgrade");
   });
@@ -284,7 +286,8 @@ describe("Oltin tangalar", () => {
     g.boss!.spawn = 0;
     g.runGold = 20;
     gi.damageTarget(g.boss, 999);
-    tick(g, 2);
+    // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+    tick(g, 3);
     expect(g.phase).toBe("victory");
     expect(Number(localStorage.getItem(GOLD_KEY))).toBe(45);
 

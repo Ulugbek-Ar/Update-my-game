@@ -18,6 +18,8 @@ interface DamageNum {
   vy: number;
   n: number;
   life: number;
+  /** Kritik zarba — sariq va kattaroq */
+  crit?: boolean;
 }
 
 export const DAMAGE_LIFE = 0.75;
@@ -139,7 +141,7 @@ export class Effects {
   }
 
   /** Zarar raqami — dushman ustidan uchib chiqib so'nadi */
-  damage(x: number, y: number, n: number) {
+  damage(x: number, y: number, n: number, crit = false) {
     if (!(n > 0)) return;
     this.damages.push({
       x,
@@ -148,6 +150,7 @@ export class Effects {
       vy: -55,
       n: Math.round(n * 10) / 10,
       life: DAMAGE_LIFE,
+      crit,
     });
   }
 
@@ -196,8 +199,8 @@ export class Effects {
   ) {
     for (const d of this.damages) {
       const age = DAMAGE_LIFE - d.life;
-      const size = age < 0.08 ? 8 : 6;
-      draw(`${d.n}`, d.x, d.y, size, "#ffffff", Math.min(1, d.life * 3));
+      const size = (age < 0.08 ? 8 : 6) + (d.crit ? 2 : 0);
+      draw(`${d.n}`, d.x, d.y, size, d.crit ? "#ffe14d" : "#ffffff", Math.min(1, d.life * 3));
     }
   }
 

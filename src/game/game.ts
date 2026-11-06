@@ -94,6 +94,17 @@ import {
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
 import {
+  COIN_RAIN,
+  CRIT_AVG,
+  CRIT_COLOR,
+  CRIT_FREEZE,
+  CRIT_MUL,
+  SLOWMO_SPEED,
+  SLOWMO_TIME,
+  critSourceFn,
+  rollCrit,
+} from "./crit";
+import {
   ARTIFACT_CHEST,
   BIG_TRAP_DMG,
   CHAIN_RADIUS,
@@ -599,6 +610,13 @@ export class Game {
   time = 0;
   /** Sozlamalar: ekran silkinishi */
   shakeOn = true;
+  /** Sozlamalar: zarar raqamlari */
+  damageNumsOn = true;
+  /** Kritik zarba tasodifi (testda qat'iy) */
+  critRand: () => number = critSourceFn();
+  /** Boss o'ldi: qolgan sekin harakat vaqti (real soniya) va tanga yomg'iri (faqat ko'rinish) */
+  slowmo = 0;
+  coinRain: { x: number; y: number; vy: number; life: number }[] = [];
   /** Kunlik sinov sanasi (oddiy o'yinda null): seed shu sanadan */
   daily: string | null = null;
   /** Yangi ochilgan yutuqlar xabari */
@@ -638,6 +656,7 @@ export class Game {
     this.totalGold = loadGold();
     const settings = loadSettings();
     this.shakeOn = settings.shake;
+    this.damageNumsOn = settings.damageNumbers;
     sfx.setVolumes(settings.music, settings.sfx);
     if (!load(TUTORIAL_KEY)) this.hints = [...HINTS];
     this.reset();
@@ -665,6 +684,8 @@ export class Game {
     this.wardT = 0;
     this.wasDashing = false;
     this.rings = [];
+    this.slowmo = 0;
+    this.coinRain = [];
     this.clearArtifacts();
     this.darkness = 0;
     this.drops = [];
@@ -855,10 +876,10 @@ export class Game {
       const cycle = Math.floor(endless / ENDLESS_BOSS_EVERY);
       const p = this.player;
       this.boss = forest
-        ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle))
+        ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor()))
         : ice
-          ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle))
-          : new Boss(bossHpFor(p, bossHp(i), cycle));
+          ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor()))
+          : new Boss(bossHpFor(p, bossHp(i), cycle, this.powerFactor()));
       // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
       this.intro = INTRO_TIME;
       this.boss.spawn = this.boss.spawnMax = INTRO_TIME + 0.4;
@@ -1282,6 +1303,7 @@ export class Game {
     // o'yin ichida SOZLAMALAR o'zgarsa darhol qo'llanadi
     this.offSettings = onSettingsChange((st) => {
       this.shakeOn = st.shake;
+      this.damageNumsOn = st.damageNumbers;
     });
     this.canvas.addEventListener("click", this.onClick);
     document.addEventListener("visibilitychange", this.onVisibility);
@@ -1520,7 +1542,30 @@ export class Game {
       this.fx.text(t.x, t.y - t.size / 2 - 22, "QASOS!", artifactById("revenge").color);
       this.fx.burst(t.x, t.y, artifactById("revenge").color, 10, 80, 1);
     }
-    this.damageTarget(t, dmg * mul, knock);
+    // kritik zarba: 2 baravar, sariq "KRIT!", kattaroq uchqun, biroz uzunroq hit-stop
+    const crit = !t.dead && rollCrit(this.critRand);
+    if (crit) {
+      mul *= CRIT_MUL;
+      this.freeze = Math.max(this.freeze, CRIT_FREEZE);
+      this.fx.text(fitX(t.x), t.y - t.size / 2 - 18, "KRIT!", CRIT_COLOR);
+      this.fx.burst(t.x, t.y, CRIT_COLOR, 14, 100, 2);
+      this.fx.burst(t.x, t.y, "#ffffff", 6, 70, 1);
+    }
+    this.damageTarget(t, dmg * mul, knock, crit);
+  }
+
+  /**
+   * Boss joni uchun o'yinchi kuchiga qo'shimcha: kritik zarbaning o'rtacha ulushi (+8%) va bossga
+   * ta'sir qiladigan artefaktlar. Sinergiyalar Player ko'rsatkichlarida (heroDps ularni o'qiydi).
+   */
+  powerFactor() {
+    let extra = 0;
+    if (this.hasArtifact("tenth")) extra += 1 / TENTH_EVERY;
+    if (this.hasArtifact("lastshot") && this.player.gunner)
+      extra += (LAST_SHOT_MUL - 1) / Math.max(1, this.player.ammoMax);
+    if (this.hasArtifact("flame")) extra += 0.05;
+    if (this.hasArtifact("revenge")) extra += 0.03;
+    return CRIT_AVG * (1 + extra);
   }
 
   hasArtifact(id: ArtifactId) {
@@ -1664,7 +1709,7 @@ export class Game {
   }
 
   /** Dushman yoki Bossga zarar; o'lsa ochko va effektlar. */
-  private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
+  private damageTarget(t: Enemy | Boss, dmg: number, knock: boolean | number = true, crit = false) {
     const p = this.player;
     this.threat.add(PLAYER_ID, dmg, this.hero);
     const hpBefore = t.hp;
@@ -1679,7 +1724,8 @@ export class Game {
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
     // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
-    this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp));
+    if (this.damageNumsOn)
+      this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp), crit);
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
     else {
@@ -1702,6 +1748,15 @@ export class Game {
         this.fx.burst(t.x, t.y - 10, "#ff7a2a", 16, 80, 2);
       }
       this.fx.burst(t.x, t.y, king ? "#a6f08e" : queen ? "#7fe9ff" : "#f4cb45", 40, 120, 3);
+      // sekin harakat va tanga yomg'iri (oflayn o'yin; oltin miqdori o'zgarmaydi)
+      this.slowmo = SLOWMO_TIME;
+      for (let k = 0; k < COIN_RAIN; k++)
+        this.coinRain.push({
+          x: ROOM.wall + Math.random() * (ROOM.w - ROOM.wall * 2),
+          y: -10 - Math.random() * 120,
+          vy: 70 + Math.random() * 60,
+          life: 3,
+        });
       this.fx.addShake(0.6);
       this.shots = [];
       // Boss xazinasi: 5 ta tanga atrofga sochiladi
@@ -1719,6 +1774,18 @@ export class Game {
   }
 
   update(dt: number) {
+    // boss o'ldi: 1 s sekin harakat (o'yin tezligi 0.3)
+    if (this.slowmo > 0) {
+      this.slowmo -= dt;
+      dt *= SLOWMO_SPEED;
+    }
+    if (this.coinRain.length) {
+      for (const r of this.coinRain) {
+        r.y += r.vy * dt;
+        r.life -= dt;
+      }
+      this.coinRain = this.coinRain.filter((r) => r.life > 0 && r.y < ROOM.h + 8);
+    }
     this.time += dt;
     this.fx.update(dt);
     // kuch tanlash ekranida yutuq xabari navbatda kutadi (sarlavhani yopmaydi)
@@ -3374,6 +3441,9 @@ export class Game {
       c.globalAlpha = 1;
     });
 
+    // tanga yomg'iri (boss o'lganda)
+    for (const r of this.coinRain)
+      this.coin(c, r.x - 3, r.y - 3, Math.floor(this.time * 8 + r.x) % 4);
     // vinyetka
     const v = c.createRadialGradient(ROOM.w / 2, ROOM.h / 2, 90, ROOM.w / 2, ROOM.h / 2, 210);
     v.addColorStop(0, "rgba(0,0,0,0)");

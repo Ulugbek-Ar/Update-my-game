@@ -85,7 +85,7 @@ describe("Kunlik sinov", () => {
     g.enemies = [];
     g.boss!.spawn = 0;
     gi.damageTarget(g.boss, 999);
-    for (let i = 0; i < 100 && g.phase !== "victory"; i++) g.update(0.02);
+    for (let i = 0; i < 200 && g.phase !== "victory"; i++) g.update(0.02);
     expect(g.phase).toBe("victory");
     expect(loadDaily("2026-10-27")).toMatchObject({ won: true, hero: "mage", wave: 5 });
     expect(JSON.parse(localStorage.getItem(DAILY_KEY)!).score).toBe(g.score);

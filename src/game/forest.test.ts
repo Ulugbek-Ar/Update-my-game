@@ -47,7 +47,8 @@ function winBoss(g: Game, gi: GI) {
   g.enemies = [];
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
-  tick(g, 2.5);
+  // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+  tick(g, 3.5);
   // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
   g.artifacts = [];
   g.player.ward = 0;
@@ -103,7 +104,7 @@ describe("3-dunyo: faqat o'z moblari", () => {
       for (const e of g.enemies) expect(W3.has(e.kind)).toBe(true);
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP));
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP, 0, g.powerFactor()));
     expect(KING_HP).toBe(50);
     expect(g.fx.snowOn).toBe(false);
   });
@@ -123,8 +124,8 @@ describe("3-dunyo: faqat o'z moblari", () => {
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
     // cheksizda har qaytishda kuchliroq: asosiy jon +15 va moslashuv +10%
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP + 15, 1));
-    expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(g.player, KING_HP));
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP + 15, 1, g.powerFactor()));
+    expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(g.player, KING_HP, 0, g.powerFactor()));
   });
 
   it("the map path: beating the Queen unlocks world 3, beating the King records it", () => {

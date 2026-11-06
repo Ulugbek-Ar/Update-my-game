@@ -54,6 +54,8 @@ export interface Settings {
   sfx: number;
   /** Ekran silkinishi yoqilganmi */
   shake: boolean;
+  /** Zarar raqamlari (dushman ustidan uchadigan sonlar) */
+  damageNumbers: boolean;
   /** Telefon (sensor) boshqaruvi */
   touch: TouchSettings;
   /** Kompyuter klaviaturasi */
@@ -81,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   music: 60,
   sfx: 80,
   shake: true,
+  damageNumbers: true,
   touch: DEFAULT_TOUCH,
   keys: DEFAULT_KEYS,
 };
@@ -144,6 +147,7 @@ export function loadSettings(): Settings {
       music: volume(raw.music, DEFAULT_SETTINGS.music),
       sfx: volume(raw.sfx, DEFAULT_SETTINGS.sfx),
       shake: bool(raw.shake, DEFAULT_SETTINGS.shake),
+      damageNumbers: bool(raw.damageNumbers, DEFAULT_SETTINGS.damageNumbers),
       touch: sanitizeTouch(raw.touch),
       keys: sanitizeKeys(raw.keys),
     };

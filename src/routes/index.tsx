@@ -1819,6 +1819,11 @@ function SettingsWindow({
                 on={s.shake}
                 onChange={(v) => update({ shake: v })}
               />
+              <Toggle
+                label="Zarar raqamlari"
+                on={s.damageNumbers}
+                onChange={(v) => update({ damageNumbers: v })}
+              />
               <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
             </>
           ) : (

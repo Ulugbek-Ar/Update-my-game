@@ -273,7 +273,8 @@ describe("Ovchi: do'kon, yutuqlar, rekordlar, kunlik sinov", () => {
     g.enemies = [];
     g.boss!.spawn = 0;
     gi.damageTarget(g.boss, 999);
-    tick(g, 2.5);
+    // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+    tick(g, 3.5);
     expect(g.phase).toBe("victory");
     expect(loadAchievements().has("winHunter")).toBe(true);
     expect(worldWins()[1]).toEqual(["hunter"]);

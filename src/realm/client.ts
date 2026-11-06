@@ -1156,6 +1156,11 @@ export class RealmClient {
           2,
         );
         sfx.kill();
+        if (e.kind === "warden" || e.kind === "ashking") {
+          // tanga yomg'iri — faqat klient effekti: onlayn olamda server vaqti sekinlashmaydi
+          fx.burst(e.x, e.y - 24, "#ffcc33", 34, 120, 2);
+          fx.burst(e.x, e.y - 24, "#fff2a8", 14, 80, 1);
+        }
         if (mine && "pid" in e) {
           this.killN++;
           if (e.kind === "warden" || e.kind === "ashking") {

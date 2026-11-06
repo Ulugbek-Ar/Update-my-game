@@ -30,7 +30,8 @@ function winBoss(g: Game, gi: GI) {
   g.enemies = [];
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
-  tick(g, 2.5);
+  // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+  tick(g, 3.5);
   // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
   g.artifacts = [];
   g.player.ward = 0;
@@ -86,7 +87,7 @@ describe("2-bob: o'tish", () => {
     gi.startWave(BOSS_WAVE);
     expect(g.boss).toBeInstanceOf(Queen);
     // joni o'yinchi kuchiga moslashadi, asosiy 40 — pastki chegara
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP));
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP, 0, g.powerFactor()));
     expect(g.boss!.maxHp).toBeGreaterThanOrEqual(QUEEN_HP);
     expect(QUEEN_HP).toBe(40);
   });

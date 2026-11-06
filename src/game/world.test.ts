@@ -39,7 +39,8 @@ function winBoss(g: Game, gi: GI) {
   g.enemies = [];
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
-  tick(g, 2.5);
+  // +1 s: boss o'lganda sekin harakat (crit.ts SLOWMO)
+  tick(g, 3.5);
   // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
   g.artifacts = [];
   g.player.ward = 0;
@@ -96,7 +97,7 @@ describe("Har dunyoning o'z moblari", () => {
     g.enemies = [];
     gi.startWave(BOSS_WAVE + 5);
     expect(g.boss).toBeInstanceOf(Queen);
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP + 15, 1));
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, QUEEN_HP + 15, 1, g.powerFactor()));
     for (const e of g.enemies) expect(W2.has(e.kind)).toBe(true);
   });
 

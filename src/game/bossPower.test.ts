@@ -14,6 +14,9 @@ import { Player, type PlayerInput, type Target } from "./player";
 import { UPGRADES, cardFor, BOSS_WAVE } from "./waves";
 import { applyShop, SHOP_ITEMS, emptyLevels } from "./shop";
 import type { Hero } from "./hero";
+import { CRIT_AVG, CRIT_CHANCE, CRIT_MUL } from "./crit";
+import { addTag, HERO_TAG, type TagCounts } from "./synergy";
+import { TENTH_EVERY } from "./artifacts";
 
 type GI = {
   startWave(i: number): void;
@@ -32,8 +35,17 @@ function tick(g: Game, seconds: number, dt = 0.02) {
 
 beforeEach(() => localStorage.clear());
 
-const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner"];
-type Power = "kuchsiz" | "o'rtacha" | "maksimal";
+const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner", "paladin"];
+type Power = "kuchsiz" | "o'rtacha" | "maksimal" | "sinergiya";
+
+/** Qat'iy tasodif (LCG) — kritik zarbalar har safar bir xil */
+function seeded(seed = 12345) {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    return s / 2147483648;
+  };
+}
 
 /** Kartani qahramonga moslab qo'llash (mumkin bo'lsa). */
 function card(p: Player, id: string, times = 1) {
@@ -61,7 +73,20 @@ function powered(hero: Hero, power: Power) {
   card(p, "blade", 5);
   card(p, "haste", 5);
   for (const id of ["triple", "htriple", "venom", "drum"]) card(p, id);
+  if (power === "sinergiya") {
+    // + ZARAR va qahramon tegi sinergiyalari (bonus va qoida o'zgarishlari Player'da)
+    const tags: TagCounts = {};
+    for (let i = 0; i < 3; i++) {
+      addTag(tags, "zarar", p);
+      addTag(tags, HERO_TAG[hero], p);
+    }
+  }
   return p;
+}
+
+/** Boss joni o'yindagidek: kritik o'rtachasi va (sinergiya darajasida) O'NINCHI ZARB artefakti */
+function factor(power: Power) {
+  return CRIT_AVG * (power === "sinergiya" ? 1 + 1 / TENTH_EVERY : 1);
 }
 
 /**
@@ -69,7 +94,16 @@ function powered(hero: Hero, power: Power) {
  * bosib turib qo'yib yuboriladi (Merganda — oddiy otish va qayta o'qlash). Har zarba tegadi.
  * Haqiqiy Player.update bilan hisoblanadi — formula (heroDps) bilan solishtirish uchun mustaqil.
  */
-function killTime(p: Player, hp: number) {
+function killTime(p: Player, hp: number, opts: { tenth?: boolean } = {}) {
+  const rand = seeded();
+  let hits = 0;
+  /** Bitta zarba: kritik (qat'iy tasodif) va O'NINCHI ZARB bilan */
+  const hit = (d: number) => {
+    hits++;
+    let m = rand() < CRIT_CHANCE ? CRIT_MUL : 1;
+    if (opts.tenth && hits % TENTH_EVERY === 0) m *= 2;
+    return d * m;
+  };
   let held = false;
   let press = false;
   const input: PlayerInput = {
@@ -96,10 +130,10 @@ function killTime(p: Player, hp: number) {
     const cd0 = p.cooldown,
       spin0 = p.spinTimer;
     p.update(dt, input);
-    if (!p.ranged && p.cooldown > cd0 + 1e-6) dmg += p.damage;
-    if ((p.hero === "knight" || p.hero === "mage") && p.spinTimer > 0 && spin0 <= 0)
-      dmg += 2 * p.damage;
-    for (const b of p.bolts) dmg += p.damage * (b.power ?? 1);
+    // Paladin SHANG — 2x, OSMON HUKMI — strongMul (3x, NUR sinergiyasi bilan 4x)
+    if (!p.ranged && p.cooldown > cd0 + 1e-6) dmg += hit(p.paladin ? 2 * p.damage : p.damage);
+    if (!p.hunter && !p.gunner && p.spinTimer > 0 && spin0 <= 0) dmg += hit(p.strongMul * p.damage);
+    for (const b of p.bolts) dmg += hit(p.damage * (b.power ?? 1));
     if (p.bolts.length || dmg > 0) hitOnce = true;
     p.bolts = [];
     // zaharli uch: zahar uzilmaydi — har soniya 1 zarar
@@ -111,11 +145,11 @@ function killTime(p: Player, hp: number) {
 
 describe("Boss kuchga moslashuvi", () => {
   for (const hero of HEROES)
-    for (const power of ["kuchsiz", "o'rtacha", "maksimal"] as Power[])
+    for (const power of ["kuchsiz", "o'rtacha", "maksimal", "sinergiya"] as Power[])
       it(`${hero} (${power}): ideal urib turishda boss 50–120 s da o'ladi`, () => {
         const p = powered(hero, power);
-        const hp = bossHpFor(p, 30);
-        const t = killTime(p, hp);
+        const hp = bossHpFor(p, 30, 0, factor(power));
+        const t = killTime(p, hp, { tenth: power === "sinergiya" });
         expect(t).toBeGreaterThanOrEqual(50);
         expect(t).toBeLessThanOrEqual(120);
       });
@@ -129,6 +163,12 @@ describe("Boss kuchga moslashuvi", () => {
       expect(mid).toBeGreaterThan(weak);
       expect(max).toBeGreaterThan(mid);
       expect(max).toBe(Math.ceil(heroDps(powered(hero, "maksimal")) * BOSS_FIGHT_TIME));
+      // sinergiyalar va kritik ulushi bossni yana kuchaytiradi
+      const syn = bossHpFor(powered(hero, "sinergiya"), 30, 0, factor("sinergiya"));
+      expect(syn).toBeGreaterThan(max);
+      expect(bossHpFor(powered(hero, "maksimal"), 30, 0, CRIT_AVG)).toBe(
+        Math.ceil(heroDps(powered(hero, "maksimal")) * CRIT_AVG * BOSS_FIGHT_TIME),
+      );
     }
     // juda katta asosiy jon — pastki chegara
     expect(bossHpFor(new Player(), 9999)).toBe(9999);
@@ -139,8 +179,14 @@ describe("Boss kuchga moslashuvi", () => {
     g.player.damage = 3;
     g.player.attackCd = 0.2;
     gi.startWave(BOSS_WAVE);
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 30));
+    expect(g.powerFactor()).toBeCloseTo(CRIT_AVG);
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 30, 0, CRIT_AVG));
     expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(new Player(), 30));
+    // bossga ta'sir qiladigan artefakt — boss yana kuchliroq
+    g.artifacts = ["tenth"];
+    expect(g.powerFactor()).toBeCloseTo(CRIT_AVG * 1.1);
+    gi.startWave(BOSS_WAVE);
+    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, 30, 0, CRIT_AVG * 1.1));
   });
 });
 
