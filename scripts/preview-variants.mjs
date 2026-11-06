@@ -1,7 +1,6 @@
-// Ko'rib chiqish uchun variantlar (o'yin kodi va ikonkalar o'zgarmaydi) — natija: store/preview/
-//   icon-1-hozirgi.png, icon-2-anime.png, icon-3-yarim-anime.png — 512x512 ikonka variantlari
-//   icon-phone-preview.png — har variant telefon bosh ekranida (96 va 48 px)
-//   boss-hozirgi.png, boss-anime.png — Iblis jangi (320x240 xona, 4x), boss-taqqoslash.png — yonma-yon
+// Ko'rib chiqish uchun eskizlar (o'yin kodi va ikonkalar o'zgarmaydi) — natija: store/preview/
+//   iblis-boss-preview.png — Iblis jangi (320x240 xona, 4x): hozirgi va anime uslub yonma-yon
+//   samuray-icon-preview.png — kelajakdagi Samuray qiz ikonkasi: 512x512 va telefonda 96/48 px
 // Chizish: scripts/preview-art.mjs (sprites.ts palitralari va spritePixels), o'yin kadri — haqiqiy Game.
 // Ishga tushirish: `bun run dev` dan keyin `PW_DIR=<playwright papkasi> node scripts/preview-variants.mjs`
 import { createRequire } from "node:module";
@@ -37,21 +36,27 @@ const save = async (name, b64) => {
   console.log(`✓ ${OUT}/${name}`);
 };
 
-// 1) ikonkalar va telefon ko'rinishi
-const icons = await page.evaluate(async () => {
+// 1) Samuray qiz ikonkasi: chapda 512x512, o'ngda telefon bosh ekrani (96 va 48 px)
+const icon = await page.evaluate(async () => {
   const art = await import("/scripts/preview-art.mjs");
-  const out = (cv) => cv.toDataURL("image/png").split(",")[1];
-  const cvs = [1, 2, 3].map((v) => art.drawIcon(v));
-  const phone = art.drawPhonePreview(cvs, [
-    "1 · Hozirgi uslub",
-    "2 · Anime piksel",
-    "3 · Yarim-anime",
-  ]);
-  return { icons: cvs.map(out), phone: out(phone) };
+  const ic = art.drawSamuraiIcon();
+  const phone = art.drawPhonePreview([ic], ["Telefonda: 96 va 48 px"]);
+  const cv = document.createElement("canvas");
+  cv.width = 40 + 512 + phone.width;
+  cv.height = phone.height;
+  const c = cv.getContext("2d");
+  c.drawImage(phone, 552, 0);
+  c.fillStyle = "#e9e6ef";
+  c.fillRect(0, 0, 552, cv.height);
+  c.font = "bold 22px sans-serif";
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillStyle = "#1d1840";
+  c.fillText("Samuray qiz — ikonka 512x512", 40 + 256, 35);
+  c.drawImage(ic, 40, 70);
+  return cv.toDataURL("image/png").split(",")[1];
 });
-const ICON_NAMES = ["icon-1-hozirgi.png", "icon-2-anime.png", "icon-3-yarim-anime.png"];
-for (const [i, b64] of icons.icons.entries()) await save(ICON_NAMES[i], b64);
-await save("icon-phone-preview.png", icons.phone);
+await save("samuray-icon-preview.png", icon);
 
 // 2) o'yin ichi: Paladin bilan Iblis jangi (haqiqiy o'yin kadri, xona 320x240 → 1280x960)
 await page.waitForFunction(() => {
@@ -181,13 +186,11 @@ const shots = await page.evaluate(async () => {
   b.fillStyle = "#e0d6ee";
   b.fillText("HOZIRGI", 640, 70);
   b.fillStyle = "#ff6a2a";
-  b.fillText("ANIME + CUT-IN", 1280 + 48 + 640, 70);
+  b.fillText("ANIME PIKSEL + CUT-IN", 1280 + 48 + 640, 70);
   b.drawImage(cur, 0, 110);
   b.drawImage(ani, 1280 + 48, 110);
   const out = (cv) => cv.toDataURL("image/png").split(",")[1];
-  return { cur: out(cur), ani: out(ani), both: out(both) };
+  return out(both);
 });
-await save("boss-hozirgi.png", shots.cur);
-await save("boss-anime.png", shots.ani);
-await save("boss-taqqoslash.png", shots.both);
+await save("iblis-boss-preview.png", shots);
 await browser.close();

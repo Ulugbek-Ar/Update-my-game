@@ -1,9 +1,8 @@
-// Ko'rib chiqish uchun variantlar (ikonka va boss uslubi) — brauzerda Vite orqali yuklanadi.
+// Ko'rib chiqish uchun eskizlar (anime Iblis va Samuray qiz ikonkasi) — brauzerda Vite orqali yuklanadi.
 // O'yin kodiga tegmaydi: faqat sprites.ts palitralari va spritePixels() o'qiladi, chizish usuli
 // ham o'yindagidek — butun sonli piksel to'r (rect/line/polygon/ellipse) va siyoh kontur.
 // Ishga tushiruvchi: scripts/preview-variants.mjs
 import { PALETTES, spritePixels } from "/src/game/sprites.ts";
-import { HERO_THEME } from "/src/game/hero.ts";
 
 // ───────────────────────────── piksel to'r ─────────────────────────────
 
@@ -118,49 +117,10 @@ function radial(ctx, x, y, r, rgb, a) {
   ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 
-// ───────────────────────────── Paladin byusti (64x64) ─────────────────────────────
+// ───────────────────────────── umumiy: anime ko'z ─────────────────────────────
 
-const [P_INK, P_BRONZE, P_GOLD, P_SILVER, P_WHITE] = PALETTES.paladin;
 const SKIN = PALETTES.mage[4];
-// 1–5 — o'yindagi Paladin palitrasi aynan; 6+ — shu ranglardan oraliq tonlar, teri (Sehrgar),
-// ko'z (Ritsar palitrasidagi moviy) va sochning ochiq oltini
-const PAL = [
-  null,
-  P_INK,
-  P_BRONZE,
-  P_GOLD,
-  P_SILVER,
-  P_WHITE,
-  mix(P_GOLD, P_BRONZE, 0.45), // 6 oltin soyasi
-  mix(P_GOLD, P_WHITE, 0.5), // 7 oltin yaltirog'i
-  HERO_THEME.paladin.glow, // 8 muqaddas nur
-  SKIN, // 9 teri
-  mix(SKIN, P_BRONZE, 0.32), // 10 teri soyasi
-  PALETTES.knight[1], // 11 ko'z — to'q
-  PALETTES.knight[3], // 12 ko'z — moviy
-  PALETTES.knight[4], // 13 ko'z — ochiq
-  mix(SKIN, P_INK, 0.5), // 14 og'iz
-  mix(SKIN, "#e07a5a", 0.35), // 15 yonoq qizilligi
-  mix(P_GOLD, P_WHITE, 0.3), // 16 soch
-  mix(P_GOLD, P_BRONZE, 0.25), // 17 soch soyasi
-];
-const INK = 1,
-  BRONZE = 2,
-  GOLD = 3,
-  SILVER = 4,
-  WHITE = 5,
-  GOLD_MID = 6,
-  GOLD_LIGHT = 7,
-  GLOW = 8,
-  SK = 9,
-  SK_SH = 10,
-  EYE_D = 11,
-  EYE = 12,
-  EYE_L = 13,
-  MOUTH = 14,
-  BLUSH = 15,
-  HAIR = 16,
-  HAIR_SH = 17;
+const INK = 1;
 
 /** Simmetrik shakl: chap tomon nuqtalari va ularning 64 kenglikdagi ko'zgu aksi */
 const mirrorPts = (pts, n = 64) => pts.map(([x, y]) => [n - x, y]);
@@ -180,391 +140,293 @@ function animeEye(g, x, y, w, h, outerLeft, c) {
   g.rect(c.light, x + 2, y + h - 3, w - 4, 1);
   g.rect(c.pupil, x + 2, y + 2, w - 4, c.slit ? h - 4 : 2);
   if (c.slit) g.rect(c.iris, x + 1, y + 2, 1, 1);
-  g.rect(WHITE_OF(c), x + 1, y + 1, 2, 2);
-  g.set(WHITE_OF(c), x + w - 2, y + h - 3);
+  g.rect(c.shine, x + 1, y + 1, 2, 2);
+  g.set(c.shine, x + w - 2, y + h - 3);
   g.rect(c.lower, x + 1, y + h - 1, w - 2, 1);
 }
-const WHITE_OF = (c) => c.shine;
 
-const PALADIN_EYE = {
-  white: WHITE,
-  dark: EYE_D,
-  iris: EYE,
-  light: EYE_L,
-  pupil: INK,
-  shine: WHITE,
-  lower: SK_SH,
+// ───────────────────────────── Samuray qiz (64x64 byust) ─────────────────────────────
+
+const HEART = "#ff4d6d"; // HUD yuragi
+const S_WHITE = PALETTES.paladin[4];
+const S_PINK = mix(HEART, S_WHITE, 0.4);
+// Asosiy ranglar o'yin palitralaridan: soch — "qora suyak" Kamonchi, ko'z — Ko'rshapalak binafsharanglari,
+// teri — Sehrgar, oq — Paladin tabardi, pushti — HUD yuragi, tsuba — Paladin oltini; qolgani — oraliq tonlar
+export const SAMURAI_PAL = [
+  null,
+  PALETTES.archer[0], // 1 siyoh
+  PALETTES.archer[1], // 2 qora soch
+  mix(PALETTES.archer[1], PALETTES.archer[2], 0.22), // 3 soch tolasi
+  mix(PALETTES.archer[2], PALETTES.bat[3], 0.35), // 4 soch yaltirog'i
+  S_WHITE, // 5 oq kimono
+  mix(S_WHITE, PALETTES.bat[2], 0.22), // 6 kimono soyasi
+  S_PINK, // 7 pushti
+  mix(HEART, PALETTES.demon[1], 0.35), // 8 to'q pushti (obi)
+  "#ffb3c1", // 9 och pushti (HUD yuragi yaltirog'i)
+  SKIN, // 10 teri
+  mix(SKIN, mix(HEART, PALETTES.demon[1], 0.35), 0.28), // 11 teri soyasi
+  PALETTES.bat[1], // 12 ko'z — to'q
+  PALETTES.bat[2], // 13 ko'z — binafsha
+  PALETTES.bat[3], // 14 ko'z — och
+  mix(SKIN, PALETTES.demon[1], 0.55), // 15 og'iz
+  mix(SKIN, HEART, 0.3), // 16 yonoq
+  PALETTES.paladin[2], // 17 oltin
+  PALETTES.paladin[1], // 18 to'q oltin
+  PALETTES.demon[2], // 19 qizil (ichki kimono, ip)
+  PALETTES.paladin[3], // 20 kumush tig'
+];
+const S = {
+  INK: 1,
+  HAIR: 2,
+  HAIR_L: 3,
+  SHINE: 4,
+  WHITE: 5,
+  KIM_SH: 6,
+  PINK: 7,
+  PINK_D: 8,
+  PINK_L: 9,
+  SKIN: 10,
+  SKIN_SH: 11,
+  EYE_D: 12,
+  EYE: 13,
+  EYE_L: 14,
+  MOUTH: 15,
+  BLUSH: 16,
+  GOLD: 17,
+  GOLD_D: 18,
+  RED: 19,
+  STEEL: 20,
 };
 
-/** Orqadagi ulkan qilich: dastasi o'ng yelka ustida, tig'i yelkalik ortiga kiradi */
-function backSword(g) {
-  g.line(SILVER, [51, 31], [45, 47], 5);
-  g.line(WHITE, [50, 32], [47, 40], 1);
-  g.line(BRONZE, [55, 18], [52, 29], 2);
-  g.rect(BRONZE, 53, 22, 2, 1);
-  g.rect(GOLD, 55, 14, 3, 3);
-  g.set(GOLD_LIGHT, 55, 14);
-  g.line(GOLD, [46, 28], [57, 32], 2);
-  g.set(GOLD_LIGHT, 46, 28);
-  g.set(GOLD_LIGHT, 57, 32);
-}
-
-/** Zirhli tana: ko'krak plastinkasi, oq tabard va quyosh belgisi, ikki yelkalik, yoqa */
-function armor(g, gorgetSkin) {
-  g.polygon(GOLD, [
-    [18, 42],
-    [46, 42],
-    [48, 64],
-    [16, 64],
-  ]);
-  g.polygon(GOLD_MID, [
-    [41, 42],
-    [46, 42],
-    [48, 64],
-    [43, 64],
-  ]);
-  g.rect(GOLD_LIGHT, 19, 45, 2, 19);
-  // oq tabard, o'ng burmada kumush soya, tepada oltin hoshiya
-  g.polygon(WHITE, [
-    [25, 45],
-    [39, 45],
-    [41, 64],
-    [23, 64],
-  ]);
-  g.rect(SILVER, 37, 47, 1, 17);
-  g.rect(GOLD_MID, 25, 45, 15, 1);
-  // quyosh belgisi
-  g.ellipse(GOLD, 32, 56, 3.6, 3.6);
-  g.rect(GOLD_LIGHT, 31, 55, 2, 2);
-  for (const [x, y] of [
-    [31, 50],
-    [31, 61],
-    [26, 55],
-    [37, 55],
+/** Kichik sakura guli: 4 gulbarg va o'rtasi */
+function blossom(g, x, y, petal = S.PINK, core = S.GOLD) {
+  for (const [dx, dy] of [
+    [0, -1],
+    [-1, 0],
+    [1, 0],
+    [0, 1],
   ])
-    g.rect(GOLD, x, y, 2, 2);
-  for (const [x, y] of [
-    [28, 52],
-    [35, 52],
-    [28, 59],
-    [35, 59],
-  ])
-    g.set(GOLD, x, y);
-  // yelkaliklar: oltin plastinkalar, pastida to'q gardish, tepasida yaltiroq
-  for (const cx of [14, 50]) {
-    const m = cx > 32;
-    g.ellipse(INK, cx, 48, 12, 9);
-    g.ellipse(GOLD, cx, 48, 11, 8);
-    g.ellipse(GOLD_MID, cx, 48, 11, 8, 51);
-    g.ellipse(BRONZE, cx, 48, 11, 8, 54);
-    g.ellipse(GOLD_LIGHT, cx, 47, 8, 6, 41, 42);
-    g.rect(BRONZE, cx - 10, 50, 21, 1);
-    g.rect(WHITE, m ? cx + 2 : cx - 5, 42, 3, 1);
-    g.set(BRONZE, cx - 6, 46);
-    g.set(BRONZE, cx + 6, 46);
-  }
-  // yoqa (gorget)
-  if (gorgetSkin) {
-    g.rect(SK, 28, 36, 9, 8);
-    g.rect(SK_SH, 28, 36, 9, 3);
-  }
-  g.polygon(INK, [
-    [22, 40],
-    [42, 40],
-    [44, 47],
-    [20, 47],
-  ]);
-  g.polygon(GOLD, [
-    [23, 41],
-    [41, 41],
-    [43, 46],
-    [21, 46],
-  ]);
-  g.rect(GOLD_LIGHT, 24, 41, 16, 1);
-  g.rect(GOLD_MID, 22, 45, 21, 1);
+    g.set(petal, x + dx, y + dy);
+  g.set(core, x, y);
 }
 
-/** Yopiq oltin dubulg'a (hozirgi uslub): o'rtada yaltiroq qirra, ko'z tirqishida nur */
-function closedHelm(g) {
-  g.polygon(GOLD, [
-    [21, 11],
-    [25, 6],
-    [32, 4],
-    [39, 6],
-    [43, 11],
-    [45, 20],
-    [45, 33],
-    [41, 40],
-    [23, 40],
-    [19, 33],
-    [19, 20],
-  ]);
-  g.polygon(GOLD_MID, [
-    [38, 7],
-    [43, 11],
-    [45, 20],
-    [45, 33],
-    [41, 40],
-    [37, 40],
-    [40, 32],
-    [40, 12],
-  ]);
-  g.polygon(BRONZE, [
-    [19, 35],
-    [45, 35],
-    [41, 40],
-    [23, 40],
-  ]);
-  g.rect(GOLD_LIGHT, 22, 12, 2, 18);
-  g.rect(GOLD_LIGHT, 24, 8, 2, 2);
-  // qirra
-  g.rect(WHITE, 31, 4, 2, 31);
-  g.rect(GOLD_MID, 33, 5, 1, 30);
-  // ko'z tirqishi: ustida yaltiroq, ostida soya; ichida ikki ko'z nuri
-  g.rect(GOLD_LIGHT, 20, 18, 25, 1);
-  g.rect(INK, 20, 19, 25, 4);
-  g.rect(GOLD_MID, 20, 23, 25, 1);
-  for (const x of [23, 35]) {
-    g.rect(GOLD, x, 20, 7, 2);
-    g.rect(GLOW, x + 1, 20, 5, 2);
-    g.rect(WHITE, x + 2, 20, 3, 2);
-  }
-  // nafas teshiklari va mixlar
-  for (const x of [24, 26, 28, 36, 38, 40]) {
-    g.rect(INK, x, 27, 1, 2);
-    g.rect(INK, x, 31, 1, 2);
-  }
-  g.set(BRONZE, 20, 27);
-  g.set(BRONZE, 44, 27);
-}
-
-function paladinFace(g, top) {
-  // top — yuz yuqori cheti (2-variantda 18, 3-variantda dubulg'a ostida 22)
-  const t = top;
-  g.polygon(SK, [
-    [21, t],
-    [43, t],
-    [43, t + 12],
-    [40, t + 18],
-    [35, t + 22],
-    [29, t + 22],
-    [24, t + 18],
-    [21, t + 12],
-  ]);
-  g.rect(SK_SH, 42, t + 2, 1, 10);
-  g.line(SK_SH, [41, t + 13], [38, t + 18], 1);
-  g.rect(SK_SH, 21, t, 23, 1);
-  animeEye(g, 23, t + 6, 7, 8, true, PALADIN_EYE);
-  animeEye(g, 35, t + 6, 7, 8, false, PALADIN_EYE);
-  g.set(SK_SH, 32, t + 16);
-  g.rect(MOUTH, 30, t + 19, 4, 1);
-  g.rect(BLUSH, 23, t + 15, 3, 1);
-  g.rect(BLUSH, 39, t + 15, 3, 1);
-}
-
-/** 2-variant: yuzi ochiq, oltin sochlar */
-function animeHead(g) {
-  // orqa soch: hajm, tepada uchlar, yelkagacha yon tolalar
-  g.ellipse(HAIR_SH, 32, 22, 16, 16);
-  for (const tri of [
-    [
-      [18, 14],
-      [11, 9],
-      [21, 9],
-    ],
-    [
-      [46, 14],
-      [53, 9],
-      [43, 9],
-    ],
-    [
-      [24, 8],
-      [22, 1],
-      [31, 6],
-    ],
-  ])
-    g.polygon(HAIR, tri);
-  // "ahoge" — tepada bitta jingalak tola
-  g.line(HAIR, [33, 6], [36, 1], 2);
-  g.line(HAIR, [36, 1], [40, 2], 2);
-  const lock = [
-    [16, 22],
-    [22, 24],
-    [22, 40],
-    [19, 47],
-    [16, 40],
-    [14, 30],
-  ];
-  g.polygon(HAIR_SH, lock);
-  g.polygon(HAIR_SH, mirrorPts(lock));
-  g.rect(SK, 19, 25, 2, 5);
-  g.rect(SK, 43, 25, 2, 5);
-  g.ellipse(HAIR, 32, 16, 14, 11);
-  paladinFace(g, 18);
-  // qoshlar (qat'iyatli: ichki uchi pastroq)
-  g.rect(HAIR_SH, 23, 21, 6, 1);
-  g.set(HAIR_SH, 29, 22);
-  g.rect(HAIR_SH, 35, 21, 6, 1);
-  g.set(HAIR_SH, 34, 22);
-  // peshona sochlari (tishli uchlar)
-  g.polygon(HAIR, [
-    [18, 9],
-    [46, 9],
-    [46, 28],
-    [43, 20],
-    [40, 23],
-    [38, 18],
-    [35, 22],
-    [32, 17],
-    [29, 22],
-    [26, 18],
-    [24, 23],
-    [21, 20],
-    [18, 28],
+/** Samuray qiz byusti: shamolda uchayotgan uzun qora soch, oq-pushti kimono, yelka ortida katana dastasi */
+export function samuraiBust() {
+  const g = new Grid(64);
+  // katana dastasi (chap yelka ortida): oltin kashira, qora o'ram ostida oq romblar, oltin tsuba, qizil ip
+  g.line(S.STEEL, [18, 38], [21, 47], 3);
+  g.line(S.INK, [8, 13], [16, 33], 3);
+  for (let i = 1; i < 7; i++) g.set(S.WHITE, Math.round(8 + i * 1.15), Math.round(13 + i * 2.9));
+  g.rect(S.GOLD, 6, 10, 3, 3);
+  g.set(S.PINK_L, 6, 10);
+  g.line(S.GOLD, [12, 37], [22, 33], 2);
+  g.set(S.GOLD_D, 17, 35);
+  g.line(S.RED, [10, 20], [6, 26], 1);
+  g.set(S.RED, 5, 27);
+  g.set(S.RED, 7, 28);
+  // orqa soch: o'ng tomonga shamolda uchadi, tolalar uchi tishli
+  g.polygon(S.HAIR, [
+    [17, 10],
+    [32, 3],
+    [46, 7],
+    [53, 12],
+    [62, 17],
+    [64, 24],
+    [57, 25],
+    [63, 33],
+    [56, 34],
+    [61, 44],
+    [52, 42],
+    [55, 54],
+    [47, 48],
+    [44, 40],
+    [20, 44],
+    [16, 34],
+    [15, 20],
   ]);
   for (const [a, b] of [
     [
-      [26, 11],
-      [26, 17],
+      [48, 12],
+      [62, 20],
     ],
     [
-      [32, 10],
-      [32, 15],
+      [48, 20],
+      [60, 30],
     ],
     [
-      [38, 11],
-      [38, 17],
+      [47, 28],
+      [57, 40],
     ],
     [
-      [21, 13],
-      [20, 22],
-    ],
-    [
-      [43, 13],
-      [44, 22],
+      [46, 36],
+      [52, 48],
     ],
   ])
-    g.line(HAIR_SH, a, b, 1);
-  // "farishta halqasi" — sochdagi yaltiroq
-  g.rect(GLOW, 23, 12, 6, 1);
-  g.rect(GLOW, 34, 12, 6, 1);
-  g.rect(WHITE, 29, 11, 4, 1);
-  // yuz yonidagi oldingi tolalar
-  const front = [
-    [18, 17],
-    [22, 20],
-    [22, 33],
-    [20, 41],
-    [18, 33],
+    g.line(S.HAIR_L, a, b, 1);
+  const lock = [
+    [16, 20],
+    [22, 24],
+    [22, 44],
+    [18, 57],
+    [14, 46],
   ];
-  g.polygon(HAIR, front);
-  g.polygon(HAIR, mirrorPts(front));
-  g.line(HAIR_SH, [20, 22], [20, 36], 1);
-  g.line(HAIR_SH, [44, 22], [44, 36], 1);
-}
-
-/** 3-variant: dubulg'a ochiq — yuz qalqoni tepaga ko'tarilgan, yuz va katta ko'zlar ko'rinadi */
-function openHelmHead(g) {
-  // ko'tarilgan yuz qalqoni (dubulg'a ustida, tirqishi endi tepada)
-  g.line(GOLD_MID, [19, 19], [21, 8], 2);
-  g.line(GOLD_MID, [45, 19], [43, 8], 2);
-  g.polygon(GOLD, [
-    [20, 3],
-    [44, 3],
-    [46, 10],
-    [18, 10],
+  g.polygon(S.HAIR, lock);
+  // kimono: oq, o'ng tomoni va burmalarida binafsharang soya
+  g.polygon(S.WHITE, [
+    [6, 64],
+    [10, 52],
+    [18, 45],
+    [27, 42],
+    [37, 42],
+    [46, 45],
+    [54, 52],
+    [58, 64],
   ]);
-  g.rect(GOLD_LIGHT, 21, 3, 22, 1);
-  g.rect(INK, 22, 6, 20, 2);
-  g.rect(BRONZE, 19, 9, 26, 1);
-  g.rect(WHITE, 31, 3, 2, 3);
-  // gumbaz
-  g.polygon(GOLD, [
-    [19, 23],
-    [19, 15],
-    [22, 11],
-    [42, 11],
-    [45, 15],
-    [45, 23],
+  g.polygon(S.KIM_SH, [
+    [46, 45],
+    [54, 52],
+    [58, 64],
+    [51, 64],
+    [48, 52],
   ]);
-  g.polygon(GOLD_MID, [
-    [40, 11],
-    [42, 11],
-    [45, 15],
-    [45, 23],
-    [41, 23],
+  g.line(S.KIM_SH, [14, 54], [12, 63], 1);
+  g.line(S.KIM_SH, [22, 50], [21, 59], 1);
+  g.polygon(S.RED, [
+    [28, 42],
+    [36, 42],
+    [32, 52],
   ]);
-  g.rect(GOLD_LIGHT, 21, 14, 2, 8);
-  g.rect(WHITE, 31, 11, 2, 11);
-  // yonoq qalqonlari
-  const cheek = [
-    [17, 18],
-    [23, 18],
-    [23, 35],
-    [20, 39],
-    [17, 33],
-  ];
-  g.polygon(GOLD, cheek);
-  g.polygon(GOLD_MID, mirrorPts(cheek));
-  g.rect(GOLD_LIGHT, 18, 20, 1, 12);
-  // yuz (qalqonlar orasida)
-  paladinFace(g, 22);
-  // yon qalqonlar yuzning chetini yopadi
-  g.polygon(GOLD, [
-    [21, 22],
-    [23, 22],
-    [23, 34],
-    [22, 35],
+  g.line(S.PINK, [27, 42], [32, 50], 3);
+  g.line(S.PINK, [37, 42], [29, 58], 3);
+  g.line(S.PINK_L, [37, 41], [30, 56], 1);
+  // obi (belbog') va oltin ip
+  g.rect(S.PINK_D, 12, 59, 40, 5);
+  g.rect(S.PINK, 12, 59, 40, 1);
+  g.rect(S.GOLD, 12, 61, 40, 1);
+  // kimonodagi sakura naqshi
+  for (const [x, y] of [
+    [14, 56],
+    [19, 50],
+    [45, 52],
+    [51, 57],
+    [9, 61],
+    [25, 55],
+  ])
+    blossom(g, x, y);
+  // bo'yin
+  g.rect(S.SKIN, 29, 35, 6, 8);
+  g.rect(S.SKIN_SH, 29, 35, 6, 3);
+  // yuz
+  g.ellipse(S.HAIR, 32, 16, 15, 11);
+  g.polygon(S.SKIN, [
+    [22, 18],
+    [42, 18],
+    [42, 28],
+    [39, 34],
+    [35, 38],
+    [29, 38],
+    [25, 34],
+    [22, 28],
   ]);
-  g.polygon(GOLD_MID, [
-    [41, 22],
-    [43, 22],
-    [42, 35],
+  g.rect(S.SKIN_SH, 22, 18, 21, 1);
+  g.rect(S.SKIN_SH, 41, 20, 1, 9);
+  g.line(S.SKIN_SH, [40, 30], [37, 34], 1);
+  const eye = {
+    white: S.WHITE,
+    dark: S.EYE_D,
+    iris: S.EYE,
+    light: S.EYE_L,
+    pupil: S.INK,
+    shine: S.WHITE,
+    lower: S.SKIN_SH,
+  };
+  animeEye(g, 23, 24, 7, 8, true, eye);
+  animeEye(g, 34, 24, 7, 8, false, eye);
+  // qoshlar (xotirjam, qat'iyatli), burun, kichik og'iz, yonoqlar
+  g.rect(S.HAIR, 24, 21, 5, 1);
+  g.set(S.HAIR, 29, 22);
+  g.rect(S.HAIR, 35, 21, 5, 1);
+  g.set(S.HAIR, 34, 22);
+  g.set(S.SKIN_SH, 32, 31);
+  g.rect(S.MOUTH, 31, 35, 3, 1);
+  g.rect(S.BLUSH, 23, 32, 3, 1);
+  g.rect(S.BLUSH, 38, 32, 3, 1);
+  // qiyshiq peshona sochlari
+  g.polygon(S.HAIR, [
+    [17, 9],
+    [47, 9],
+    [46, 24],
+    [43, 17],
+    [41, 20],
+    [38, 14],
+    [35, 19],
+    [33, 13],
+    [30, 19],
+    [27, 14],
+    [25, 20],
+    [22, 15],
+    [19, 26],
+    [17, 22],
+  ]);
+  for (const [a, b] of [
+    [
+      [25, 11],
+      [23, 17],
+    ],
+    [
+      [31, 10],
+      [29, 16],
+    ],
+    [
+      [38, 10],
+      [37, 14],
+    ],
+    [
+      [44, 11],
+      [44, 18],
+    ],
+  ])
+    g.line(S.HAIR_L, a, b, 1);
+  // "farishta halqasi" — sochdagi binafsharang yaltiroq
+  g.rect(S.SHINE, 21, 12, 5, 1);
+  g.rect(S.SHINE, 28, 11, 6, 1);
+  g.rect(S.SHINE, 37, 12, 5, 1);
+  // yuz yonidagi oldingi tolalar (o'ngdagisi shamolda chetga uchgan)
+  g.polygon(S.HAIR, [
+    [18, 18],
+    [23, 21],
+    [23, 36],
+    [21, 48],
+    [18, 40],
+  ]);
+  g.polygon(S.HAIR, [
+    [46, 18],
+    [41, 21],
     [41, 34],
+    [45, 47],
+    [49, 40],
+    [47, 30],
   ]);
-  // gardish va uning ostidan chiqqan soch uchlari
-  g.rect(BRONZE, 20, 22, 25, 2);
-  g.polygon(HAIR, [
-    [23, 24],
-    [41, 24],
-    [41, 28],
-    [38, 26],
-    [35, 28],
-    [32, 25],
-    [29, 28],
-    [26, 26],
-    [23, 28],
-  ]);
-  g.rect(GLOW, 27, 24, 3, 1);
-  g.rect(GLOW, 35, 24, 3, 1);
-  g.rect(HAIR_SH, 23, 27, 1, 1);
-  // qoshlar
-  g.rect(HAIR_SH, 24, 27, 5, 1);
-  g.rect(HAIR_SH, 36, 27, 5, 1);
-  // mixlar (qalqon ilgaklari)
-  g.rect(BRONZE, 18, 18, 2, 2);
-  g.rect(BRONZE, 44, 18, 2, 2);
-}
-
-/** Paladin byusti: variant 1 — yopiq dubulg'a, 2 — anime, 3 — yarim-anime. */
-export function paladinBust(variant) {
-  const g = new Grid(64);
-  backSword(g);
-  if (variant === 2) {
-    armor(g, true);
-    animeHead(g);
-  } else {
-    armor(g, variant === 3);
-    if (variant === 1) closedHelm(g);
-    else openHelmHead(g);
-  }
-  return g.outlined(INK);
+  // sochdagi sakura bezagi va qizil lenta
+  g.line(S.RED, [45, 15], [49, 19], 1);
+  g.set(S.RED, 50, 18);
+  for (const [dx, dy] of [
+    [0, -2],
+    [-2, 0],
+    [2, 0],
+    [-1, 2],
+    [1, 2],
+  ])
+    g.rect(S.PINK, 44 + dx, 12 + dy, 2, 2);
+  g.rect(S.PINK_L, 44, 12, 2, 2);
+  g.set(S.GOLD, 44, 12);
+  return g.outlined(S.INK);
 }
 
 // ───────────────────────────── ikonka 512x512 ─────────────────────────────
 
-/** Qasr, oy va to'q binafsha osmon (menuScene.ts foni ranglari bilan) — 128x128 mantiqiy */
-function iconBackground(c) {
+/** Tungi binafsha osmon, oy, qasr silueti va sakura shoxi (menuScene.ts foni ranglari) — 128x128 */
+function samuraiBackground(c) {
   const bands = ["#07061a", "#0b0a22", "#100e2c", "#161336", "#1d1840", "#251d48"];
   bands.forEach((col, i) => {
     c.fillStyle = col;
@@ -578,28 +440,14 @@ function iconBackground(c) {
     c.fillStyle = i % 4 ? "#8a84a8" : "#ffffff";
     c.fillRect(x, y, 1, 1);
   }
-  // katta yulduzlar (xoch)
-  for (const [x, y] of [
-    [14, 14],
-    [36, 6],
-    [80, 50],
-  ]) {
-    c.fillStyle = "#ffffff";
-    c.fillRect(x, y, 1, 1);
-    c.fillStyle = "#8a84a8";
-    c.fillRect(x - 1, y, 3, 1);
-    c.fillRect(x, y - 1, 1, 3);
-    c.fillStyle = "#ffffff";
-    c.fillRect(x, y, 1, 1);
-  }
-  // oy va gardishi
-  const mx = 100,
-    my = 24;
-  const disc = (r, col, dx = 0) => {
+  // oy (chapda, katana dastasi uning oldida siluet bo'lib ko'rinadi)
+  const mx = 26,
+    my = 26;
+  const disc = (r, col) => {
     c.fillStyle = col;
     for (let y = -r; y <= r; y++) {
       const w = Math.round(Math.sqrt(r * r - y * y));
-      c.fillRect(mx - w + dx, my + y, w * 2, 1);
+      c.fillRect(mx - w, my + y, w * 2, 1);
     }
   };
   disc(22, "#141230");
@@ -613,77 +461,98 @@ function iconBackground(c) {
   c.fillRect(mx - 6, my - 5, 4, 3);
   c.fillRect(mx + 3, my + 3, 3, 3);
   c.fillRect(mx - 2, my + 7, 3, 2);
-  // uzoq tepaliklar
+  // tepaliklar va qasr silueti (pagoda tomli minoralar)
   for (let x = 0; x < 128; x++) {
     const h = 16 + Math.round(Math.sin(x / 13) * 4 + Math.sin(x / 5) * 1.5);
     c.fillStyle = "#1a1430";
     c.fillRect(x, 104 - h, 1, h + 24);
   }
-  // qasr: chapda va o'ngda minoralar (qahramon yelkasi ortidan ko'rinadi)
   const base = 108;
-  const tower = (x, w, h) => {
+  c.fillStyle = "#120e22";
+  c.fillRect(0, base - 18, 128, 20);
+  const tower = (x, w, h, floors) => {
     c.fillStyle = "#120e22";
     c.fillRect(x, base - h, w, h);
-    for (let k = 0; k < w; k += 4) c.fillRect(x + k, base - h - 3, 2, 3);
-    c.fillStyle = "#1c1630";
-    c.fillRect(x + 1, base - h, 1, h);
+    for (let f = 0; f < floors; f++) {
+      const y = base - h + f * 9;
+      c.fillRect(x - 3, y, w + 6, 2);
+      c.fillRect(x - 4, y + 1, 1, 1);
+      c.fillRect(x + w + 3, y + 1, 1, 1);
+    }
+    c.fillRect(x + w / 2 - 1, base - h - 4, 2, 4);
   };
-  c.fillStyle = "#120e22";
-  c.fillRect(0, base - 20, 128, 22);
-  for (let k = 0; k < 128; k += 5) c.fillRect(k, base - 23, 3, 3);
-  tower(2, 14, 50);
-  tower(19, 10, 36);
-  tower(106, 16, 44);
-  tower(96, 8, 32);
-  // minora uchlari
-  c.fillStyle = "#120e22";
-  for (let k = 0; k < 8; k++) c.fillRect(9 - k, base - 50 - 9 + k, k * 2 + 1, 1);
-  for (let k = 0; k < 9; k++) c.fillRect(114 - k, base - 44 - 10 + k, k * 2 + 1, 1);
-  // derazalarda chiroq
+  tower(4, 14, 46, 3);
+  tower(106, 14, 52, 4);
+  tower(92, 8, 30, 2);
   c.fillStyle = "#ffcc33";
   for (const [x, y] of [
-    [7, 68],
-    [7, 80],
-    [22, 82],
-    [110, 74],
-    [116, 86],
-    [99, 84],
+    [8, 72],
+    [12, 82],
+    [110, 66],
+    [114, 76],
+    [110, 86],
+    [95, 88],
   ])
-    c.fillRect(x, y, 2, 3);
+    c.fillRect(x, y, 2, 2);
   c.fillStyle = "#14261a";
   c.fillRect(0, 118, 128, 10);
+  // sakura shoxi (o'ng tepada)
+  c.fillStyle = PALETTES.treant[1];
+  for (const [[x0, y0], [x1, y1], w] of [
+    [[128, 6], [104, 14], 2],
+    [[112, 11], [100, 5], 1],
+    [[106, 13], [96, 20], 1],
+  ]) {
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+    for (let i = 0; i <= n; i++)
+      c.fillRect(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n), w, w);
+  }
+  for (const [x, y] of [
+    [101, 4],
+    [97, 19],
+    [108, 9],
+    [116, 6],
+    [122, 9],
+    [104, 16],
+    [113, 13],
+    [125, 4],
+  ]) {
+    c.fillStyle = SAMURAI_PAL[S.PINK];
+    c.fillRect(x - 1, y, 3, 1);
+    c.fillRect(x, y - 1, 1, 3);
+    c.fillStyle = SAMURAI_PAL[S.PINK_L];
+    c.fillRect(x, y, 1, 1);
+  }
 }
 
-/** 512x512 ikonka canvas'i */
-export function drawIcon(variant) {
+/** Shamolda uchayotgan sakura gulbarglari (qahramon yuzini to'smaydi) */
+function petals(c, front) {
+  for (let i = 0; i < 26; i++) {
+    const x = (i * 53 + 11) % 128,
+      y = (i * 37 + 23) % 124;
+    const face = x > 40 && x < 88 && y > 30 && y < 82;
+    if (face || (i % 2 === 0) !== front) continue;
+    c.fillStyle = i % 3 ? SAMURAI_PAL[S.PINK_L] : SAMURAI_PAL[S.PINK];
+    c.fillRect(x, y, 2, 1);
+    if (i % 4 === 0) c.fillRect(x + 1, y + 1, 1, 1);
+  }
+}
+
+/** Samuray qiz ikonkasi eskizi, 512x512 */
+export function drawSamuraiIcon() {
   const cv = document.createElement("canvas");
   cv.width = cv.height = 512;
   const c = cv.getContext("2d");
   c.imageSmoothingEnabled = false;
   c.scale(4, 4);
-  iconBackground(c);
-  // qahramon ortida iliq oltin nur
-  radial(c, 64, 52, 58, "255,214,120", 0.28);
-  const bust = paladinBust(variant);
-  paint(c, bust, PAL, 0, 0, 2);
-  // ko'z nuri
+  samuraiBackground(c);
+  petals(c, false);
+  radial(c, 64, 54, 56, "255,179,193", 0.22);
+  paint(c, samuraiBust(), SAMURAI_PAL, 0, 0, 2);
   c.globalCompositeOperation = "lighter";
-  if (variant === 1) {
-    // tirqishdan chiqayotgan nur: ikki porlash va gorizontal nur chizig'i
-    for (const x of [53, 77]) {
-      radial(c, x, 41, 13, "255,242,176", 0.55);
-      c.fillStyle = "rgba(255,242,176,0.55)";
-      c.fillRect(x - 16, 41, 32, 1);
-      c.fillStyle = "rgba(255,242,176,0.35)";
-      c.fillRect(x, 33, 1, 16);
-    }
-    c.fillStyle = "rgba(255,242,176,0.18)";
-    c.fillRect(24, 40, 82, 3);
-  } else {
-    const y = variant === 2 ? 56 : 64;
-    for (const x of [53, 77]) radial(c, x, y, 9, "104,205,228", 0.45);
-  }
+  for (const x of [53, 75]) radial(c, x, 58, 8, "201,154,232", 0.4);
   c.globalCompositeOperation = "source-over";
+  petals(c, true);
   return cv;
 }
 
