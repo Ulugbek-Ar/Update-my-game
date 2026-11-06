@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTransport } from "./api";
 import { AccountManager } from "./account";
 import { CloudSync } from "./cloud";
@@ -135,9 +135,16 @@ describe("expedition (account, server clock)", () => {
     srv = testServer({ admins: "777" });
     serverNow = Date.UTC(2026, 10, 4, 20, 0, 0);
     srv.clock.now = () => serverNow;
+    // Kirish kodi muddati (server soati) qurilma soati bilan solishtiriladi —
+    // qurilma soatini ham shu sanaga qotiramiz, aks holda kun o'tgach testlar yiqiladi.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(serverNow);
     setTransport(srv.transport);
   });
-  afterEach(() => setTransport(null));
+  afterEach(() => {
+    setTransport(null);
+    vi.useRealTimers();
+  });
 
   async function player(tg: number) {
     const storage = new MemoryStorage();
