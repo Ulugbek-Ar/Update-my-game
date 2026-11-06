@@ -36,12 +36,15 @@ function winCampaign(hero: "knight" | "mage") {
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
   tick(g, 2);
+  // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
+  g.artifacts = [];
+  g.player.ward = 0;
   return g;
 }
 
 describe("Yutuqlar ro'yxati", () => {
   it("has 19 achievements with unique ids and Uzbek names", () => {
-    expect(ACHIEVEMENTS.length).toBe(22);
+    expect(ACHIEVEMENTS.length).toBe(24);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
     const names = ACHIEVEMENTS.map((a) => a.name);
     for (const n of [

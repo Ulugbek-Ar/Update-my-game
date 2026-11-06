@@ -93,6 +93,33 @@ import {
   type TagCounts,
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
+import {
+  ARTIFACT_CHEST,
+  BIG_TRAP_DMG,
+  CHAIN_RADIUS,
+  COLLECTOR_AT,
+  COMBO_HEAL_EVERY,
+  FLAME_LIFE,
+  FLAME_RADIUS,
+  FLAME_TICK,
+  FROST_HEART_TIME,
+  GOLD_BOOST,
+  LAST_BREATH_TIME,
+  LAST_SHOT_MUL,
+  MAGNET_RADIUS,
+  MAGNET_SPEED,
+  PHASE_WAVE_DMG,
+  PHASE_WAVE_RADIUS,
+  REVENGE_MUL,
+  SLOW_RING,
+  SPIN_GUARD,
+  TENTH_EVERY,
+  VOW_LIGHT_RADIUS,
+  artifactById,
+  artifactColors,
+  rollArtifact,
+  type ArtifactId,
+} from "./artifacts";
 
 const STORAGE_KEY = "pixel-rpg-attempt";
 /** Uchuvchi yozuv markazi ekran (xona) chetidan chiqib ketmasin: half — yozuv kengligining yarmi */
@@ -350,6 +377,8 @@ const PHASE_BANNERS = {
 } as const;
 /** Muz polda sirpanish: harakat shu tezlikda (1/s) yangi yo'nalishga moslashadi */
 const ICE_GRIP = 2.2;
+/** HUD'da bir qatordagi artefakt ikonkalari */
+const ART_PER_ROW = 8;
 
 function load(key: string) {
   try {
@@ -525,6 +554,22 @@ export class Game {
   private wardT = 0;
   /** O'tgan kadrda dash/teleport/sakrash davom etayotgan edi (TEZLIK sinergiyasi) */
   private wasDashing = false;
+  /** Shu o'yindagi artefaktlar (artifacts.ts) — o'lim yoki qayta boshlashda yo'qoladi */
+  artifacts: ArtifactId[] = [];
+  /** OLOV IZI: yerdagi olov va har dushmanga keyingi kuyish vaqti */
+  flames: { x: number; y: number; life: number }[] = [];
+  private burnAt = new WeakMap<object, number>();
+  /** O'NINCHI ZARB: o'yinchi zarbalari hisobi; QASOS: keyingi zarba kuchli; SO'NGGI NAFAS ishlatildi */
+  private hitCount = 0;
+  private revengeReady = false;
+  private lastBreathUsed = false;
+  /** PO'LAT AYLANA: o'tgan kadrda aylana zarba bormidi */
+  private wasSpinning = false;
+  /** Chaqmoq chiziqlari (faqat chizish) */
+  zaps: { x1: number; y1: number; x2: number; y2: number; life: number }[] = [];
+  /** Bosilgan/yangi olingan artefakt tavsifi (HUD'da) va pauzada tanlangani */
+  artInfo: { id: ArtifactId; timer: number } | null = null;
+  private pauseArt = -1;
   /** 1-dunyo yutilgan va 2-dunyoda hali o'lmagan ("Ikki dunyo" yutug'i) */
   private noDeathRun = false;
   /** Shu to'lqinda sovuq nafas tegdimi / to'lqinda Muz ruhi bormidi ("Sovuqqa chidam") */
@@ -620,6 +665,7 @@ export class Game {
     this.wardT = 0;
     this.wasDashing = false;
     this.rings = [];
+    this.clearArtifacts();
     this.darkness = 0;
     this.drops = [];
     this.coins = [];
@@ -802,6 +848,8 @@ export class Game {
     this.darkness = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
+    this.flames = [];
+    if (this.hasArtifact("aegis")) this.player.ward = Math.max(this.player.ward, 1);
     if (boss) {
       // boss joni o'yinchining shu paytdagi kuchiga moslashadi (bossPower.ts)
       const cycle = Math.floor(endless / ENDLESS_BOSS_EVERY);
@@ -961,6 +1009,8 @@ export class Game {
     this.score = s.score;
     this.tagCounts = { ...s.tags };
     this.wardT = 0;
+    // roguelike: artefaktlar o'lim bilan yo'qoladi
+    this.clearArtifacts();
     this.enterChapter();
   }
 
@@ -1011,7 +1061,7 @@ export class Game {
   hitChest() {
     const ch = this.chest;
     if (!ch || ch.openT >= 0) return;
-    ch.hp--;
+    ch.hp = this.hasArtifact("key") ? 0 : ch.hp - 1;
     ch.hitFlash = 0.15;
     sfx.chestHit();
     this.fx.burst(ch.x, ch.y, "#9a5e2e", 6, 50, 1);
@@ -1042,7 +1092,7 @@ export class Game {
       });
     }
     this.fx.text(ch.x, ch.y - 14, `+${gold} OLTIN`, "#ffcc33");
-    const heart = rand() < CHEST_HEART;
+    const heart = rand() < CHEST_HEART || this.hasArtifact("key");
     if (heart) this.drops.push({ x: ch.x, y: ch.y + 14, life: 9 });
     const card = rand() < CHEST_CARD;
     if (card) {
@@ -1055,7 +1105,9 @@ export class Game {
         this.input.clearQueued();
       }
     }
-    return { gold, heart, card };
+    // artefakt: 15% (kunlik sinovda yo'q)
+    const artifact = rand() < ARTIFACT_CHEST ? this.gainArtifact(ch.x, ch.y - 24) : null;
+    return { gold, heart, card, artifact };
   }
 
   /** Bajarilgan harakat ko'rsatmasini yashiradi; hammasi bajarilsa qayta chiqmaydi. */
@@ -1183,6 +1235,11 @@ export class Game {
     const hit = (b: { x: number; y: number; w: number; h: number }) =>
       x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
     if (this.paused) {
+      const art = this.artifacts.findIndex((_, i) => hit(this.pauseArtRect(i)));
+      if (art >= 0) {
+        this.pauseArt = art;
+        return;
+      }
       this.pauseButtons()
         .find((b) => hit(b.rect))
         ?.act();
@@ -1203,6 +1260,11 @@ export class Game {
       return;
     }
     if (this.intro > 0) return this.skipIntro();
+    if (this.phase === "play" && this.stage === "fight") {
+      // HUD'dagi artefakt ikonkasi: bosilsa tavsifi chiqadi
+      const art = this.artifacts.findIndex((_, i) => hit(this.artRect(i)));
+      if (art >= 0) this.artInfo = { id: this.artifacts[art]!, timer: 3 };
+    }
     if (this.phase === "play" && this.stage === "upgrade") {
       if (this.upgradeLock > 0) return;
       for (let i = 0; i < this.choices.length; i++)
@@ -1361,8 +1423,10 @@ export class Game {
     this.onSynergy();
   }
 
-  /** Sinergiya ochildi (yutuqlar — artefaktlar bosqichida). */
-  private onSynergy() {}
+  /** Sinergiya ochildi: bir o'yinda 2 ta — "Sinergiya ustasi". */
+  private onSynergy() {
+    if (synergies(this.tagCounts).length >= 2) this.achieve("synergy2");
+  }
 
   /** Shu tegdan sinergiya ochilganmi */
   syn(tag: Tag) {
@@ -1417,12 +1481,17 @@ export class Game {
       }
       this.fx.burst(e.x, e.y, "#d8ecf7", 16, 90, 2);
     }
+    const p0 = this.player;
     const dropExtra = hasTag(this.tagCounts, "hayot", 2) ? DROP_BONUS : 0;
     if (Math.random() < DROP_CHANCE + this.dropBonus + dropExtra)
       this.drops.push({ x: e.x, y: e.y, life: 9 });
     // ZARAR sinergiyasi: o'lgan dushman kichik portlash bilan atrofdagilarga 1 zarar (zanjir yo'q)
+    // (boss — yo'q: bitta nishonga zarar boss formulasiga ta'sir qilmasin)
     if (this.syn("zarar") && !this.blasting)
-      this.blast(e.x, e.y, BLAST_RADIUS, BLAST_DMG, "#ff6a4d");
+      this.blast(e.x, e.y, BLAST_RADIUS, BLAST_DMG, "#ff6a4d", false);
+    if (this.hasArtifact("chain") && !this.blasting) this.chainZap(e);
+    if (this.hasArtifact("combo") && this.combo % COMBO_HEAL_EVERY === 0 && p0.heal(1))
+      this.fx.text(p0.x, p0.y - 14, "+1 YURAK", artifactById("combo").color);
     this.coins.push({ x: e.x + 5, y: e.y + 3, life: COIN_LIFE, value: KILL_GOLD[e.kind] });
     const p = this.player;
     if (p.lifesteal) {
@@ -1432,6 +1501,59 @@ export class Game {
         if (p.heal(1)) this.fx.text(p.x, p.y - 14, "+1 YURAK", "#ff4d6d");
       }
     }
+  }
+
+  /**
+   * O'yinchining to'g'ridan-to'g'ri zarbasi (qilich, shar, o'q, hamla): artefakt ko'paytuvchilari
+   * (O'NINCHI ZARB, QASOS) shu yerda.
+   */
+  private strike(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
+    let mul = 1;
+    this.hitCount++;
+    if (this.hasArtifact("tenth") && this.hitCount % TENTH_EVERY === 0) {
+      mul *= 2;
+      this.fx.text(t.x - 10, t.y - t.size / 2 - 16, "x2", artifactById("tenth").color);
+    }
+    if (this.revengeReady) {
+      this.revengeReady = false;
+      mul *= REVENGE_MUL;
+      this.fx.text(t.x, t.y - t.size / 2 - 22, "QASOS!", artifactById("revenge").color);
+      this.fx.burst(t.x, t.y, artifactById("revenge").color, 10, 80, 1);
+    }
+    this.damageTarget(t, dmg * mul, knock);
+  }
+
+  hasArtifact(id: ArtifactId) {
+    return this.artifacts.includes(id);
+  }
+
+  private clearArtifacts() {
+    this.artifacts = [];
+    this.flames = [];
+    this.burnAt = new WeakMap();
+    this.hitCount = 0;
+    this.revengeReady = false;
+    this.lastBreathUsed = false;
+    this.wasSpinning = false;
+    this.zaps = [];
+    this.artInfo = null;
+    this.pauseArt = -1;
+  }
+
+  /** Yangi artefakt (takrorlanmaydi). Kunlik sinovda tushmaydi. */
+  gainArtifact(x: number, y: number, rand: () => number = Math.random) {
+    if (this.daily) return null;
+    const a = rollArtifact(this.hero, this.artifacts, rand);
+    if (!a) return null;
+    this.artifacts.push(a.id);
+    this.artInfo = { id: a.id, timer: 3.5 };
+    this.fx.text(fitX(x, 60), Math.max(30, y), `ARTEFAKT: ${a.name}`, a.color);
+    this.fx.burst(x, y + 10, a.color, 20, 90, 2);
+    this.fx.burst(x, y + 10, "#ffffff", 8, 60, 1);
+    sfx.upgrade();
+    if (a.id === "aegis") this.player.ward = Math.max(this.player.ward, 1);
+    if (this.artifacts.length >= COLLECTOR_AT) this.achieve("collector");
+    return a.id;
   }
 
   /** Atrofdagi dushmanlarga portlash (sinergiya/artefakt); undan o'lganlar yana portlamaydi. */
@@ -1448,8 +1570,41 @@ export class Game {
     this.blasting = false;
   }
 
+  /** CHAQMOQ ZANJIRI: o'lgan dushmandan eng yaqin dushmanga 1 zarar. */
+  private chainZap(from: Enemy) {
+    let near: Enemy | null = null;
+    let nearD = CHAIN_RADIUS;
+    for (const e of this.enemies) {
+      if (e === from || !e.active) continue;
+      const d = Math.hypot(e.x - from.x, e.y - from.y);
+      if (d < nearD) {
+        nearD = d;
+        near = e;
+      }
+    }
+    if (!near) return;
+    this.zaps.push({ x1: from.x, y1: from.y, x2: near.x, y2: near.y, life: 0.18 });
+    this.fx.burst(near.x, near.y, artifactById("chain").color, 6, 60, 1);
+    this.blasting = true;
+    this.damageTarget(near, 1, 120);
+    this.blasting = false;
+  }
+
   private onPlayerHurt() {
     const p = this.player;
+    if (this.hasArtifact("revenge") && p.hp > 0) this.revengeReady = true;
+    if (this.hasArtifact("lastbreath") && p.hp === 1 && !this.lastBreathUsed) {
+      this.lastBreathUsed = true;
+      p.invuln = Math.max(p.invuln, LAST_BREATH_TIME);
+      this.fx.text(p.x, p.y - 22, "SO'NGGI NAFAS!", artifactById("lastbreath").color);
+      this.fx.burst(p.x, p.y, "#ffffff", 16, 80, 2);
+    }
+    if (this.hasArtifact("frostheart") && p.hp > 0) {
+      for (const e of this.enemies) if (e.active) e.stun = Math.max(e.stun, FROST_HEART_TIME);
+      if (this.boss?.active) this.boss.slow = Math.max(this.boss.slow, FROST_HEART_TIME);
+      this.fx.burst(p.x, p.y, artifactById("frostheart").color, 18, 100, 2);
+    }
+    if (this.hasArtifact("vowlight") && p.vowing) this.vowLight();
     // HIMOYA bonusi: zarbadan keyin biroz uzoqroq daxlsizlik
     if (hasTag(this.tagCounts, "himoya", 2) && p.hp > 0) p.invuln += GUARD_BONUS;
     // telefonda qisqa tebranish; boss jangida — kuchliroq
@@ -1539,6 +1694,7 @@ export class Game {
       if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
         this.fx.text(t.x, t.y - 44, "DARVOZA KALITI!", "#c9a25a");
       this.runBosses++;
+      this.gainArtifact(t.x, t.y - 64);
       this.gainXp(king ? XP.king : queen ? XP.queen : XP.devil, t.x, t.y - 54);
       if (!king && !queen && hornWanted()) {
         sendToRealm(HORN_ITEM);
@@ -1631,6 +1787,7 @@ export class Game {
     p.update(dt, this.input);
     this.applySlip(px0, py0, dt);
     this.updateSynergies(dt);
+    this.updateArtifacts(dt);
     if (p.brokeIce) {
       p.brokeIce = false;
       sfx.block();
@@ -1681,6 +1838,10 @@ export class Game {
       this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#ff3b3b", 6, 70, 1);
       this.fx.burst(p.x, p.y, "#2b1c2e", 8, 25, 3);
       this.fx.burst(p.x, p.y, "#ff5a3c", 10, 60, 1);
+      if (this.hasArtifact("flame"))
+        for (const at of [p.teleportFrom, { x: p.x, y: p.y }])
+          for (let k = 0; k < 3; k++)
+            this.flames.push({ x: at.x + (k - 1) * 6, y: at.y + 4, life: FLAME_LIFE });
       // SEHR sinergiyasi: chiqqan joyda olov portlaydi
       if (this.syn(HERO_TAG.mage) && p.mage)
         this.blast(
@@ -1689,6 +1850,7 @@ export class Game {
           TELE_BLAST_RADIUS,
           p.damage * TELE_BLAST_MUL,
           "#ff5a3c",
+          false,
         );
       p.teleportFrom = null;
     }
@@ -1717,6 +1879,12 @@ export class Game {
     // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
     if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, HERO_THEME[this.hero].trail);
     if (p.bolts.length) {
+      // OXIRGI O'Q: barabandagi oxirgi o'q kuchliroq
+      if (p.gunner && p.ammo === 0 && this.hasArtifact("lastshot")) {
+        const last = p.bolts[p.bolts.length - 1]!;
+        last.power = LAST_SHOT_MUL;
+        last.size += 1;
+      }
       // Mergan o'qi: og'izda uchqun va porox tutuni
       for (const b of p.bolts) if (b.bullet) this.muzzle(b);
       this.bolts.push(...p.bolts);
@@ -1780,6 +1948,15 @@ export class Game {
         this.fx.burst(boss.x, boss.y, BOSS_CARDS[this.bossKind(boss)].color, 30, 110, 2);
         // HAYOT sinergiyasi: faza almashganda +1 yurak
         if (this.syn("hayot") && p.heal(1)) this.fx.text(p.x, p.y - 14, "+1 YURAK", "#ff4d6d");
+        if (this.hasArtifact("phasewave"))
+          this.blast(
+            p.x,
+            p.y,
+            PHASE_WAVE_RADIUS,
+            PHASE_WAVE_DMG,
+            artifactById("phasewave").color,
+            false,
+          );
       }
       if (boss.justBerserk) {
         boss.justBerserk = false;
@@ -1901,7 +2078,7 @@ export class Game {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
           }
-          this.damageTarget(t, p.damage * (b.power ?? 1));
+          this.strike(t, p.damage * (b.power ?? 1));
           if (b.bullet && t instanceof Enemy && t.dead) this.drumKill(b.load ?? 0);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
@@ -1955,7 +2132,9 @@ export class Game {
             this.fx.text(t.x, t.y - 14, "GANGIDI", HERO_THEME.paladin.glow);
           }
           const wasAlive = !t.dead;
-          this.damageTarget(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
+          if (this.hasArtifact("slowring") && p.mage && p.spinning && !t.dead)
+            t.slow = Math.max(t.slow, SLOW_RING);
+          this.strike(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
           if (heavy && !p.spinning && wasAlive && t.dead && t instanceof Enemy) this.slamKill();
         }
       }
@@ -2024,6 +2203,7 @@ export class Game {
       if (co.life <= 0) return false;
       if (Math.hypot(co.x - p.x, co.y - p.y) > 11 || p.dead) return true;
       this.pickCoin(co);
+      if (this.hasArtifact("goldwind")) p.boost = Math.max(p.boost, GOLD_BOOST);
       sfx.pickup();
       this.fx.burst(co.x, co.y, "#ffcc33", 6, 40);
       return false;
@@ -2098,6 +2278,58 @@ export class Game {
         }
       } else this.clearWave();
     }
+  }
+
+  /** QASAM NURI: QASAM paytida zarba yeganda atrofga nur. */
+  private vowLight() {
+    const p = this.player;
+    this.blast(p.x, p.y, VOW_LIGHT_RADIUS, 1, artifactById("vowlight").color);
+  }
+
+  /** Artefaktlarning har kadrdagi ta'siri: olov izi, magnit, aylana himoyasi, chaqmoq izlari. */
+  private updateArtifacts(dt: number) {
+    const p = this.player;
+    for (const z of this.zaps) z.life -= dt;
+    this.zaps = this.zaps.filter((z) => z.life > 0);
+    if (this.artInfo && (this.artInfo.timer -= dt) <= 0) this.artInfo = null;
+    if (!this.artifacts.length) return;
+    if (this.hasArtifact("flame")) {
+      if (p.dashing && !p.mage && Math.random() < 0.7)
+        this.flames.push({ x: p.x, y: p.y + 4, life: FLAME_LIFE });
+      for (const f of this.flames) f.life -= dt;
+      this.flames = this.flames.filter((f) => f.life > 0);
+      if (this.flames.length) {
+        const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+        if (this.boss?.active) targets.push(this.boss);
+        for (const t of targets) {
+          if ((this.burnAt.get(t) ?? 0) > this.time) continue;
+          const hot = this.flames.some(
+            (f) => Math.hypot(f.x - t.x, f.y - t.y) < FLAME_RADIUS + t.size / 2,
+          );
+          if (!hot) continue;
+          this.burnAt.set(t, this.time + FLAME_TICK);
+          this.fx.burst(t.x, t.y, "#ff8a2a", 4, 40, 1);
+          this.damageTarget(t, 1, false);
+        }
+      }
+    }
+    if (this.hasArtifact("magnet") && !p.dead) {
+      for (const o of [...this.coins, ...this.drops]) {
+        const dx = p.x - o.x,
+          dy = p.y - o.y;
+        const d = Math.hypot(dx, dy);
+        if (d < MAGNET_RADIUS && d > 1) {
+          const step = Math.min(d, MAGNET_SPEED * dt);
+          o.x += (dx / d) * step;
+          o.y += (dy / d) * step;
+        }
+      }
+    }
+    if (this.hasArtifact("spinguard") && p.spinning && !this.wasSpinning) {
+      p.invuln = Math.max(p.invuln, SPIN_GUARD);
+      this.fx.burst(p.x, p.y, artifactById("spinguard").color, 10, 70, 1);
+    }
+    this.wasSpinning = p.spinning;
   }
 
   /** TEZLIK (dashdan keyin tezlashish) va HIMOYA (har 20 s qalqon) sinergiyalari. */
@@ -2206,6 +2438,7 @@ export class Game {
     }
     if (p.absorbed) {
       p.absorbed = false;
+      if (this.hasArtifact("vowlight") && p.vowing) this.vowLight();
       this.fx.burst(p.x, p.y - 4, glow, 6, 60, 1);
       this.fx.text(p.x, p.y - 18, "BLOK", glow);
     }
@@ -2220,7 +2453,7 @@ export class Game {
         sfx.hit();
         this.fx.addShake(0.1);
         this.fx.burst(t.x, t.y, accent, 6, 70, 1);
-        this.damageTarget(t, HAMLA_DMG * p.damage, 300);
+        this.strike(t, HAMLA_DMG * p.damage, 300);
       }
     }
   }
@@ -2391,6 +2624,7 @@ export class Game {
       const e = this.enemies.find((e) => e.active && e.stun <= 0 && overlap(body, e));
       if (e) {
         e.stun = TRAP_STUN;
+        if (this.hasArtifact("bigtrap")) this.damageTarget(e, BIG_TRAP_DMG, false);
         t.snapT = 0;
         t.x = e.x;
         t.y = e.y + e.size / 2 - 2;
@@ -2965,6 +3199,31 @@ export class Game {
     // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
     for (const k of this.cracks) renderCrack(c, k);
     for (const q of this.quakes) renderQuake(c, q);
+    // OLOV IZI: yerdagi kichik alangalar
+    for (const f of this.flames) {
+      const fl = Math.floor(this.time * 12 + f.x) % 2;
+      const a = Math.min(1, f.life * 2);
+      c.globalAlpha = a;
+      px(c, "#c1121f", Math.round(f.x) - 2, Math.round(f.y) - 1, 5, 2);
+      px(c, "#ff8a2a", Math.round(f.x) - 1, Math.round(f.y) - 3 - fl, 3, 3);
+      px(c, "#ffe14d", Math.round(f.x), Math.round(f.y) - 3 - fl, 1, 2);
+      c.globalAlpha = 1;
+    }
+    // CHAQMOQ ZANJIRI: siniq chiziq
+    for (const z of this.zaps) {
+      c.save();
+      c.globalAlpha = Math.min(1, z.life * 8);
+      c.strokeStyle = "#ffe14d";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(z.x1, z.y1);
+      const mx = (z.x1 + z.x2) / 2 + (Math.random() - 0.5) * 10,
+        my = (z.y1 + z.y2) / 2 + (Math.random() - 0.5) * 10;
+      c.lineTo(mx, my);
+      c.lineTo(z.x2, z.y2);
+      c.stroke();
+      c.restore();
+    }
     for (const r of this.rings) {
       const k = 1 - r.life / r.max;
       const rad = r.r * (0.4 + 0.6 * k);
@@ -3541,6 +3800,26 @@ export class Game {
       const x = 4 + p.maxHp * 10 + 1;
       this.tagIcon("himoya", x, 4);
     }
+    // artefaktlar: chap tomonda, chiziqlar ostida kichik ikonkalar (sensor tugmalaridan uzoqda)
+    this.artifacts.forEach((id, i) => {
+      const r = this.artRect(i);
+      const sel = this.artInfo?.id === id;
+      px(c, sel ? artifactById(id).color : "#000", r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+      px(c, "#1a1222", r.x, r.y, r.w, r.h);
+      this.artIcon(id, r.x, r.y);
+    });
+    if (this.artInfo && this.phase === "play" && this.stage === "fight") {
+      const a = artifactById(this.artInfo.id);
+      const rows = Math.ceil(this.artifacts.length / ART_PER_ROW);
+      const y = 40 + rows * 11 + 1;
+      const lines = this.wrap(a.desc, 26);
+      c.globalAlpha = Math.min(1, this.artInfo.timer * 3);
+      px(c, a.color, 3, y, 140, 12 + lines.length * 8);
+      px(c, "#1a1222", 4, y + 1, 138, 10 + lines.length * 8);
+      this.text(a.name, 7, y + 8, 5, a.color, "left");
+      lines.forEach((l, j) => this.text(l, 7, y + 17 + j * 8, 5, "#e0d6ee", "left"));
+      c.globalAlpha = 1;
+    }
     this.text(
       this.daily ? `KUNLIK ${this.daily}` : `URINISH ${this.attempt}`,
       4,
@@ -3842,13 +4121,16 @@ export class Game {
     }
     if (this.paused) {
       px(c, "rgba(0,0,0,0.7)", 0, 0, ROOM.w, ROOM.h);
-      this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - 40, 18, "#ffcc33");
+      // artefaktlar bo'lsa — yuqorida to'liq ro'yxat, sarlavha biroz pastroq
+      const arts = this.artifacts.length > 0;
+      if (arts) this.renderPauseArtifacts();
+      this.text("PAUZA", ROOM.w / 2, ROOM.h / 2 - (arts ? 32 : 40), 18, "#ffcc33");
       this.text(
         this.touch
           ? `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"}`
           : `Ovoz: ${sfx.muted ? "o'chiq" : "yoqiq"} (${actionKey(this.input.keyBinds, "mute")})`,
         ROOM.w / 2,
-        ROOM.h / 2 - 20,
+        ROOM.h / 2 - (arts ? 14 : 20),
         6,
         "#b8a8cc",
       );
@@ -3964,6 +4246,21 @@ export class Game {
     }
   }
 
+  /** HUD'dagi artefakt ikonkasi joyi (9x9; 8 tadan qator) */
+  private artRect(i: number) {
+    return { x: 4 + (i % ART_PER_ROW) * 11, y: 40 + Math.floor(i / ART_PER_ROW) * 11, w: 9, h: 9 };
+  }
+
+  /** Pauzadagi to'liq ro'yxat: 3 ustun, ikonka + nom */
+  private pauseArtRect(i: number) {
+    return { x: 8 + (i % 3) * 104, y: 15 + Math.floor(i / 3) * 10, w: 100, h: 9 };
+  }
+
+  private artIcon(id: ArtifactId, x: number, y: number) {
+    const a = artifactById(id);
+    renderPixelIcon(this.ctx, `art:${id}`, a.icon, artifactColors(a), x, y);
+  }
+
   /** Teg ikonkasi 7x7 (synergy.ts) */
   private tagIcon(tag: Tag, x: number, y: number) {
     renderPixelIcon(
@@ -3974,6 +4271,23 @@ export class Game {
       x,
       y,
     );
+  }
+
+  /** Pauza: shu o'yindagi barcha artefaktlar; bosilgani (yoki oxirgisi) tavsifi bilan. */
+  private renderPauseArtifacts() {
+    const c = this.ctx;
+    this.text(`ARTEFAKTLAR: ${this.artifacts.length}`, ROOM.w / 2, 10, 5, "#ffcc33");
+    const sel = this.pauseArt >= 0 ? this.pauseArt : this.artifacts.length - 1;
+    this.artifacts.forEach((id, i) => {
+      const r = this.pauseArtRect(i);
+      const a = artifactById(id);
+      if (i === sel) px(c, "rgba(255,255,255,0.12)", r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+      this.artIcon(id, r.x, r.y);
+      this.text(a.name, r.x + 12, r.y + 7, 5, i === sel ? a.color : "#e0d6ee", "left");
+    });
+    const a = artifactById(this.artifacts[sel]!);
+    const rows = Math.ceil(this.artifacts.length / 3);
+    this.text(a.desc, ROOM.w / 2, 15 + rows * 10 + 6, 5, a.color);
   }
 
   /** Kuch tanlash ekrani ochiq: yutuq xabari kuch tanlangandan keyin chiqadi. */

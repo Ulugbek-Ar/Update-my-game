@@ -89,7 +89,7 @@ describe("Xazina sandig'i", () => {
     idle(g);
     g.spawnChest(100, 100);
     const lucky = g.openChest(() => 0)!;
-    expect(lucky).toEqual({ gold: 8, heart: true, card: true });
+    expect(lucky).toEqual({ gold: 8, heart: true, card: true, artifact: expect.any(String) });
     expect(g.drops.length).toBe(1);
     expect(g.stage).toBe("upgrade");
     expect(g.bonusPick).toBe(true);
@@ -101,7 +101,12 @@ describe("Xazina sandig'i", () => {
     const g2 = makeGame();
     idle(g2);
     g2.spawnChest(100, 100);
-    expect(g2.openChest(() => 0.99)).toEqual({ gold: 15, heart: false, card: false });
+    expect(g2.openChest(() => 0.99)).toEqual({
+      gold: 15,
+      heart: false,
+      card: false,
+      artifact: null,
+    });
     expect(g2.drops.length).toBe(0);
     expect(g2.stage).toBe("fight");
     expect(g2.coins.reduce((s, c) => s + c.value, 0)).toBe(15);

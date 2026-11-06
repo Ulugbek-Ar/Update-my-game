@@ -23,7 +23,9 @@ export type AchievementId =
   | "loyal"
   | "winPaladin"
   | "shang4"
-  | "wallNoShield";
+  | "wallNoShield"
+  | "collector"
+  | "synergy2";
 
 export interface Achievement {
   id: AchievementId;
@@ -58,6 +60,8 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     name: "QALQONSIZ DEVOR",
     desc: "Paladin bilan zarar olmasdan bossni yeng",
   },
+  { id: "collector", name: "KOLLEKTSIONER", desc: "Bitta o'yinda 5 ta artefakt yig'" },
+  { id: "synergy2", name: "SINERGIYA USTASI", desc: "Bitta o'yinda 2 ta sinergiya och" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

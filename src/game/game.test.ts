@@ -61,6 +61,9 @@ describe("Cheksiz rejim", () => {
     g.score = 500;
     gi.damageTarget(g.boss, 999);
     tick(g, 2);
+    // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
+    g.artifacts = [];
+    g.player.ward = 0;
     return { g, gi };
   }
 

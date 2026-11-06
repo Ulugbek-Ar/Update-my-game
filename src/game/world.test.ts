@@ -40,6 +40,9 @@ function winBoss(g: Game, gi: GI) {
   g.boss!.spawn = 0;
   gi.damageTarget(g.boss, 999);
   tick(g, 2.5);
+  // bossdan tushgan tasodifiy artefakt boshqa sinovlarga ta'sir qilmasin (artifacts.test.ts)
+  g.artifacts = [];
+  g.player.ward = 0;
 }
 
 beforeEach(() => localStorage.clear());
