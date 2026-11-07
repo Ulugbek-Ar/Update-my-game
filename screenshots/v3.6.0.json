@@ -52,9 +52,9 @@
     "steps": [
       { "start": true },
       { "wave": 1 },
-      { "spawn": { "kind": "golem", "dx": 18, "dy": 0 } },
+      { "spawn": { "kind": "rammer", "dx": 18, "dy": 0 } },
       {
-        "eval": "g.critRand = () => 0; g.player.fx = 1; g.player.fy = 0; g.enemies[0].hp = g.enemies[0].maxHp = 40; g.input.pressAttack();"
+        "eval": "g.critRand = () => 0; g.player.fx = 1; g.player.fy = 0; g.enemies[0].stun = 99; g.enemies[0].hp = g.enemies[0].maxHp = 40; g.input.pressAttack();"
       },
       { "wait": 160 }
     ]

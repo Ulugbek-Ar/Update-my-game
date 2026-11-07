@@ -39,6 +39,7 @@
     "steps": [
       { "storage": { "pixel-rpg-tutorial-done": "1" } },
       { "start": true },
+      { "eval": "g.startChapter2();" },
       { "wave": 3 },
       { "spawn": { "kind": "shield", "dx": 70 } },
       { "eval": "g.enemies[0].shieldAngle = Math.PI;" },

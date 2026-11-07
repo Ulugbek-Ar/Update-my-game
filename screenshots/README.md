@@ -24,6 +24,11 @@ Sahna maydonlari:
   - `{ "wait": 500 }` — kutish (ms)
   - `{ "focus": { "x": 160, "y": 120, "w": 320 } }` — video kesimi markazi (spawn'siz sahnalarda, masalan ochiq olamda)
 
+**Dunyo qoidasi:** `spawn` faqat o'sha sahna dunyosining moblarini chiqarsin (`src/game/waves.ts`:
+`WORLD_KINDS`). 1-dunyo (standart) — `blob`, `wisp`, `rammer`, `archer`; 2-dunyo moblari uchun avval
+`{ "eval": "g.startChapter2();" }`, 3-dunyo uchun `g.startChapter3();`. Masalan 1-dunyoda golem
+(Qor odam) chiqarilmaydi. `src/game/screenshots.test.ts` barcha ssenariylarni tekshiradi.
+
 Ochiq olam (Abadiyat olami) sahnalari: `{ "click": "OLAM (SINOV)" }`, so'ng `{ "wait": 800 }` va
 `eval` ichida `window.__realm` (RealmClient: `sim`, `me`, `view`) bilan sahna sozlanadi. Namuna: `v2.2.0.json`.
 
@@ -73,6 +78,8 @@ Yangi qahramon qo'shilsa (masalan, Sehrgar) — `"hero": true` sahna yozing. U h
 Qahramonni tanlash qadami (`click` yoki `eval`) o'yinda qanday tanlanishiga qarab yoziladi.
 Videoda bot dushmanlarga qarab yuradi va Space bilan hujum qiladi.
 Masofali qahramon uchun `"range": 70` qo'shing — bot shu masofani saqlaydi va nishonga burilib otadi.
+`"combo": true` — bot navbat bilan kuchli hujum (Space bosib turish) va dash ham qiladi (skin
+effektlarini ko'rsatish uchun, `"autoplay": true` bilan).
 
 Qo'lda olingan rasmlarni `v<VERSIYA>/` papkasiga qo'ysangiz, ular albom boshida chiqadi.
 
