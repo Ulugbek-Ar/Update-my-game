@@ -1,6 +1,8 @@
 import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
 import type { Target } from "./player";
 import { renderSprite, type SpriteKind } from "./sprites";
+import { DANGER } from "./danger";
+import { withAlpha } from "./hero";
 
 export type EnemyKind =
   | "blob"
@@ -839,7 +841,7 @@ export class Enemy implements Body {
       ctx.beginPath();
       ctx.ellipse(this.markX, this.markY + 6, 6 + 5 * k, 3 + 2 * k, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(255,70,70,${0.4 + 0.4 * Math.sin(this.t * 25)})`;
+      ctx.strokeStyle = withAlpha(DANGER.owlMark, 0.4 + 0.4 * Math.sin(this.t * 25));
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -891,16 +893,16 @@ export class Enemy implements Body {
     if (this.breathWindup > 0) {
       // och muz polda ko'rinishi uchun to'q ko'k chegara
       const k = 1 - this.breathWindup / FROST_WINDUP;
-      ctx.fillStyle = `rgba(60,140,230,${0.1 + 0.2 * k})`;
+      ctx.fillStyle = withAlpha(DANGER.breathFill, 0.1 + 0.2 * k);
       ctx.fill();
-      ctx.strokeStyle = `rgba(30,90,200,${0.5 + 0.4 * Math.sin(this.breathWindup * 28)})`;
+      ctx.strokeStyle = withAlpha(DANGER.breath, 0.5 + 0.4 * Math.sin(this.breathWindup * 28));
       ctx.lineWidth = 1;
       ctx.stroke();
     } else {
       const k = this.breathShow / BREATH_SHOW;
       ctx.fillStyle = `rgba(235,248,255,${0.75 * k})`;
       ctx.fill();
-      ctx.strokeStyle = `rgba(60,140,230,${0.7 * k})`;
+      ctx.strokeStyle = withAlpha(DANGER.breathFill, 0.7 * k);
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -957,12 +959,15 @@ export class Enemy implements Body {
     }
     if (this.kind === "golem" && this.stompWindup > 0) {
       // yerga urish ogohlantirishi: qizil doira
-      ctx.strokeStyle = `rgba(220,30,40,${0.6 + 0.35 * Math.sin(this.stompWindup * 30)})`;
+      ctx.strokeStyle = withAlpha(DANGER.stomp, 0.6 + 0.35 * Math.sin(this.stompWindup * 30));
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, STOMP_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = `rgba(230,40,50,${0.1 + 0.2 * (1 - this.stompWindup / STOMP_WINDUP)})`;
+      ctx.fillStyle = withAlpha(
+        DANGER.stompFill,
+        0.1 + 0.2 * (1 - this.stompWindup / STOMP_WINDUP),
+      );
       ctx.fill();
     }
     if (this.stompShock > 0) {

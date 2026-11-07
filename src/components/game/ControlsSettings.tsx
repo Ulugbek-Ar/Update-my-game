@@ -17,7 +17,7 @@ import {
 } from "@/game/settings";
 import { REALM_LABELS, floatingZone, placeControl, touchLabels } from "@/game/touchLayout";
 import { ButtonFace, StickView } from "./TouchControls";
-import { BTN_CLASS, heroVars, placedStyle, setTouchSettings } from "./touchUi";
+import { BTN_CLASS, buttonTheme, heroVars, placedStyle, setTouchSettings } from "./touchUi";
 import { TouchIconSvg } from "./TouchIcon";
 import { LayoutEditor } from "./LayoutEditor";
 import { KeyBindsPanel } from "./KeyBindsPanel";
@@ -144,7 +144,7 @@ export function ControlsPreview({ hero, ts }: { hero: Hero; ts: TouchSettings })
   }, []);
   const k = boxW / vp.w;
   const labels = touchLabels(hero);
-  const glow = HERO_THEME[hero].glow;
+  const glow = buttonTheme(hero).glow;
   // o'yin maydoni 16:9, chetlari — qora hoshiya (haqiqiy ekrandagidek)
   const gameW = Math.min(vp.w, (vp.h * 16) / 9);
   const zone = floatingZone(ts, vp);

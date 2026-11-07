@@ -21,7 +21,7 @@ import {
   type Viewport,
 } from "@/game/touchLayout";
 import { TouchIconSvg } from "./TouchIcon";
-import { BTN_CLASS, heroVars, placedStyle } from "./touchUi";
+import { BTN_CLASS, buttonTheme, heroVars, placedStyle } from "./touchUi";
 import { useSettings } from "./useSettings";
 import { useViewport } from "./useViewport";
 
@@ -164,7 +164,8 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
     };
   }, [ts.stickMode, game]);
 
-  const glow = HERO_THEME[game.hero].glow;
+  const theme = buttonTheme(game.hero);
+  const glow = theme.glow;
   const labels = touchLabels(game.hero);
   const button = (
     id: ControlId,
@@ -200,7 +201,7 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
   return (
     <div
       className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
-      style={{ ...heroVars(game.hero), opacity: ts.opacity / 100 }}
+      style={{ ...heroVars(game.hero, theme), opacity: ts.opacity / 100 }}
     >
       <StickView
         p={stickP}

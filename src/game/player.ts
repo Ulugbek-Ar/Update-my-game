@@ -3,6 +3,7 @@ import type { Input } from "./input";
 import { renderSprite, type SpritePalette } from "./sprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
+import type { ToneKind } from "./skinFx";
 
 export const PLAYER_MAX_HP = 6;
 const ATTACK_TIME = 0.24;
@@ -270,6 +271,8 @@ export class Player implements Body {
   fanPierce = false;
   /** Skin palitrasi (skins.ts; undefined — asl ranglar). Faqat ko'rinish */
   skin: SpritePalette | undefined = undefined;
+  /** Afsonaviy skin ovoz ohangi (skinFx.ts; null — yo'q). Faqat ovoz */
+  tone: ToneKind | null = null;
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -624,6 +627,7 @@ export class Player implements Body {
       this.attackTimer = 0;
       this.charge = 0;
       sfx.dash();
+      if (this.tone) sfx.skinTone(this.tone, 0.6);
       if (this.mage) {
         // teleport: bir zumda sakrab o'tadi, qisqa vaqt ko'rinmaydi va daxlsiz
         this.teleportFrom = { x: this.x, y: this.y };
@@ -657,6 +661,7 @@ export class Player implements Body {
           this.judged = true;
           this.slamT = 0;
         } else sfx.spin();
+        if (this.tone) sfx.skinTone(this.tone, 1.3);
         this.anim.set("attack", true);
         // Ovchi: kuchaytirilgan o'q — hamma dushmanni teshib o'tadi, 2x zarar
         if (this.hunter) this.shoot(true);
@@ -687,6 +692,7 @@ export class Player implements Body {
       this.hitSet.clear();
       if (this.gunner) sfx.gunshot();
       else sfx.attack();
+      if (this.tone) sfx.skinTone(this.tone);
       this.anim.set("attack", true);
       if (this.ranged) this.shoot(false);
     }

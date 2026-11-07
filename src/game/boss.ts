@@ -1,6 +1,8 @@
 import { Animator, Body, ROOM, updatePhysics, isFlashing, overlap } from "./animation";
 import type { Target } from "./player";
 import { renderSprite } from "./sprites";
+import { DANGER } from "./danger";
+import { withAlpha } from "./hero";
 import { renderRoots } from "./enemy";
 import {
   BERSERK_SPEED,
@@ -418,7 +420,7 @@ export class Boss implements Body {
       ctx.save();
       ctx.translate(this.x, this.y + 8);
       ctx.rotate(Math.atan2(this.rushDir.y, this.rushDir.x));
-      ctx.fillStyle = `rgba(255,90,30,${0.15 + 0.25 * k})`;
+      ctx.fillStyle = withAlpha(DANGER.fireLane, 0.15 + 0.25 * k);
       ctx.fillRect(0, -this.size / 2, len, this.size);
       ctx.strokeStyle = `rgba(255,200,60,${0.5 + 0.4 * Math.sin(this.rushWindup * 30)})`;
       ctx.lineWidth = 1.5;
@@ -428,7 +430,7 @@ export class Boss implements Body {
     for (const f of this.fires) {
       const a = Math.min(1, f.life * 2);
       const fl = Math.sin(time * 20 + f.x) * 1.5;
-      ctx.fillStyle = `rgba(255,90,30,${0.35 * a})`;
+      ctx.fillStyle = withAlpha(DANGER.fireLane, 0.35 * a);
       ctx.beginPath();
       ctx.arc(f.x, f.y, FIRE_R, 0, Math.PI * 2);
       ctx.fill();
@@ -444,7 +446,7 @@ export class Boss implements Body {
       if (e.stage === "warn") {
         // qayerga qadar yonishi oldindan ko'rinadi
         const m = EDGE_MAX;
-        ctx.strokeStyle = `rgba(255,140,40,${0.45 + 0.4 * Math.sin(time * 24)})`;
+        ctx.strokeStyle = withAlpha(DANGER.edgeWarn, 0.45 + 0.4 * Math.sin(time * 24));
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.strokeRect(
@@ -457,7 +459,7 @@ export class Boss implements Body {
       }
       if (e.m > 0.5) {
         const r = this.safeRect();
-        ctx.fillStyle = `rgba(255,70,20,${0.32 + 0.08 * Math.sin(time * 9)})`;
+        ctx.fillStyle = withAlpha(DANGER.fireEdge, 0.32 + 0.08 * Math.sin(time * 9));
         ctx.fillRect(ROOM.wall, ROOM.wall, ROOM.w - 2 * ROOM.wall, r.t - ROOM.wall);
         ctx.fillRect(ROOM.wall, r.b, ROOM.w - 2 * ROOM.wall, ROOM.h - ROOM.wall - r.b);
         ctx.fillRect(ROOM.wall, r.t, r.l - ROOM.wall, r.b - r.t);
@@ -484,19 +486,19 @@ export class Boss implements Body {
 
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
-      ctx.fillStyle = `rgba(178,50,56,${0.25 + 0.2 * Math.sin(this.spawn * 18)})`;
+      ctx.fillStyle = withAlpha(DANGER.spawn, 0.25 + 0.2 * Math.sin(this.spawn * 18));
       ctx.beginPath();
       ctx.arc(this.x, this.y + 8, 10 + 26 * k, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = k;
     }
     if (this.windup > 0) {
-      ctx.strokeStyle = `rgba(255,60,60,${0.4 + 0.4 * Math.sin(this.windup * 30)})`;
+      ctx.strokeStyle = withAlpha(DANGER.slam, 0.4 + 0.4 * Math.sin(this.windup * 30));
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y, SLAM_RADIUS, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = `rgba(255,60,60,${0.12 * (1 - this.windup / SLAM_WINDUP)})`;
+      ctx.fillStyle = withAlpha(DANGER.slam, 0.12 * (1 - this.windup / SLAM_WINDUP));
       ctx.fill();
     }
     if (this.shock > 0) {
@@ -872,7 +874,7 @@ export class Queen extends Boss {
         y = Math.round(b.y);
       if (b.warn > 0) {
         // yoriqlar: qayer muzlashi oldindan ko'rinadi
-        ctx.strokeStyle = `rgba(20,60,170,${0.5 + 0.4 * Math.sin(b.warn * 28)})`;
+        ctx.strokeStyle = withAlpha(DANGER.iceWarn, 0.5 + 0.4 * Math.sin(b.warn * 28));
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 3]);
         ctx.strokeRect(x + 0.5, y + 0.5, b.w, b.h);
@@ -896,7 +898,7 @@ export class Queen extends Boss {
         const k = 1 - bm.warn / BEAM_WARN;
         ctx.fillStyle = `rgba(127,233,255,${0.12 + 0.2 * k})`;
         ctx.fillRect(0, -BEAM_W / 2, BEAM_LEN, BEAM_W);
-        ctx.fillStyle = `rgba(20,60,170,${0.5 + 0.4 * Math.sin(time * 30)})`;
+        ctx.fillStyle = withAlpha(DANGER.iceWarn, 0.5 + 0.4 * Math.sin(time * 30));
         ctx.fillRect(0, -0.5, BEAM_LEN, 1);
       } else {
         ctx.fillStyle = "rgba(127,233,255,0.6)";
@@ -910,11 +912,11 @@ export class Queen extends Boss {
       if (s.warn > 0) {
         // och muz polda ham ko'rinishi uchun to'q ko'k chiziq
         const k = 1 - s.warn / SPIKE_WARN;
-        ctx.fillStyle = `rgba(30,90,210,${0.15 + 0.3 * k})`;
+        ctx.fillStyle = withAlpha(DANGER.iceFill, 0.15 + 0.3 * k);
         ctx.beginPath();
         ctx.arc(s.x, s.y + 4, SPIKE_RADIUS, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = `rgba(20,60,170,${0.6 + 0.35 * Math.sin(s.warn * 30)})`;
+        ctx.strokeStyle = withAlpha(DANGER.iceWarn, 0.6 + 0.35 * Math.sin(s.warn * 30));
         ctx.lineWidth = 1.5;
         ctx.stroke();
         continue;

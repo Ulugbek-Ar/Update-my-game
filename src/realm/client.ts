@@ -7,11 +7,13 @@
  * darhol ko'rsatiladi (net/predict.ts) va server bilan solishtirib tuzatiladi. Ulanish uzilsa —
  * o'sha joydan oflayn davom etadi; progress (inventar, topshiriqlar, oltin) yo'qolmaydi.
  */
-import { DEFAULT_SKIN, selectedSkin } from "@/game/skins";
+import { DEFAULT_SKIN, selectedSkin, skinLook } from "@/game/skins";
+import { heroBurst, heroTrail, type SkinLook } from "@/game/skinFx";
+import { nearestLook } from "./render";
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
-import { HERO_THEME, type Hero } from "@/game/hero";
+import type { Hero } from "@/game/hero";
 import { CRACK_LIFE, QUAKE_LIFE } from "@/game/paladinFx";
 import { playableHero } from "@/game/save";
 import { loadSettings, onSettingsChange } from "@/game/settings";
@@ -905,8 +907,10 @@ export class RealmClient {
     for (const m of this.sim.mobs)
       if (m.state === "attack" && (m.kind === "warden" || m.kind === "boar") && !m.dead)
         this.fx.burst(m.x - m.dirX * m.size * 0.5, m.y + m.size * 0.4, "#b8a888", 2, 25, 1);
-    if (this.me.p.dashing && !this.me.p.mage)
-      this.fx.trail(this.me.p.x, this.me.p.y + 2, HERO_THEME[this.hero].trail);
+    if (this.me.p.dashing && !this.me.p.mage) {
+      const look = this.lookOf(this.pid);
+      heroTrail(this.fx, look, this.me.p.x, this.me.p.y + 2, look.theme.trail);
+    }
     this.updateMusic();
     this.saveT += TICK_DT;
     if (this.view.panel === "none") this.playT += TICK_DT;
@@ -1122,9 +1126,21 @@ export class RealmClient {
     }
   }
 
+  /**
+   * O'yinchining skin ko'rinishi (o'zi yoki boshqa o'yinchi): skin id'si RealmPlayer'da — onlayn
+   * protocol'dagi skin maydonidan, qo'shimcha trafiksiz. Noma'lum — default.
+   */
+  lookOf(pid: string | undefined): SkinLook {
+    const rp = pid ? this.sim.players.get(pid) : undefined;
+    return rp ? skinLook(rp.hero, rp.skin || null) : skinLook(this.hero, null);
+  }
+
   private onEvent(e: RealmEvent) {
     const fx = this.fx;
     const mine = !("pid" in e) || e.pid === this.pid;
+    // qahramon effekti — egasining skin zarrachalari bilan
+    const hb = (look: SkinLook, x: number, y: number, col: string, n: number, sp = 60, sz = 2) =>
+      heroBurst(fx, look, x, y, col, n, sp, sz);
     switch (e.type) {
       case "guild":
         if (mine) this.onGuild(e.what);
@@ -1358,28 +1374,37 @@ export class RealmClient {
             "#9fd0ef",
           );
         return;
-      case "teleport":
-        fx.burst(e.fromX, e.fromY, "#1a1118", 14, 30, 3);
-        fx.burst(e.fromX, e.fromY, "#ff3b3b", 6, 70, 1);
-        fx.burst(e.x, e.y, "#ff5a3c", 10, 60, 1);
+      case "teleport": {
+        const L = this.lookOf(e.pid),
+          T = L.theme;
+        hb(L, e.fromX, e.fromY, T.shade, 14, 30, 3);
+        hb(L, e.fromX, e.fromY, T.spark, 6, 70, 1);
+        hb(L, e.x, e.y, T.hot, 10, 60, 1);
         return;
+      }
       case "heal":
         fx.burst(e.x, e.y, "#a6f08e", 8, 40, 1);
         return;
-      case "shot":
-        // to'pponcha og'zida uchqun va porox tutuni
-        fx.burst(e.x, e.y, "#ffe2a0", 4, 80, 1);
-        fx.burst(e.x, e.y - 2, "#a8a298", 3, 16, 2);
+      case "shot": {
+        // to'pponcha og'zida uchqun va porox tutuni (eng yaqin Merganning skinida)
+        const L = nearestLook(this.sim, e.x, e.y, "gunner");
+        hb(L, e.x, e.y, L.theme.glow, 4, 80, 1);
+        hb(L, e.x, e.y - 2, L.theme.hot, 3, 16, 2);
         return;
-      case "smoke":
-        fx.burst(e.x, e.y, "#b8b0a4", 18, 70, 3);
-        fx.burst(e.x, e.y, "#6e6860", 10, 40, 3);
+      }
+      case "smoke": {
+        const L = nearestLook(this.sim, e.x, e.y, "gunner");
+        hb(L, e.x, e.y, L.theme.core, 18, 70, 3);
+        hb(L, e.x, e.y, L.theme.spark, 10, 40, 3);
         return;
+      }
       case "shang": {
         // Paladin SHANG: yo'lak bo'ylab nurli yoriq va oq-oltin uchqunlar, uchida kichik zarb
-        const t = HERO_THEME.paladin;
+        const L = this.lookOf(e.pid),
+          t = L.theme;
         for (let i = 0; i <= 4; i++)
-          fx.burst(
+          hb(
+            L,
             e.x + e.fx * e.len * (i / 4),
             e.y + 6 + e.fy * e.len * (i / 4),
             i % 2 ? t.glow : t.accent,
@@ -1397,6 +1422,7 @@ export class RealmClient {
           len: e.len,
           life: CRACK_LIFE,
           seed: (e.x * 7 + e.y * 13) % 1000,
+          theme: t,
         });
         this.view.quakes.push({
           x: tx,
@@ -1404,32 +1430,49 @@ export class RealmClient {
           r: 18,
           life: QUAKE_LIFE * 0.6,
           max: QUAKE_LIFE * 0.6,
+          theme: t,
         });
-        fx.burst(tx, ty, t.accentDark, 6, 50, 2);
+        hb(L, tx, ty, t.accentDark, 6, 50, 2);
         fx.text(e.x + e.fx * 18, e.y - 22, "SHANG!", t.accent);
         fx.addShake(mine ? 0.3 : 0.1);
         if (mine) sfx.shang();
         return;
       }
-      case "judgment":
-        // OSMON HUKMI: 360° zarb to'lqini — oq yadro, oltin chekka
-        this.view.quakes.push({ x: e.x, y: e.y + 4, r: e.r, life: QUAKE_LIFE, max: QUAKE_LIFE });
-        fx.burst(e.x, e.y, HERO_THEME.paladin.glow, 24, 120, 2);
-        fx.burst(e.x, e.y, HERO_THEME.paladin.accent, 14, 80, 2);
-        fx.text(e.x, e.y - 26, "OSMON HUKMI!", HERO_THEME.paladin.accent);
+      case "judgment": {
+        // OSMON HUKMI: 360° zarb to'lqini — oq yadro, oltin chekka (egasining skinida)
+        const L = this.lookOf(e.pid),
+          t = L.theme;
+        this.view.quakes.push({
+          x: e.x,
+          y: e.y + 4,
+          r: e.r,
+          life: QUAKE_LIFE,
+          max: QUAKE_LIFE,
+          theme: t,
+        });
+        hb(L, e.x, e.y, t.glow, 24, 120, 2);
+        hb(L, e.x, e.y, t.accent, 14, 80, 2);
+        fx.text(e.x, e.y - 26, "OSMON HUKMI!", t.accent);
         fx.addShake(0.35);
         if (!mine) sfx.judgment();
         return;
-      case "vow":
-        fx.burst(e.x, e.y, HERO_THEME.paladin.accent, 16, 90, 2);
-        fx.text(e.x, e.y - 22, "QASAM!", HERO_THEME.paladin.accent);
-        if (mine) this.toast("Qasam: dushmanlar sizni nishonga oldi", HERO_THEME.paladin.accent);
+      }
+      case "vow": {
+        const L = this.lookOf(e.pid),
+          t = L.theme;
+        hb(L, e.x, e.y, t.accent, 16, 90, 2);
+        fx.text(e.x, e.y - 22, "QASAM!", t.accent);
+        if (mine) this.toast("Qasam: dushmanlar sizni nishonga oldi", t.accent);
         else sfx.vow();
         return;
-      case "aura":
-        fx.burst(e.x, e.y, HERO_THEME.paladin.glow, 12, 60, 1);
-        fx.text(e.x, e.y - 18, "AURA", HERO_THEME.paladin.glow);
+      }
+      case "aura": {
+        const L = this.lookOf(e.pid),
+          t = L.theme;
+        hb(L, e.x, e.y, t.glow, 12, 60, 1);
+        fx.text(e.x, e.y - 18, "AURA", t.glow);
         return;
+      }
     }
   }
 }

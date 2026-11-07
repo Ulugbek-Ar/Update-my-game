@@ -56,6 +56,11 @@ export interface Settings {
   shake: boolean;
   /** Zarar raqamlari (dushman ustidan uchadigan sonlar) */
   damageNumbers: boolean;
+  /**
+   * Effektlarni kamaytirish: zarrachalar kamroq, afsonaviy zarba shakllari va miltillash yo'q
+   * (sezgir odamlar va kuchsiz telefonlar uchun). O'yin mantig'i o'zgarmaydi.
+   */
+  reduceFx: boolean;
   /** Telefon (sensor) boshqaruvi */
   touch: TouchSettings;
   /** Kompyuter klaviaturasi */
@@ -84,6 +89,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sfx: 80,
   shake: true,
   damageNumbers: true,
+  reduceFx: false,
   touch: DEFAULT_TOUCH,
   keys: DEFAULT_KEYS,
 };
@@ -148,6 +154,7 @@ export function loadSettings(): Settings {
       sfx: volume(raw.sfx, DEFAULT_SETTINGS.sfx),
       shake: bool(raw.shake, DEFAULT_SETTINGS.shake),
       damageNumbers: bool(raw.damageNumbers, DEFAULT_SETTINGS.damageNumbers),
+      reduceFx: bool(raw.reduceFx, DEFAULT_SETTINGS.reduceFx),
       touch: sanitizeTouch(raw.touch),
       keys: sanitizeKeys(raw.keys),
     };

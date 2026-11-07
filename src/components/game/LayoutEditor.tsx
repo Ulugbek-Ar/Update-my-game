@@ -21,7 +21,7 @@ import {
 } from "@/game/touchLayout";
 import { lockGameKeys } from "@/game/input";
 import { ButtonFace, StickView } from "./TouchControls";
-import { BTN_CLASS, heroVars, placedStyle } from "./touchUi";
+import { BTN_CLASS, buttonTheme, heroVars, placedStyle } from "./touchUi";
 import { TouchIconSvg } from "./TouchIcon";
 import { useViewport } from "./useViewport";
 
@@ -48,7 +48,7 @@ export function LayoutEditor({ hero, onClose }: { hero: Hero; onClose: () => voi
   useEffect(() => lockGameKeys(), []);
 
   const labels = touchLabels(hero);
-  const glow = HERO_THEME[hero].glow;
+  const glow = buttonTheme(hero).glow;
   const safe = safeRect(vp);
   const gameW = Math.min(vp.w, (vp.h * 16) / 9);
 

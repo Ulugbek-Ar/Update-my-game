@@ -181,14 +181,14 @@ export function withAlpha(hex: string, a: number) {
 }
 
 /** Kuchli zarba zaryad halqasi: to'lguncha accent, to'lganda glow bilan miltillaydi. */
-export function chargeRingColor(h: Hero, full: boolean, time: number) {
-  const t = HERO_THEME[h];
+export function chargeRingColor(h: Hero | HeroTheme, full: boolean, time: number) {
+  const t = typeof h === "string" ? HERO_THEME[h] : h;
   return full ? withAlpha(t.glow, 0.6 + 0.4 * Math.sin(time * 30)) : withAlpha(t.accent, 0.65);
 }
 
-/** HUD'dagi dash va kuchli zarba chiziqlari: [tayyor, yig'ilmoqda, bo'sh]. */
-export function hudBarColors(h: Hero) {
-  const t = HERO_THEME[h];
+/** HUD'dagi dash va kuchli zarba chiziqlari: [tayyor, yig'ilmoqda, bo'sh]. Skin theme ham bo'ladi. */
+export function hudBarColors(h: Hero | HeroTheme) {
+  const t = typeof h === "string" ? HERO_THEME[h] : h;
   return { on: t.accent, off: t.accentDark, empty: t.empty };
 }
 

@@ -1,12 +1,17 @@
 /** Sensor boshqaruvi uchun umumiy yordamchilar (komponent emas). */
 import type { CSSProperties } from "react";
-import { HERO_THEME, withAlpha, type Hero } from "@/game/hero";
+import { withAlpha, type Hero, type HeroTheme } from "@/game/hero";
+import { skinLook } from "@/game/skins";
 import { loadSettings, saveSettings, type TouchSettings } from "@/game/settings";
 import type { Placed } from "@/game/touchLayout";
 
-export function heroVars(hero: Hero) {
-  // tugmalar tanlangan qahramon rangida (hero.ts: HERO_THEME)
-  const theme = HERO_THEME[hero];
+/** Tugmalar ranglari: tanlangan qahramonning faol skini (skinFx.ts; default — HERO_THEME) */
+export function buttonTheme(hero: Hero): HeroTheme {
+  return skinLook(hero).theme;
+}
+
+export function heroVars(hero: Hero, theme: HeroTheme = buttonTheme(hero)) {
+  // tugmalar tanlangan qahramon (skin) rangida
   return {
     "--hero-border": withAlpha(theme.accent, 0.7),
     "--hero-text": theme.uiText,

@@ -4,8 +4,10 @@
  */
 import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
-import { HERO_ROLE, HERO_THEME, hudBarColors, type Hero } from "@/game/hero";
-import { skinPalette } from "@/game/skins";
+import { HERO_ROLE, HERO_THEME, hudBarColors, withAlpha, type Hero } from "@/game/hero";
+import { DANGER } from "@/game/danger";
+import { skinLook, skinPalette } from "@/game/skins";
+import { renderFlair, type SkinLook } from "@/game/skinFx";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
 import {
@@ -236,6 +238,29 @@ interface Flake {
   vx: number;
   vy: number;
   ember: boolean;
+}
+
+/** O'yinchining skin ko'rinishi (skin id'si RealmPlayer'da; "" — default) */
+export function lookOf(rp: RealmPlayer): SkinLook {
+  return skinLook(rp.hero, rp.skin || null);
+}
+
+/**
+ * Egasi yuborilmaydigan effekt (o'q otilishi, tutun) uchun: shu joyga eng yaqin shu qahramondagi
+ * o'yinchining skini — qo'shimcha trafiksiz. Topilmasa — default.
+ */
+export function nearestLook(sim: RealmSim, x: number, y: number, hero: Hero): SkinLook {
+  let best: RealmPlayer | null = null,
+    bd = Infinity;
+  for (const rp of sim.players.values()) {
+    if (rp.hero !== hero) continue;
+    const d = Math.hypot(rp.p.x - x, rp.p.y - y);
+    if (d < bd) {
+      bd = d;
+      best = rp;
+    }
+  }
+  return best ? lookOf(best) : skinLook(hero, null);
 }
 
 export class RealmRenderer {
@@ -557,10 +582,13 @@ export class RealmRenderer {
           c.save();
           c.translate(Math.round(x - p.x), Math.round(y - p.y));
           // Paladin QASAMi: oltin aura (boshqalar ham ko'radi — tank bossni ushlab turibdi)
-          if (p.paladin && p.vowing && !p.dead) renderVowAura(c, p, v.time);
+          const look = lookOf(rp);
+          if (p.paladin && p.vowing && !p.dead) renderVowAura(c, p, v.time, look.theme);
           // skin: qayta tug'ilishda Player yangilanadi — har chizishda RealmPlayer'dan
           p.skin = rp.skin ? skinPalette(rp.hero, rp.skin) : undefined;
           p.render(c);
+          // afsonaviy skin animatsiyasi — boshqalar ham ko'radi
+          renderFlair(c, look, p, v.time, v.fx.isReduced());
           c.restore();
         },
       });
@@ -600,7 +628,7 @@ export class RealmRenderer {
     for (const g of sim.rings) {
       if (!inView(g.x, g.y, camX, camY, RING_MAX + 20)) continue;
       const a = Math.max(0, 1 - g.r / RING_MAX);
-      c.strokeStyle = `rgba(255,122,42,${0.85 * a})`;
+      c.strokeStyle = withAlpha(DANGER.quakeRing, 0.85 * a);
       c.lineWidth = RING_W;
       c.beginPath();
       c.arc(g.x, g.y, g.r, 0, Math.PI * 2);
@@ -613,8 +641,9 @@ export class RealmRenderer {
     if (me.p.paladin && !me.p.dead) {
       c.save();
       c.translate(Math.round(ix - me.p.x), Math.round(iy - me.p.y));
-      renderSkyColumn(c, me.p, v.time, camY - (iy - me.p.y));
-      renderWindupSparks(c, me.p, v.time);
+      const mt = lookOf(me).theme;
+      renderSkyColumn(c, me.p, v.time, camY - (iy - me.p.y), mt);
+      renderWindupSparks(c, me.p, v.time, mt);
       c.restore();
     }
     for (const l of labels) l();
@@ -623,10 +652,11 @@ export class RealmRenderer {
     for (const sm of sim.smokes) {
       if (!inView(sm.x, sm.y, camX, camY, 40)) continue;
       const a = Math.min(1, sm.life * 1.5, (SMOKE_TIME - sm.life) * 6);
+      const st = nearestLook(sim, sm.x, sm.y, "gunner").theme;
       for (let k = 0; k < 8; k++) {
         const ang = v.time * 0.6 + k * 0.8;
         const r = k === 0 ? 0 : SMOKE_R * 0.5;
-        c.fillStyle = `rgba(${k % 2 ? "120,114,106" : "168,160,150"},${0.34 * a})`;
+        c.fillStyle = withAlpha(k % 2 ? st.inner : st.rim, 0.34 * a);
         c.beginPath();
         c.arc(sm.x + Math.cos(ang) * r, sm.y + Math.sin(ang) * r * 0.75, SMOKE_R * 0.55, 0, 7);
         c.fill();
@@ -635,25 +665,32 @@ export class RealmRenderer {
 
     // o'q va sharlar
     for (const b of sim.projectiles) {
-      if (b.wave) renderShockwave(c, b);
+      // snaryad egasining skini (onlayn: boshqa o'yinchi ham)
+      const owner = sim.players.get(b.owner);
+      const ot = owner ? lookOf(owner).theme : null;
+      if (b.wave) renderShockwave(c, b, ot ?? undefined);
       else if (b.bullet) {
         // Mergan o'qi: yaltiroq mis o'q, orqasida qisqa iz
+        const t = ot ?? HERO_THEME.gunner;
         const l = Math.hypot(b.vx, b.vy) || 1;
         for (let k = 2; k <= 5; k++)
-          px(c, k < 4 ? "#d9a441" : "#8a5a2a", b.x - (b.vx / l) * k, b.y - (b.vy / l) * k, 1, 1);
-        px(c, "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
-        px(c, "#ffe2a0", b.x - 1, b.y - 1, 2, 2);
+          px(c, k < 4 ? t.accent : t.accentDark, b.x - (b.vx / l) * k, b.y - (b.vy / l) * k, 1, 1);
+        px(c, ot?.ink ?? "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
+        px(c, t.glow, b.x - 1, b.y - 1, 2, 2);
       } else if (b.arrow) {
         const a = Math.atan2(b.vy, b.vx);
         c.save();
         c.translate(b.x, b.y);
         c.rotate(a);
-        px(c, "#7a4a24", -6, -0.5, 8, 1);
-        px(c, "#d9d4e0", 2, -1, 3, 2);
-        px(c, HERO_THEME.hunter.accent, -7, -1, 2, 2);
+        px(c, ot?.core ?? "#7a4a24", -6, -0.5, 8, 1);
+        px(c, ot?.glint ?? "#d9d4e0", 2, -1, 3, 2);
+        px(c, ot?.accent ?? HERO_THEME.hunter.accent, -7, -1, 2, 2);
         c.restore();
       } else {
-        const col = HERO_THEME[me.hero === "mage" ? "mage" : "knight"].accent;
+        const col =
+          owner?.hero === "mage" && ot
+            ? ot.accent
+            : HERO_THEME[me.hero === "mage" ? "mage" : "knight"].accent;
         px(c, "#000", b.x - b.size / 2 - 1, b.y - b.size / 2 - 1, b.size + 2, b.size + 2);
         px(c, col, b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
         px(c, "#ffffff", b.x - 1, b.y - 1, 2, 2);
@@ -1130,7 +1167,8 @@ export class RealmRenderer {
     const { sim, me } = v;
     const p = me.p;
     for (let i = 0; i < p.maxHp; i++) heart(c, 4 + i * 10, 4, i < p.hp ? "#ff4d6d" : "#3b2a3a");
-    const { on, off } = hudBarColors(me.hero);
+    const mt = lookOf(me).theme;
+    const { on, off } = hudBarColors(mt);
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 14, 32, 3);
     px(c, k >= 1 ? on : off, 5, 15, 30 * k, 1);
@@ -1146,7 +1184,7 @@ export class RealmRenderer {
     );
     if (p.gunner) {
       // Mergan: barabandagi o'qlar (otilgani xira) va qayta o'qlash chizig'i — chiziqlar yonida
-      const t = HERO_THEME.gunner;
+      const t = mt;
       for (let i = 0; i < p.ammoMax; i++) {
         const full = i < p.ammo;
         px(c, "#000", 40 + i * 5, 13, 4, 7);
@@ -1162,7 +1200,7 @@ export class RealmRenderer {
     }
     if (p.paladin) {
       // Paladin: QASAM chizig'i (faol — qolgan vaqt) chiziqlar yonida
-      const t = HERO_THEME.paladin;
+      const t = mt;
       const vk = p.vowing
         ? p.vowT / VOW_TIME
         : Math.max(0, Math.min(1, 1 - p.vowCooldown / p.vowCd));
@@ -1796,6 +1834,15 @@ function inView(x: number, y: number, camX: number, camY: number, pad = 32) {
 }
 
 /** Boshqa o'yinchi ustida ism, jon chizig'i va chat iborasi */
+/** Afsonaviy skin belgisi: 5x5 oltin olmos (ism yonida) */
+export function legendBadge(c: CanvasRenderingContext2D, x: number, y: number) {
+  px(c, "#000", x, y - 1, 3, 5);
+  px(c, "#000", x - 1, y, 5, 3);
+  px(c, "#ffcc33", x + 1, y, 1, 3);
+  px(c, "#ffcc33", x, y + 1, 3, 1);
+  px(c, "#fff6c8", x + 1, y + 1, 1, 1);
+}
+
 function playerLabel(
   c: CanvasRenderingContext2D,
   rp: RealmPlayer,
@@ -1826,7 +1873,11 @@ function playerLabel(
       drawEmblemMini(c, guild.emblem, Math.round(left), top - 6);
       text(c, tag, left + MINI_W + 1, top, 4, "#ffd97a", "left");
     }
-    text(c, name, left + tw, top, 4, HERO_THEME[rp.hero].uiText, "left");
+    // ism skin rangida; afsonaviy skin — ism o'ng tomonida kichik oltin olmos belgi
+    const look = lookOf(rp);
+    const badge = look.tier === "legendary" ? 6 : 0;
+    text(c, name, left + tw, top, 4, look.theme.uiText, "left");
+    if (badge) legendBadge(c, Math.round(x + nw / 2 + 2), top - 4);
     // rol belgisi ism yonida (TANK, JANGCHI, SEHRGAR, UZOQDAN)
     c.font = `4px ${FONT}`;
     drawRoleIcon(c, HERO_ROLE[rp.hero], x - nw / 2 - 10, top - 6);
@@ -1834,7 +1885,7 @@ function playerLabel(
     if (level > 0) {
       const lt = String(level);
       const lw = Math.ceil(c.measureText(lt).width) + 2;
-      const lx = Math.round(x + nw / 2 + 3);
+      const lx = Math.round(x + nw / 2 + 3 + badge);
       px(c, "#000", lx - 1, top - 6, lw + 2, 8);
       px(c, "#ffcc33", lx, top - 5, lw, 6);
       c.textAlign = "left";

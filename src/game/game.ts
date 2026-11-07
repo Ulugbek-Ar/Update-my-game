@@ -63,7 +63,7 @@ import {
   type Crack,
   type Quake,
 } from "./paladinFx";
-import { HERO_THEME, bestKeys, chargeRingColor, hudBarColors, withAlpha, type Hero } from "./hero";
+import { bestKeys, chargeRingColor, hudBarColors, withAlpha, type Hero } from "./hero";
 import { loadPlayableHero, playableHero } from "./save";
 import { unlockAchievement, type Achievement, type AchievementId } from "./achievements";
 import { dailyRandoms, saveDaily } from "./daily";
@@ -93,7 +93,15 @@ import {
   type TagCounts,
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
-import { skinPalette } from "./skins";
+import { skinLook, skinPalette } from "./skins";
+import {
+  defaultLook,
+  heroBurst,
+  heroImpact,
+  heroTrail,
+  renderFlair,
+  type SkinLook,
+} from "./skinFx";
 import {
   COIN_RAIN,
   CRIT_AVG,
@@ -478,6 +486,8 @@ function savePowers(p: Player): Powers {
 export class Game {
   input = new Input();
   player = new Player();
+  /** Faol skin ko'rinishi (applySkin): effekt ranglari va shakllari */
+  look: SkinLook = defaultLook("knight");
   enemies: Enemy[] = [];
   boss: Boss | null = null;
   shots: Shot[] = [];
@@ -667,10 +677,40 @@ export class Game {
     this.reset();
   }
 
+  /**
+   * Tanlangan skin: palitra (sprite), ko'rinish (effekt ranglari va shakllari) va ovoz ohangi.
+   * Faqat ko'rinish — Player raqamlari (zarar, tezlik, cooldown, maydon) o'zgarmaydi.
+   */
+  applySkin() {
+    this.player.skin = skinPalette(this.hero);
+    this.look = skinLook(this.hero);
+    this.player.tone = this.look.fx.tone;
+  }
+
+  /** Faol skinning qobiliyat ranglari (skinFx.ts: SkinTheme) */
+  get theme() {
+    return this.look.theme;
+  }
+
+  /** Qahramon effekti portlashi — skin zarrachalari bilan (skinFx.ts) */
+  private hb(x: number, y: number, color: string, n: number, speed = 60, size = 2) {
+    heroBurst(this.fx, this.look, x, y, color, n, speed, size);
+  }
+
+  /** Default skinda — asl (v3.6) rang, boshqa skinda — skin rangi */
+  private skinned(original: string, skin: string) {
+    return this.look.tier === "default" ? original : skin;
+  }
+
+  /** Qahramon harakat izi — skin izi bilan */
+  private ht(x: number, y: number, color: string) {
+    heroTrail(this.fx, this.look, x, y, color);
+  }
+
   /** Boshlang'ich holat: 1-to'lqin, HP to'liq. */
   reset() {
     this.player = new Player(this.hero);
-    this.player.skin = skinPalette(this.hero);
+    this.applySkin();
     const shop = loadShop();
     applyShop(this.player, shop);
     this.dropBonus = dropBonus(shop);
@@ -1033,7 +1073,7 @@ export class Game {
     const s = this.chStart;
     if (!s) return this.reset();
     this.player = new Player(this.hero);
-    this.player.skin = skinPalette(this.hero);
+    this.applySkin();
     Object.assign(this.player, s.powers);
     this.score = s.score;
     this.tagCounts = { ...s.tags };
@@ -1440,7 +1480,7 @@ export class Game {
       this.fx.text(p.x, p.y - 26, `${def.name} 2/3: ${def.two}`, def.color);
       return;
     }
-    const theme = HERO_THEME[this.hero];
+    const theme = this.theme;
     this.synNote = { tag, timer: SYN_NOTE };
     this.fx.text(p.x, p.y - 26, "SINERGIYA!", theme.accent);
     this.fx.burst(p.x, p.y, theme.accent, 30, 110, 2);
@@ -1879,7 +1919,7 @@ export class Game {
         const i = this.traps.findIndex((t) => t.snapT < 0);
         this.traps.splice(i, 1);
       }
-      this.fx.burst(p.x, p.y + 6, "#9a9ea8", 6, 40, 1);
+      this.hb(p.x, p.y + 6, this.theme.rim, 6, 40, 1);
       this.fx.text(p.x, p.y - 16, "TUZOQ", "#c9a26b");
     }
     if (p.trapDenied) {
@@ -1890,8 +1930,8 @@ export class Game {
       for (const s of p.smokes) {
         this.smokes.push({ ...s, life: SMOKE_LIFE });
         this.hideAt = { x: s.x, y: s.y };
-        this.fx.burst(s.x, s.y, "#b8b0a4", 18, 70, 3);
-        this.fx.burst(s.x, s.y, "#6e6860", 10, 40, 3);
+        this.hb(s.x, s.y, this.theme.core, 18, 70, 3);
+        this.hb(s.x, s.y, this.theme.spark, 10, 40, 3);
       }
       p.smokes = [];
       this.fx.text(p.x, p.y - 16, "TUTUN", "#d9d2c6");
@@ -1911,10 +1951,11 @@ export class Game {
     if (p.chill > 0) this.waveChilled = true;
     if (p.teleportFrom) {
       // teleport: chiqqan joyda qora tutun, ikkala joyda qizil uchqunlar
-      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#1a1118", 14, 30, 3);
-      this.fx.burst(p.teleportFrom.x, p.teleportFrom.y, "#ff3b3b", 6, 70, 1);
-      this.fx.burst(p.x, p.y, "#2b1c2e", 8, 25, 3);
-      this.fx.burst(p.x, p.y, "#ff5a3c", 10, 60, 1);
+      const T = this.theme;
+      this.hb(p.teleportFrom.x, p.teleportFrom.y, T.shade, 14, 30, 3);
+      this.hb(p.teleportFrom.x, p.teleportFrom.y, T.spark, 6, 70, 1);
+      this.hb(p.x, p.y, T.mist, 8, 25, 3);
+      this.hb(p.x, p.y, T.hot, 10, 60, 1);
       if (this.hasArtifact("flame"))
         for (const at of [p.teleportFrom, { x: p.x, y: p.y }])
           for (let k = 0; k < 3; k++)
@@ -1954,7 +1995,7 @@ export class Game {
       }
     }
     // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
-    if (p.dashing && !p.mage) this.fx.trail(p.x, p.y + 2, HERO_THEME[this.hero].trail);
+    if (p.dashing && !p.mage) this.ht(p.x, p.y + 2, this.theme.trail);
     if (p.bolts.length) {
       // OXIRGI O'Q: barabandagi oxirgi o'q kuchliroq
       if (p.gunner && p.ammo === 0 && this.hasArtifact("lastshot")) {
@@ -2088,27 +2129,23 @@ export class Game {
     if (this.bolts.length) {
       const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
       if (boss?.active) targets.push(boss);
+      const T = this.theme;
       this.bolts = this.bolts.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         if (b.bullet || b.wave) {
           // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi (Paladin to'lqini — oq-oltin nur)
-          if (Math.random() < 0.5)
-            this.fx.trail(
-              b.x,
-              b.y,
-              b.wave ? withAlpha(HERO_THEME.paladin.glow, 0.6) : "rgba(255,226,160,0.55)",
-            );
+          if (Math.random() < 0.5) this.ht(b.x, b.y, withAlpha(T.glow, b.wave ? 0.6 : 0.55));
           b.range = (b.range ?? Infinity) - Math.hypot(b.vx, b.vy) * dt;
           if (b.range <= 0) {
-            this.fx.burst(b.x, b.y, "#9a948a", 3, 20, 1);
+            this.hb(b.x, b.y, T.mist, 3, 20, 1);
             return false;
           }
         }
         // Sehrgar shari — qora tutunli iz, kuchli o'q — yashil iz
-        else if (!b.arrow && Math.random() < 0.6) this.fx.trail(b.x, b.y, "rgba(26,17,24,0.75)");
+        else if (!b.arrow && Math.random() < 0.6) this.ht(b.x, b.y, withAlpha(T.shade, 0.75));
         if (b.arrow && (b.power ?? 1) > 1 && Math.random() < 0.7)
-          this.fx.trail(b.x, b.y, "rgba(166,240,142,0.7)");
+          this.ht(b.x, b.y, withAlpha(T.accent, 0.7));
         const body = { x: b.x, y: b.y, size: b.size } as Body;
         const t = targets.find((t) => !t.dead && !b.hit.includes(t) && overlap(body, t));
         // qalqon oldidan kelgan sharni to'sadi (kuchli o'q teshib 1 zarar beradi)
@@ -2137,20 +2174,15 @@ export class Game {
         if (t) {
           sfx.hit();
           this.fx.addShake(0.06);
-          this.fx.burst(
+          this.hb(
             b.x,
             b.y,
-            b.wave
-              ? HERO_THEME.paladin.accent
-              : b.bullet
-                ? "#ffe2a0"
-                : b.arrow
-                  ? "#c9a26b"
-                  : "#ff5a3c",
+            b.wave ? T.accent : b.bullet ? T.glow : b.arrow ? T.spark : T.hot,
             6,
             60,
             1,
           );
+          heroImpact(this.fx, this.look, b.x, b.y);
           if (b.poison && !t.dead) {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
@@ -2165,7 +2197,7 @@ export class Game {
         this.shots = this.shots.filter((s) => !overlap(body, s as unknown as Body));
         if (this.shots.length < n) {
           this.score += 5 * (n - this.shots.length);
-          this.fx.burst(b.x, b.y, b.arrow ? "#7a4a24" : "#a3192a", 6, 50);
+          this.hb(b.x, b.y, b.arrow || p.mage ? T.core : this.skinned("#a3192a", T.core), 6, 50);
           // zarb to'lqini o'qlarni yutib, uchishda davom etadi
           return !!b.wave;
         }
@@ -2193,20 +2225,14 @@ export class Game {
           // Paladin zarbasi og'irroq: uzunroq hit-stop
           this.freeze = p.paladin ? 0.07 : 0.045;
           this.fx.addShake(p.spinning ? 0.14 : 0.08);
-          this.fx.burst(
-            t.x,
-            t.y,
-            p.mage ? "#ff3b3b" : p.spinning ? HERO_THEME[this.hero].accent : "#ffffff",
-            5,
-            60,
-            1,
-          );
+          this.hb(t.x, t.y, p.spinning && !p.mage ? this.theme.accent : this.theme.spark, 5, 60, 1);
+          heroImpact(this.fx, this.look, t.x, t.y);
           // Paladin: SHANG kuchli itaradi, OSMON HUKMI gangitadi (boss — sekinlashadi)
           const heavy = p.paladin;
           if (heavy && p.spinning && !t.dead) {
             if (t instanceof Enemy) t.stun = Math.max(t.stun, SKY_STUN);
             else t.slow = Math.max(t.slow, SKY_STUN);
-            this.fx.text(t.x, t.y - 14, "GANGIDI", HERO_THEME.paladin.glow);
+            this.fx.text(t.x, t.y - 14, "GANGIDI", this.theme.glow);
           }
           const wasAlive = !t.dead;
           if (this.hasArtifact("slowring") && p.mage && p.spinning && !t.dead)
@@ -2442,7 +2468,8 @@ export class Game {
    */
   private updatePaladin(dt: number) {
     const p = this.player;
-    const { accent, accentDark, glow } = HERO_THEME.paladin;
+    const T = this.theme;
+    const { accent, accentDark, glow } = T;
     for (const k of this.cracks) k.life -= dt;
     this.cracks = this.cracks.filter((k) => k.life > 0);
     for (const q of this.quakes) q.life -= dt;
@@ -2450,7 +2477,7 @@ export class Game {
     if (p.slamT > 0 && Math.random() < 0.6) {
       // qilich boshi uzra porlaydi: oq-oltin uchqunlar (muqaddas nur)
       const col = Math.random() < 0.5 ? accent : glow;
-      this.fx.burst(p.x + (Math.random() - 0.5) * 10, p.y - 26, col, 1, 40, 1);
+      this.hb(p.x + (Math.random() - 0.5) * 10, p.y - 26, col, 1, 40, 1);
     }
     if (p.slammed) {
       p.slammed = false;
@@ -2470,17 +2497,11 @@ export class Game {
       this.quakes.push({ x: tx, y: ty, r: 18, life: QUAKE_LIFE * 0.6, max: QUAKE_LIFE * 0.6 });
       for (let i = 0; i <= 4; i++) {
         const k = i / 4;
-        this.fx.burst(
-          p.x + p.fx * len * k,
-          p.y + 6 + p.fy * len * k,
-          i % 2 ? glow : accent,
-          3,
-          70,
-          1,
-        );
+        this.hb(p.x + p.fx * len * k, p.y + 6 + p.fy * len * k, i % 2 ? glow : accent, 3, 70, 1);
       }
-      this.fx.burst(tx, ty, accentDark, 6, 50, 2);
-      this.fx.burst(tx, ty, "#ffffff", 3, 40, 1);
+      this.hb(tx, ty, accentDark, 6, 50, 2);
+      this.hb(tx, ty, T.edge, 3, 40, 1);
+      heroImpact(this.fx, this.look, tx, ty);
       this.fx.addShake(0.3);
       this.freeze = Math.max(this.freeze, 0.05);
       // yozuv devor yonida ham ekranga sig'adi
@@ -2489,15 +2510,15 @@ export class Game {
     if (p.judged) {
       p.judged = false;
       this.quakes.push({ x: p.x, y: p.y + 4, r: SKY_RADIUS, life: QUAKE_LIFE, max: QUAKE_LIFE });
-      this.fx.burst(p.x, p.y, glow, 24, 120, 2);
-      this.fx.burst(p.x, p.y, accent, 14, 80, 2);
+      this.hb(p.x, p.y, glow, 24, 120, 2);
+      this.hb(p.x, p.y, accent, 14, 80, 2);
       this.fx.addShake(0.45);
       this.freeze = Math.max(this.freeze, 0.06);
       this.fx.text(fitX(p.x, 50), Math.max(30, p.y - 26), "OSMON HUKMI!", accent);
     }
     if (p.vowed) {
       p.vowed = false;
-      this.fx.burst(p.x, p.y, accent, 16, 90, 2);
+      this.hb(p.x, p.y, accent, 16, 90, 2);
       this.fx.text(p.x, p.y - 22, "QASAM!", accent);
       this.threat.taunt(PLAYER_ID, p.vowT);
       // atrofdagilar Paladinga qarab buriladi (bir kishilik o'yinda ham nishon — Paladin)
@@ -2511,13 +2532,13 @@ export class Game {
     }
     if (p.auraPulse) {
       p.auraPulse = false;
-      this.fx.burst(p.x, p.y, glow, 12, 60, 1);
+      this.hb(p.x, p.y, glow, 12, 60, 1);
       this.fx.text(p.x, p.y - 18, "+1 YURAK", glow);
     }
     if (p.absorbed) {
       p.absorbed = false;
       if (this.hasArtifact("vowlight") && p.vowing) this.vowLight();
-      this.fx.burst(p.x, p.y - 4, glow, 6, 60, 1);
+      this.hb(p.x, p.y - 4, glow, 6, 60, 1);
       this.fx.text(p.x, p.y - 18, "BLOK", glow);
     }
     if (p.dashing) {
@@ -2530,7 +2551,7 @@ export class Game {
         p.rammed.add(t);
         sfx.hit();
         this.fx.addShake(0.1);
-        this.fx.burst(t.x, t.y, accent, 6, 70, 1);
+        this.hb(t.x, t.y, accent, 6, 70, 1);
         this.strike(t, HAMLA_DMG * p.damage, 300);
       }
     }
@@ -2621,9 +2642,10 @@ export class Game {
 
   /** O'q otildi: to'pponcha og'zida uchqun va kulrang porox tutuni. */
   private muzzle(b: Bolt) {
-    this.fx.burst(b.x, b.y, "#ffe2a0", 4, 80, 1);
-    this.fx.burst(b.x, b.y, "#d9a441", 2, 50, 1);
-    this.fx.burst(b.x, b.y - 2, "#a8a298", 3, 16, 2);
+    const T = this.theme;
+    this.hb(b.x, b.y, T.glow, 4, 80, 1);
+    this.hb(b.x, b.y, T.accent, 2, 50, 1);
+    this.hb(b.x, b.y - 2, T.hot, 3, 16, 2);
   }
 
   /** O'q devorga tegdi: tegilgan o'q bo'yicha qaytadi (yana tegishi mumkin). */
@@ -2642,7 +2664,7 @@ export class Game {
     b.bounce = (b.bounce ?? 1) - 1;
     b.hit = [];
     sfx.ricochet();
-    this.fx.burst(b.x, b.y, "#ffe2a0", 6, 70, 1);
+    this.hb(b.x, b.y, this.theme.glow, 6, 70, 1);
     return true;
   }
 
@@ -2707,7 +2729,7 @@ export class Game {
         t.x = e.x;
         t.y = e.y + e.size / 2 - 2;
         sfx.block();
-        this.fx.burst(e.x, e.y + 4, "#9a9ea8", 8, 60, 1);
+        this.hb(e.x, e.y + 4, this.theme.rim, 8, 60, 1);
         this.fx.text(e.x, e.y - 14, "QOTDI!", "#c9a26b");
       }
     }
@@ -3148,11 +3170,12 @@ export class Game {
   private renderSlash(c: CanvasRenderingContext2D) {
     const p = this.player;
     if (p.dead) return;
+    const T = this.theme;
     // kuchli zarba yig'ilishi: o'yinchi atrofida to'lib boruvchi halqa
     if (p.charge > 0.12) {
       const k = Math.min(1, p.charge / p.chargeTime);
       const full = k >= 1;
-      c.strokeStyle = chargeRingColor(this.hero, full, this.time);
+      c.strokeStyle = chargeRingColor(T, full, this.time);
       c.lineWidth = full ? 2 : 1;
       c.beginPath();
       c.arc(p.x, p.y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
@@ -3166,12 +3189,12 @@ export class Game {
       // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
       const r = p.reach * 1.2 * (1.15 - k * 0.5);
-      c.strokeStyle = `rgba(20,10,16,${0.3 + 0.5 * k})`;
+      c.strokeStyle = withAlpha(T.ink, 0.3 + 0.5 * k);
       c.lineWidth = 4;
       c.beginPath();
       c.arc(p.x, p.y, r + 1, 0, Math.PI * 2);
       c.stroke();
-      c.strokeStyle = `rgba(214,40,50,${0.4 + 0.6 * k})`;
+      c.strokeStyle = withAlpha(T.edge, 0.4 + 0.6 * k);
       c.lineWidth = 2;
       c.beginPath();
       // to'lqinsimon chekka
@@ -3182,7 +3205,7 @@ export class Game {
         else c.moveTo(p.x + Math.cos(a) * rr, p.y + Math.sin(a) * rr);
       }
       c.stroke();
-      c.strokeStyle = `rgba(255,120,80,${0.2 + 0.4 * k})`;
+      c.strokeStyle = withAlpha(T.inner, 0.2 + 0.4 * k);
       c.lineWidth = 1;
       c.beginPath();
       c.arc(p.x, p.y, r * 0.7, 0, Math.PI * 2);
@@ -3193,12 +3216,12 @@ export class Game {
       const k = p.spinTimer / SPIN_TIME;
       const r = p.reach * 1.2;
       const a0 = (1 - k) * Math.PI * 4;
-      c.strokeStyle = `rgba(255,255,255,${0.85 * k})`;
+      c.strokeStyle = withAlpha(T.edge, 0.85 * k);
       c.lineWidth = 2;
       c.beginPath();
       c.arc(p.x, p.y, r, a0, a0 + Math.PI * 1.6);
       c.stroke();
-      c.strokeStyle = withAlpha(HERO_THEME[this.hero].accent, 0.6 * k);
+      c.strokeStyle = withAlpha(T.inner, 0.6 * k);
       c.lineWidth = 1;
       c.beginPath();
       c.arc(p.x, p.y, r * 0.75, 0, Math.PI * 2);
@@ -3208,12 +3231,12 @@ export class Game {
     if (p.attackTimer <= 0 || p.ranged) return;
     const k = p.attackTimer / 0.24;
     const ang = Math.atan2(p.fy, p.fx);
-    c.strokeStyle = `rgba(255,255,255,${0.75 * k})`;
+    c.strokeStyle = withAlpha(T.edge, 0.75 * k);
     c.lineWidth = 2;
     c.beginPath();
     c.arc(p.x, p.y, p.reach * 0.95, ang - 1.1 + (1 - k) * 0.6, ang + 1.1 - (1 - k) * 0.2);
     c.stroke();
-    c.strokeStyle = `rgba(104,205,228,${0.5 * k})`;
+    c.strokeStyle = withAlpha(T.inner, 0.5 * k);
     c.lineWidth = 1;
     c.beginPath();
     c.arc(p.x, p.y, p.reach * 0.7, ang - 0.9, ang + 0.9);
@@ -3275,8 +3298,8 @@ export class Game {
     for (const t of this.traps) if (t.snapT < 0) this.renderTrap(c, t);
     for (const e of this.enemies) e.renderFloor(c);
     // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
-    for (const k of this.cracks) renderCrack(c, k);
-    for (const q of this.quakes) renderQuake(c, q);
+    for (const k of this.cracks) renderCrack(c, k, this.theme);
+    for (const q of this.quakes) renderQuake(c, q, this.theme);
     // OLOV IZI: yerdagi kichik alangalar
     for (const f of this.flames) {
       const fl = Math.floor(this.time * 12 + f.x) % 2;
@@ -3314,7 +3337,7 @@ export class Game {
       c.restore();
     }
     if (this.player.paladin && this.player.vowing && !this.player.dead)
-      renderVowAura(c, this.player, this.time);
+      renderVowAura(c, this.player, this.time, this.theme);
 
     // chuqurlik bo'yicha tartib
     const p = this.player;
@@ -3335,7 +3358,7 @@ export class Game {
         if (e.slow > 0 && !e.dead && !p.gunner && !p.paladin) this.frost(c, e.x, e.y, e.size);
         // Paladin OSMON HUKMIdan gangigan: boshi uzra oq-oltin yulduzchalar
         if (p.paladin && (e.stun > 0 || e.slow > 0) && !e.dead)
-          renderDazeStars(c, e.x, e.y - e.size / 2 - 7, this.time);
+          renderDazeStars(c, e.x, e.y - e.size / 2 - 7, this.time, this.theme);
       },
     }));
     const boss = this.boss;
@@ -3349,7 +3372,7 @@ export class Game {
           boss.render(c);
           // Paladin: Boss OSMON HUKMIdan sekinlashdi — muz emas, gangish yulduzchalari
           if (boss.slow > 0 && !boss.dead && p.paladin)
-            renderDazeStars(c, boss.x, boss.y - boss.size / 2 - 6, this.time);
+            renderDazeStars(c, boss.x, boss.y - boss.size / 2 - 6, this.time, this.theme);
           else if (boss.slow > 0 && !boss.dead && !p.gunner)
             this.frost(c, boss.x, boss.y, boss.size);
         },
@@ -3368,6 +3391,8 @@ export class Game {
         r: () => {
           if (!p.dead) this.shadow(c, p.x, p.y + 12, 12);
           p.render(c);
+          // afsonaviy skin: turgandagi harakat va hujum flourishi
+          renderFlair(c, this.look, p, this.time, this.fx.isReduced());
           // sovuq nafasdan sekinlashgan
           if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);
           if (p.encased) this.renderIceBlock(c);
@@ -3377,8 +3402,8 @@ export class Game {
 
     this.renderSlash(c);
     if (this.player.paladin && !this.player.dead) {
-      renderSkyColumn(c, this.player, this.time);
-      renderWindupSparks(c, this.player, this.time);
+      renderSkyColumn(c, this.player, this.time, 0, this.theme);
+      renderWindupSparks(c, this.player, this.time, this.theme);
     }
     for (const s of this.shots) {
       if (s.arrow) {
@@ -3399,6 +3424,7 @@ export class Game {
       px(c, "#ff6a2a", s.x - 2, s.y - 2, 4, 4);
       px(c, "#ffe14d", s.x - 1, s.y - 1, 2, 2);
     }
+    const T = this.theme;
     for (const b of this.bolts) {
       if (b.arrow) {
         this.renderArrow(c, b);
@@ -3409,19 +3435,19 @@ export class Game {
         continue;
       }
       if (b.wave) {
-        renderShockwave(c, b);
+        renderShockwave(c, b, this.theme);
         continue;
       }
-      // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro
-      c.fillStyle = "rgba(255,110,50,0.4)";
+      // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro (skin ranglarida)
+      c.fillStyle = withAlpha(T.rim, 0.4);
       c.beginPath();
       c.arc(b.x, b.y, b.size - 1, 0, Math.PI * 2);
       c.fill();
       const h = Math.round(b.size / 3);
-      px(c, "#ff5a3c", b.x - h - 1, b.y - h, h * 2 + 2, h * 2);
-      px(c, "#ff5a3c", b.x - h, b.y - h - 1, h * 2, h * 2 + 2);
-      px(c, "#a3192a", b.x - h, b.y - h, h * 2, h * 2);
-      px(c, "#ffb36b", b.x - h, b.y - h, 1, 1);
+      px(c, T.hot, b.x - h - 1, b.y - h, h * 2 + 2, h * 2);
+      px(c, T.hot, b.x - h, b.y - h - 1, h * 2, h * 2 + 2);
+      px(c, T.core, b.x - h, b.y - h, h * 2, h * 2);
+      px(c, T.glint, b.x - h, b.y - h, 1, 1);
     }
     for (const w of this.webs) if (w.flying) this.renderWeb(c, w);
     for (const cl of this.clouds) this.renderCloud(c, cl);
@@ -3557,22 +3583,23 @@ export class Game {
       uy = b.vy / l;
     const strong = (b.power ?? 1) > 1;
     const len = strong ? 9 : 6;
+    const T = this.theme;
     if (strong) {
-      c.fillStyle = "rgba(166,240,142,0.35)";
+      c.fillStyle = withAlpha(T.accent, 0.35);
       c.beginPath();
       c.arc(b.x, b.y, 5, 0, Math.PI * 2);
       c.fill();
     }
     for (let k = -len; k <= 1; k++)
-      px(c, strong ? "#c9a26b" : "#7a4a24", b.x + ux * k, b.y + uy * k, 1, 1);
-    px(c, "#d9d4e0", b.x + ux * 2 - 0.5, b.y + uy * 2 - 0.5, 2, 2);
+      px(c, strong ? T.spark : T.core, b.x + ux * k, b.y + uy * k, 1, 1);
+    px(c, T.glint, b.x + ux * 2 - 0.5, b.y + uy * 2 - 0.5, 2, 2);
     if (b.poison) px(c, "#a6f08e", b.x + ux * 2, b.y + uy * 2, 1, 1);
     const fx = b.x - ux * len,
       fy = b.y - uy * len;
-    px(c, "#4f8a3a", fx - uy, fy + ux, 1, 1);
-    px(c, "#4f8a3a", fx + uy, fy - ux, 1, 1);
-    px(c, "#7bd14f", fx - uy - ux, fy + ux - uy, 1, 1);
-    px(c, "#7bd14f", fx + uy - ux, fy - ux - uy, 1, 1);
+    px(c, T.accentDark, fx - uy, fy + ux, 1, 1);
+    px(c, T.accentDark, fx + uy, fy - ux, 1, 1);
+    px(c, T.edge, fx - uy - ux, fy + ux - uy, 1, 1);
+    px(c, T.edge, fx + uy - ux, fy - ux - uy, 1, 1);
   }
 
   /** Mergan o'qi: yaltiroq mis o'q va orqasida qisqa iz. */
@@ -3580,19 +3607,21 @@ export class Game {
     const l = Math.hypot(b.vx, b.vy) || 1;
     const ux = b.vx / l,
       uy = b.vy / l;
+    const T = this.theme;
     for (let k = 2; k <= 5; k++)
-      px(c, k < 4 ? "#d9a441" : "#8a5a2a", b.x - ux * k - 0.5, b.y - uy * k - 0.5, 1, 1);
-    px(c, "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
-    px(c, "#ffe2a0", b.x - 1, b.y - 1, 2, 2);
+      px(c, k < 4 ? T.accent : T.accentDark, b.x - ux * k - 0.5, b.y - uy * k - 0.5, 1, 1);
+    px(c, T.ink, b.x - 1.5, b.y - 1.5, 3, 3);
+    px(c, T.glow, b.x - 1, b.y - 1, 2, 2);
   }
 
   /** Tutun bombasi: sekin aylanuvchi quyuq kulrang tutun, chetlari so'nib boradi. */
   private renderSmoke(c: CanvasRenderingContext2D, sm: Smoke) {
     const a = Math.min(1, sm.life * 1.5, (SMOKE_LIFE - sm.life) * 6);
+    const T = this.theme;
     for (let k = 0; k < 8; k++) {
       const ang = this.time * 0.6 + k * 0.8;
       const r = k === 0 ? 0 : SMOKE_RADIUS * 0.5;
-      c.fillStyle = `rgba(${k % 2 ? "120,114,106" : "168,160,150"},${0.34 * a})`;
+      c.fillStyle = withAlpha(k % 2 ? T.inner : T.rim, 0.34 * a);
       c.beginPath();
       c.arc(
         sm.x + Math.cos(ang) * r,
@@ -3605,14 +3634,7 @@ export class Game {
     }
     for (let k = 0; k < 5; k++) {
       const ang = this.time * 1.3 + k * 1.7;
-      px(
-        c,
-        "#d9d2c6",
-        sm.x + Math.cos(ang) * (6 + k * 4),
-        sm.y - 6 + Math.sin(ang * 1.2) * 9,
-        2,
-        1,
-      );
+      px(c, T.edge, sm.x + Math.cos(ang) * (6 + k * 4), sm.y - 6 + Math.sin(ang * 1.2) * 9, 2, 1);
     }
   }
 
@@ -3620,28 +3642,29 @@ export class Game {
   private renderTrap(c: CanvasRenderingContext2D, t: Trap) {
     const x = Math.round(t.x),
       y = Math.round(t.y);
+    const T = this.theme;
     if (t.snapT >= 0) {
       const a = Math.min(1, (TRAP_STUN - t.snapT) * 3);
       c.globalAlpha = a;
-      px(c, "#1a1a20", x - 6, y - 2, 13, 5);
-      px(c, "#9a9ea8", x - 5, y - 1, 11, 3);
-      for (let k = -4; k <= 4; k += 2) px(c, "#e8e8f0", x + k, y - 2, 1, 1);
+      px(c, T.ink, x - 6, y - 2, 13, 5);
+      px(c, T.rim, x - 5, y - 1, 11, 3);
+      for (let k = -4; k <= 4; k += 2) px(c, T.mist, x + k, y - 2, 1, 1);
       c.globalAlpha = 1;
       return;
     }
     if (t.life < 2 && Math.floor(t.life * 8) % 2) return;
     // halqa va zanjir
-    px(c, "#1a1a20", x - 7, y - 4, 15, 9);
-    px(c, "#5a3e24", x - 6, y - 3, 13, 7);
-    px(c, "#9a9ea8", x - 6, y - 3, 13, 1);
-    px(c, "#9a9ea8", x - 6, y + 3, 13, 1);
-    px(c, "#9a9ea8", x - 6, y - 3, 1, 7);
-    px(c, "#9a9ea8", x + 6, y - 3, 1, 7);
+    px(c, T.ink, x - 7, y - 4, 15, 9);
+    px(c, T.shade, x - 6, y - 3, 13, 7);
+    px(c, T.rim, x - 6, y - 3, 13, 1);
+    px(c, T.rim, x - 6, y + 3, 13, 1);
+    px(c, T.rim, x - 6, y - 3, 1, 7);
+    px(c, T.rim, x + 6, y - 3, 1, 7);
     for (let k = -4; k <= 4; k += 2) {
-      px(c, "#e8e8f0", x + k, y - 2, 1, 2);
-      px(c, "#e8e8f0", x + k, y + 1, 1, 2);
+      px(c, T.mist, x + k, y - 2, 1, 2);
+      px(c, T.mist, x + k, y + 1, 1, 2);
     }
-    px(c, "#c9a26b", x - 1, y - 1, 3, 3);
+    px(c, T.spark, x - 1, y - 1, 3, 3);
   }
 
   /** O'rgimchak to'ri: uchayotganda kichik to'p, yerda nurli to'r. */
@@ -3809,8 +3832,8 @@ export class Game {
     // dash tayyorligi
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
-    // dash va kuchli zarba chiziqlari qahramon rangida (hero.ts: HERO_THEME)
-    const { on, off, empty } = hudBarColors(this.hero);
+    // dash va kuchli zarba chiziqlari qahramon (skin) rangida (skinFx.ts: SkinTheme)
+    const { on, off, empty } = hudBarColors(this.theme);
     px(c, k >= 1 ? on : off, 5, 14, 30 * k, 1);
     if (p.dashMax > 1)
       for (let i = 0; i < p.dashMax; i++)
@@ -3830,18 +3853,19 @@ export class Game {
       // tuzoq tayyorligi: kichik temir jag' belgisi va chiziq
       const tk = Math.max(0, Math.min(1, 1 - p.trapCooldown / p.trapCd));
       px(c, "#000", 4, 21, 32, 3);
-      px(c, tk >= 1 ? "#c9a26b" : "#5a3e24", 5, 22, 30 * tk, 1);
+      const T = this.theme;
+      px(c, tk >= 1 ? T.spark : T.shade, 5, 22, 30 * tk, 1);
       if (tk >= 1) {
-        px(c, "#9a9ea8", 38, 20, 5, 1);
-        px(c, "#9a9ea8", 38, 23, 5, 1);
-        px(c, "#e8e8f0", 39, 21, 1, 2);
-        px(c, "#e8e8f0", 41, 21, 1, 2);
+        px(c, T.rim, 38, 20, 5, 1);
+        px(c, T.rim, 38, 23, 5, 1);
+        px(c, T.mist, 39, 21, 1, 2);
+        px(c, T.mist, 41, 21, 1, 2);
       }
     }
     if (p.gunner) this.renderGunHud(p);
     if (p.paladin) {
       // QASAM: faol bo'lsa — qolgan vaqt (yorqin), aks holda qayta tiklanish
-      const t = HERO_THEME.paladin;
+      const t = this.theme;
       const vk = p.vowing
         ? p.vowT / VOW_TIME
         : Math.max(0, Math.min(1, 1 - p.vowCooldown / p.vowCd));
@@ -3980,7 +4004,7 @@ export class Game {
    */
   private renderGunHud(p: Game["player"]) {
     const c = this.ctx;
-    const theme = HERO_THEME.gunner;
+    const theme = this.theme;
     const sk = Math.max(0, Math.min(1, 1 - p.smokeCooldown / p.smokeCd));
     px(c, "#000", 4, 21, 32, 3);
     px(c, sk >= 1 ? "#c8c0b4" : "#5a544c", 5, 22, 30 * sk, 1);
@@ -4154,13 +4178,17 @@ export class Game {
       );
       // Sehrgar kartalari qizil-qora, Ovchiniki yashil-jigarrang, Merganniki mis-kulrang:
       // ramka va fon binafsha emas
-      const [frame, inner] = this.player.mage
-        ? ["#5a2a30", "#1f1520"]
-        : this.player.hunter
-          ? ["#4a3a22", "#151c11"]
-          : this.player.gunner
-            ? ["#5a4426", "#18140f"]
-            : ["#5c4a6e", "#1f1730"];
+      // skin tanlangan bo'lsa — ramka skin rangida
+      const [frame, inner] =
+        this.look.tier !== "default"
+          ? [this.theme.accentDark, "#140f1c"]
+          : this.player.mage
+            ? ["#5a2a30", "#1f1520"]
+            : this.player.hunter
+              ? ["#4a3a22", "#151c11"]
+              : this.player.gunner
+                ? ["#5a4426", "#18140f"]
+                : ["#5c4a6e", "#1f1730"];
       this.choices.forEach((u, i) => {
         const r = this.cardRect(i);
         const sel = i === this.choiceIndex;
@@ -4347,7 +4375,7 @@ export class Game {
   private renderSynNote(n: { tag: Tag; timer: number }) {
     const c = this.ctx;
     const def = TAGS[n.tag];
-    const theme = HERO_THEME[this.hero];
+    const theme = this.theme;
     const a = Math.min(1, n.timer * 3, (SYN_NOTE - n.timer) * 8);
     c.globalAlpha = Math.max(0, a);
     const lift = Math.round(Math.max(0, 0.12 - (SYN_NOTE - n.timer)) * 40);

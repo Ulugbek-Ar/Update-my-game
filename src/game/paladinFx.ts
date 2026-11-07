@@ -4,7 +4,8 @@
  * Uslub — oltin + oq "muqaddas nur": oq yadro, oltin chekka va yengil porlash.
  */
 import { px } from "./animation";
-import { HERO_THEME, withAlpha } from "./hero";
+import { withAlpha } from "./hero";
+import { DEFAULT_THEME, type SkinTheme } from "./skinFx";
 import { SHANG_TIME, SHANG_W, SHANG_WINDUP, VOW_RADIUS, type Bolt, type Player } from "./player";
 
 /** Yerdagi nurli yoriq (SHANG zarbasi yo'lagi bo'ylab) */
@@ -16,6 +17,8 @@ export interface Crack {
   len: number;
   life: number;
   seed: number;
+  /** Egasining skin ranglari (onlayn: boshqa Paladin); yo'q — chizuvchi bergan */
+  theme?: SkinTheme;
 }
 
 /** Kengayib so'nuvchi zarb to'lqini (SHANG uchida kichik, OSMON HUKMIda katta) */
@@ -25,19 +28,24 @@ export interface Quake {
   r: number;
   life: number;
   max: number;
+  theme?: SkinTheme;
 }
 
 export const CRACK_LIFE = 1.2;
 export const QUAKE_LIFE = 0.45;
 
-const T = HERO_THEME.paladin;
-/** Muqaddas nur yadrosi */
-const HOLY_WHITE = "#ffffff";
-/** Yoriqning qorong'i chekkasi (iliq qora — oltin nur ajralib turadi) */
-const CRACK_INK = "#1e1606";
+/**
+ * Ranglar skin theme'dan (skinFx.ts): accent — oltin chekka, glow — porlash, edge — muqaddas nur
+ * yadrosi (default oq), ink — yoriqning qorong'i chekkasi. Default — Paladinning asl ranglari.
+ */
+const PALADIN = DEFAULT_THEME.paladin;
 
 /** Siniq chiziq: zarba yo'nalishi bo'ylab zigzag, ikki yonga mayda shoxlar. */
-export function renderCrack(c: CanvasRenderingContext2D, k: Crack) {
+export function renderCrack(
+  c: CanvasRenderingContext2D,
+  k: Crack,
+  T: SkinTheme = k.theme ?? PALADIN,
+) {
   const a = Math.min(1, k.life / (CRACK_LIFE * 0.5));
   const nx = -k.fy,
     ny = k.fx;
@@ -50,19 +58,23 @@ export function renderCrack(c: CanvasRenderingContext2D, k: Crack) {
     const off = Math.round(Math.sin(d * 0.7 + k.seed) * 1.5);
     const x = k.x + k.fx * d + nx * off,
       y = k.y + k.fy * d + ny * off;
-    px(c, withAlpha(CRACK_INK, 0.8 * a), x, y, 2, 2);
+    px(c, withAlpha(T.ink, 0.8 * a), x, y, 2, 2);
     // yoriq ichida muqaddas nur: oq yadro, oltin chekka
     if (d % 2 === 0) px(c, withAlpha(d % 4 === 0 ? T.glow : T.accent, a), x, y, 1, 1);
     if (r() < 0.12) {
       const s = r() < 0.5 ? -1 : 1;
       for (let b = 1; b < 4; b++)
-        px(c, withAlpha(CRACK_INK, 0.7 * a), x + nx * s * b, y + ny * s * b, 1, 1);
+        px(c, withAlpha(T.ink, 0.7 * a), x + nx * s * b, y + ny * s * b, 1, 1);
     }
   }
 }
 
 /** Zarb to'lqini: oltin chekkali, oq yadroli kengayuvchi halqa va ichida yengil porlash. */
-export function renderQuake(c: CanvasRenderingContext2D, q: Quake) {
+export function renderQuake(
+  c: CanvasRenderingContext2D,
+  q: Quake,
+  T: SkinTheme = q.theme ?? PALADIN,
+) {
   const k = 1 - q.life / q.max;
   const r = q.r * (0.35 + 0.65 * k);
   c.save();
@@ -75,7 +87,7 @@ export function renderQuake(c: CanvasRenderingContext2D, q: Quake) {
   c.beginPath();
   c.ellipse(q.x, q.y, r, r * 0.7, 0, 0, Math.PI * 2);
   c.stroke();
-  c.strokeStyle = withAlpha(HOLY_WHITE, 0.95 * (1 - k));
+  c.strokeStyle = withAlpha(T.edge, 0.95 * (1 - k));
   c.lineWidth = 1;
   c.beginPath();
   c.ellipse(q.x, q.y, r, r * 0.7, 0, 0, Math.PI * 2);
@@ -88,7 +100,12 @@ export function renderQuake(c: CanvasRenderingContext2D, q: Quake) {
 }
 
 /** QASAM: Paladin atrofida aylanuvchi oltin aura (oq yadroli halqa) va nishonga olish radiusi. */
-export function renderVowAura(c: CanvasRenderingContext2D, p: Player, time: number) {
+export function renderVowAura(
+  c: CanvasRenderingContext2D,
+  p: Player,
+  time: number,
+  T: SkinTheme = PALADIN,
+) {
   const fade = Math.min(1, p.vowT / 0.5);
   c.save();
   c.fillStyle = withAlpha(T.glow, 0.14 * fade);
@@ -100,7 +117,7 @@ export function renderVowAura(c: CanvasRenderingContext2D, p: Player, time: numb
   c.beginPath();
   c.ellipse(p.x, p.y + 8, 17, 10, 0, 0, Math.PI * 2);
   c.stroke();
-  c.strokeStyle = withAlpha(HOLY_WHITE, 0.5 * fade);
+  c.strokeStyle = withAlpha(T.edge, 0.5 * fade);
   c.lineWidth = 1;
   c.beginPath();
   c.ellipse(p.x, p.y + 8, 17, 10, 0, 0, Math.PI * 2);
@@ -128,7 +145,13 @@ export function renderVowAura(c: CanvasRenderingContext2D, p: Player, time: numb
  * OSMON HUKMI zaryadi: osmondan Paladinga tushayotgan yorug'lik ustuni (zaryad to'lgani sari yorqin).
  * top — ustun boshlanadigan y (xonada 0, ochiq olamda kamera tepasi).
  */
-export function renderSkyColumn(c: CanvasRenderingContext2D, p: Player, time: number, top = 0) {
+export function renderSkyColumn(
+  c: CanvasRenderingContext2D,
+  p: Player,
+  time: number,
+  top = 0,
+  T: SkinTheme = PALADIN,
+) {
   if (p.charge <= 0.25) return;
   const k = Math.min(1, p.charge / p.chargeTime);
   const w = 6 + k * 8 + Math.sin(time * 30) * (k >= 1 ? 1.5 : 0);
@@ -145,7 +168,7 @@ export function renderSkyColumn(c: CanvasRenderingContext2D, p: Player, time: nu
   c.fillStyle = withAlpha(T.accent, 0.15 + 0.3 * k);
   c.fillRect(Math.round(p.x - w / 2), y0, 1, h);
   c.fillRect(Math.round(p.x + w / 2) - 1, y0, 1, h);
-  c.fillStyle = withAlpha(HOLY_WHITE, 0.2 + 0.3 * k);
+  c.fillStyle = withAlpha(T.edge, 0.2 + 0.3 * k);
   c.fillRect(Math.round(p.x - 1), y0, 2, h);
   c.restore();
 }
@@ -154,7 +177,12 @@ export function renderSkyColumn(c: CanvasRenderingContext2D, p: Player, time: nu
  * SHANG: tayyorgarlikda qilich atrofida porlash, zarba tushganda yo'lak bo'ylab qisqa oltin chaqnash
  * (zarba maydoni aynan shu — o'yinchi qayergacha yetishini ko'radi).
  */
-export function renderWindupSparks(c: CanvasRenderingContext2D, p: Player, time: number) {
+export function renderWindupSparks(
+  c: CanvasRenderingContext2D,
+  p: Player,
+  time: number,
+  T: SkinTheme = PALADIN,
+) {
   if (p.slamT > 0) {
     const k = 1 - p.slamT / SHANG_WINDUP;
     const r = 3 + k * 4 + Math.sin(time * 40);
@@ -164,7 +192,7 @@ export function renderWindupSparks(c: CanvasRenderingContext2D, p: Player, time:
     c.beginPath();
     c.arc(hx, p.y - 26, r + 1, 0, Math.PI * 2);
     c.fill();
-    c.fillStyle = withAlpha(HOLY_WHITE, 0.45 + 0.4 * k);
+    c.fillStyle = withAlpha(T.edge, 0.45 + 0.4 * k);
     c.beginPath();
     c.arc(hx, p.y - 26, Math.max(1, r * 0.55), 0, Math.PI * 2);
     c.fill();
@@ -194,7 +222,7 @@ export function renderWindupSparks(c: CanvasRenderingContext2D, p: Player, time:
 }
 
 /** ZARB TO'LQINI: uchish yo'nalishiga qavariq o'roq — oltin chekka, oq yadro. */
-export function renderShockwave(c: CanvasRenderingContext2D, b: Bolt) {
+export function renderShockwave(c: CanvasRenderingContext2D, b: Bolt, T: SkinTheme = PALADIN) {
   const a = Math.atan2(b.vy, b.vx);
   const r = b.size / 2 + 2;
   c.save();
@@ -209,7 +237,7 @@ export function renderShockwave(c: CanvasRenderingContext2D, b: Bolt) {
   c.beginPath();
   c.arc(b.x - Math.cos(a) * 4, b.y - Math.sin(a) * 4, r, a - 1, a + 1);
   c.stroke();
-  c.strokeStyle = withAlpha(HOLY_WHITE, 0.9);
+  c.strokeStyle = withAlpha(T.edge, 0.9);
   c.lineWidth = 1;
   c.beginPath();
   c.arc(b.x - Math.cos(a) * 4, b.y - Math.sin(a) * 4, r, a - 0.8, a + 0.8);
@@ -221,13 +249,19 @@ export function renderShockwave(c: CanvasRenderingContext2D, b: Bolt) {
  * OSMON HUKMIdan gangigan dushman ustida aylanuvchi gangish yulduzchalari: oq yadroli, oltin
  * nurli to'rt qirrali yulduzchalar (y — boshning tepasi).
  */
-export function renderDazeStars(c: CanvasRenderingContext2D, x: number, y: number, time: number) {
+export function renderDazeStars(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  time: number,
+  T: SkinTheme = PALADIN,
+) {
   for (let i = 0; i < 3; i++) {
     const a = time * 6 + (i * Math.PI * 2) / 3;
     const sx = Math.round(x + Math.cos(a) * 8),
       sy = Math.round(y + Math.sin(a) * 2);
     px(c, T.accent, sx - 1, sy, 3, 1);
     px(c, T.accent, sx, sy - 1, 1, 3);
-    px(c, HOLY_WHITE, sx, sy, 1, 1);
+    px(c, T.edge, sx, sy, 1, 1);
   }
 }

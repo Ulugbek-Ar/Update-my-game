@@ -1,3 +1,4 @@
+import { TONES, type ToneKind } from "./skinFx";
 /** Ovoz o'chirilganmi — qurilmaga xos (ko'chirish kodiga kirmaydi) */
 export const MUTE_KEY = "pixel-rpg-muted";
 
@@ -365,6 +366,15 @@ class SoundFX {
   vow() {
     this.tone(523, 0.18, "triangle", 0.05);
     this.tone(784, 0.3, "triangle", 0.05, undefined, 0.15);
+  }
+
+  /**
+   * Afsonaviy skin ohangi: hujum/dash ovoziga qo'shiladi (skinFx.ts: TONES). vol — nisbiy baland-
+   * lik (kuchli zarbada balandroq). Faqat ovoz — o'yin mantig'iga ta'sir qilmaydi.
+   */
+  skinTone(kind: ToneKind, vol = 1) {
+    for (const [f, dur, wave, delay] of TONES[kind])
+      this.tone(f, dur, wave, 0.03 * vol, undefined, delay);
   }
 
   /** Qisqa "vush" — hujum */
