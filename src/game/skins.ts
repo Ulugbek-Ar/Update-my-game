@@ -171,6 +171,95 @@ const DEFS: Record<Hero, readonly Def[]> = {
   ],
 };
 
+/**
+ * DARAJALAR: 80 — ODDIY (faqat ranglar: barcha qobiliyat effektlari skin rangida), 150 — NOYOB
+ * (+ o'z zarrachalari, izi va zarba uchquni shakli), 250 — AFSONAVIY (+ turgandagi va hujumdagi
+ * animatsiya qo'shimchasi, maxsus zarba shakli, o'z ovoz ohangi, menyu/do'konda porlash va onlayn
+ * ism yonida belgi). Har skin effekti nomi va xarakteriga mos.
+ */
+const FX: Record<string, SkinFx> = {
+  // NOYOB: oltin chang va yulduzchalar
+  "knight-gold": {
+    ...PLAIN_FX,
+    particle: "star",
+    trail: "sparkle",
+    bits: ["#fff2b0", "#fff6d0"],
+  },
+  // AFSONAVIY: muz bo'laklari, qor izi, muz kristali yorilishi, muz qo'ng'iroqchasi
+  "knight-ice": {
+    particle: "shard",
+    trail: "snow",
+    bits: ["#ffffff", "#c6ecff"],
+    impact: "crystal",
+    flair: "frost",
+    tone: "chime",
+  },
+  // NOYOB: zahar tomchilari va yashil tutun
+  "mage-venom": {
+    ...PLAIN_FX,
+    particle: "drop",
+    trail: "smoke",
+    bits: ["#c9f07a", "#3f7a1f"],
+  },
+  // AFSONAVIY: quyosh nurlari, cho'g' izi, quyosh chaqnashi, halo, yorug' akkord
+  "mage-sun": {
+    particle: "star",
+    trail: "ember",
+    bits: ["#fff6c8", "#ffe680"],
+    impact: "flare",
+    flair: "halo",
+    tone: "sun",
+  },
+  // NOYOB: qum zarralari va issiq shamol izi
+  "hunter-desert": {
+    ...PLAIN_FX,
+    particle: "streak",
+    trail: "sand",
+    bits: ["#f0e0c0", "#c9a26b"],
+  },
+  // AFSONAVIY: tun yulduzchalari, soya izi, yarim oy o'rog'i, porlovchi ko'zlar
+  "hunter-night": {
+    particle: "star",
+    trail: "shadow",
+    bits: ["#e8e0ff", "#9a90c0"],
+    impact: "crescent",
+    flair: "eyes",
+    tone: "night",
+  },
+  // NOYOB: to'q qizil-qora tutun va oltin cho'g'
+  "gunner-red": {
+    ...PLAIN_FX,
+    particle: "ember",
+    trail: "smoke",
+    bits: ["#ffd890", "#3a0a0e"],
+  },
+  // AFSONAVIY: o't va bug'doy barglari, shamol burami, hilpiragan bo'yinbog'
+  "gunner-steppe": {
+    particle: "leaf",
+    trail: "leaf",
+    bits: ["#9ad05a", "#f0e0a0"],
+    impact: "gust",
+    flair: "scarf",
+    tone: "steppe",
+  },
+  // NOYOB: binafsha tutun va cho'g'
+  "paladin-shadow": {
+    ...PLAIN_FX,
+    particle: "ember",
+    trail: "shadow",
+    bits: ["#e6d0ff", "#2a1a30"],
+  },
+  // AFSONAVIY: oltin alanga, feniks qanotlari, yelkada cho'g'lar
+  "paladin-flame": {
+    particle: "ember",
+    trail: "ember",
+    bits: ["#fff0b0", "#ffd870"],
+    impact: "phoenix",
+    flair: "embers",
+    tone: "flame",
+  },
+};
+
 const DEFAULT_NAME: Record<Hero, string> = {
   knight: "ODDIY RITSAR",
   mage: "ODDIY SEHRGAR",
@@ -205,7 +294,8 @@ export const SKINS: Record<Hero, readonly Skin[]> = Object.fromEntries(
           colors,
           tier: tierOfPrice(price),
           theme: theme(THEMES[sid]!),
-          fx: PLAIN_FX,
+          // ODDIY — faqat ranglar
+          fx: FX[sid] ?? PLAIN_FX,
         };
       }),
     ] satisfies Skin[],

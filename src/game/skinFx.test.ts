@@ -6,7 +6,9 @@ import {
   THEME_SLOTS,
   defaultLook,
   heroBurst,
+  heroImpact,
   heroTrail,
+  renderFlair,
 } from "./skinFx";
 import { DANGER_COLORS, dangerDistance } from "./danger";
 import { HEROES, HERO_THEME, chargeRingColor, hudBarColors } from "./hero";
@@ -141,5 +143,62 @@ describe("Zarrachalar chegarasi va kamaytirish", () => {
     fx.reduced = true;
     for (let i = 0; i < 100; i++) fx.burst(0, 0, "#fff", 20);
     expect(fx.particles.length).toBe(REDUCED_MAX_PARTICLES);
+  });
+});
+
+describe("Skin darajalari", () => {
+  it("each hero: one common (colours only), one rare (own particles/trail), one legendary", () => {
+    for (const h of HEROES) {
+      const [, common, rare, legend] = SKINS[h];
+      expect([common!.tier, rare!.tier, legend!.tier]).toEqual(["common", "rare", "legendary"]);
+      expect([common!.price, rare!.price, legend!.price]).toEqual([80, 150, 250]);
+      // ODDIY: faqat ranglar
+      expect(common!.fx).toEqual(PLAIN_FX);
+      expect(common!.theme).not.toEqual(DEFAULT_THEME[h]);
+      // NOYOB: o'z zarrachasi, izi va qo'shimcha ranglari; afsonaviy narsalar yo'q
+      expect(rare!.fx.particle).not.toBe("square");
+      expect(rare!.fx.trail).not.toBe("square");
+      expect(rare!.fx.bits.length).toBeGreaterThan(0);
+      expect([rare!.fx.impact, rare!.fx.flair, rare!.fx.tone]).toEqual([null, null, null]);
+      // AFSONAVIY: + animatsiya, zarba shakli va ovoz
+      expect(legend!.fx.particle).not.toBe("square");
+      expect(legend!.fx.trail).not.toBe("square");
+      expect(legend!.fx.impact).toBeTruthy();
+      expect(legend!.fx.flair).toBeTruthy();
+      expect(legend!.fx.tone).toBeTruthy();
+    }
+    // har afsonaviy skinning o'z shakli, animatsiyasi va ohangi
+    const legends = HEROES.map((h) => SKINS[h][3]!.fx);
+    for (const k of ["impact", "flair", "tone"] as const)
+      expect(new Set(legends.map((f) => f[k])).size).toBe(HEROES.length);
+  });
+
+  it("legendary hits leave an impact shape; flair draws only for legendary skins", () => {
+    unlockHero("gunner");
+    const fx = new Effects();
+    fx.reduced = false;
+    heroImpact(fx, skinLook("knight", "knight-gold"), 0, 0);
+    expect(fx.impacts).toHaveLength(0);
+    heroImpact(fx, skinLook("knight", "knight-ice"), 0, 0);
+    expect(fx.impacts[0]?.kind).toBe("crystal");
+    for (const [id, draws] of [
+      ["knight-ice", true],
+      ["knight-gold", false],
+      ["default", false],
+    ] as const) {
+      const r = recordingCanvas();
+      const body = {
+        x: 50,
+        y: 50,
+        fx: 1,
+        dead: false,
+        dashing: false,
+        attackTimer: 0.2,
+        spinning: false,
+        anim: { state: "idle" },
+      };
+      renderFlair(r.canvas.getContext("2d")!, skinLook("knight", id), body, 1);
+      expect(r.fills.length > 0, id).toBe(draws);
+    }
   });
 });

@@ -17,7 +17,6 @@ import { loadPlayableHero, loadUnlockedHeroes, migrateSave, selectHero } from "@
 import {
   HERO_LIST,
   HERO_ROLE,
-  HERO_THEME,
   ROLE_INFO,
   bestKeys,
   withAlpha,
@@ -72,7 +71,7 @@ import { ProfileWindow } from "@/components/game/ProfileWindow";
 import { AdminWindow } from "@/components/game/AdminWindow";
 import { CoinRain } from "@/components/game/pixel";
 import { SkinsShop } from "@/components/game/SkinsShop";
-import { skinPalette } from "@/game/skins";
+import { skinLook, skinPalette } from "@/game/skins";
 import { GiftInboxWindow } from "@/components/game/GiftInboxWindow";
 import { giftBox, useGiftBox } from "@/account/giftbox";
 import { expedition, useExpedition } from "@/account/expedition";
@@ -694,14 +693,15 @@ function Index() {
                     style={
                       hero === h
                         ? {
-                            borderColor: HERO_THEME[h].accent,
+                            // tanlangan skin rangida (default — qahramon rangi)
+                            borderColor: skinLook(h).theme.accent,
                             // rang qatlami to'q karta foni ustida — orqadagi sahna ko'rinmaydi
-                            background: `linear-gradient(${withAlpha(HERO_THEME[h].accent, 0.15)}, ${withAlpha(HERO_THEME[h].accent, 0.15)}), var(--color-card)`,
-                            color: HERO_THEME[h].uiText,
+                            background: `linear-gradient(${withAlpha(skinLook(h).theme.accent, 0.15)}, ${withAlpha(skinLook(h).theme.accent, 0.15)}), var(--color-card)`,
+                            color: skinLook(h).theme.uiText,
                           }
                         : undefined
                     }
-                    className={`hero-card flex w-[6.75rem] shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-1 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
+                    className={`hero-card ${!locked && skinLook(h).tier === "legendary" ? "skin-legend" : ""} flex w-[6.75rem] shrink-0 snap-center flex-col items-center gap-1 overflow-hidden border-2 bg-card px-1 py-2 text-[9px] sm:text-[10px] ${pixelPress} ${pixelFocus} ${
                       hero === h
                         ? ""
                         : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"

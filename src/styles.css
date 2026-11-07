@@ -337,6 +337,30 @@ html.in-game body {
 }
 
 /* Kunlik sovg'a: menyudagi SOVG'A tugmasi miltillaydi, bugungi katak yonib turadi */
+/* Afsonaviy skin kartasi: menyu va do'konda oltin porlash (effektlar kamaytirilsa — qo'zg'almas) */
+.skin-legend {
+  box-shadow: 0 0 6px 1px rgba(255, 204, 51, 0.55);
+  animation: skin-legend 1.6s ease-in-out infinite;
+}
+.reduce-fx .skin-legend,
+.skin-legend.still {
+  animation: none;
+}
+@keyframes skin-legend {
+  0%,
+  100% {
+    box-shadow: 0 0 4px 0 rgba(255, 204, 51, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgba(255, 204, 51, 0.75);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skin-legend {
+    animation: none;
+  }
+}
+
 @keyframes gift-blink {
   50% {
     opacity: 0.35;
