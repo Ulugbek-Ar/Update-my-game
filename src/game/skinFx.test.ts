@@ -11,7 +11,10 @@ import {
   renderFlair,
 } from "./skinFx";
 import { DANGER_COLORS, dangerDistance } from "./danger";
-import { HEROES, HERO_THEME, chargeRingColor, hudBarColors } from "./hero";
+import { HEROES, HERO_THEME, chargeRingColor, hudBarColors, withAlpha } from "./hero";
+import { SkinDemo, demoPhase } from "./skinDemo";
+import { RealmPlayer, type RealmSim } from "@/realm/sim";
+import { lookOf, nearestLook } from "@/realm/render";
 import { SKINS, buySkin, skinLook } from "./skins";
 import { Effects, MAX_PARTICLES, REDUCED_MAX_PARTICLES } from "./effects";
 import { Game } from "./game";
@@ -200,5 +203,55 @@ describe("Skin darajalari", () => {
       renderFlair(r.canvas.getContext("2d")!, skinLook("knight", id), body, 1);
       expect(r.fills.length > 0, id).toBe(draws);
     }
+  });
+});
+
+describe("Do'kon jonli preview va onlayn", () => {
+  it("the shop demo cycles attack, strong attack and dash with the skin effects", () => {
+    for (const h of HEROES)
+      for (const s of SKINS[h]) {
+        const r = recordingCanvas();
+        const d = new SkinDemo(h, s, undefined);
+        d.fx.reduced = false;
+        const seen = new Set<string>();
+        for (let i = 0; i < 260; i++) {
+          d.update(1 / 60);
+          d.render(r.canvas.getContext("2d")!);
+          seen.add(demoPhase(d.t));
+        }
+        expect([...seen].sort(), s.id).toEqual(["attack", "charge", "dash", "idle", "strong"]);
+        // skin ranglari chiziladi
+        const used = new Set([...r.fills, ...r.strokes]);
+        expect(
+          [...used].some(
+            (c) =>
+              c.startsWith(withAlpha(s.theme.edge, 0).slice(0, -2)) ||
+              c === s.theme.glow ||
+              c === s.theme.accent ||
+              c === s.theme.hot ||
+              c === s.theme.spark,
+          ),
+          s.id,
+        ).toBe(true);
+      }
+  });
+
+  it("other players' effects use their skin id from the protocol (no extra field)", () => {
+    // nearestLook faqat players'dan foydalanadi
+    const sim = { players: new Map<string, RealmPlayer>() } as unknown as RealmSim;
+    const a = new RealmPlayer("a", "gunner", 100, 100, 16);
+    const b = new RealmPlayer("b", "gunner", 400, 100, 16);
+    a.skin = "gunner-steppe";
+    sim.players.set("a", a);
+    sim.players.set("b", b);
+    expect(lookOf(a).tier).toBe("legendary");
+    // eski klient: skin maydonisiz — default ko'rinish
+    expect(lookOf(b)).toBe(skinLook("gunner", null));
+    expect(lookOf(b).tier).toBe("default");
+    expect(nearestLook(sim, 110, 100, "gunner").id).toBe("gunner-steppe");
+    expect(nearestLook(sim, 390, 100, "gunner").id).toBe("default");
+    // noma'lum id — default
+    b.skin = "gunner-nope";
+    expect(lookOf(b).tier).toBe("default");
   });
 });

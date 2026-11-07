@@ -11,10 +11,14 @@ import {
   ownsSkin,
   selectSkin,
   selectedSkin,
+  skinById,
   skinPalette,
   type Skin,
 } from "@/game/skins";
 import { sfx } from "@/game/audio";
+import { TIER_COLOR, TIER_NAME, type SkinTier } from "@/game/skinFx";
+import { DEMO_H, DEMO_W, SkinDemo, demoPhase } from "@/game/skinDemo";
+import { currentSettings } from "@/game/settings";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
@@ -95,6 +99,81 @@ export function SkinPreview({
   );
 }
 
+/**
+ * Jonli preview: tanlangan skin bilan qahramon o'zi hujum, kuchli hujum va dashni ko'rsatadi —
+ * o'yindagi skin effektlari bilan (skinDemo.ts).
+ */
+export function SkinShowcase({
+  hero,
+  skin,
+  scale = 3,
+}: {
+  hero: Hero;
+  skin: string;
+  scale?: number;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [phase, setPhase] = useState("idle");
+  useEffect(() => {
+    const c = ref.current?.getContext("2d");
+    if (!c) return;
+    c.imageSmoothingEnabled = false;
+    const s = skinById(hero, skin) ?? SKINS[hero][0]!;
+    const demo = new SkinDemo(hero, s, skinPalette(hero, skin));
+    let raf = 0,
+      last = performance.now(),
+      shown = "";
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      demo.update(dt);
+      demo.render(c);
+      const ph = demoPhase(demo.t);
+      if (ph !== shown) setPhase((shown = ph));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [hero, skin]);
+  const label =
+    phase === "attack"
+      ? "HUJUM"
+      : phase === "charge" || phase === "strong"
+        ? "KUCHLI HUJUM"
+        : phase === "dash"
+          ? hero === "mage"
+            ? "TELEPORT"
+            : "DASH"
+          : "TURISH";
+  return (
+    <figure className="flex flex-col items-center gap-1" aria-label="Skin jonli ko'rinishi">
+      <canvas
+        ref={ref}
+        width={DEMO_W}
+        height={DEMO_H}
+        data-skin={skin}
+        data-testid="skin-showcase"
+        className="max-w-full border-2 border-[#5c4a6e] bg-[#1a1328]"
+        style={{ width: DEMO_W * scale, imageRendering: "pixelated" }}
+      />
+      <figcaption className="text-[8px] text-muted-foreground">{label}</figcaption>
+    </figure>
+  );
+}
+
+/** Daraja belgisi: ODDIY / NOYOB / AFSONAVIY */
+export function TierBadge({ tier }: { tier: SkinTier }) {
+  if (tier === "default") return <span className="text-[8px] text-muted-foreground">BEPUL</span>;
+  return (
+    <span
+      className="border px-1 text-[8px]"
+      style={{ borderColor: TIER_COLOR[tier], color: TIER_COLOR[tier] }}
+    >
+      {TIER_NAME[tier]}
+    </span>
+  );
+}
+
 /** Nom rangi: skinning eng yorqin rangi (to'q fonda o'qilsin) */
 function brightest(colors: readonly string[]) {
   const lum = (h: string) => {
@@ -133,7 +212,11 @@ export function SkinsShop({
   const unlocked = loadUnlockedHeroes();
   const open = unlocked.has(hero);
   const cur = selectedSkin(hero, save);
+  // jonli previewdagi skin: kartani bosib ko'rish mumkin (sotib olinmagan bo'lsa ham)
+  const [focus, setFocus] = useState<string | null>(null);
+  const shown = focus && skinById(hero, focus) ? focus : cur.id;
   const info = HERO_LIST.find((h) => h.id === hero)!;
+  const still = currentSettings().reduceFx;
   const buy = (s: Skin) => {
     sfx.unlock();
     if (!buySkin(hero, s.id, { get: loadGold, set: saveGold })) return;
@@ -149,8 +232,9 @@ export function SkinsShop({
   return (
     <>
       <p className="text-muted-foreground">
-        Skin — qahramonning yangi ranglari. Kuchi o'zgarmaydi; menyuda, o'yinda va onlayn olamda
-        ko'rinadi.
+        Skin qahramonning ranglari bilan birga qobiliyat effektlari, izlari va zarbalarini ham
+        o'zgartiradi. NOYOB — o'z zarrachalari va izi, AFSONAVIY — o'z animatsiyasi, zarba shakli va
+        ovozi. Kuchi o'zgarmaydi; menyuda, o'yinda va onlayn olamda ko'rinadi.
       </p>
       <div role="tablist" aria-label="Skin qahramoni" className="flex flex-wrap gap-2">
         {HERO_LIST.map((h) => (
@@ -158,7 +242,10 @@ export function SkinsShop({
             key={h.id}
             role="tab"
             aria-selected={hero === h.id}
-            onClick={() => setHero(h.id)}
+            onClick={() => {
+              setHero(h.id);
+              setFocus(null);
+            }}
             className={`inline-flex items-center gap-1 border-2 px-2 py-1 ${pixelPress} ${pixelFocus}`}
             style={{
               borderColor: hero === h.id ? h.theme.accent : "#5c4a6e",
@@ -175,6 +262,7 @@ export function SkinsShop({
           {info.name} hali sotib olinmagan — skinlari qulfli (QAHRAMONLAR bo'limida oching).
         </p>
       )}
+      <SkinShowcase hero={hero} skin={shown} />
       <ul aria-label={`${info.name} skinlari`} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {SKINS[hero].map((s) => {
           const owned = ownsSkin(s, save);
@@ -183,12 +271,21 @@ export function SkinsShop({
           return (
             <li
               key={s.id}
-              className="flex p-[2px]"
+              data-tier={s.tier}
+              className={`flex p-[2px] ${s.tier === "legendary" ? `skin-legend ${still ? "still" : ""}` : ""}`}
               style={{ background: chosen ? info.theme.accent : owned ? "#7a6a8a" : "#5c4a6e" }}
             >
               <div className="flex w-full flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
-                <SkinPreview hero={hero} skin={s.id} dim={!open} />
+                <button
+                  onClick={() => setFocus(s.id)}
+                  aria-label={`${s.name} — jonli ko'rish`}
+                  aria-pressed={shown === s.id}
+                  className={`${pixelFocus} border-2 ${shown === s.id ? "border-[#ffcc33]" : "border-transparent"}`}
+                >
+                  <SkinPreview hero={hero} skin={s.id} dim={!open} />
+                </button>
                 <span style={{ color: brightest(s.colors) }}>{s.name}</span>
+                <TierBadge tier={s.tier} />
                 <Swatches colors={s.colors} />
                 {chosen ? (
                   <span

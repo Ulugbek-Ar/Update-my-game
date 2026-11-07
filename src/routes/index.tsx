@@ -14,14 +14,7 @@ import {
   renderMenuScene,
 } from "@/game/menuScene";
 import { loadPlayableHero, loadUnlockedHeroes, migrateSave, selectHero } from "@/game/save";
-import {
-  HERO_LIST,
-  HERO_ROLE,
-  ROLE_INFO,
-  bestKeys,
-  withAlpha,
-  type Hero,
-} from "@/game/hero";
+import { HERO_LIST, HERO_ROLE, ROLE_INFO, bestKeys, withAlpha, type Hero } from "@/game/hero";
 import { drawRoleIcon } from "@/game/roles";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -1831,6 +1824,15 @@ function SettingsWindow({
                 on={s.damageNumbers}
                 onChange={(v) => update({ damageNumbers: v })}
               />
+              <Toggle
+                label="Effektlarni kamaytirish"
+                on={s.reduceFx}
+                onChange={(v) => update({ reduceFx: v })}
+              />
+              <p className="-mt-3 text-[8px] leading-4 text-muted-foreground">
+                Zarrachalar va miltillash kamayadi — sezgir ko'zlar va kuchsiz telefonlar uchun.
+                O'yin o'zgarmaydi.
+              </p>
               <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
             </>
           ) : (

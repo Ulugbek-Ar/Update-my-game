@@ -167,9 +167,16 @@ type Listener = (s: Settings) => void;
 const listeners = new Set<Listener>();
 let cached: Settings | null = null;
 
+/** "Effektlarni kamaytirish": CSS animatsiyalari (masalan afsonaviy skin porlashi) ham to'xtaydi */
+function markReduceFx(s: Settings) {
+  if (typeof document !== "undefined")
+    document.documentElement.classList.toggle("reduce-fx", s.reduceFx);
+}
+
 /** Joriy sozlamalar (har kadr chizishda o'qish uchun — localStorage'ni qayta o'qimaydi). */
 export function currentSettings() {
-  return (cached ??= loadSettings());
+  if (!cached) markReduceFx((cached = loadSettings()));
+  return cached;
 }
 
 /** Sozlama o'zgarganda chaqiriladi (o'yin va olam darhol qo'llaydi); qaytgani — obunani bekor qilish. */
@@ -187,5 +194,6 @@ export function saveSettings(s: Settings) {
     /* saqlash imkonsiz */
   }
   cached = s;
+  markReduceFx(s);
   for (const fn of listeners) fn(s);
 }
