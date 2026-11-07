@@ -255,3 +255,36 @@ describe("Do'kon jonli preview va onlayn", () => {
     expect(lookOf(b).tier).toBe("default");
   });
 });
+
+describe("Skin kuch bermaydi", () => {
+  /** O'yinchining barcha son va mantiqiy maydonlari (zarar, tezlik, cooldown, maydon, jon...) */
+  const stats = (g: Game) => {
+    const p = g.player as unknown as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(p))
+      if (typeof p[k] === "number" || typeof p[k] === "boolean") out[k] = p[k];
+    // hisoblanadigan qiymatlar
+    out["reach"] = g.player.reach;
+    out["hitDamage"] = g.player.hitDamage;
+    out["size"] = g.player.size;
+    return out;
+  };
+
+  it("damage, speed, cooldowns, reach and hitboxes are identical for every skin", () => {
+    for (const h of HEROES) {
+      unlockHero(h);
+      const base = new Game(recordingCanvas().canvas, h);
+      const want = stats(base);
+      base.player.attackTimer = 0.2;
+      const box = base.player.attackBox();
+      for (const s of SKINS[h].slice(1)) {
+        buySkin(h, s.id, wallet());
+        const g = new Game(recordingCanvas().canvas, h);
+        expect(g.look.id).toBe(s.id);
+        expect(stats(g), s.id).toEqual(want);
+        g.player.attackTimer = 0.2;
+        expect(g.player.attackBox(), s.id).toEqual(box);
+      }
+    }
+  });
+});

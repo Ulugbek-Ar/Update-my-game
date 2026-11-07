@@ -1,0 +1,268 @@
+[
+  {
+    "title": "MUZ RITSAR — afsonaviy skin",
+    "text": "Muz bo'laklari, qor izi, har zarbada muz kristali yoriladi. Oyoq ostida muz aurasi, ko'zda sovuq yaltirash va muz qo'ng'iroqchasi ovozi.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 50
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "QUYOSH SEHRGAR — afsonaviy skin",
+    "text": "Oltin-sariq quyosh shari, cho'g' izi va zarbada quyosh chaqnashi. Bosh uzra yonib-o'chadigan halo va yorug' akkord ovozi.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 80
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ],
+    "range": 70
+  },
+  {
+    "title": "TUNGI OVCHI — afsonaviy skin",
+    "text": "Binafsha tun o'qlari, soya izi va zarbada yarim oy o'rog'i. Kapyushon ichida ko'zlar porlaydi.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "hunter",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 80
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ],
+    "range": 80
+  },
+  {
+    "title": "DASHT MERGANI — afsonaviy skin",
+    "text": "O't va bug'doy barglari, shamol burami zarbasi va hilpiragan bo'yinbog'. Do'mbira chertishiga o'xshash ovoz.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "gunner",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 80
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ],
+    "range": 80
+  },
+  {
+    "title": "OLOV PALADIN — afsonaviy skin",
+    "text": "Oltin alanga, cho'g' izi va zarbada feniks qanotlari. Yelkadan cho'g'lar ko'tariladi.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 50
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Do'konda skinni jonli ko'rib tanlang: ODDIY / NOYOB / AFSONAVIY",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}",
+          "pixel-rpg-gold": "420"
+        }
+      },
+      {
+        "click": "DO'KON"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'SKINLAR').click();"
+      },
+      {
+        "wait": 2300
+      }
+    ]
+  },
+  {
+    "title": "OLOV PALADIN o'yinda (telefon)",
+    "phone": {
+      "width": 915,
+      "height": 412
+    },
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 40
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => (e.stun = 99)); g.player.fx = 1; g.player.fy = 0; g.input.pressAttack();"
+      },
+      {
+        "wait": 260
+      }
+    ]
+  },
+  {
+    "title": "Sozlamalarda yangi: effektlarni kamaytirish",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": "[\"gunner\", \"paladin\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"knight-ice\", \"mage-sun\", \"hunter-night\", \"gunner-steppe\", \"paladin-flame\", \"knight-gold\"], \"sel\": {\"knight\": \"knight-ice\", \"mage\": \"mage-sun\", \"hunter\": \"hunter-night\", \"gunner\": \"gunner-steppe\", \"paladin\": \"paladin-flame\"}}"
+        }
+      },
+      {
+        "click": "SOZLAMALAR"
+      },
+      {
+        "wait": 500
+      }
+    ]
+  }
+]

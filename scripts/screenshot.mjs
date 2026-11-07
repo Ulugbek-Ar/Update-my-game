@@ -175,6 +175,7 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       const until = Date.now() + video * 1000 + 300;
       if (scene.autoplay || scene.hero) {
         const held = new Set();
+        let step = 0;
         const setKeys = async (want) => {
           for (const k of held) if (!want.has(k)) await page.keyboard.up(k);
           for (const k of want) if (!held.has(k)) await page.keyboard.down(k);
@@ -220,7 +221,15 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
             await page.waitForTimeout(20);
             await page.keyboard.up(aim);
           }
-          if (t && (!scene.range || !want.size)) await page.keyboard.press("Space");
+          // combo: skin effektlarini ko'rsatish uchun navbat bilan kuchli hujum (Space bosib turish)
+          // va dash (K) ham qilinadi
+          const turn = ++step;
+          if (t && scene.combo && turn % 6 === 3) {
+            await page.keyboard.down("Space");
+            await page.waitForTimeout(760);
+            await page.keyboard.up("Space");
+          } else if (t && scene.combo && turn % 6 === 5) await page.keyboard.press("k");
+          else if (t && (!scene.range || !want.size)) await page.keyboard.press("Space");
           await page.waitForTimeout(180);
         }
         await setKeys(new Set());

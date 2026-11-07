@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.6.0";
+export const GAME_VERSION = "3.7.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.7.0",
+    date: "2026-11-07",
+    notes:
+      "Skinlar jonlandi — endi har skin qahramonning qobiliyatlari, izlari va zarbalarini ham o'zgartiradi. Uch daraja: oddiy, noyob va afsonaviy. Afsonaviy skinlar o'z animatsiyasi, maxsus zarba effekti va ovozi bilan. Do'konda skinni jonli ko'rib tanlang. Sozlamalarda yangi: effektlarni kamaytirish.",
+  },
   {
     version: "3.6.0",
     date: "2026-11-06",
