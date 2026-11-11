@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Game } from "./game";
 import { ForestKing, Queen } from "./boss";
 import { BOSS_WAVE } from "./waves";
@@ -8,7 +8,27 @@ import { unlockHero } from "./save";
 
 type GI = { startWave(i: number): void };
 
-beforeEach(() => localStorage.clear());
+/**
+ * Jang tasodifi qotirilgan: Math.random o'rniga seed'li generator (mulberry32). Bot ideal emas —
+ * tikanli devor yoki gullar uni uzoq ushlab qolsa, jang ba'zan 160 s dan oshib ketardi va sinov
+ * tasodifan qizarardi. Seed bilan har ishga tushirishda aynan bir xil jang o'ynaladi.
+ */
+function seedRandom(seed: number) {
+  let s = seed >>> 0;
+  vi.spyOn(Math, "random").mockImplementation(() => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  seedRandom(2026);
+});
+afterEach(() => vi.restoreAllMocks());
 
 /**
  * Bot bilan to'liq boss jangi: o'yinchi zarar olmaydi (faqat jang uzunligi va hamma fazalar
@@ -51,14 +71,17 @@ function playBoss(hero: Hero, world: World) {
     if (b instanceof Queen)
       expect(b.mirrors.length).toBe(b.phase === 3 && !b.dead ? 2 : b.mirrors.length);
   }
-  return { t, dead: b.dead, phases, maxHp: b.maxHp };
+  return { t, dead: b.dead, phases, maxHp: b.maxHp, hero: p.hero };
 }
 
 describe("Har qahramon bilan har boss (bot jangi)", () => {
   for (const hero of ["knight", "mage", "hunter", "gunner"] as Hero[])
     for (const world of [1, 2, 3] as World[])
       it(`${hero} vs ${world === 1 ? "Iblis" : world === 2 ? "Qor Malikasi" : "O'rmon Shohi"}`, () => {
+        // pullik qahramon (Mergan) ochilmagan bo'lsa o'yin Ritsar bilan boshlanardi
+        unlockHero(hero);
         const r = playBoss(hero, world);
+        expect(r.hero).toBe(hero);
         expect(r.dead).toBe(true);
         expect([...r.phases].sort()).toEqual([1, 2, 3]);
         // bot ideal emas (yuradi, faza daxlsizligi, gullar) — lekin 60 s dan tez emas
@@ -72,6 +95,7 @@ describe("Paladin bilan har boss (bot jangi)", () => {
     it(`paladin vs ${world === 1 ? "Iblis" : world === 2 ? "Qor Malikasi" : "O'rmon Shohi"}`, () => {
       unlockHero("paladin");
       const r = playBoss("paladin", world);
+      expect(r.hero).toBe("paladin");
       expect(r.dead).toBe(true);
       expect([...r.phases].sort()).toEqual([1, 2, 3]);
       expect(r.t).toBeGreaterThan(60);
