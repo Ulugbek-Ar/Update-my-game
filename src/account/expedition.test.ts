@@ -154,9 +154,16 @@ describe("expedition (account, server clock)", () => {
     const acc = new AccountManager();
     new CloudSync(acc);
     const m = new ExpeditionManager(acc);
+    // Kirgach menejer fonda o'zi "exp/get" so'raydi (afterLogin kutilmaydi). Server tokenni
+    // crypto.subtle bilan tekshiradi — bu haqiqiy asinxron ish, tartibi mashina yukiga bog'liq.
+    // Shu fon so'rovi tugamasdan test o'z so'rovlarini boshlasa, `busy` tufayli checkReturn jim
+    // qaytadi yoki kechikkan javob keyingi testning xotirasiga yoziladi — shuning uchun kutamiz.
+    const after = vi.spyOn(m as unknown as { afterLogin(): Promise<void> }, "afterLogin");
     await acc.startBotLogin(false);
     srv.confirmPending(tg);
     await acc.pollNow();
+    expect(after).toHaveBeenCalledTimes(1);
+    await Promise.all(after.mock.results.map((r) => r.value));
     return { acc, m, id: srv.store.playerByTg(tg)!.id };
   }
 
