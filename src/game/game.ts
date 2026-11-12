@@ -41,7 +41,14 @@ import {
   type Upgrade,
 } from "./waves";
 import {
+  DODGE_CD,
+  DODGE_SLOW,
   HAMLA_DMG,
+  IAI_DELAY,
+  IAI_GAP,
+  IAI_WIDTH,
+  PARRY_BOOST,
+  PARRY_STUN,
   VOW_TIME,
   SKY_RADIUS,
   SKY_STUN,
@@ -50,6 +57,18 @@ import {
   type Bolt,
   type Target,
 } from "./player";
+import {
+  CUT_LIFE,
+  STREAK_LIFE,
+  renderCritReady,
+  renderCut,
+  renderFocus,
+  renderKatanaArc,
+  renderMark,
+  renderStreak,
+  type Cut,
+  type Streak,
+} from "./samuraiFx";
 import {
   CRACK_LIFE,
   QUAKE_LIFE,
@@ -93,6 +112,7 @@ import {
   type TagCounts,
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
+import { SuperMeter } from "./super";
 import { skinLook, skinPalette } from "./skins";
 import {
   defaultLook,
@@ -105,6 +125,7 @@ import {
 import {
   COIN_RAIN,
   CRIT_AVG,
+  CRIT_CHANCE,
   CRIT_COLOR,
   CRIT_FREEZE,
   CRIT_MUL,
@@ -152,10 +173,27 @@ export const BEST_KEY = bestKeys("knight").best;
 export const ENDLESS_BEST_KEY = bestKeys("knight").endless;
 /** Birinchi o'yindagi ko'rsatmalar ko'rsatib bo'lingan */
 export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
+/** Samuray bilan birinchi o'yindagi maslahatlar (IAI, chetlanish, parry) ko'rsatib bo'lingan */
+export const SAMURAI_TIPS_KEY = "pixel-rpg-samurai-tips-done";
+/** Parry bilan qaytarilgan snaryad: tezligi va oddiy dushmanga zarari (o'yinchi zararidan) */
+export const REFLECT_SPEED = 1.7;
+export const REFLECT_MUL = 2;
+/** Bossga qaytgan zarar cheklangan: har snaryad shuncha, soniyasiga jami shundan oshmaydi */
+export const PARRY_BOSS_DMG = 1;
+export const PARRY_BOSS_CAP = 3;
+/** GULBARG BO'RONI: mukammal chetlanishdagi gulbarg zarbasi radiusi */
+export const PETAL_RADIUS = 36;
+/** SOVUQ QON: jon shuncha yoki kam bo'lsa kritik ehtimoliga qo'shimcha */
+export const COLD_BLOOD_HP = 2;
+export const COLD_BLOOD_CRIT = 0.25;
+/** "10 ta mukammal chetlanish" yutug'i (bitta o'yinda) */
+export const DODGE_ACH = 10;
 /** 1-dunyo yutilgan: xaritada 2-dunyo ochiladi */
 export { WORLD1_WON_KEY } from "./progress";
-export type Hint = "attack" | "spin" | "dash";
+export type Hint = "attack" | "spin" | "dash" | "iai" | "dodge" | "parry";
 const HINTS: Hint[] = ["attack", "spin", "dash"];
+/** Samurayning bir martalik maslahatlari */
+const SAMURAI_TIPS: Hint[] = ["iai", "dodge", "parry"];
 type Phase = "play" | "attempt" | "victory";
 type Stage = "fight" | "upgrade";
 
@@ -169,6 +207,10 @@ interface Shot {
   arrow?: boolean;
   /** Zarar (g'azabdagi boss sharlari +1) */
   dmg?: number;
+  /** Kim otgan (parry bilan qaytarilsa — shunga uchadi) */
+  owner?: Enemy | Boss;
+  /** Ko'k olov (Kitsune) */
+  blue?: boolean;
 }
 interface Drop {
   x: number;
@@ -471,6 +513,13 @@ const POWER_KEYS = [
   // Paladin kartalari
   "shockwave",
   "aura",
+  // Samuray kartalari
+  "iaiRange",
+  "iaiDouble",
+  "dodgeWindow",
+  "parryBoost",
+  "petalStorm",
+  "coldBlood",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -506,6 +555,30 @@ export class Game {
   quakes: Quake[] = [];
   /** Portlash halqalari (sinergiya va artefaktlar; faqat chizish) */
   rings: { x: number; y: number; r: number; life: number; max: number; color: string }[] = [];
+  /** Samuray: IAI yo'lida belgilanganlar, kechikkan kesiklar navbati va chizmalar (iz, kesik) */
+  iaiMarks: (Enemy | Boss)[] = [];
+  private iaiCuts: {
+    t: number;
+    i: number;
+    pass: number;
+    mul: number;
+    crit: boolean;
+    targets: (Enemy | Boss)[];
+    dir: number;
+  } | null = null;
+  cuts: Cut[] = [];
+  streaks: Streak[] = [];
+  private iaiFrom = { x: 0, y: 0 };
+  /** Mukammal chetlanish: qolgan sekin vaqt (real soniya) — Samurayning o'zi sekinlashmaydi */
+  focus = 0;
+  /** Shu o'yindagi mukammal chetlanishlar ("10 ta mukammal chetlanish" yutug'i) */
+  perfectDodges = 0;
+  /** Bossga qaytgan zarar hisobi (soniyasiga cheklangan) */
+  private reflectBudget = { t: 0, dmg: 0 };
+  /** Shu kadrda "SHIK!" yozuvi chiqdi (bir kadrda bir marta) */
+  private parryNote = false;
+  /** Super zaryadi (super.ts). v4.0 gacha yopiq: to'lmaydi, HUD'da va boshqaruvda ko'rinmaydi */
+  superMeter = new SuperMeter("knight");
   /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
   private threat = new ThreatTable();
   /** Boss to'lqinida o'yinchi hali jon yo'qotmagan ("Qalqonsiz devor" yutug'i) */
@@ -674,6 +747,8 @@ export class Game {
     this.damageNumsOn = settings.damageNumbers;
     sfx.setVolumes(settings.music, settings.sfx);
     if (!load(TUTORIAL_KEY)) this.hints = [...HINTS];
+    // Samuray bilan birinchi o'yin: IAI, chetlanish va parry maslahatlari (bir martalik)
+    if (hero === "samurai" && !load(SAMURAI_TIPS_KEY)) this.hints = [...SAMURAI_TIPS];
     this.reset();
   }
 
@@ -685,6 +760,7 @@ export class Game {
     this.player.skin = skinPalette(this.hero);
     this.look = skinLook(this.hero);
     this.player.tone = this.look.fx.tone;
+    this.player.flair = this.look.fx.flair;
   }
 
   /** Faol skinning qobiliyat ranglari (skinFx.ts: SkinTheme) */
@@ -710,6 +786,7 @@ export class Game {
   /** Boshlang'ich holat: 1-to'lqin, HP to'liq. */
   reset() {
     this.player = new Player(this.hero);
+    this.superMeter = new SuperMeter(this.hero);
     this.applySkin();
     const shop = loadShop();
     applyShop(this.player, shop);
@@ -725,6 +802,8 @@ export class Game {
     this.hideAt = null;
     this.cracks = [];
     this.quakes = [];
+    this.clearSamurai();
+    this.perfectDodges = 0;
     this.threat.clear();
     this.tagCounts = {};
     this.wardT = 0;
@@ -913,6 +992,7 @@ export class Game {
     this.clouds = [];
     this.traps = [];
     this.smokes = [];
+    this.clearSamurai();
     this.darkness = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
@@ -1182,8 +1262,14 @@ export class Game {
   /** Bajarilgan harakat ko'rsatmasini yashiradi; hammasi bajarilsa qayta chiqmaydi. */
   private doneHint(h: Hint) {
     if (!this.hints.includes(h)) return;
+    const key = this.hintKey();
     this.hints = this.hints.filter((x) => x !== h);
-    if (!this.hints.length) save(TUTORIAL_KEY, 1);
+    if (!this.hints.length) save(key, 1);
+  }
+
+  /** Ko'rsatmalar qaysi kalitda saqlanadi: umumiy darslik yoki Samuray maslahatlari */
+  private hintKey() {
+    return this.hints.some((h) => SAMURAI_TIPS.includes(h)) ? SAMURAI_TIPS_KEY : TUTORIAL_KEY;
   }
 
   private hintsVisible() {
@@ -1577,7 +1663,7 @@ export class Game {
    * O'yinchining to'g'ridan-to'g'ri zarbasi (qilich, shar, o'q, hamla): artefakt ko'paytuvchilari
    * (O'NINCHI ZARB, QASOS) shu yerda.
    */
-  private strike(t: Enemy | Boss, dmg: number, knock: boolean | number = true) {
+  private strike(t: Enemy | Boss, dmg: number, knock: boolean | number = true, force = false) {
     let mul = 1;
     this.hitCount++;
     if (this.hasArtifact("tenth") && this.hitCount % TENTH_EVERY === 0) {
@@ -1591,7 +1677,14 @@ export class Game {
       this.fx.burst(t.x, t.y, artifactById("revenge").color, 10, 80, 1);
     }
     // kritik zarba: 2 baravar, sariq "KRIT!", kattaroq uchqun, biroz uzunroq hit-stop
-    const crit = !t.dead && rollCrit(this.critRand);
+    // Samuray: mukammal chetlanishdan keyingi zarba — kafolatlangan kritik; SOVUQ QON — jon kam
+    // bo'lsa ehtimol oshadi
+    const p = this.player;
+    const sure = force || (p.critReady && !t.dead);
+    if (p.critReady && !t.dead) p.critReady = false;
+    const chance =
+      CRIT_CHANCE + (p.coldBlood && p.hp <= COLD_BLOOD_HP && !p.dead ? COLD_BLOOD_CRIT : 0);
+    const crit = !t.dead && (sure || rollCrit(this.critRand, chance));
     if (crit) {
       mul *= CRIT_MUL;
       this.freeze = Math.max(this.freeze, CRIT_FREEZE);
@@ -1614,6 +1707,9 @@ export class Game {
       extra += (LAST_SHOT_MUL - 1) / Math.max(1, this.player.ammoMax);
     if (this.hasArtifact("flame")) extra += 0.05;
     if (this.hasArtifact("revenge")) extra += 0.03;
+    // Samuray kartalari: SOVUQ QON (jon kam paytdagi kritik), GULBARG BO'RONI (chetlanish zarbasi)
+    if (this.player.coldBlood) extra += COLD_BLOOD_CRIT * 0.3;
+    if (this.player.petalStorm) extra += 0.05;
     return CRIT_AVG * (1 + extra);
   }
 
@@ -1772,6 +1868,7 @@ export class Game {
         return;
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
+    this.superMeter.add(hpBefore - Math.max(0, t.hp));
     // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
     if (this.damageNumsOn)
       this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp), crit);
@@ -1824,11 +1921,14 @@ export class Game {
   }
 
   update(dt: number) {
+    // haqiqiy vaqt: mukammal chetlanishda dunyo sekinlashadi, Samuray esa yo'q
+    const raw = dt;
     // boss o'ldi: 1 s sekin harakat (o'yin tezligi 0.3)
     if (this.slowmo > 0) {
       this.slowmo -= dt;
       dt *= SLOWMO_SPEED;
     }
+    if (this.focus > 0) this.focus = this.slowmo > 0 ? this.focus - raw : 0;
     if (this.coinRain.length) {
       for (const r of this.coinRain) {
         r.y += r.vy * dt;
@@ -1875,7 +1975,8 @@ export class Game {
     this.stats.time += dt;
     if (this.stage === "upgrade") return this.updateUpgrade(dt);
     if (this.freeze > 0) {
-      this.freeze -= dt;
+      // sekin vaqtda hit-stop cho'zilib ketmasin
+      this.freeze -= this.focus > 0 ? raw : dt;
       return;
     }
     if (this.intro > 0) {
@@ -1901,7 +2002,8 @@ export class Game {
     if (p.hunter) p.threat = this.nearestThreat();
     const px0 = p.x,
       py0 = p.y;
-    p.update(dt, this.input);
+    this.parryNote = false;
+    p.update(this.focus > 0 ? raw : dt, this.input);
     this.applySlip(px0, py0, dt);
     this.updateSynergies(dt);
     this.updateArtifacts(dt);
@@ -1943,10 +2045,11 @@ export class Game {
     this.updateSmokes(dt);
     this.threat.update(dt);
     if (p.paladin) this.updatePaladin(dt);
+    if (p.samurai) this.updateSamurai(dt, px0, py0);
     if (this.hints.length) {
       if (p.attackTimer > 0) this.doneHint("attack");
-      if (p.spinning) this.doneHint("spin");
-      if (p.dashing) this.doneHint("dash");
+      if (p.spinning || p.iai) this.doneHint("spin");
+      if (p.dashing && !p.iai) this.doneHint("dash");
     }
     if (p.chill > 0) this.waveChilled = true;
     if (p.teleportFrom) {
@@ -1996,6 +2099,9 @@ export class Game {
     }
     // Sehrgar teleporti bir zumda — izi yo'q, uning o'rniga tutun va uchqunlar
     if (p.dashing && !p.mage) this.ht(p.x, p.y + 2, this.theme.trail);
+    // Samuray dashi: orqasidan gulbarglar uchadi
+    if (p.dashing && p.samurai && Math.random() < 0.6)
+      this.fx.burst(p.x - p.dashX * 6, p.y + 2, this.theme.spark, 1, 30, 2, "leaf");
     if (p.bolts.length) {
       // OXIRGI O'Q: barabandagi oxirgi o'q kuchliroq
       if (p.gunner && p.ammo === 0 && this.hasArtifact("lastshot")) {
@@ -2022,7 +2128,9 @@ export class Game {
         // olov imp — kichik olov shari, kamonchi — o'q
         const imp = e.kind === "imp";
         for (const s of e.shots)
-          this.shots.push(imp ? { ...s, size: 5 } : { ...s, size: 4, arrow: true });
+          this.shots.push(
+            imp ? { ...s, size: 5, owner: e } : { ...s, size: 4, arrow: true, owner: e },
+          );
         e.shots = [];
         if (imp) sfx.fireball();
         else sfx.arrow();
@@ -2094,7 +2202,8 @@ export class Game {
       if (boss instanceof ForestKing) this.updateForestKing(boss);
       if (!(boss instanceof Queen) && !(boss instanceof ForestKing)) this.updateDevil(boss);
       if (boss.shots.length) {
-        for (const s of boss.shots) this.shots.push({ ...s, size: 6, dmg: boss.dmg(1) });
+        for (const s of boss.shots)
+          this.shots.push({ ...s, size: 6, dmg: boss.dmg(1), owner: boss });
         boss.shots = [];
         sfx.fireball();
       }
@@ -2133,7 +2242,10 @@ export class Game {
       this.bolts = this.bolts.filter((b) => {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (b.bullet || b.wave) {
+        if (b.reflect) {
+          // parry bilan qaytarilgan snaryad: pushti iz
+          if (Math.random() < 0.6) this.ht(b.x, b.y, withAlpha(T.accent, 0.7));
+        } else if (b.bullet || b.wave) {
           // Mergan o'qi: ingichka mis iz, masofasi tugasa so'nadi (Paladin to'lqini — oq-oltin nur)
           if (Math.random() < 0.5) this.ht(b.x, b.y, withAlpha(T.glow, b.wave ? 0.6 : 0.55));
           b.range = (b.range ?? Infinity) - Math.hypot(b.vx, b.vy) * dt;
@@ -2187,7 +2299,8 @@ export class Game {
             t.poison = POISON_TIME;
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
           }
-          this.strike(t, p.damage * (b.power ?? 1));
+          if (b.reflect) this.reflectHit(t);
+          else this.strike(t, p.damage * (b.power ?? 1));
           if (b.bullet && t instanceof Enemy && t.dead) this.drumKill(b.load ?? 0);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
@@ -2263,6 +2376,11 @@ export class Game {
       const before = this.shots.length;
       this.shots = this.shots.filter((s) => {
         if (!overlap(box, s as unknown as Body)) return true;
+        // Samuray parry oynasida: snaryad yo'q bo'lmaydi — egasiga qaytadi
+        if (p.parrying) {
+          this.parryShot(s);
+          return false;
+        }
         this.fx.burst(s.x, s.y, s.arrow ? "#ff3b3b" : "#ff9a3c", 6, 50);
         return false;
       });
@@ -2275,15 +2393,28 @@ export class Game {
     // kontakt zarar
     if (!p.dead) {
       for (const e of this.enemies)
-        if (e.active && overlap(p, e) && p.takeHit(1, e.x, e.y, 180) && e.kind === "iceblob")
+        if (
+          e.active &&
+          // IAI bilan belgilangan (kesilishini kutayotgan) dushman tegib zarar bermaydi
+          !this.iaiMarks.includes(e) &&
+          overlap(p, e) &&
+          p.takeHit(1, e.x, e.y, 180) &&
+          e.kind === "iceblob"
+        )
           // muz slime tegsa sekinlashtiradi
           p.chill = Math.max(p.chill, ICEBLOB_CHILL);
       if (boss?.active && overlap(p, boss)) p.takeHit(boss.dmg(1), boss.x, boss.y, 220);
       this.shots = this.shots.filter((s) => {
         if (!overlap(p, s as unknown as Body)) return true;
+        if (p.parrying && !p.evading) {
+          this.parryShot(s);
+          return false;
+        }
         return !p.takeHit(s.dmg ?? 1, s.x, s.y, 160);
       });
     }
+    // Samuray: shu kadrda qaytarilgan zarbalar va mukammal chetlanish (dushman hujumlaridan keyin)
+    if (p.samurai) this.resolveSamurai();
     if (p.hp < hpBefore) this.onPlayerHurt();
 
     // yurak terish
@@ -2354,7 +2485,9 @@ export class Game {
                     ? "winGunner"
                     : this.hero === "paladin"
                       ? "winPaladin"
-                      : "winKnight",
+                      : this.hero === "samurai"
+                        ? "winSamurai"
+                        : "winKnight",
             );
             // dunyo yutildi: xaritada keyingi dunyo ochiladi (kunlik sinov ham hisob)
             recordWorldWin(this.chapter, this.hero);
@@ -2555,6 +2688,284 @@ export class Game {
         this.strike(t, HAMLA_DMG * p.damage, 300);
       }
     }
+  }
+
+  /**
+   * Superni ishlatish (v4.0 uchun API joyi). Superlar yopiq (super.ts: SUPERS_ENABLED) — zaryad
+   * to'lmaydi va bu yerda hech narsa bo'lmaydi; hech qaysi tugma buni chaqirmaydi.
+   */
+  useSuper() {
+    return this.superMeter.use();
+  }
+
+  /** Samurayning o'tkinchi holati (belgilar, kesiklar, chizmalar) — to'lqin va o'yin boshida. */
+  private clearSamurai() {
+    this.iaiMarks = [];
+    this.iaiCuts = null;
+    this.cuts = [];
+    this.streaks = [];
+    this.focus = 0;
+    this.reflectBudget = { t: 0, dmg: 0 };
+  }
+
+  /**
+   * Samuray: IAI sirpanishi yo'lidagilarni belgilash, kechikkan kesiklar ("chiq-chiq"), zaryad
+   * to'lgandagi yaltirash va chizmalar taymeri. x0, y0 — shu kadrdagi harakatdan oldingi joy.
+   */
+  private updateSamurai(dt: number, x0: number, y0: number) {
+    const p = this.player;
+    const T = this.theme;
+    for (const k of this.cuts) k.life -= dt;
+    this.cuts = this.cuts.filter((k) => k.life > 0);
+    for (const k of this.streaks) k.life -= dt;
+    this.streaks = this.streaks.filter((k) => k.life > 0);
+    if (this.reflectBudget.t > 0) this.reflectBudget.t -= dt;
+    if (p.chargeFull) {
+      // zaryad to'ldi: yaltirash va jarang
+      p.chargeFull = false;
+      sfx.iaiReady();
+      this.hb(p.x, p.y - 2, T.glow, 8, 70, 1);
+    }
+    if (p.iaiStarted) {
+      p.iaiStarted = false;
+      this.iaiMarks = [];
+      this.iaiFrom = { x: x0, y: y0 };
+      this.hb(x0, y0 + 2, T.spark, 8, 60, 1);
+      this.doneHint("iai");
+      this.achieve("firstIai");
+    }
+    if (p.iai || p.iaiDone) this.sweepIai(x0, y0);
+    if (p.iaiDone) {
+      const d = p.iaiDone;
+      p.iaiDone = null;
+      this.streaks.push({
+        x1: this.iaiFrom.x,
+        y1: this.iaiFrom.y,
+        x2: p.x,
+        y2: p.y,
+        life: STREAK_LIFE,
+      });
+      // yo'l bo'ylab gulbarglar
+      const n = this.fx.isReduced() ? 3 : 7;
+      for (let i = 0; i < n; i++) {
+        const k = (i + 0.5) / n;
+        this.fx.burst(
+          this.iaiFrom.x + (p.x - this.iaiFrom.x) * k,
+          this.iaiFrom.y + (p.y - this.iaiFrom.y) * k,
+          i % 2 ? T.accent : T.glow,
+          1,
+          40,
+          2,
+          "leaf",
+        );
+      }
+      this.iaiCuts = {
+        t: IAI_DELAY,
+        i: 0,
+        pass: 0,
+        mul: d.mul,
+        crit: d.crit,
+        targets: this.iaiMarks,
+        dir: Math.atan2(p.y - this.iaiFrom.y, p.x - this.iaiFrom.x),
+      };
+    }
+    const c = this.iaiCuts;
+    if (c) {
+      c.t -= dt;
+      // afsonaviy skin: katana qinga qaytgan lahzada ("chik") kesiklar boshlanadi
+      if (c.t <= 0 && c.i === 0 && c.pass === 0 && p.flair === "moon") sfx.sheathe();
+      while (c.t <= 0 && c.i < c.targets.length) {
+        const t = c.targets[c.i++]!;
+        c.t += IAI_GAP;
+        if (t.dead || (t instanceof Enemy ? t.removed : !t.active)) continue;
+        sfx.iaiCut();
+        // kesik chizig'i: sirpanish yo'nalishiga qiya; ikkinchi kesim — teskari qiyalikda
+        const a = c.dir + (c.pass ? -0.9 : 0.9) + (Math.random() - 0.5) * 0.3;
+        this.cuts.push({ x: t.x, y: t.y - 2, a, len: t.size / 2 + 9, life: CUT_LIFE });
+        this.hb(t.x, t.y, T.accent, 5, 80, 1);
+        heroImpact(this.fx, this.look, t.x, t.y);
+        this.fx.addShake(0.06);
+        this.strike(t, p.damage * c.mul, 200, c.crit);
+      }
+      if (c.i >= c.targets.length && c.t <= 0) {
+        // IKKI KESIM: tirik qolganlar yana bir marta kesiladi
+        if (p.iaiDouble && c.pass === 0 && c.targets.some((t) => !t.dead)) {
+          c.pass = 1;
+          c.i = 0;
+          c.t = IAI_GAP * 2;
+        } else {
+          this.iaiCuts = null;
+          this.iaiMarks = [];
+        }
+      }
+    }
+  }
+
+  /** IAI sirpanishi: (x0, y0) dan hozirgi joygacha yo'lak — tegib o'tganlar belgilanadi. */
+  private sweepIai(x0: number, y0: number) {
+    const p = this.player;
+    const dx = p.x - x0,
+      dy = p.y - y0;
+    const len = Math.hypot(dx, dy);
+    const ux = len ? dx / len : p.dashX,
+      uy = len ? dy / len : p.dashY;
+    const near = (x: number, y: number, r: number) => {
+      const t = Math.max(0, Math.min(len, (x - x0) * ux + (y - y0) * uy));
+      return Math.hypot(x - (x0 + ux * t), y - (y0 + uy * t)) < r + IAI_WIDTH / 2;
+    };
+    const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+    if (this.boss?.active) targets.push(this.boss);
+    for (const t of targets) {
+      if (this.iaiMarks.includes(t) || !near(t.x, t.y, t.size / 2)) continue;
+      this.iaiMarks.push(t);
+      // belgilangan dushman kesilguncha qotib turadi (boss — yo'q)
+      if (t instanceof Enemy)
+        t.stun = Math.max(t.stun, IAI_DELAY + this.iaiMarks.length * IAI_GAP + 0.1);
+      this.hb(t.x, t.y, this.theme.glow, 3, 50, 1);
+    }
+    // yo'ldagi snaryadlar kesiladi, sandiq va Shohning gullari zarba oladi
+    const before = this.shots.length;
+    this.shots = this.shots.filter((s) => {
+      if (!near(s.x, s.y, s.size / 2)) return true;
+      this.fx.burst(s.x, s.y, s.arrow ? "#ff3b3b" : "#ff9a3c", 6, 50);
+      return false;
+    });
+    if (this.shots.length < before) this.score += 5 * (before - this.shots.length);
+    const ch = this.chest;
+    if (ch && ch.openT < 0 && !p.hitSet.has(ch) && near(ch.x, ch.y, CHEST_SIZE / 2)) {
+      p.hitSet.add(ch);
+      this.hitChest();
+    }
+    const part = this.boss?.active ? this.boss.partAt(p) : null;
+    if (part && !p.hitSet.has(part)) {
+      p.hitSet.add(part);
+      this.strikePart(this.boss!, part, p.damage * (p.iai?.mul ?? 1), part.x, part.y);
+    }
+  }
+
+  /**
+   * Samuray: dushman hujumlaridan keyin — mukammal chetlanish (sekin vaqt, gulbarglar, keyingi
+   * zarba kritik) va parry (hujumchi gangiydi, "SHIK!").
+   */
+  private resolveSamurai() {
+    const p = this.player;
+    const T = this.theme;
+    if (p.perfect) {
+      p.perfect = false;
+      p.critReady = true;
+      this.perfectDodges++;
+      if (this.perfectDodges >= DODGE_ACH) this.achieve("dodge10");
+      this.doneHint("dodge");
+      // vaqt sekinlashadi (boss o'limidagi sekin harakat kodi), Samurayning o'zi — yo'q
+      this.slowmo = Math.max(this.slowmo, DODGE_SLOW);
+      this.focus = DODGE_SLOW;
+      sfx.perfectDodge();
+      this.fx.text(fitX(p.x, 40), Math.max(30, p.y - 24), "CHETLANDI!", T.accent);
+      // sakura gulbarglari sochiladi
+      this.fx.burst(p.x, p.y, T.accent, 16, 100, 2, "leaf");
+      this.fx.burst(p.x, p.y, T.glow, 10, 70, 2, "leaf");
+      if (p.flair === "moon")
+        this.rings.push({ x: p.x, y: p.y - 6, r: 22, life: 0.5, max: 0.5, color: T.accent });
+      // GULBARG BO'RONI: atrofga gulbarg zarbasi
+      if (p.petalStorm) this.blast(p.x, p.y, PETAL_RADIUS, p.damage, T.accent);
+      // SAKURA SHAMOLI (artefakt): Iai darhol tayyor
+      if (this.hasArtifact("iaireset") && p.spinCooldown > 0) {
+        p.spinCooldown = 0;
+        this.fx.text(p.x, p.y - 34, "IAI TAYYOR", artifactById("iaireset").color);
+      }
+    }
+    if (p.parried.length) {
+      for (const hit of p.parried) {
+        const foe = this.foeAt(hit.x, hit.y);
+        this.parryFx((p.x + hit.x) / 2, (p.y + hit.y) / 2 - 2);
+        if (foe instanceof Enemy) {
+          // yaqin hujumchi qisqa gangiydi va orqaga itariladi
+          foe.stun = Math.max(foe.stun, PARRY_STUN);
+          const d = Math.hypot(foe.x - p.x, foe.y - p.y) || 1;
+          if (!foe.heavy) {
+            foe.vx = ((foe.x - p.x) / d) * 160;
+            foe.vy = ((foe.y - p.y) / d) * 160;
+          }
+        } else if (foe) {
+          // boss gangimaydi — qisqa sekinlashadi; zarbasi baribir bekor
+          foe.slow = Math.max(foe.slow, PARRY_STUN);
+          foe.parried();
+          this.achieve("parryBoss");
+        }
+      }
+      p.parried = [];
+    }
+  }
+
+  /** Parry: metall uchqun, "SHIK!" yozuvi va ovoz (bir kadrda bir marta). */
+  private parryFx(x: number, y: number) {
+    const p = this.player;
+    const T = this.theme;
+    this.fx.burst(x, y, "#ffffff", 7, 110, 1, "star");
+    this.fx.burst(x, y, T.glow, 5, 80, 1);
+    this.doneHint("parry");
+    if (p.parryBoost) p.boost = Math.max(p.boost, PARRY_BOOST);
+    if (this.parryNote) return;
+    this.parryNote = true;
+    sfx.parry();
+    this.fx.addShake(0.08);
+    this.freeze = Math.max(this.freeze, 0.04);
+    this.fx.text(fitX(p.x), Math.max(30, p.y - 22), "SHIK!", T.glow);
+  }
+
+  /** Zarba kelgan nuqtadagi hujumchi (dushman yoki boss); muhit zarbasi bo'lsa — null. */
+  private foeAt(x: number, y: number): Enemy | Boss | null {
+    const e = this.enemies.find((e) => !e.dead && Math.hypot(e.x - x, e.y - y) < 3);
+    if (e) return e;
+    const b = this.boss;
+    return b && !b.dead && Math.hypot(b.x - x, b.y - y) < 3 ? b : null;
+  }
+
+  /** Parry snaryadni qaytaradi: egasiga (tirik bo'lsa) qarab, tezroq uchadi. */
+  private parryShot(s: Shot) {
+    const p = this.player;
+    p.parryHit = true;
+    p.parryPose = 0.22;
+    const sp = Math.hypot(s.vx, s.vy) * REFLECT_SPEED;
+    const o = s.owner && !s.owner.dead ? s.owner : null;
+    let dx = -s.vx,
+      dy = -s.vy;
+    if (o) {
+      dx = o.x - s.x;
+      dy = o.y - s.y;
+    }
+    const l = Math.hypot(dx, dy) || 1;
+    this.bolts.push({
+      x: s.x,
+      y: s.y,
+      vx: (dx / l) * sp,
+      vy: (dy / l) * sp,
+      size: s.size + 1,
+      left: 1,
+      hit: [],
+      reflect: s.arrow ? "arrow" : s.blue ? "blue" : "fire",
+    });
+    this.score += 10;
+    this.parryFx(s.x, s.y);
+    if (o instanceof Boss) this.achieve("parryBoss");
+  }
+
+  /**
+   * Qaytgan snaryad tegdi: oddiy dushmanga REFLECT_MUL × zarar; bossga — cheklangan (har snaryad
+   * PARRY_BOSS_DMG, soniyasiga jami PARRY_BOSS_CAP dan oshmaydi) — boss tez o'lib qolmasin.
+   */
+  private reflectHit(t: Enemy | Boss) {
+    const p = this.player;
+    if (!(t instanceof Boss)) return this.strike(t, p.damage * REFLECT_MUL);
+    const b = this.reflectBudget;
+    if (b.t <= 0) {
+      b.t = 1;
+      b.dmg = 0;
+    }
+    const dmg = Math.min(PARRY_BOSS_DMG, PARRY_BOSS_CAP - b.dmg);
+    if (dmg <= 0) return;
+    b.dmg += dmg;
+    this.damageTarget(t, dmg, false);
   }
 
   /** SHANG zarbasi dushmanni o'ldirdi: bitta zarbada 4 ta — "SHANG!" yutug'i. */
@@ -2830,8 +3241,8 @@ export class Game {
     this.gainXp(XP.wave, ROOM.w / 2, 72);
     // birinchi to'lqin o'tildi — ko'rsatmalar keyingi o'yinlarda chiqmaydi
     if (this.hints.length && !this.endless) {
+      save(this.hintKey(), 1);
       this.hints = [];
-      save(TUTORIAL_KEY, 1);
     }
     if (this.ch2 && this.waveHasFrost && !this.waveChilled) this.achieve("noChill");
     let bonus = 50 * (this.wave + 1 + (this.later ? (this.chapter - 1) * TOTAL_WAVES : 0));
@@ -3185,6 +3596,8 @@ export class Game {
     if (p.spinning && (p.hunter || p.gunner)) return;
     // Paladin: OSMON HUKMI to'lqini va SHANG yo'lagi alohida chiziladi (paladinFx)
     if (p.paladin) return;
+    // Samuray: ingichka katana yoyi (kombo bo'yicha yo'nalishi almashadi, 3-zarba keng)
+    if (p.samurai) return renderKatanaArc(c, p, T);
     if (p.spinning && p.mage) {
       // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
@@ -3300,6 +3713,8 @@ export class Game {
     // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
     for (const k of this.cracks) renderCrack(c, k, this.theme);
     for (const q of this.quakes) renderQuake(c, q, this.theme);
+    // Samuray: IAI sirpanish izi (yerda)
+    for (const k of this.streaks) renderStreak(c, k, this.theme);
     // OLOV IZI: yerdagi kichik alangalar
     for (const f of this.flames) {
       const fl = Math.floor(this.time * 12 + f.x) % 2;
@@ -3359,6 +3774,9 @@ export class Game {
         // Paladin OSMON HUKMIdan gangigan: boshi uzra oq-oltin yulduzchalar
         if (p.paladin && (e.stun > 0 || e.slow > 0) && !e.dead)
           renderDazeStars(c, e.x, e.y - e.size / 2 - 7, this.time, this.theme);
+        // Samuray parry bilan gangitgan (belgilangani emas — unda kesik belgisi bor)
+        if (p.samurai && e.stun > 0 && !e.dead && !this.iaiMarks.includes(e))
+          renderDazeStars(c, e.x, e.y - e.size / 2 - 7, this.time, this.theme);
       },
     }));
     const boss = this.boss;
@@ -3401,6 +3819,14 @@ export class Game {
     all.sort((a, b) => a.y - b.y).forEach((o) => o.r());
 
     this.renderSlash(c);
+    if (this.player.samurai) {
+      // belgilangan (hali kesilmagan) dushmanlar, kesik chiziqlari va "kritik tayyor" uchqunlari
+      for (const t of this.iaiMarks)
+        if (!t.dead) renderMark(c, t.x, t.y - t.size / 2 - 6, this.time, this.theme);
+      for (const k of this.cuts) renderCut(c, k, this.theme);
+      if (this.player.critReady && !this.player.dead)
+        renderCritReady(c, this.player, this.time, this.theme);
+    }
     if (this.player.paladin && !this.player.dead) {
       renderSkyColumn(c, this.player, this.time, 0, this.theme);
       renderWindupSparks(c, this.player, this.time, this.theme);
@@ -3436,6 +3862,10 @@ export class Game {
       }
       if (b.wave) {
         renderShockwave(c, b, this.theme);
+        continue;
+      }
+      if (b.reflect) {
+        this.renderReflect(c, b);
         continue;
       }
       // sehrli shar: och qizil/to'q sariq chekka, to'q qizil yadro (skin ranglarida)
@@ -3481,6 +3911,8 @@ export class Game {
     // tanga yomg'iri (boss o'lganda)
     for (const r of this.coinRain)
       this.coin(c, r.x - 3, r.y - 3, Math.floor(this.time * 8 + r.x) % 4);
+    // mukammal chetlanish: sekin vaqt — chetlarda pushti nur
+    if (this.focus > 0) renderFocus(c, Math.min(1, this.focus / 0.2), this.theme);
     // vinyetka
     const v = c.createRadialGradient(ROOM.w / 2, ROOM.h / 2, 90, ROOM.w / 2, ROOM.h / 2, 210);
     v.addColorStop(0, "rgba(0,0,0,0)");
@@ -3600,6 +4032,27 @@ export class Game {
     px(c, T.accentDark, fx + uy, fy - ux, 1, 1);
     px(c, T.edge, fx - uy - ux, fy + ux - uy, 1, 1);
     px(c, T.edge, fx + uy - ux, fy - ux - uy, 1, 1);
+  }
+
+  /** Parry bilan qaytarilgan snaryad: asl shakli (o'q yoki olov shari), lekin Samuray rangida. */
+  private renderReflect(c: CanvasRenderingContext2D, b: Bolt) {
+    const T = this.theme;
+    const l = Math.hypot(b.vx, b.vy) || 1;
+    const ux = b.vx / l,
+      uy = b.vy / l;
+    if (b.reflect === "arrow") {
+      for (let k = -4; k <= 1; k++) px(c, T.ink, b.x + ux * k, b.y + uy * k, 1, 1);
+      px(c, T.glow, b.x + ux * 2 - 0.5, b.y + uy * 2 - 0.5, 2, 2);
+      px(c, T.accent, b.x - ux * 5 - uy, b.y - uy * 5 + ux, 1, 1);
+      px(c, T.accent, b.x - ux * 5 + uy, b.y - uy * 5 - ux, 1, 1);
+      return;
+    }
+    c.fillStyle = withAlpha(T.accent, 0.35);
+    c.beginPath();
+    c.arc(b.x, b.y, 5, 0, Math.PI * 2);
+    c.fill();
+    px(c, b.reflect === "blue" ? "#7fd8ff" : T.accent, b.x - 2, b.y - 2, 4, 4);
+    px(c, T.edge, b.x - 1, b.y - 1, 2, 2);
   }
 
   /** Mergan o'qi: yaltiroq mis o'q va orqasida qisqa iz. */
@@ -3863,6 +4316,18 @@ export class Game {
       }
     }
     if (p.gunner) this.renderGunHud(p);
+    if (p.samurai) {
+      // mukammal chetlanish tayyorligi (sovish 1.5 s); kritik tayyor bo'lsa — miltillovchi yulduzcha
+      const t = this.theme;
+      const dk = Math.max(0, Math.min(1, 1 - p.perfectCooldown / DODGE_CD));
+      px(c, "#000", 4, 21, 32, 3);
+      px(c, dk >= 1 ? t.glow : t.accentDark, 5, 22, 30 * dk, 1);
+      if (p.critReady) {
+        const on = Math.floor(this.time * 8) % 2 === 0;
+        px(c, on ? CRIT_COLOR : t.glow, 38, 22, 5, 1);
+        px(c, on ? CRIT_COLOR : t.glow, 40, 20, 1, 5);
+      }
+    }
     if (p.paladin) {
       // QASAM: faol bo'lsa — qolgan vaqt (yorqin), aks holda qayta tiklanish
       const t = this.theme;
@@ -4026,8 +4491,9 @@ export class Game {
 
   /** Pauzadagi boshqaruv qatori: telefonda — tugma nomlari, kompyuterda — belgilangan tugmalar. */
   private controlsLine() {
-    const { mage, hunter, gunner, paladin } = this.player;
+    const { mage, hunter, gunner, paladin, samurai } = this.player;
     if (this.touch && paladin) return "Joystik yurish · SHANG zarba · HAMLA / qasam";
+    if (this.touch && samurai) return "Joystik yurish · KATANA zarba / iai · DASH";
     if (this.touch)
       return mage
         ? "Joystik yurish · SHAR otish · TELEPORT"
@@ -4041,6 +4507,7 @@ export class Game {
       A = actionKey(k, "attack"),
       D = actionKey(k, "dash");
     if (paladin) return `${M} yurish · ${A} SHANG · ${D} hamla/qasam`;
+    if (samurai) return `${M} yurish · ${A} katana, bosib tur: iai · ${D} dash`;
     return mage
       ? `${M} yurish · ${A} shar · ${D} teleport`
       : hunter
@@ -4072,64 +4539,81 @@ export class Game {
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
-    const { mage, hunter, gunner, paladin } = this.player;
+    const { mage, hunter, gunner, paladin, samurai } = this.player;
     const k = this.input.keyBinds;
     const A = actionKey(k, "attack"),
       D = actionKey(k, "dash");
-    const label: Record<Hint, string> = paladin
+    // Samurayning bir martalik maslahatlari: IAI, mukammal chetlanish va parry
+    const tips = this.touch
+      ? {
+          iai: "KATANA ni bosib turing — IAI",
+          dodge: "Zarbadan oldin DASH — mukammal chetlanish",
+          parry: "Zarba tegayotganda KATANA — parry",
+        }
+      : {
+          iai: `${A} ni bosib turing — IAI`,
+          dodge: `Zarbadan oldin ${D} — mukammal chetlanish`,
+          parry: `Zarba tegayotganda ${A} — parry`,
+        };
+    const base: Record<"attack" | "spin" | "dash", string> = samurai
       ? this.touch
-        ? {
-            attack: "SHANG — qilich bilan yerga urish",
-            spin: "SHANG ni bosib turing — osmon hukmi",
-            dash: "HAMLA — yugurish, bosib tur — qasam",
-          }
-        : {
-            attack: `${A} — SHANG zarbasi`,
-            spin: `${A} ni bosib turing — osmon hukmi`,
-            dash: `${D} — hamla, bosib tur — qasam`,
-          }
-      : this.touch
-        ? gunner
+        ? { attack: "KATANA — zarba", spin: tips.iai, dash: "DASH — chetlanish" }
+        : { attack: `${A} — katana zarbasi`, spin: tips.iai, dash: `${D} — dash` }
+      : paladin
+        ? this.touch
           ? {
-              attack: "O'Q — otish, o'q belgisi — o'qlash",
-              spin: "O'Q ni bosib turing — barabanni bo'shatish",
-              dash: "SIRPANISH, bosib tur — tutun",
+              attack: "SHANG — qilich bilan yerga urish",
+              spin: "SHANG ni bosib turing — osmon hukmi",
+              dash: "HAMLA — yugurish, bosib tur — qasam",
             }
-          : hunter
-            ? {
-                attack: "O'Q — o'q otish",
-                spin: "O'Q ni bosib turing — teshuvchi o'q",
-                dash: "SAKRASH — orqaga, bosib tur — tuzoq",
-              }
-            : {
-                attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
-                spin: mage
-                  ? "SHAR ni bosib turing — halqa"
-                  : "ZARBA ni bosib turing — aylana zarba",
-                dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
-              }
-        : gunner
-          ? {
-              attack: `${A} — o'q, ${actionKey(k, "reload")} — qayta o'qlash`,
-              spin: `${A} ni bosib turing — barabanni bo'shatish`,
-              dash: `${D} — sirpanish, bosib tur — tutun`,
+          : {
+              attack: `${A} — SHANG zarbasi`,
+              spin: `${A} ni bosib turing — osmon hukmi`,
+              dash: `${D} — hamla, bosib tur — qasam`,
             }
-          : hunter
+        : this.touch
+          ? gunner
             ? {
-                attack: `${A} — o'q`,
-                spin: `${A} ni bosib turing — teshuvchi o'q`,
-                dash: `${D} — orqaga sakrash, bosib tur — tuzoq`,
+                attack: "O'Q — otish, o'q belgisi — o'qlash",
+                spin: "O'Q ni bosib turing — barabanni bo'shatish",
+                dash: "SIRPANISH, bosib tur — tutun",
               }
-            : {
-                attack: mage ? `${A} — sehrli shar` : `${A} — zarba`,
-                spin: mage
-                  ? `${A} ni bosib turing — sehrli halqa`
-                  : `${A} ni bosib turing — aylana zarba`,
-                dash: `${D} — ${this.dashName()}`,
-              };
+            : hunter
+              ? {
+                  attack: "O'Q — o'q otish",
+                  spin: "O'Q ni bosib turing — teshuvchi o'q",
+                  dash: "SAKRASH — orqaga, bosib tur — tuzoq",
+                }
+              : {
+                  attack: mage ? "SHAR — sehrli shar" : "ZARBA — zarba",
+                  spin: mage
+                    ? "SHAR ni bosib turing — halqa"
+                    : "ZARBA ni bosib turing — aylana zarba",
+                  dash: mage ? "TELEPORT — sakrash" : "DASH — sirpanish",
+                }
+          : gunner
+            ? {
+                attack: `${A} — o'q, ${actionKey(k, "reload")} — qayta o'qlash`,
+                spin: `${A} ni bosib turing — barabanni bo'shatish`,
+                dash: `${D} — sirpanish, bosib tur — tutun`,
+              }
+            : hunter
+              ? {
+                  attack: `${A} — o'q`,
+                  spin: `${A} ni bosib turing — teshuvchi o'q`,
+                  dash: `${D} — orqaga sakrash, bosib tur — tuzoq`,
+                }
+              : {
+                  attack: mage ? `${A} — sehrli shar` : `${A} — zarba`,
+                  spin: mage
+                    ? `${A} ni bosib turing — sehrli halqa`
+                    : `${A} ni bosib turing — aylana zarba`,
+                  dash: `${D} — ${this.dashName()}`,
+                };
+    const label: Record<Hint, string> = { ...base, ...tips };
     // Ovchida HUD'da uchinchi (tuzoq) chizig'i, Merganda tutun chizig'i va baraban bor —
     // ko'rsatmalar pastroqda
-    const top = gunner ? 40 : hunter || paladin ? 28 : 24;
+    const top = gunner ? 40 : hunter || paladin || samurai ? 28 : 24;
     const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
     px(c, "rgba(8,4,16,0.6)", 4, top, w, this.hints.length * 10 + 4);
     const blink = Math.floor(this.time * 3) % 2 ? "#ffcc33" : "#8a6a1a";

@@ -240,6 +240,11 @@ export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> 
         attack: { text: "SHANG", sub: "tursa: hukm", aria: "Shang zarbasi", icon: "sword" },
         dash: { text: "HAMLA", sub: "tursa: qasam", aria: "Muqaddas hamla", icon: "dash" },
       };
+    case "samurai":
+      return {
+        attack: { text: "KATANA", sub: "tursa: iai", aria: "Katana zarbasi", icon: "sword" },
+        dash: { text: "DASH", aria: "Dash", icon: "dash" },
+      };
     case "gunner":
       return {
         attack: { text: "O'Q", aria: "O'q", icon: "bullet" },

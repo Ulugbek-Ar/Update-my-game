@@ -81,6 +81,7 @@ const HERO_IDS = [
   "hunter",
   "gunner",
   "paladin",
+  "samurai",
 ] as const satisfies readonly Hero[];
 const num = z.number().finite();
 const axis = num.min(-1).max(1);

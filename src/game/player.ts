@@ -1,9 +1,18 @@
-import { Animator, Body, ROOM, updatePhysics, isFlashing, clampToRoom } from "./animation";
+import {
+  Animator,
+  Body,
+  ROOM,
+  updatePhysics,
+  isFlashing,
+  clampToRoom,
+  type AnimState,
+} from "./animation";
 import type { Input } from "./input";
-import { renderSprite, type SpritePalette } from "./sprites";
+import { SAMURAI_FRAME, SAMURAI_FRAMES, renderSprite, type SpritePalette } from "./sprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
-import type { ToneKind } from "./skinFx";
+import type { FlairKind, ToneKind } from "./skinFx";
+import { currentSettings } from "./settings";
 
 export const PLAYER_MAX_HP = 6;
 const ATTACK_TIME = 0.24;
@@ -86,6 +95,62 @@ export const WAVE_SIZE = 14;
 /** MUQADDAS AURA (karta): shuncha soniyada 1 yurak (onlayn — shu radiusdagi do'stlarga ham) */
 export const AURA_EVERY = 15;
 export const AURA_RADIUS = 90;
+/**
+ * Samuray qiz: 4 yurak (xato qilsa jazolanadi), tezlik 102 — Ovchidan keyingi eng tez qahramon.
+ * Katana tez (0.3 s da bir, zarba 0.18 s) va qisqa; har zarba Ritsarnikining 75% i.
+ */
+export const SAMURAI_MAX_HP = 4;
+export const SAMURAI_SPEED = 102;
+export const KATANA_CD = 0.3;
+export const KATANA_TIME = 0.18;
+export const KATANA_REACH = 14;
+export const KATANA_MUL = 0.75;
+/** Kombo: shuncha ichida yana bosilsa davom etadi; 3-zarba keng yoy (maydoni shuncha baravar) */
+export const COMBO_WINDOW = 0.6;
+export const COMBO_WIDE = 1.7;
+/**
+ * IAI: hujumni IAI_MIN dan ko'p bosib turib qo'yib yuborilsa — chaqmoqdek sirpanib o'tadi. Zaryad
+ * to'lgani sari (chargeTime da to'liq) masofa IAI_MIN_DIST dan IAI_MAX_DIST gacha, zarar 1x dan
+ * strongMul gacha oshadi. Yo'lidagilar belgilanadi va IAI_DELAY dan keyin ketma-ket kesiladi.
+ */
+export const IAI_MIN = 0.3;
+export const IAI_CHARGE = 0.8;
+export const IAI_CD = 3;
+export const IAI_TIME = 0.12;
+export const IAI_MIN_DIST = 44;
+export const IAI_MAX_DIST = 92;
+/** Sirpanish yo'lagining eni (belgilash uchun) */
+export const IAI_WIDTH = 18;
+export const IAI_DELAY = 0.25;
+/** Kesiklar orasi ("chiq-chiq") */
+export const IAI_GAP = 0.06;
+/** Sirpanishdan keyin shuncha qimirlamaydi (himoya dumi ichida) */
+export const IAI_LOCK = 0.18;
+/** Zaryad paytida shuncha sekin yuradi (qo'l dastada, oyoqlar keng) */
+export const IAI_MOVE = 0.55;
+/** UZUN IAI kartasi: har biri shuncha masofa qo'shadi */
+export const IAI_RANGE_CARD = 26;
+/**
+ * MUKAMMAL CHETLANISH: dash boshlanganidan shuncha ichida tegishi kerak bo'lgan zarba — vaqt
+ * sekinlashadi, keyingi hujum kritik. Spam qilib bo'lmaydi: DODGE_CD sovish.
+ */
+export const DODGE_WINDOW = 0.15;
+export const DODGE_WINDOW_CARD = 0.08;
+export const DODGE_CD = 1.5;
+/** Vaqt shuncha (real) soniya sekinlashadi; Samurayning o'zi sekinlashmaydi */
+export const DODGE_SLOW = 0.6;
+/**
+ * PARRY: oddiy hujumning dastlabki PARRY_WINDOW soniyasida tekkan zarba bekor bo'ladi (snaryad
+ * egasiga qaytadi, hujumchi gangiydi). Bo'sh ketgan oyna PARRY_WHIFF_CD sovitadi — hujumni
+ * to'xtovsiz bosib parry qilib bo'lmaydi.
+ */
+export const PARRY_WINDOW = 0.12;
+export const PARRY_WHIFF_CD = 0.5;
+/** Parry dan keyingi qisqa daxlsizlik va hujumchining gangishi */
+export const PARRY_GUARD = 0.3;
+export const PARRY_STUN = 0.7;
+/** QAYTGAN PO'LAT kartasi: parry dan keyin shuncha soniya tezlashish */
+export const PARRY_BOOST = 2;
 /** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
 export const ENCASE_MAX = 3.5;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
@@ -138,6 +203,19 @@ export interface Bolt {
   load?: number;
   /** Paladinning ZARB TO'LQINI (hamma dushmandan o'tadi) */
   wave?: boolean;
+  /** Samuray parry bilan qaytargan dushman snaryadi: o'q yoki olov shari (rangi — ko'k olov) */
+  reflect?: "arrow" | "fire" | "blue";
+}
+
+/** Faol IAI sirpanishi */
+export interface IaiDash {
+  speed: number;
+  /** Zarar ko'paytuvchisi (1 .. strongMul) va zaryad ulushi (0..1) */
+  mul: number;
+  k: number;
+  /** Mukammal chetlanishdan keyin: barcha kesiklar kritik */
+  crit: boolean;
+  from: { x: number; y: number };
 }
 
 export class Player implements Body {
@@ -273,6 +351,49 @@ export class Player implements Body {
   skin: SpritePalette | undefined = undefined;
   /** Afsonaviy skin ovoz ohangi (skinFx.ts; null — yo'q). Faqat ovoz */
   tone: ToneKind | null = null;
+  /** Samuray: oddiy zarba davomiyligi (boshqalarda ATTACK_TIME) */
+  attackTime = ATTACK_TIME;
+  /** Kombo: joriy zarba raqami (0, 1, 2 — keng yoy) va keyingi zarbagacha qolgan vaqt */
+  comboStep = 0;
+  comboT = 0;
+  /** Faol IAI sirpanishi; tugagan kadrda iaiDone (Game kesiklarni rejalashtiradi) */
+  iai: IaiDash | null = null;
+  iaiDone: { mul: number; crit: boolean } | null = null;
+  /** Shu kadrda IAI boshlandi (Game effekt chiqaradi) */
+  iaiStarted = false;
+  /** Sirpanishdan keyingi qotish va kesish/qinga qaytarish pozasi qolgan vaqti */
+  iaiLock = 0;
+  iaiPose = 0;
+  /** UZUN IAI qo'shgan masofa; IKKI KESIM — har dushman ikki marta kesiladi */
+  iaiRange = 0;
+  iaiDouble = false;
+  /** Zaryad to'ldi (shu kadrda) — Game yaltirash va ovoz chiqaradi */
+  chargeFull = false;
+  /** Dash boshlanganidan beri o'tgan vaqt (-1 — dash yo'q): mukammal chetlanish oynasi */
+  dashAge = -1;
+  dodgeWindow = DODGE_WINDOW;
+  perfectCooldown = 0;
+  /** Shu kadrda mukammal chetlanish bo'ldi (Game: sekin vaqt, gulbarglar, kritik) */
+  perfect = false;
+  /** Keyingi hujum kafolatlangan kritik (mukammal chetlanishdan keyin) */
+  critReady = false;
+  /** Parry oynasi qolgan vaqti, shu oynada zarba qaytarildimi va bo'sh ketgandan keyingi sovish */
+  parryT = 0;
+  parryHit = false;
+  parryCooldown = 0;
+  /** Shu kadrda qaytarilgan zarbalar: zarba kelgan nuqta (Game hujumchini gangitadi) */
+  parried: { x: number; y: number }[] = [];
+  /** Parry pozasi (katana tik) qolgan vaqti — faqat ko'rinish */
+  parryPose = 0;
+  /** Kartalar: QAYTGAN PO'LAT, GULBARG BO'RONI, SOVUQ QON */
+  parryBoost = false;
+  petalStorm = false;
+  coldBlood = false;
+  /**
+   * Afsonaviy skin animatsiyasi (skinFx.ts; null — yo'q). "moon" (Qizil oy): IAI dan keyin katanani
+   * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
+   */
+  flair: FlairKind | null = null;
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -330,6 +451,28 @@ export class Player implements Body {
       this.boltSpeed = GUN_SPEED;
       this.boltSize = 4;
     }
+    if (hero === "samurai") {
+      this.hp = this.maxHp = SAMURAI_MAX_HP;
+      this.speed = SAMURAI_SPEED;
+      this.attackCd = KATANA_CD;
+      this.attackTime = KATANA_TIME;
+      this.reach = KATANA_REACH;
+      this.dashCd = 0.7;
+      this.spinCd = IAI_CD;
+      this.chargeTime = IAI_CHARGE;
+      // ko'proq kadr: soch va kamar hilpiraydi, yugurish silliq; umumiy davomiylik o'sha (1 s, 0.48 s)
+      this.anim.defs.idle = {
+        frames: SAMURAI_FRAMES.idle,
+        frameTime: 1 / SAMURAI_FRAMES.idle,
+        loop: true,
+      };
+      this.anim.defs.walk = {
+        frames: SAMURAI_FRAMES.walk,
+        frameTime: 0.48 / SAMURAI_FRAMES.walk,
+        loop: true,
+      };
+      this.anim.defs.attack = { frames: 3, frameTime: KATANA_TIME / 3, loop: false };
+    }
   }
 
   get mage() {
@@ -346,6 +489,15 @@ export class Player implements Body {
 
   get paladin() {
     return this.hero === "paladin";
+  }
+
+  get samurai() {
+    return this.hero === "samurai";
+  }
+
+  /** Parry oynasi ochiq: shu payt tekkan zarba qaytariladi */
+  get parrying() {
+    return this.parryT > 0;
   }
 
   /** QASAM faol: atrofdagi dushmanlar Paladinni nishonga oladi, zarar yarmiga kamayadi */
@@ -368,9 +520,9 @@ export class Player implements Body {
     return this.hideT > 0;
   }
 
-  /** Masofadan uradigan qahramon (Sehrgar shari yoki Ovchi o'qi) */
+  /** Masofadan uradigan qahramon (Sehrgar shari, Ovchi va Mergan o'qi) */
   get ranged() {
-    return this.hero !== "knight" && this.hero !== "paladin";
+    return this.mage || this.hunter || this.gunner;
   }
 
   get dead() {
@@ -404,12 +556,36 @@ export class Player implements Body {
   /** Joriy zarba zarari: aylana zarba 2x; Paladinda SHANG 2x, OSMON HUKMI 3x. */
   get hitDamage() {
     if (this.paladin) return this.damage * (this.spinning ? this.strongMul : 2);
+    // katana: tez, lekin har zarba yengilroq (IAI zarari alohida — Game: iai.mul)
+    if (this.samurai) return this.damage * KATANA_MUL;
     return this.spinning ? this.damage * this.strongMul : this.damage;
   }
 
   /** Zarba tegsa true qaytaradi. Dash paytida va himoya dumida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
-    if (this.invuln > 0 || this.dead || this.evading) return false;
+    if (this.invuln > 0 || this.dead) return false;
+    if (this.evading) {
+      // MUKAMMAL CHETLANISH: dash boshlanganidan dodgeWindow ichida tegishi kerak bo'lgan zarba
+      if (
+        this.samurai &&
+        !this.iai &&
+        this.dashAge >= 0 &&
+        this.dashAge <= this.dodgeWindow &&
+        this.perfectCooldown <= 0
+      ) {
+        this.perfect = true;
+        this.perfectCooldown = DODGE_CD;
+      }
+      return false;
+    }
+    if (this.parryT > 0) {
+      // PARRY: zarba bekor; Game hujumchini gangitadi (snaryadni Game o'zi qaytaradi)
+      this.parried.push({ x: fromX, y: fromY });
+      this.parryHit = true;
+      this.invuln = Math.max(this.invuln, PARRY_GUARD);
+      this.parryPose = 0.22;
+      return false;
+    }
     if (this.ward > 0) {
       // qalqon: zarba to'liq to'siladi, qisqa daxlsizlik
       this.ward--;
@@ -497,8 +673,11 @@ export class Player implements Body {
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
     // Sehrgar va Ovchining oddiy zarbasi — shar/o'q, u alohida uchadi
     if (this.attackTimer <= 0 || this.ranged) return null;
-    const off = this.reach * 0.75;
-    return { x: this.x + this.fx * off, y: this.y + this.fy * off, size: this.reach } as Body;
+    // Samuray kombosining 3-zarbasi: keng yoy — maydon kattaroq va tanaga yaqinroq
+    const wide = this.samurai && this.comboStep === 2;
+    const off = this.reach * (wide ? 0.55 : 0.75);
+    const size = wide ? this.reach * COMBO_WIDE : this.reach;
+    return { x: this.x + this.fx * off, y: this.y + this.fy * off, size } as Body;
   }
 
   /**
@@ -540,6 +719,7 @@ export class Player implements Body {
     if (this.boost > 0) this.boost -= dt;
     if (this.hideT > 0) this.hideT -= dt;
     if (this.gunner) this.updateGun(dt, input);
+    if (this.samurai) this.tickSamurai(dt);
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
@@ -578,21 +758,33 @@ export class Player implements Body {
     }
 
     if (this.dashTimer > 0) {
+      const left = this.dashTimer;
       this.dashTimer -= dt;
       // dash tugagan kadrdayoq himoya dumi boshlanadi — quvib kelgan mob darhol ura olmaydi
       if (this.dashTimer <= 0) this.guardAge = 0;
       // Mergan sirpanish oxirida barabanga o'q soladi
       if (this.dashTimer <= 0 && this.gunner) this.slideReload();
       if (this.mage) return;
-      const sp = this.hunter
-        ? JUMP_SPEED
-        : this.gunner
-          ? SLIDE_SPEED
-          : this.paladin
-            ? HAMLA_SPEED
-            : DASH_SPEED;
-      this.x += this.dashX * sp * dt;
-      this.y += this.dashY * sp * dt;
+      const sp = this.iai
+        ? this.iai.speed
+        : this.hunter
+          ? JUMP_SPEED
+          : this.gunner
+            ? SLIDE_SPEED
+            : this.paladin
+              ? HAMLA_SPEED
+              : DASH_SPEED;
+      // IAI masofasi aniq: oxirgi kadrda faqat qolgan vaqtcha siljiydi (oddiy dash o'zgarmagan)
+      const adv = this.iai ? Math.min(dt, left) : dt;
+      this.x += this.dashX * sp * adv;
+      this.y += this.dashY * sp * adv;
+      this.clamp(this);
+      if (this.dashTimer <= 0 && this.iai) this.endIai();
+      return;
+    }
+    if (this.iaiLock > 0) {
+      // IAI dan keyin: kesish pozasida qotib turadi (himoya dumi ichida)
+      this.iaiLock -= dt;
       this.clamp(this);
       return;
     }
@@ -626,6 +818,12 @@ export class Player implements Body {
       this.dashCooldown = this.dashCd;
       this.attackTimer = 0;
       this.charge = 0;
+      // Samuray: mukammal chetlanish oynasi shu lahzadan; dash parry oynasini yopadi
+      if (this.samurai) {
+        this.dashAge = 0;
+        this.parryT = 0;
+        this.iaiPose = this.parryPose = 0;
+      }
       sfx.dash();
       if (this.tone) sfx.skinTone(this.tone, 0.6);
       if (this.mage) {
@@ -646,8 +844,22 @@ export class Player implements Body {
     const loaded = !this.gunner || (this.ammo > 0 && !this.reloading);
     // bosib turish -> qo'yib yuborilganda aylana zarba
     if (input.attackHeld()) {
-      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded)
+      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded) {
+        const before = this.charge;
         this.charge += dt;
+        if (this.samurai) {
+          // IAI zaryadi: o'sib boruvchi ohang, to'lganda — yaltirash (Game)
+          if (before < IAI_MIN && this.charge >= IAI_MIN) sfx.iaiCharge(this.chargeTime - IAI_MIN);
+          if (before < this.chargeTime && this.charge >= this.chargeTime) this.chargeFull = true;
+        }
+      }
+    } else if (this.samurai) {
+      // IAI: yetarlicha bosib turilgan bo'lsa — qo'yib yuborilganda sirpanib kesib o'tadi
+      if (this.charge >= IAI_MIN && this.spinCooldown <= 0 && this.snare <= 0) {
+        this.startIai(x, y);
+        return;
+      }
+      this.charge = 0;
     } else {
       if (this.charged && this.spinCooldown <= 0) {
         this.spinTimer = this.gunner ? FAN_TIME : SPIN_TIME;
@@ -687,10 +899,11 @@ export class Player implements Body {
       !this.spinning &&
       loaded
     ) {
-      this.attackTimer = ATTACK_TIME;
+      this.attackTimer = this.attackTime;
       this.cooldown = this.attackCd;
       this.hitSet.clear();
-      if (this.gunner) sfx.gunshot();
+      if (this.samurai) this.startSlash();
+      else if (this.gunner) sfx.gunshot();
       else sfx.attack();
       if (this.tone) sfx.skinTone(this.tone);
       this.anim.set("attack", true);
@@ -708,8 +921,14 @@ export class Player implements Body {
     if (!busy) {
       if ((x || y) && this.snare <= 0) {
         const l = Math.max(1, Math.hypot(x, y));
+        // Samuray IAI zaryadida sekin sirpanib yuradi (qo'l dastada); yursa kesish pozasi tugaydi
+        const stance = this.samurai && this.charge >= IAI_MIN ? IAI_MOVE : 1;
+        if (this.samurai) this.iaiPose = this.parryPose = 0;
         const speed =
-          this.speed * (this.chill > 0 ? CHILL_SPEED : 1) * (this.boost > 0 ? BOOST_SPEED : 1);
+          this.speed *
+          stance *
+          (this.chill > 0 ? CHILL_SPEED : 1) *
+          (this.boost > 0 ? BOOST_SPEED : 1);
         this.x += (x / l) * speed * dt;
         this.y += (y / l) * speed * dt;
         if (Math.abs(x) >= Math.abs(y)) {
@@ -723,6 +942,98 @@ export class Player implements Body {
       } else this.anim.set("idle");
     }
     this.clamp(this);
+  }
+
+  /** Samurayning har kadrdagi taymerlari: chetlanish oynasi, parry, kombo va pozalar. */
+  private tickSamurai(dt: number) {
+    this.perfectCooldown -= dt;
+    this.parryCooldown -= dt;
+    if (this.dashAge >= 0) {
+      this.dashAge += dt;
+      if (this.dashAge > 1) this.dashAge = -1;
+    }
+    if (this.comboT > 0) {
+      this.comboT -= dt;
+      if (this.comboT <= 0) this.comboStep = 0;
+    }
+    if (this.parryT > 0) {
+      this.parryT -= dt;
+      // oyna bo'sh ketdi — keyingi parry biroz kechikadi (hujumni bosib parry qilib bo'lmaydi)
+      if (this.parryT <= 0 && !this.parryHit) this.parryCooldown = PARRY_WHIFF_CD;
+    }
+    if (this.iaiPose > 0) this.iaiPose -= dt;
+    if (this.parryPose > 0) this.parryPose -= dt;
+  }
+
+  /** Katana zarbasi: kombo sanog'i (3-zarba — keng yoy) va parry oynasi. */
+  private startSlash() {
+    this.comboStep = this.comboT > 0 ? (this.comboStep + 1) % 3 : 0;
+    this.comboT = COMBO_WINDOW;
+    this.iaiPose = this.parryPose = 0;
+    if (this.parryCooldown <= 0) {
+      this.parryT = PARRY_WINDOW;
+      this.parryHit = false;
+    }
+    sfx.katana(this.comboStep);
+  }
+
+  /**
+   * IAI: yurish yo'nalishi (bo'lmasa — qarab turgan tomon) bo'ylab sirpanadi. Zaryad ulushi k:
+   * masofa IAI_MIN_DIST..IAI_MAX_DIST (+ UZUN IAI), zarar 1x..strongMul. Devordan o'tmaydi (clamp).
+   */
+  private startIai(ax: number, ay: number) {
+    const k = Math.max(
+      0,
+      Math.min(1, (this.charge - IAI_MIN) / Math.max(0.01, this.chargeTime - IAI_MIN)),
+    );
+    let dx = ax,
+      dy = ay;
+    if (!dx && !dy) {
+      dx = this.fx;
+      dy = this.fy;
+    }
+    const l = Math.hypot(dx, dy) || 1;
+    this.dashX = dx / l;
+    this.dashY = dy / l;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      this.fx = Math.sign(dx);
+      this.fy = 0;
+    } else {
+      this.fx = 0;
+      this.fy = Math.sign(dy);
+    }
+    const dist = IAI_MIN_DIST + (IAI_MAX_DIST - IAI_MIN_DIST) * k + this.iaiRange;
+    this.iai = {
+      speed: dist / IAI_TIME,
+      mul: 1 + (this.strongMul - 1) * k,
+      k,
+      crit: this.critReady,
+      from: { x: this.x, y: this.y },
+    };
+    this.critReady = false;
+    this.dashTimer = IAI_TIME;
+    // IAI — hujum: mukammal chetlanish hisoblanmaydi
+    this.dashAge = -1;
+    this.spinCooldown = this.spinCd;
+    this.attackTimer = 0;
+    this.parryT = 0;
+    this.charge = 0;
+    this.comboStep = 0;
+    this.comboT = 0;
+    this.hitSet.clear();
+    this.iaiStarted = true;
+    sfx.iai();
+    if (this.tone) sfx.skinTone(this.tone, 1.3);
+    this.anim.set("attack", true);
+  }
+
+  /** Sirpanish tugadi: Game belgilanganlarni IAI_DELAY dan keyin kesadi; qisqa qotish. */
+  private endIai() {
+    const d = this.iai!;
+    this.iaiDone = { mul: d.mul, crit: d.crit };
+    this.iai = null;
+    this.iaiLock = IAI_LOCK;
+    this.iaiPose = IAI_DELAY + 0.12;
   }
 
   /** Sehrgar shari yoki Ovchi o'qi; Uch shar/Uch o'q bilan yelpig'ich bo'lib uchadi. */
@@ -1018,10 +1329,15 @@ export class Player implements Body {
     // xona devori yonida SHANG qilichi tik tushib yerga sanchiladi (4-5 kadr) — ekrandan chiqmaydi
     if (this.paladin && !skyward && this.anim.state === "attack" && frame >= 2 && this.nearWall())
       frame += 2;
+    let state = skyward ? "attack" : this.anim.state;
+    if (this.samurai) {
+      [state, frame] = this.samuraiFrame();
+      if (this.iai) this.renderAfterimages(ctx, state, frame);
+    }
     renderSprite(
       ctx,
       this.hero,
-      skyward ? "attack" : this.anim.state,
+      state,
       frame,
       this.x,
       this.y,
@@ -1031,5 +1347,50 @@ export class Player implements Body {
       this.skin,
     );
     ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Samuray kadri: Animator holati ustiga maxsus pozalar — IAI zaryadi, kesishi, qinga qaytarish
+   * (afsonaviy skin), dash, parry va komboning keng 3-zarbasi. Faqat ko'rinish.
+   */
+  samuraiFrame(): [AnimState, number] {
+    const F = SAMURAI_FRAME;
+    const a = this.anim;
+    if (this.dead || a.state === "hurt") return [a.state, a.frame];
+    if (this.iai) return ["attack", F.iai];
+    if (this.dashing) return ["attack", F.dash];
+    if (this.iaiPose > 0)
+      return ["attack", this.flair === "moon" && this.iaiPose < IAI_DELAY ? F.sheathe : F.iai];
+    if (this.parryPose > 0) return ["attack", F.parry];
+    if (this.attackTimer > 0) {
+      const k = Math.min(2, Math.floor((1 - this.attackTimer / this.attackTime) * 3));
+      return ["attack", (this.comboStep === 2 ? F.wide : 0) + k];
+    }
+    if (this.charge >= IAI_MIN) return ["attack", F.charge];
+    // hujum tugagach Animator "attack"da qolsa (yurmayotgan bo'lsa) — oxirgi kadr
+    if (a.state === "attack") return ["attack", Math.min(2, a.frame)];
+    return [a.state, a.frame];
+  }
+
+  /** IAI: orqada qoladigan oqish siluetlar (effektlar kamaytirilganda — bitta). */
+  private renderAfterimages(ctx: CanvasRenderingContext2D, state: AnimState, frame: number) {
+    const n = currentSettings().reduceFx ? 1 : 3;
+    const alpha = ctx.globalAlpha;
+    for (let i = n; i >= 1; i--) {
+      ctx.globalAlpha = 0.34 - i * 0.08;
+      renderSprite(
+        ctx,
+        this.hero,
+        state,
+        frame,
+        this.x - this.dashX * i * 13,
+        this.y - this.dashY * i * 13,
+        true,
+        this.fx < 0,
+        this.fy < 0,
+        this.skin,
+      );
+    }
+    ctx.globalAlpha = alpha;
   }
 }

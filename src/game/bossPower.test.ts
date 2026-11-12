@@ -35,7 +35,7 @@ function tick(g: Game, seconds: number, dt = 0.02) {
 
 beforeEach(() => localStorage.clear());
 
-const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner", "paladin"];
+const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner", "paladin", "samurai"];
 type Power = "kuchsiz" | "o'rtacha" | "maksimal" | "sinergiya";
 
 /** Qat'iy tasodif (LCG) — kritik zarbalar har safar bir xil */
@@ -72,7 +72,7 @@ function powered(hero: Hero, power: Power) {
   applyShop(p, shop);
   card(p, "blade", 5);
   card(p, "haste", 5);
-  for (const id of ["triple", "htriple", "venom", "drum"]) card(p, id);
+  for (const id of ["triple", "htriple", "venom", "drum", "twincut"]) card(p, id);
   if (power === "sinergiya") {
     // + ZARAR va qahramon tegi sinergiyalari (bonus va qoida o'zgarishlari Player'da)
     const tags: TagCounts = {};
@@ -130,8 +130,14 @@ function killTime(p: Player, hp: number, opts: { tenth?: boolean } = {}) {
     const cd0 = p.cooldown,
       spin0 = p.spinTimer;
     p.update(dt, input);
-    // Paladin SHANG — 2x, OSMON HUKMI — strongMul (3x, NUR sinergiyasi bilan 4x)
-    if (!p.ranged && p.cooldown > cd0 + 1e-6) dmg += hit(p.paladin ? 2 * p.damage : p.damage);
+    // Paladin SHANG — 2x, OSMON HUKMI — strongMul (3x, NUR sinergiyasi bilan 4x); Samuray katanasi
+    // — 0.75x, to'liq IAI — strongMul (IKKI KESIM bilan ikki marta)
+    if (!p.ranged && p.cooldown > cd0 + 1e-6)
+      dmg += hit(p.paladin ? 2 * p.damage : p.samurai ? p.hitDamage : p.damage);
+    if (p.iaiStarted) {
+      p.iaiStarted = false;
+      for (let k = 0; k < (p.iaiDouble ? 2 : 1); k++) dmg += hit(p.iai!.mul * p.damage);
+    }
     if (!p.hunter && !p.gunner && p.spinTimer > 0 && spin0 <= 0) dmg += hit(p.strongMul * p.damage);
     for (const b of p.bolts) dmg += hit(p.damage * (b.power ?? 1));
     if (p.bolts.length || dmg > 0) hitOnce = true;

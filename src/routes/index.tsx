@@ -36,7 +36,7 @@ import {
   nextCost,
   type ShopItem,
 } from "@/game/shop";
-import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
+import { heroView, renderSprite, renderUpgradeIcon } from "@/game/sprites";
 import type { AnimState } from "@/game/animation";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
@@ -733,23 +733,27 @@ function Index() {
                       <br />
                       {h === "paladin"
                         ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
-                        : h === "mage"
-                          ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                          : h === "hunter"
-                            ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                            : h === "gunner"
-                              ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
-                              : "ZARBA — hujum, DASH — sirpanish"}
+                        : h === "samurai"
+                          ? "KATANA — tez kombo, DASH — chetlanish"
+                          : h === "mage"
+                            ? "SHAR — sehrli shar, TELEPORT — sakrash"
+                            : h === "hunter"
+                              ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
+                              : h === "gunner"
+                                ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
+                                : "ZARBA — hujum, DASH — sirpanish"}
                       <br />
                       {h === "paladin"
                         ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
-                        : h === "mage"
-                          ? "SHAR ni bosib turing — sehrli halqa"
-                          : h === "hunter"
-                            ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                            : h === "gunner"
-                              ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
-                              : "ZARBA ni bosib turing — aylana zarba"}
+                        : h === "samurai"
+                          ? "KATANA ni bosib turing — Iai, o'z vaqtida bosing — parry"
+                          : h === "mage"
+                            ? "SHAR ni bosib turing — sehrli halqa"
+                            : h === "hunter"
+                              ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
+                              : h === "gunner"
+                                ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
+                                : "ZARBA ni bosib turing — aylana zarba"}
                     </>
                   ) : (
                     <>
@@ -759,35 +763,41 @@ function Index() {
                       {actionKeys(kb, "attack")} —{" "}
                       {h === "paladin"
                         ? "SHANG (yo'lak bo'ylab zarba)"
-                        : h === "mage"
-                          ? "sehrli shar"
-                          : h === "hunter"
-                            ? "o'q"
-                            : h === "gunner"
-                              ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
-                              : "hujum"}
+                        : h === "samurai"
+                          ? "katana, o'z vaqtida — parry"
+                          : h === "mage"
+                            ? "sehrli shar"
+                            : h === "hunter"
+                              ? "o'q"
+                              : h === "gunner"
+                                ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
+                                : "hujum"}
                       <br />
                       {actionKey(kb, "attack")} ni bosib turish —{" "}
                       {h === "paladin"
                         ? "osmon hukmi (gangitadi)"
-                        : h === "mage"
-                          ? "sehrli halqa"
-                          : h === "hunter"
-                            ? "teshuvchi o'q"
-                            : h === "gunner"
-                              ? "barabanni bo'shatish"
-                              : "aylana zarba"}
+                        : h === "samurai"
+                          ? "Iai (kesib o'tadi)"
+                          : h === "mage"
+                            ? "sehrli halqa"
+                            : h === "hunter"
+                              ? "teshuvchi o'q"
+                              : h === "gunner"
+                                ? "barabanni bo'shatish"
+                                : "aylana zarba"}
                       <br />
                       {actionKeys(kb, "dash")} —{" "}
                       {h === "paladin"
                         ? "muqaddas hamla, bosib turish — qasam"
-                        : h === "mage"
-                          ? "teleport"
-                          : h === "hunter"
-                            ? "orqaga sakrash, bosib turish — tuzoq"
-                            : h === "gunner"
-                              ? "sirpanish, bosib turish — tutun bombasi"
-                              : "dash"}
+                        : h === "samurai"
+                          ? "dash, o'z vaqtida — chetlanish"
+                          : h === "mage"
+                            ? "teleport"
+                            : h === "hunter"
+                              ? "orqaga sakrash, bosib turish — tuzoq"
+                              : h === "gunner"
+                                ? "sirpanish, bosib turish — tutun bombasi"
+                                : "dash"}
                       <br />
                       {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
                     </>
@@ -1394,8 +1404,8 @@ function HeroPreview({
   const ref = useRef<HTMLCanvasElement>(null);
   const [frame, setFrame] = useState(0);
   const pal = skinPalette(hero);
-  // Paladinning ulkan qilichi 32 px kartaga sig'maydi — kattaroq ko'rinish (tana biroz kichrayadi)
-  const view = hero === "paladin" ? 48 : 32;
+  // Paladinning ulkan qilichi va Samuray katanasi 32 px kartaga sig'maydi — kattaroq ko'rinish
+  const view = heroView(hero);
   useEffect(() => {
     if (!active) return setFrame(0);
     const id = window.setInterval(() => setFrame((f) => f + 1), showcase ? 160 : 500);

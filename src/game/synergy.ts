@@ -49,6 +49,7 @@ const HERO_THREE: Record<Hero, string> = {
   hunter: "Kuchli o'q 3 baravar zarar",
   gunner: "Yelpig'ich o'qlari teshib o'tadi",
   paladin: "OSMON HUKMI 4 baravar zarar",
+  samurai: "To'liq Iai 3 baravar zarar",
 };
 
 export const TAGS: Record<Tag, TagDef> = {
@@ -81,9 +82,10 @@ export const TAGS: Record<Tag, TagDef> = {
   ov: { name: "OV", color: "#7bd14f", two: "", three: HERO_THREE.hunter },
   porox: { name: "POROX", color: "#dba45a", two: "", three: HERO_THREE.gunner },
   nur: { name: "NUR", color: "#f2c14e", two: "", three: HERO_THREE.paladin },
+  gul: { name: "SAKURA", color: "#ff8fb8", two: "", three: HERO_THREE.samurai },
 };
 // qahramon tegi 2: kuchli zarba zaryadi tezroq to'ladi
-for (const t of ["polat", "sehr", "ov", "porox", "nur"] as const)
+for (const t of ["polat", "sehr", "ov", "porox", "nur", "gul"] as const)
   TAGS[t].two = "Kuchli zarba zaryadi 20% tez";
 
 /** Har qahramonning o'z tegi */
@@ -93,6 +95,7 @@ export const HERO_TAG: Record<Hero, Tag> = {
   hunter: "ov",
   gunner: "porox",
   paladin: "nur",
+  samurai: "gul",
 };
 
 export const ALL_TAGS = Object.keys(TAGS) as Tag[];
@@ -130,7 +133,7 @@ function applyTwo(tag: Tag, p: Player) {
 function applyThree(tag: Tag, p: Player) {
   if (tag !== HERO_TAG[p.hero]) return;
   // qahramonning eng zo'r qobiliyati
-  if (p.hero === "knight" || p.hero === "hunter") p.strongMul = 3;
+  if (p.hero === "knight" || p.hero === "hunter" || p.hero === "samurai") p.strongMul = 3;
   else if (p.hero === "paladin") p.strongMul = 4;
   else if (p.hero === "gunner") p.fanPierce = true;
   // Sehrgar: teleport portlashi — Game
@@ -171,4 +174,6 @@ export const TAG_ICONS: Record<Tag, readonly string[]> = {
   porox: [".kkkkk.", "kXXXXXk", "kkkkkkk", "kXwXXXk", "kkkkkkk", "kXXXXXk", ".kkkkk."],
   // quyosh
   nur: ["k..k..k", ".kkXkk.", ".kXwXk.", "kXXXXXk", ".kXXXk.", ".kkXkk.", "k..k..k"],
+  // sakura guli
+  gul: [".kk.kk.", "kXXkXXk", "kXXwXXk", ".kwkwk.", "kXXwXXk", "kXXkXXk", ".kk.kk."],
 };

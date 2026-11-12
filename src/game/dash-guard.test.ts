@@ -36,7 +36,7 @@ function untilDashEnds(p: Player, input: Input) {
   }
 }
 
-const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner", "paladin"];
+const HEROES: Hero[] = ["knight", "mage", "hunter", "gunner", "paladin", "samurai"];
 
 describe("Dash himoya dumi", () => {
   for (const hero of HEROES) {
@@ -112,7 +112,9 @@ describe("Dash himoya dumi", () => {
         const cd = p.dashCd;
         dash(p, input);
         expect(p.dashCooldown).toBeCloseTo(cd, 1);
-        expect(cd).toBe(hero === "knight" ? 0.8 : hero === "paladin" ? 1 : 0.9);
+        expect(cd).toBe(
+          hero === "knight" ? 0.8 : hero === "paladin" ? 1 : hero === "samurai" ? 0.7 : 0.9,
+        );
       });
     });
   }

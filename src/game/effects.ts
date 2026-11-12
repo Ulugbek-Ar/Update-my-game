@@ -274,7 +274,8 @@ export class Effects {
       y,
       vx: 8 + Math.random() * 22,
       vy: -55,
-      n: Math.round(n * 10) / 10,
+      // ikki kasr xonagacha: Samuray katanasi 0.75 beradi
+      n: Math.round(n * 100) / 100,
       life: DAMAGE_LIFE,
       crit,
     });
@@ -417,6 +418,22 @@ export class Effects {
         c.strokeStyle = m.b;
         c.arc(m.x + 1, m.y - 1, r * 0.55, m.rot + 0.3, m.rot + Math.PI);
         c.stroke();
+      } else if (m.kind === "moon") {
+        // qizil oy kesigi: qalin yarim oy — tashqi yoy keng, ichki yoy siljigan (o'roq shakli)
+        c.lineWidth = 2;
+        c.arc(m.x, m.y, r, m.rot - 0.9, m.rot + 0.9);
+        c.stroke();
+        c.beginPath();
+        c.lineWidth = 1;
+        c.strokeStyle = m.b;
+        c.arc(m.x - Math.cos(m.rot) * 3, m.y - Math.sin(m.rot) * 3, r, m.rot - 0.6, m.rot + 0.6);
+        c.stroke();
+        c.fillRect(
+          Math.round(m.x + Math.cos(m.rot) * r) - 1,
+          Math.round(m.y + Math.sin(m.rot) * r) - 1,
+          2,
+          2,
+        );
       } else if (m.kind === "gust") {
         // dasht shamoli: uchta burama yoy
         for (let i = 0; i < 3; i++) {

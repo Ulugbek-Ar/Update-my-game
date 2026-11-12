@@ -6,6 +6,7 @@ export type SpriteKind =
   | "hunter"
   | "gunner"
   | "paladin"
+  | "samurai"
   | "skeleton"
   | "archer"
   | "shield"
@@ -163,6 +164,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Paladin: siyoh, to'q oltin-bronza (soya, kamar, qo'lqop, dasta), oltin plastinka zirh, dubulg'a,
   // quyosh belgisi va qilich dastasi, kumush tig', oq ustki kiyim (tabard) va zirhdagi muqaddas nur
   paladin: ["#170f02", "#7a5a12", "#f2c14e", "#aab4c4", "#fbf8ec"],
+  // Samuray qiz: siyoh (kontur, qora hakama), qora-binafsha soch va qin, sakura pushti kimono (ko'zlar
+  // ham shu rangda porlaydi), qizil kamar (obi) va soch bog'ichi, oqish teri, yoqa va katana tig'i
+  samurai: ["#140a12", "#2a1e3c", "#ff8fb8", "#d8324a", "#fff0ec"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -2274,6 +2278,638 @@ function paladinPixels(state: AnimState, frame: number, back: boolean) {
   return p.outlined();
 }
 
+// ---------------- Samuray qiz: katana, uzun soch dumi, kimono ----------------
+
+/**
+ * Samuray to'ri: 32x32 tana o'rtada, katana va shamolda uchgan soch dumi chetga chiqib chiziladi
+ * (vizual — to'qnashuvdan mustaqil). Anime ilhomidagi yagona qahramon: katta bosh, porlovchi ko'zlar.
+ */
+export const SAMURAI_GRID = 48;
+const SAMURAI_OFF = (SAMURAI_GRID - 32) / 2;
+
+/** Samurayning "attack" holatidagi maxsus kadrlar (Player.render tanlaydi) */
+export const SAMURAI_FRAME = {
+  /** 0..2 — oddiy kesish (sug'urish, kesish, qaytish); 3..5 — komboning keng 3-zarbasi */
+  wide: 3,
+  /** IAI zaryadi: katana qinda, qo'l dastada, oyoqlar keng */
+  charge: 6,
+  /** IAI kesishi: cho'zilgan hamla */
+  iai: 7,
+  /** katanani qinga qaytarish */
+  sheathe: 8,
+  /** parry: katana tik */
+  parry: 9,
+  /** dash: tanasi egilgan */
+  dash: 10,
+} as const;
+
+/** Bitta kadr pozasi (tana koordinatalarida) */
+interface SamuraiFrame {
+  bob: number;
+  lean: number;
+  /** tiz bukilishi: gavda shuncha pasayadi */
+  low?: number;
+  lf: Point;
+  rf: Point;
+  /** katana qo'li va ikkinchi qo'l */
+  hand: Point;
+  off: Point;
+  /** tig' uchi; null — katana qinda (belda) */
+  blade: Point | null;
+  /** soch dumi: o'rtasi va uchi (bog'ichga nisbatan) */
+  tail: readonly [Point, Point];
+  /** kamar (obi) uchining siljishi */
+  sash: number;
+  /** tig'da pushti yaltirash (kesish lahzasi, parry uchquni) */
+  glint?: boolean;
+  /** bosh egilgan (ko'zlar yumuq) */
+  bow?: boolean;
+  /** tizzada: hakama yerga yoyilgan */
+  kneel?: boolean;
+}
+
+const SAM_IDLE: readonly SamuraiFrame[] = [
+  {
+    bob: 0,
+    lean: 0,
+    lf: [13, 27],
+    rf: [19, 27],
+    hand: [22, 20],
+    off: [11, 19],
+    blade: null,
+    tail: [
+      [-4, 4],
+      [-6, 10],
+    ],
+    sash: 0,
+  },
+  {
+    bob: 1,
+    lean: 0,
+    lf: [13, 27],
+    rf: [19, 27],
+    hand: [22, 21],
+    off: [11, 20],
+    blade: null,
+    tail: [
+      [-4, 5],
+      [-5, 11],
+    ],
+    sash: 1,
+  },
+  {
+    bob: 1,
+    lean: 0,
+    lf: [13, 27],
+    rf: [19, 27],
+    hand: [22, 21],
+    off: [11, 20],
+    blade: null,
+    tail: [
+      [-5, 4],
+      [-7, 9],
+    ],
+    sash: 0,
+  },
+  {
+    bob: 0,
+    lean: 0,
+    lf: [13, 27],
+    rf: [19, 27],
+    hand: [22, 20],
+    off: [11, 19],
+    blade: null,
+    tail: [
+      [-5, 3],
+      [-8, 8],
+    ],
+    sash: -1,
+  },
+];
+
+// yugurish: gavda oldinga egilgan, soch orqaga uchadi, katana qo'li orqada
+const SAM_WALK: readonly SamuraiFrame[] = [
+  {
+    bob: 0,
+    lean: 2,
+    lf: [10, 27],
+    rf: [22, 25],
+    hand: [11, 18],
+    off: [12, 20],
+    blade: null,
+    tail: [
+      [-6, 1],
+      [-11, 2],
+    ],
+    sash: -2,
+  },
+  {
+    bob: -1,
+    lean: 2,
+    lf: [12, 27],
+    rf: [20, 24],
+    hand: [12, 19],
+    off: [12, 19],
+    blade: null,
+    tail: [
+      [-6, 0],
+      [-11, 0],
+    ],
+    sash: -2,
+  },
+  {
+    bob: 0,
+    lean: 2,
+    lf: [15, 26],
+    rf: [18, 26],
+    hand: [14, 20],
+    off: [12, 20],
+    blade: null,
+    tail: [
+      [-6, 1],
+      [-10, 3],
+    ],
+    sash: -1,
+  },
+  {
+    bob: 0,
+    lean: 2,
+    lf: [21, 25],
+    rf: [11, 27],
+    hand: [15, 20],
+    off: [12, 20],
+    blade: null,
+    tail: [
+      [-6, 2],
+      [-11, 3],
+    ],
+    sash: -2,
+  },
+  {
+    bob: -1,
+    lean: 2,
+    lf: [20, 24],
+    rf: [13, 27],
+    hand: [14, 19],
+    off: [12, 19],
+    blade: null,
+    tail: [
+      [-6, 0],
+      [-11, -1],
+    ],
+    sash: -2,
+  },
+  {
+    bob: 0,
+    lean: 2,
+    lf: [18, 26],
+    rf: [15, 26],
+    hand: [12, 19],
+    off: [12, 20],
+    blade: null,
+    tail: [
+      [-6, 1],
+      [-10, 2],
+    ],
+    sash: -1,
+  },
+];
+
+const SAM_ATTACK: readonly SamuraiFrame[] = [
+  // 0 — sug'urish: qo'l dastada, tig'ning boshi qindan chiqdi
+  {
+    bob: 0,
+    lean: -1,
+    lf: [11, 27],
+    rf: [20, 27],
+    hand: [17, 18],
+    off: [11, 20],
+    blade: [13, 20],
+    tail: [
+      [-3, 5],
+      [-4, 11],
+    ],
+    sash: 1,
+  },
+  // 1 — kesish: qo'l oldinga cho'zilgan, tig' yuqori-oldinga, yaltirash
+  {
+    bob: 1,
+    lean: 2,
+    lf: [10, 26],
+    rf: [22, 28],
+    hand: [25, 16],
+    off: [12, 20],
+    blade: [36, 9],
+    tail: [
+      [-6, 2],
+      [-10, 5],
+    ],
+    sash: -2,
+    glint: true,
+  },
+  // 2 — qaytish: tig' pastga-oldinga
+  {
+    bob: 0,
+    lean: 1,
+    lf: [11, 27],
+    rf: [21, 27],
+    hand: [24, 20],
+    off: [12, 20],
+    blade: [32, 26],
+    tail: [
+      [-5, 3],
+      [-8, 8],
+    ],
+    sash: -1,
+  },
+  // 3 — keng zarba tayyorgarligi: tig' orqa yelka uzra
+  {
+    bob: -1,
+    lean: -2,
+    lf: [12, 27],
+    rf: [19, 27],
+    hand: [13, 13],
+    off: [15, 15],
+    blade: [2, 7],
+    tail: [
+      [-2, 6],
+      [-1, 12],
+    ],
+    sash: 2,
+  },
+  // 4 — keng yoy: tig' gorizontal, gavda past
+  {
+    bob: 1,
+    lean: 3,
+    low: 1,
+    lf: [9, 27],
+    rf: [23, 27],
+    hand: [26, 17],
+    off: [13, 19],
+    blade: [39, 18],
+    tail: [
+      [-7, 1],
+      [-12, 3],
+    ],
+    sash: -3,
+    glint: true,
+  },
+  // 5 — yoy oxiri
+  {
+    bob: 0,
+    lean: 2,
+    lf: [10, 27],
+    rf: [22, 27],
+    hand: [23, 21],
+    off: [12, 20],
+    blade: [30, 28],
+    tail: [
+      [-6, 3],
+      [-9, 8],
+    ],
+    sash: -2,
+  },
+  // 6 — IAI zaryadi: past keng turish, qo'l dastada, katana qinda
+  {
+    bob: 0,
+    lean: -1,
+    low: 2,
+    lf: [8, 27],
+    rf: [23, 27],
+    hand: [17, 19],
+    off: [11, 21],
+    blade: null,
+    tail: [
+      [-3, 5],
+      [-3, 11],
+    ],
+    sash: 1,
+  },
+  // 7 — IAI kesishi: cho'zilgan hamla, soch gorizontal
+  {
+    bob: 0,
+    lean: 4,
+    low: 1,
+    lf: [5, 27],
+    rf: [25, 26],
+    hand: [28, 15],
+    off: [13, 20],
+    blade: [39, 11],
+    tail: [
+      [-7, 0],
+      [-14, 0],
+    ],
+    sash: -3,
+    glint: true,
+  },
+  // 8 — qinga qaytarish: tik turadi, boshi egilgan, tig'ning oxiri ko'rinadi
+  {
+    bob: 0,
+    lean: 0,
+    lf: [13, 27],
+    rf: [19, 27],
+    hand: [18, 18],
+    off: [11, 20],
+    blade: [14, 20],
+    tail: [
+      [-4, 5],
+      [-5, 11],
+    ],
+    sash: 0,
+    bow: true,
+  },
+  // 9 — parry: katana tik, uchqun
+  {
+    bob: 0,
+    lean: -1,
+    lf: [11, 27],
+    rf: [21, 27],
+    hand: [22, 18],
+    off: [20, 12],
+    blade: [23, 2],
+    tail: [
+      [-4, 4],
+      [-6, 9],
+    ],
+    sash: 1,
+    glint: true,
+  },
+  // 10 — dash: tana oldinga egilgan, qo'llar orqada
+  {
+    bob: 0,
+    lean: 4,
+    low: 1,
+    lf: [8, 26],
+    rf: [17, 27],
+    hand: [12, 17],
+    off: [13, 20],
+    blade: null,
+    tail: [
+      [-7, 0],
+      [-13, 1],
+    ],
+    sash: -3,
+  },
+];
+
+const SAM_HURT: readonly SamuraiFrame[] = [
+  {
+    bob: 1,
+    lean: -3,
+    lf: [12, 28],
+    rf: [21, 27],
+    hand: [23, 15],
+    off: [8, 16],
+    blade: null,
+    tail: [
+      [2, 2],
+      [6, 5],
+    ],
+    sash: 2,
+  },
+];
+
+// yiqilish: tizzaga cho'kadi, katana yerga sanchiladi, boshi egiladi
+const SAM_DEATH: readonly SamuraiFrame[] = [
+  {
+    bob: 1,
+    lean: -1,
+    low: 2,
+    lf: [10, 27],
+    rf: [21, 27],
+    hand: [24, 16],
+    off: [12, 20],
+    blade: [26, 27],
+    tail: [
+      [-3, 5],
+      [-3, 11],
+    ],
+    sash: 1,
+  },
+  {
+    bob: 2,
+    lean: 1,
+    low: 4,
+    kneel: true,
+    lf: [10, 27],
+    rf: [21, 27],
+    hand: [25, 17],
+    off: [24, 15],
+    blade: [26, 27],
+    tail: [
+      [-2, 6],
+      [-1, 11],
+    ],
+    sash: 0,
+    bow: true,
+  },
+  {
+    bob: 3,
+    lean: 2,
+    low: 5,
+    kneel: true,
+    lf: [10, 27],
+    rf: [21, 27],
+    hand: [25, 19],
+    off: [24, 17],
+    blade: [26, 27],
+    tail: [
+      [1, 6],
+      [3, 10],
+    ],
+    sash: 0,
+    bow: true,
+  },
+];
+
+const SAM_FRAMES: Record<AnimState, readonly SamuraiFrame[]> = {
+  idle: SAM_IDLE,
+  walk: SAM_WALK,
+  attack: SAM_ATTACK,
+  hurt: SAM_HURT,
+  death: SAM_DEATH,
+};
+
+/** Har holatdagi kadrlar soni (Animator va sinovlar uchun) */
+export const SAMURAI_FRAMES: Record<AnimState, number> = {
+  idle: SAM_IDLE.length,
+  walk: SAM_WALK.length,
+  attack: SAM_ATTACK.length,
+  hurt: SAM_HURT.length,
+  death: SAM_DEATH.length,
+};
+
+/**
+ * Samuray qiz: 1 — siyoh (kontur va qora hakama), 2 — soch, qin va hakama burmalari, 3 — pushti kimono
+ * va ko'zlar, 4 — qizil obi, soch bog'ichi va katana gardasi, 5 — teri, oq yoqa, paypoq va tig'.
+ */
+function samurai(p: Pixels, f: SamuraiFrame, back: boolean) {
+  const low = f.low ?? 0;
+  const b = f.bob + low;
+  const l = f.lean;
+  const hip = 20 + b;
+  // bosh markazi: egilganda biroz oldinga va pastga
+  const hx = 16 + l + (f.bow ? 1 : 0),
+    hy = 9 + b + (f.bow ? 1 : 0);
+
+  // soch dumi (orqadan qaraganda — kiyim ustida, shuning uchun keyin chiziladi)
+  const tie: Point = back ? [hx, hy - 4] : [hx - 4, hy - 4];
+  const mid: Point = [tie[0] + f.tail[0][0], tie[1] + f.tail[0][1]];
+  const tip: Point = [tie[0] + f.tail[1][0], tie[1] + f.tail[1][1]];
+  const ponytail = () => {
+    p.line(2, tie, mid, 3);
+    p.line(2, mid, tip, 2);
+    p.rect(2, tip[0], tip[1], 1, 1);
+    // qizil bog'ich
+    p.rect(4, tie[0] - 1, tie[1], 2, 2);
+  };
+  if (!back) ponytail();
+
+  // qin (saya) chap belda, orqaga-pastga qaragan
+  const saya: Point = [12 + (back ? 6 : 0), hip - 1];
+  const sayaEnd: Point = back ? [26, hip + 5] : [4, hip + 4];
+  p.line(2, saya, sayaEnd, 2);
+  p.rect(4, Math.round((saya[0] + sayaEnd[0]) / 2), Math.round((saya[1] + sayaEnd[1]) / 2), 1, 1);
+
+  // hakama: keng qora shim, burmalari soch rangida; tizzada — yerga yoyilgan
+  if (f.kneel) {
+    p.polygon(1, [
+      [10, hip],
+      [22, hip],
+      [26, 28],
+      [7, 28],
+    ]);
+    p.rect(2, 13, hip + 1, 1, 27 - hip);
+    p.rect(2, 19, hip + 1, 1, 27 - hip);
+    p.rect(5, 6, 27, 3, 1);
+  } else {
+    p.line(1, [14, hip], f.lf, 5);
+    p.line(1, [18, hip], f.rf, 5);
+    p.rect(1, 12, hip, 9, 2);
+    p.line(2, [14, hip + 1], [f.lf[0], f.lf[1] - 2], 1);
+    p.line(2, [18, hip + 1], [f.rf[0], f.rf[1] - 2], 1);
+    // oq paypoq (tabi)
+    for (const [fx, fy] of [f.lf, f.rf]) p.rect(5, fx - 1, fy, 4, 1);
+  }
+
+  // yeng: yelkadan tirsakkacha pushti kimono, tirsakdan pastga oq ichki yeng
+  const sleeve = (from: Point, to: Point) => {
+    const mx = Math.round((from[0] + to[0]) / 2),
+      my = Math.round((from[1] + to[1]) / 2);
+    p.line(5, [mx, my], to, 3);
+    p.line(3, from, [mx, my], 3);
+  };
+  // orqa qo'l — gavdadan oldin
+  sleeve([13 + l, 14 + b], f.off);
+
+  // kimono: pushti gavda, oq yoqa, qizil obi
+  p.polygon(3, [
+    [12 + l, 13 + b],
+    [21 + l, 13 + b],
+    [21, hip],
+    [12, hip],
+  ]);
+  if (!back) {
+    // oq ichki yoqa: keng "V"
+    p.polygon(5, [
+      [14 + l, 13 + b],
+      [20 + l, 13 + b],
+      [17 + l, 17 + b],
+    ]);
+    p.rect(3, 16 + l, 13 + b, 2, 1);
+  } else {
+    // orqadan: bo'yin va yoqa chizig'i
+    p.rect(5, 15 + l, 13 + b, 3, 1);
+  }
+  p.rect(4, 12, hip - 2, 9, 2);
+  if (back) {
+    // katta bant (obi tuguni)
+    p.rect(4, 13, hip - 4, 7, 4);
+    p.rect(1, 16, hip - 3, 1, 2);
+  }
+  // obi uchi: belning orqa tomonidan osilib hilpiraydi
+  const sx = (back ? 17 : 11) + (f.sash > 1 ? 1 : f.sash < -1 ? -1 : 0);
+  p.rect(4, sx, hip, 1, 2);
+  p.rect(4, sx + (f.sash > 0 ? 1 : f.sash < 0 ? -1 : 0), hip + 2, 1, 2);
+
+  // qindagi katana dastasi (tig' sug'urilmagan bo'lsa)
+  if (!f.blade && !back) {
+    p.line(2, [13, hip - 1], [17, hip - 3], 1);
+    p.rect(5, 13, hip - 1, 1, 1);
+    p.rect(4, 15, hip - 2, 1, 1);
+  }
+
+  // bosh: soch massasi, yuz, kokil va ko'zlar
+  if (back) {
+    p.ellipse(2, hx + 0.5, hy, 5.2, 4.8);
+    p.rect(2, hx - 3, hy + 3, 8, 2);
+    // soch yaltirog'i
+    p.rect(3, hx - 2, hy - 3, 2, 1);
+  } else {
+    // soch faqat tepada va yonlarda: iyak ostiga tushmaydi
+    p.ellipse(2, hx + 0.5, hy, 5.2, 4.8, hy + 3);
+    p.rect(5, hx - 2, hy - 1, 7, 4);
+    p.rect(5, hx - 1, hy + 3, 5, 1);
+    // kokil: peshonaga tushgan tutamlar
+    p.rect(2, hx - 2, hy - 1, 1, 1);
+    p.rect(2, hx + 1, hy - 1, 1, 1);
+    p.rect(2, hx + 4, hy - 1, 2, 1);
+    // yon tutam (quloq oldida) va soch yaltirog'i
+    p.rect(2, hx - 3, hy + 2, 1, 3);
+    p.rect(3, hx - 1, hy - 4, 2, 1);
+    if (f.bow) {
+      // ko'zlar yumuq
+      p.rect(1, hx, hy + 1, 2, 1);
+      p.rect(1, hx + 3, hy + 1, 2, 1);
+    } else {
+      // qat'iyatli ko'zlar: qosh (siyoh) va porlovchi pushti ko'z
+      p.rect(1, hx - 1, hy, 2, 1);
+      p.rect(1, hx + 3, hy, 2, 1);
+      p.rect(3, hx, hy + 1, 1, 1);
+      p.rect(3, hx + 3, hy + 1, 1, 1);
+    }
+  }
+  if (back) ponytail();
+
+  // old qo'l va katana
+  sleeve([20 + l, 14 + b], f.hand);
+  if (f.blade) {
+    const [hx2, hy2] = f.hand;
+    const dx = f.blade[0] - hx2,
+      dy = f.blade[1] - hy2;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len,
+      uy = dy / len;
+    // dasta qo'ldan orqaga, qizil garda, oq tig'
+    p.line(2, f.hand, [Math.round(hx2 - ux * 3), Math.round(hy2 - uy * 3)], 1);
+    p.line(5, [Math.round(hx2 + ux * 2), Math.round(hy2 + uy * 2)], f.blade, 1);
+    p.rect(4, Math.round(hx2 + ux), Math.round(hy2 + uy), 1, 1);
+    if (f.glint) {
+      // kesish izi: tig' bo'ylab pushti uchqunlar
+      const nx = -uy,
+        ny = ux;
+      for (const k of [0.45, 0.75, 1]) {
+        const gx = Math.round(hx2 + dx * k + nx * 2),
+          gy = Math.round(hy2 + dy * k + ny * 2);
+        p.rect(3, gx, gy, 1, 1);
+      }
+      p.rect(5, f.blade[0] + Math.round(nx * 2), f.blade[1] + Math.round(ny * 2), 1, 1);
+    }
+  }
+  // qo'l (teri) va keng yeng uchi
+  p.rect(5, f.hand[0] - 1, f.hand[1] - 1, 2, 2);
+  p.rect(5, f.off[0] - 1, f.off[1] - 1, 2, 2);
+}
+
+/** Samuray kadri: tana 32x32 da chiziladi, SAMURAI_GRID to'rning o'rtasiga siljitiladi. */
+function samuraiPixels(state: AnimState, frame: number, back: boolean) {
+  const p = new Pixels(SAMURAI_GRID);
+  p.ox = p.oy = SAMURAI_OFF;
+  const list = SAM_FRAMES[state];
+  samurai(p, list[frame] ?? list[0]!, back && state !== "death");
+  return p.outlined();
+}
+
 // ---------------- 3-dunyo: Zulmat o'rmoni ----------------
 
 interface SpiderFrame {
@@ -4170,11 +4806,18 @@ export function spriteFootOffset(kind: SpriteKind, state: AnimState, frame: numb
 
 /** Kadr to'rining o'lchami (piksel): odatda 32, Paladin — ulkan qilich, Kul qiroli — 96x96. */
 export function spriteGrid(kind: SpriteKind) {
-  return kind === "paladin" ? PALADIN_GRID : kind === "ashking" ? KING_GRID : 32;
+  return kind === "paladin"
+    ? PALADIN_GRID
+    : kind === "samurai"
+      ? SAMURAI_GRID
+      : kind === "ashking"
+        ? KING_GRID
+        : 32;
 }
 
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   if (kind === "paladin") return paladinPixels(state, frame, back);
+  if (kind === "samurai") return samuraiPixels(state, frame, back);
   if (kind === "ashking") return kingPixels(state, frame);
   if (kind === "ashspirit") {
     const p = new Pixels();
@@ -4420,6 +5063,14 @@ export function renderSprite(
   ctx.restore();
 }
 
+/**
+ * Menyu, do'kon va avatar kartalaridagi kvadrat ko'rinish (px): Paladinning ulkan qilichi va
+ * Samurayning katanasi 32 px ga sig'maydi — ularda kattaroq (tana biroz kichrayadi).
+ */
+export function heroView(kind: SpriteKind) {
+  return kind === "paladin" ? 48 : kind === "samurai" ? 40 : 32;
+}
+
 /** Chizilgan o'lcham (px) */
 export function spriteSize(kind: SpriteKind) {
   return (
@@ -4427,21 +5078,24 @@ export function spriteSize(kind: SpriteKind) {
     // Paladin: tana boshqa qahramonlardek 32 px, katta to'r — qilich uchun (1 to'r piksel = 1 px)
     (kind === "paladin"
       ? PALADIN_GRID
-      : kind === "demon" || kind === "queen" || kind === "king"
-        ? 64
-        : kind === "golem" || kind === "treant"
-          ? 40
-          : kind === "slime" ||
-              kind === "bat" ||
-              kind === "imp" ||
-              kind === "frost" ||
-              kind === "iceblob" ||
-              kind === "spider" ||
-              kind === "owl"
-            ? 26
-            : kind === "shroom"
-              ? 28
-              : 32)
+      : kind === "samurai"
+        ? // Samuray: tana 32 px, katta to'r — katana va soch dumi uchun (1 to'r piksel = 1 px)
+          SAMURAI_GRID
+        : kind === "demon" || kind === "queen" || kind === "king"
+          ? 64
+          : kind === "golem" || kind === "treant"
+            ? 40
+            : kind === "slime" ||
+                kind === "bat" ||
+                kind === "imp" ||
+                kind === "frost" ||
+                kind === "iceblob" ||
+                kind === "spider" ||
+                kind === "owl"
+              ? 26
+              : kind === "shroom"
+                ? 28
+                : 32)
   );
 }
 
@@ -4478,8 +5132,181 @@ export const ICON_COLORS: Readonly<Record<string, string>> = {
   U: "#fff2b0",
   V: "#fbf8ec",
   Z: "#7a5a12",
+  // Samuray palitrasi: sakura pushti, to'q pushti, oqish pushti
+  C: "#ff8fb8",
+  I: "#b8456e",
+  O: "#ffd6e6",
 };
 export const UPGRADE_ICONS: Record<string, readonly string[]> = {
+  // Samuray kartalari (C — sakura pushti, I — to'q pushti, O — oqish pushti)
+  sheart: [
+    "............",
+    ".XXX....XXX.",
+    "XXOXX..XXXXX",
+    "XOXXXXXXXXXX",
+    "XXXXXOXXXXXX",
+    "XXXXOOOXXXXX",
+    ".XXXXOXXXXX.",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+    "....XXXX....",
+    ".....XX.....",
+    "............",
+  ],
+  katana: [
+    "..........oo",
+    ".........oXo",
+    "........oXo.",
+    ".......oXo..",
+    "......oXo...",
+    ".....oXo....",
+    "....oXo.....",
+    "..rroo......",
+    "...rr.......",
+    "..K.rr......",
+    ".K..........",
+    "K...........",
+  ],
+  longiai: [
+    "............",
+    "..........oo",
+    "........ooXo",
+    "......ooXXo.",
+    "....ooXXoo..",
+    "..ooXXoo....",
+    "ooXXoo......",
+    "oXoo........",
+    "oo......C...",
+    ".....C......",
+    "..C.........",
+    "............",
+  ],
+  quickdraw: [
+    "............",
+    "X.X.........",
+    ".........oo.",
+    "X.X....ooXo.",
+    ".....ooXXo..",
+    "X.X.oXXoo...",
+    "...KKoo.....",
+    "..KrK.......",
+    ".KrK........",
+    "KKK.........",
+    "............",
+    "............",
+  ],
+  windstep: [
+    "............",
+    "....XXXX....",
+    "...X....X...",
+    "........X...",
+    "XXXXXXXX....",
+    "............",
+    "XXXXXXXXXX..",
+    "..........X.",
+    ".....C...X..",
+    "....CCC.....",
+    ".....C......",
+    "............",
+  ],
+  thirst: [
+    ".....KK.....",
+    ".....KK.....",
+    "....rrrr....",
+    ".....oo.....",
+    ".....oo.....",
+    ".....oo.....",
+    ".....oo.....",
+    ".....oo.....",
+    "......o.....",
+    "............",
+    ".....XX.....",
+    ".....XX.....",
+  ],
+  steelback: [
+    "o..........o",
+    ".o...XX...o.",
+    "..o.XXXX.o..",
+    "...oXXXXo...",
+    "....oXXo....",
+    ".....oo.....",
+    "....o..o....",
+    "...o.XX.o...",
+    "..K..XX..K..",
+    ".K...XX...K.",
+    "K..........K",
+    "............",
+  ],
+  step2: [
+    "............",
+    "............",
+    ".X....X.....",
+    "..X....X....",
+    "...X....X...",
+    "....X....X..",
+    "...X....X...",
+    "..X....X....",
+    ".X....X.....",
+    "............",
+    "............",
+    "............",
+  ],
+  tea: [
+    "............",
+    "....o..o....",
+    "...o..o.....",
+    "....o..o....",
+    "............",
+    ".KKKKKKKK...",
+    ".KXXXXXXKKK.",
+    ".KXXXXXXK.K.",
+    ".KXXXXXXKKK.",
+    "..KXXXXK....",
+    "...KKKK.....",
+    "............",
+  ],
+  twincut: [
+    "X..........X",
+    ".X........X.",
+    "..X......X..",
+    "...X....X...",
+    "....X..X....",
+    ".....oo.....",
+    ".....oo.....",
+    "....X..X....",
+    "...X....X...",
+    "..X......X..",
+    ".X........X.",
+    "X..........X",
+  ],
+  petalstorm: [
+    "............",
+    ".....XX.....",
+    "....XXXX....",
+    ".XX.XXXX.XX.",
+    "XXXX.CC.XXXX",
+    "XXXXCooCXXXX",
+    ".XX.CooC.XX.",
+    "....XCCX....",
+    "...XXX.XXX..",
+    "...XXX.XXX..",
+    "....X...X...",
+    "............",
+  ],
+  coldblood: [
+    ".....XX.....",
+    ".....XX.....",
+    "....XXXX....",
+    "....XXXX....",
+    "...XXXXXX...",
+    "..XXoXXXXX..",
+    "..XoXXXXXX..",
+    "..XoXXXXXX..",
+    "..XXXXXXXX..",
+    "...XXXXXX...",
+    "....XXXX....",
+    "............",
+  ],
   pheart: [
     "............",
     ".XXX....XXX.",

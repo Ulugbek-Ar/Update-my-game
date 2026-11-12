@@ -25,7 +25,12 @@ export type AchievementId =
   | "shang4"
   | "wallNoShield"
   | "collector"
-  | "synergy2";
+  | "synergy2"
+  | "winSamurai"
+  | "firstIai"
+  | "dodge10"
+  | "parryBoss"
+  | "winSakura";
 
 export interface Achievement {
   id: AchievementId;
@@ -62,6 +67,19 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   },
   { id: "collector", name: "KOLLEKTSIONER", desc: "Bitta o'yinda 5 ta artefakt yig'" },
   { id: "synergy2", name: "SINERGIYA USTASI", desc: "Bitta o'yinda 2 ta sinergiya och" },
+  { id: "winSamurai", name: "SAMURAY BILAN YUT", desc: "Samuray bilan o'yinni yut" },
+  { id: "firstIai", name: "BIRINCHI IAI", desc: "Samuray bilan birinchi Iai zarbasini ber" },
+  {
+    id: "dodge10",
+    name: "10 MUKAMMAL CHETLANISH",
+    desc: "Bitta o'yinda 10 marta mukammal chetlan",
+  },
+  {
+    id: "parryBoss",
+    name: "BOSS ZARBASINI QAYTAR",
+    desc: "Samuray bilan boss zarbasini yoki olovini parry qil",
+  },
+  { id: "winSakura", name: "SAKURA BOG'I", desc: "Samuray bilan Sakura bog'ini tugat" },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

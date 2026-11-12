@@ -368,6 +368,62 @@ class SoundFX {
     this.tone(784, 0.3, "triangle", 0.05, undefined, 0.15);
   }
 
+  /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
+  katana(step = 0) {
+    const f = 2200 + step * 320;
+    this.noise(step === 2 ? 0.09 : 0.06, 0.05, 5200);
+    this.tone(f, step === 2 ? 0.16 : 0.1, "triangle", 0.045, f * 1.45);
+    if (step === 2) this.tone(f * 1.5, 0.12, "sine", 0.025, f * 2, 0.02);
+  }
+
+  /** IAI zaryadi: dur soniya davomida o'sib boruvchi ohang */
+  iaiCharge(dur = 0.5) {
+    const d = Math.max(0.15, dur);
+    this.tone(260, d, "triangle", 0.03, 1040);
+    this.tone(520, d, "sine", 0.015, 2080);
+  }
+
+  /** IAI zaryadi to'ldi: qisqa jarangli "ting" */
+  iaiReady() {
+    this.tone(2637, 0.09, "triangle", 0.04);
+    this.tone(3520, 0.14, "sine", 0.03, undefined, 0.05);
+  }
+
+  /** IAI kesishi: keskin "ShHHK" — shovqin portlashi va pasayuvchi po'lat ovozi */
+  iai() {
+    this.noise(0.2, 0.12, 6500);
+    this.tone(3200, 0.2, "sawtooth", 0.035, 700);
+    this.tone(180, 0.12, "square", 0.04, 60);
+  }
+
+  /** IAI kechikkan kesigi: qisqa "chiq" (har belgilangan dushmanga bittadan) */
+  iaiCut() {
+    this.noise(0.04, 0.07, 7000);
+    this.tone(2900, 0.05, "square", 0.035, 1500);
+  }
+
+  /** Katana qinga qaytdi (afsonaviy skin): "chik" */
+  sheathe() {
+    this.tone(1300, 0.03, "square", 0.045, 900);
+    this.tone(2400, 0.05, "triangle", 0.03, 2000, 0.03);
+  }
+
+  /** Mukammal chetlanish: sekinlashgan past "vum" va qo'ng'iroqcha */
+  perfectDodge() {
+    this.tone(150, 0.45, "sine", 0.09, 55);
+    this.tone(90, 0.5, "triangle", 0.05, 45, 0.02);
+    this.tone(2093, 0.25, "triangle", 0.035, undefined, 0.08);
+    this.tone(3136, 0.3, "sine", 0.025, undefined, 0.16);
+  }
+
+  /** Parry: metall "TING" — baland jarang va qisqa uchqun shovqini */
+  parry() {
+    this.noise(0.05, 0.08, 8000);
+    this.tone(3300, 0.26, "triangle", 0.07, 2900);
+    this.tone(4950, 0.18, "sine", 0.035, 4400, 0.01);
+    this.tone(1650, 0.08, "square", 0.03, 1200);
+  }
+
   /**
    * Afsonaviy skin ohangi: hujum/dash ovoziga qo'shiladi (skinFx.ts: TONES). vol — nisbiy baland-
    * lik (kuchli zarbada balandroq). Faqat ovoz — o'yin mantig'iga ta'sir qilmaydi.

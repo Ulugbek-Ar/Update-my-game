@@ -363,7 +363,10 @@ function forest(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
   }
 }
 
-/** Qahramon belgisi (7x7): ritsar dubulg'asi, sehrgar qalpog'i, ovchi kapyushoni, mergan shlyapasi. */
+/**
+ * Qahramon belgisi (7x7): ritsar dubulg'asi, sehrgar qalpog'i, ovchi kapyushoni, mergan shlyapasi,
+ * paladin dubulg'asi, samuray qizning soch dumi.
+ */
 export function heroBadge(
   c: CanvasRenderingContext2D,
   hero: Hero,
@@ -381,7 +384,9 @@ export function heroBadge(
           ? ["#d9a441", "#8a5a2a", "#ffe2a0"]
           : hero === "paladin"
             ? ["#f2c14e", "#7a5a12", "#fff2b0"]
-            : ["#4f8a3a", "#1f4a24", "#c9a26b"];
+            : hero === "samurai"
+              ? ["#ff8fb8", "#2a1e3c", "#fff0ec"]
+              : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {
     px(c, main, x + 1, y, 5, 7);
@@ -401,6 +406,13 @@ export function heroBadge(
     px(c, main, x, y + 1, 7, 5);
     px(c, dark, x + 1, y + 3, 5, 1);
     px(c, hi, x + 3, y, 1, 7);
+  } else if (hero === "samurai") {
+    // qora soch (baland dum), oqish yuz va pushti kimono yoqasi
+    px(c, dark, x + 1, y, 5, 3);
+    px(c, dark, x, y + 1, 1, 4);
+    px(c, hi, x + 2, y + 2, 4, 3);
+    px(c, main, x + 1, y + 5, 5, 2);
+    px(c, "#d8324a", x, y, 1, 1);
   } else if (hero === "mage") {
     px(c, dark, x, y + 5, 7, 2);
     px(c, dark, x + 1, y + 3, 5, 2);

@@ -6,6 +6,11 @@
 import {
   AURA_RADIUS,
   HAMLA_DMG,
+  IAI_DELAY,
+  IAI_GAP,
+  IAI_WIDTH,
+  PARRY_BOOST,
+  PARRY_STUN,
   Player,
   SKY_RADIUS,
   SKY_STUN,
@@ -13,6 +18,7 @@ import {
   type Bolt,
   type PlayerInput,
 } from "@/game/player";
+import { CRIT_MUL } from "@/game/crit";
 import { overlap, type Body } from "@/game/animation";
 import type { Hero } from "@/game/hero";
 import { RealmMap } from "./map";
@@ -333,6 +339,9 @@ export class RealmPlayer {
   titles: string[] = [];
   /** reyd jangida halok bo'ldi: 10 s dan keyin zal kirishida tug'iladi */
   raidRespawn = false;
+  /** Samuray: IAI yo'lida belgilangan moblar va kechikkan kesiklar navbati */
+  iaiMarks: RealmMob[] = [];
+  iaiCut: { t: number; i: number; pass: number; mul: number; crit: boolean } | null = null;
   base: { maxHp: number; damage: number; speed: number };
 
   constructor(
@@ -1534,6 +1543,7 @@ export class RealmSim {
     this.updateLava(rp, dt);
 
     if (p.paladin) this.updatePaladin(rp);
+    if (p.samurai) this.updateSamurai(rp, dt);
 
     // yaqin jang: zarba qutisi moblarga va yoriq devorga (Paladin SHANG — uzun yo'lak)
     const box = p.attackBox();
@@ -1547,7 +1557,15 @@ export class RealmSim {
             m.stun = Math.max(m.stun, SKY_STUN);
             m.holy = true;
           }
-          this.hit(rp, m, p.hitDamage, p.paladin ? 260 : p.spinning ? 200 : 140);
+          // Samuray: mukammal chetlanishdan keyingi zarba — kritik (2 baravar)
+          const crit = p.samurai && p.critReady;
+          if (crit) p.critReady = false;
+          this.hit(
+            rp,
+            m,
+            p.hitDamage * (crit ? CRIT_MUL : 1),
+            p.paladin ? 260 : p.spinning ? 200 : 140,
+          );
         }
       }
       for (const w of this.secret("breakwall")) {
@@ -1591,6 +1609,74 @@ export class RealmSim {
       this.events.push({ type: "burn", pid: rp.id, x: p.x, y: p.y });
       this.events.push({ type: "mobHurtPlayer", pid: rp.id, x: p.x, y: p.y });
     } else rp.lavaT = TICK_DT;
+  }
+
+  /**
+   * Samuray olamda (oflayn o'yindagi qoidalar, vaqt sekinlashuvisiz): IAI yo'lidagi moblar
+   * belgilanadi, qotadi va IAI_DELAY dan keyin ketma-ket kesiladi; mukammal chetlanish — keyingi
+   * zarba kritik; parry — hujumchi gangiydi.
+   */
+  private updateSamurai(rp: RealmPlayer, dt: number) {
+    const p = rp.p;
+    p.chargeFull = false;
+    if (p.iaiStarted) {
+      p.iaiStarted = false;
+      rp.iaiMarks = [];
+      rp.iaiCut = null;
+    }
+    if (p.iai || p.iaiDone) {
+      // shu tickdagi yo'l: (px, py) -> hozirgi joy
+      const dx = p.x - rp.px,
+        dy = p.y - rp.py;
+      const len = Math.hypot(dx, dy);
+      const ux = len ? dx / len : p.dashX,
+        uy = len ? dy / len : p.dashY;
+      for (const m of this.mobs) {
+        if (m.dead || m.under || m.spawnT > 0.3 || rp.iaiMarks.includes(m)) continue;
+        const t = Math.max(0, Math.min(len, (m.x - rp.px) * ux + (m.y - rp.py) * uy));
+        if (Math.hypot(m.x - (rp.px + ux * t), m.y - (rp.py + uy * t)) >= (m.size + IAI_WIDTH) / 2)
+          continue;
+        rp.iaiMarks.push(m);
+        // boss va og'ir moblar qotmaydi (Sardor, Kul qiroli)
+        if (m.kind !== "warden" && m.kind !== "ashking" && m.kind !== "dummy")
+          m.stun = Math.max(m.stun, IAI_DELAY + rp.iaiMarks.length * IAI_GAP + 0.1);
+      }
+    }
+    if (p.iaiDone) {
+      rp.iaiCut = { t: IAI_DELAY, i: 0, pass: 0, mul: p.iaiDone.mul, crit: p.iaiDone.crit };
+      p.iaiDone = null;
+    }
+    const c = rp.iaiCut;
+    if (c) {
+      c.t -= dt;
+      while (c.t <= 0 && c.i < rp.iaiMarks.length) {
+        const m = rp.iaiMarks[c.i++]!;
+        c.t += IAI_GAP;
+        if (!m.dead) this.hit(rp, m, p.damage * c.mul * (c.crit ? CRIT_MUL : 1), 200);
+      }
+      if (c.i >= rp.iaiMarks.length && c.t <= 0) {
+        if (p.iaiDouble && c.pass === 0 && rp.iaiMarks.some((m) => !m.dead)) {
+          c.pass = 1;
+          c.i = 0;
+          c.t = IAI_GAP * 2;
+        } else {
+          rp.iaiCut = null;
+          rp.iaiMarks = [];
+        }
+      }
+    }
+    if (p.perfect) {
+      p.perfect = false;
+      p.critReady = true;
+    }
+    if (p.parried.length) {
+      for (const hit of p.parried) {
+        const m = this.mobs.find((m) => !m.dead && Math.hypot(m.x - hit.x, m.y - hit.y) < 3);
+        if (m && m.kind !== "warden" && m.kind !== "ashking") m.stun = Math.max(m.stun, PARRY_STUN);
+        if (p.parryBoost) p.boost = Math.max(p.boost, PARRY_BOOST);
+      }
+      p.parried = [];
+    }
   }
 
   /**

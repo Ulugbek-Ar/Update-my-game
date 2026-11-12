@@ -47,7 +47,7 @@ interface Shot {
 const FLOOR_Y = 40,
   TARGET_X = 104;
 /** Yaqin jangchilar nishon yonida turadi va dashda orqaga sirpanadi; uzoqdan otuvchilar — chapda */
-const melee = (h: Hero) => h === "knight" || h === "paladin";
+const melee = (h: Hero) => h === "knight" || h === "paladin" || h === "samurai";
 const homeOf = (h: Hero) => (melee(h) ? 80 : 30);
 
 export class SkinDemo {

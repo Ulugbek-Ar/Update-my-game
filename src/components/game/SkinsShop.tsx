@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { HERO_LIST, type Hero } from "@/game/hero";
 import { loadUnlockedHeroes } from "@/game/save";
 import { loadGold, saveGold } from "@/game/shop";
-import { renderSprite } from "@/game/sprites";
+import { heroView, renderSprite } from "@/game/sprites";
 import type { AnimState } from "@/game/animation";
 import {
   SKINS,
@@ -58,7 +58,7 @@ export function SkinPreview({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [frame, setFrame] = useState(0);
-  const view = hero === "paladin" ? 48 : 32;
+  const view = heroView(hero);
   useEffect(() => {
     const id = window.setInterval(() => setFrame((f) => f + 1), 170);
     return () => window.clearInterval(id);

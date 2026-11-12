@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { renderSprite, renderUpgradeIcon } from "@/game/sprites";
+import { renderSprite, renderUpgradeIcon, heroView } from "@/game/sprites";
 import { makeQr } from "@/lib/qr";
 import type { Hero } from "@/game/hero";
 import { closeBtn } from "./pixelUi";
@@ -87,8 +87,8 @@ export function HeroAvatar({
   dim?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  // Paladinning ulkan qilichi 32 px ga sig'maydi
-  const view = hero === "paladin" ? 48 : 32;
+  // Paladinning ulkan qilichi va Samuray katanasi 32 px ga sig'maydi
+  const view = heroView(hero);
   useEffect(() => {
     const c = ref.current?.getContext("2d");
     if (!c) return;

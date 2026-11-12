@@ -57,7 +57,7 @@ describe("Kuch kartalari teglari", () => {
         expect(ALL_TAGS).toContain(c.tags[0]);
       }
       // variantning o'z tegi yozilgan (asl kartadan meros emas)
-      for (const k of ["mage", "hunter", "gunner", "paladin"] as const)
+      for (const k of ["mage", "hunter", "gunner", "paladin", "samurai"] as const)
         for (const u of UPGRADES) if (u[k]) expect(u[k]!.tags, `${k}:${u.id}`).toHaveLength(1);
     }
   });

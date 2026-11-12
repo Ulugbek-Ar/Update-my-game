@@ -1,5 +1,5 @@
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin";
+export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -59,6 +59,16 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     trail: "rgba(255,242,176,0.8)",
     uiText: "#f2c14e",
     empty: "#3a300e",
+  },
+  // Samuray qiz: sakura pushti (gulbarg), to'q pushti chekka va oqish-pushti porlash. Xavf zonalarining
+  // qizilidan (danger.ts) uzoq: pushti-oq oilada, to'yingan qizil emas
+  samurai: {
+    accent: "#ff8fb8",
+    accentDark: "#b8456e",
+    glow: "#ffd6e6",
+    trail: "rgba(255,143,184,0.8)",
+    uiText: "#ffe3ee",
+    empty: "#3a1a28",
   },
 };
 
@@ -121,6 +131,13 @@ export const GUNNER_PRICE = 300;
  */
 export const PALADIN_PRICE = 450;
 
+/**
+ * Samuray qiz narxi: Paladindan keyingi katta maqsad. Uch dunyoli to'liq o'yin ≈ 180–220 oltin —
+ * 600 oltin ≈ 3 ta uch dunyoli o'yin yoki 9–10 ta 1-dunyo. Mahorat talab qiladigan qahramon:
+ * o'yinni yaxshi bilgan (Mergan va Paladinni olgan) o'yinchi uchun.
+ */
+export const SAMURAI_PRICE = 600;
+
 export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
@@ -161,6 +178,14 @@ export const HERO_LIST: readonly HeroInfo[] = [
     theme: HERO_THEME.paladin,
     price: PALADIN_PRICE,
     desc: "Qalqonsiz tank: ikki metrlik ulkan qilich. SHANG — yo'lak bo'ylab zarba, Osmon hukmi gangitadi, Qasam dushmanlarni o'ziga tortadi. 8 yurak.",
+  },
+  {
+    id: "samurai",
+    role: "warrior",
+    name: "SAMURAY",
+    theme: HERO_THEME.samurai,
+    price: SAMURAI_PRICE,
+    desc: "Samuray qiz: tez katana kombosi. IAI — bosib tursang zaryadlanadi, qo'yib yuborsang chaqmoqdek kesib o'tadi. O'z vaqtida dash — vaqt sekinlashadi, o'z vaqtida zarba — dushman hujumi qaytadi. 4 yurak.",
   },
 ];
 

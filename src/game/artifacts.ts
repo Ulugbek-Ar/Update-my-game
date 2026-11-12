@@ -28,7 +28,8 @@ export type ArtifactId =
   | "slowring"
   | "bigtrap"
   | "lastshot"
-  | "vowlight";
+  | "vowlight"
+  | "iaireset";
 
 export interface Artifact {
   id: ArtifactId;
@@ -380,6 +381,25 @@ export const ARTIFACTS: readonly Artifact[] = [
       "..kXYXk..",
       ".k.kXk.k.",
       "k...k...k",
+    ],
+  },
+  {
+    id: "iaireset",
+    name: "SAKURA SHAMOLI",
+    desc: "Mukammal chetlanish Iai zarbasini darhol tayyor qiladi",
+    color: "#ff8fb8",
+    dark: "#b8456e",
+    hero: "samurai",
+    icon: [
+      "...kk....",
+      "..kXXk.kk",
+      ".kXwXkkXk",
+      ".kXXkkXwk",
+      "..kkYkXXk",
+      ".kXkkYkk.",
+      "kXwXkkYk.",
+      "kXXXk.kYk",
+      ".kkk...kk",
     ],
   },
 ];

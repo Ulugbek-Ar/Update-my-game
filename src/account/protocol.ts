@@ -48,6 +48,7 @@ export const HERO_IDS = [
   "hunter",
   "gunner",
   "paladin",
+  "samurai",
 ] as const satisfies readonly Hero[];
 
 /** Kirgan o'yinchining o'z ma'lumoti */

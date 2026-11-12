@@ -11,10 +11,12 @@ const GROUND = 150;
 /** Sahnadagi qahramonlar (chapda, o'ngga qaragan) va moblar (o'ngda, chapga qaragan) */
 const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; phase: number }[] = [
   // 3.0: Paladin chetda — ulkan qilichi yelkasida orqaga qaraydi, menyu tugmalari ostiga tushmaydi
-  { kind: "paladin", x: 24, y: GROUND - 14, flip: false, phase: 0.85 },
-  { kind: "knight", x: 45, y: GROUND - 14, flip: false, phase: 0 },
-  { kind: "mage", x: 64, y: GROUND - 12, flip: false, phase: 0.3 },
-  { kind: "hunter", x: 83, y: GROUND - 14, flip: false, phase: 0.6 },
+  { kind: "paladin", x: 21, y: GROUND - 14, flip: false, phase: 0.85 },
+  { kind: "knight", x: 39, y: GROUND - 14, flip: false, phase: 0 },
+  { kind: "mage", x: 55, y: GROUND - 12, flip: false, phase: 0.3 },
+  { kind: "hunter", x: 71, y: GROUND - 14, flip: false, phase: 0.6 },
+  // 3.8: Samuray qiz — qahramonlar qatorining oxirida (besh qahramon menyu matni ustuniga kirmaydi)
+  { kind: "samurai", x: 87, y: GROUND - 14, flip: false, phase: 0.45 },
   { kind: "skeleton", x: 226, y: GROUND - 14, flip: true, phase: 0.2 },
   { kind: "slime", x: 247, y: GROUND - 8, flip: true, phase: 0.5 },
   { kind: "wolf", x: 268, y: GROUND - 13, flip: true, phase: 0.1 },
@@ -26,10 +28,11 @@ const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; ph
  * figuralar kichrayib, ekran chetlariga suriladi (tugmalar ustiga tushmaydi).
  */
 const CAST_COMPACT: readonly { x: number; scale: number }[] = [
-  { x: 15, scale: 0.62 },
-  { x: 29, scale: 0.62 },
-  { x: 43, scale: 0.62 },
-  { x: 57, scale: 0.62 },
+  { x: 12, scale: 0.62 },
+  { x: 23, scale: 0.62 },
+  { x: 34, scale: 0.62 },
+  { x: 45, scale: 0.62 },
+  { x: 56, scale: 0.62 },
   { x: 271, scale: 0.62 },
   { x: 283, scale: 0.62 },
   { x: 295, scale: 0.62 },
@@ -188,7 +191,9 @@ export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact 
     c.save();
     c.translate(k.x, footY);
     c.scale(k.scale, k.scale);
-    renderSprite(c, a.kind, "idle", frame, 0, a.y - footY, false, a.flip);
+    // Samurayda 4 ta turish kadri (soch va kamar hilpiraydi) — o'sha 1 s lik sikl
+    const f = a.kind === "samurai" ? Math.floor(t * 4 + a.phase * 4) % 4 : frame;
+    renderSprite(c, a.kind, "idle", f, 0, a.y - footY, false, a.flip);
     c.restore();
   });
   // boyo'g'li Daraxt odamning tojida; Daraxt odam nafas olganda (idle 1-kadr) toji

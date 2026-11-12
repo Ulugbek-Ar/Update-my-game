@@ -1,5 +1,5 @@
 import type { EnemyKind } from "./enemy";
-import type { Player } from "./player";
+import { DODGE_WINDOW_CARD, IAI_RANGE_CARD, KATANA_TIME, type Player } from "./player";
 import type { Hero } from "./hero";
 
 /** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi, 3 — Zulmat o'rmoni */
@@ -96,11 +96,12 @@ export function waveEnemies(i: number, rand = Math.random, world: World = 1): En
 
 /**
  * Kuch kartasi tegi: umumiy (ZARAR, TEZLIK, HIMOYA, HAYOT) yoki qahramonniki (PO'LAT — Ritsar,
- * SEHR — Sehrgar, OV — Ovchi, POROX — Mergan, NUR — Paladin). Bir xil tegdan 2 ta — kichik bonus,
+ * SEHR — Sehrgar, OV — Ovchi, POROX — Mergan, NUR — Paladin, SAKURA — Samuray). Bir xil tegdan 2 ta —
+ * kichik bonus,
  * 3 ta — SINERGIYA (synergy.ts).
  */
 export type Tag =
-  "zarar" | "tezlik" | "himoya" | "hayot" | "polat" | "sehr" | "ov" | "porox" | "nur";
+  "zarar" | "tezlik" | "himoya" | "hayot" | "polat" | "sehr" | "ov" | "porox" | "nur" | "gul";
 
 /** Qahramonga xos karta: nom, tavsif, rang, ikonka va kerak bo'lsa alohida ta'sir. */
 export interface HeroCard {
@@ -138,6 +139,8 @@ export interface Upgrade {
   gunner?: HeroCard;
   /** Paladin uchun alohida karta */
   paladin?: HeroCard;
+  /** Samuray uchun alohida karta */
+  samurai?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
 }
@@ -153,9 +156,11 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
           ? u.gunner
           : p.hero === "paladin"
             ? u.paladin
-            : undefined;
+            : p.hero === "samurai"
+              ? u.samurai
+              : undefined;
   if (!alt) return u;
-  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, ...base } = u;
+  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, samurai: _s, ...base } = u;
   return { ...base, ...alt };
 }
 
@@ -204,6 +209,13 @@ export const UPGRADES: Upgrade[] = [
       color: "#f2c14e",
       icon: "pheart",
     },
+    samurai: {
+      tags: ["himoya"],
+      name: "SAKURA YURAGI",
+      desc: "+1 yurak va to'liq davolanish",
+      color: "#ff8fb8",
+      icon: "sheart",
+    },
   },
   {
     id: "blade",
@@ -240,6 +252,13 @@ export const UPGRADES: Upgrade[] = [
       desc: "SHANG va osmon hukmi zarari oshadi",
       color: "#fff2b0",
       icon: "greatblade",
+    },
+    samurai: {
+      tags: ["zarar"],
+      name: "O'TKIR KATANA",
+      desc: "Katana va Iai zarari oshadi",
+      color: "#ffd6e6",
+      icon: "katana",
     },
   },
   {
@@ -294,6 +313,16 @@ export const UPGRADES: Upgrade[] = [
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
       ok: (p) => p.reach < 30,
     },
+    samurai: {
+      tags: ["gul"],
+      name: "UZUN IAI",
+      desc: "Iai uzoqroqqa sirpanadi",
+      color: "#ff8fb8",
+      icon: "longiai",
+      apply: (p) => (p.iaiRange += IAI_RANGE_CARD),
+      // 2 marta: +26, +52 px
+      ok: (p) => p.iaiRange < IAI_RANGE_CARD * 2,
+    },
   },
   {
     id: "haste",
@@ -335,6 +364,16 @@ export const UPGRADES: Upgrade[] = [
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
       ok: (p) => p.attackCd > 0.66,
     },
+    samurai: {
+      tags: ["zarar"],
+      name: "TEZ QIN",
+      desc: "Katana zarbalari orasi 25% qisqa",
+      color: "#ffd6e6",
+      icon: "quickdraw",
+      // zarba vaqtidan (0.18 s) qisqarmaydi
+      apply: (p) => (p.attackCd = Math.max(KATANA_TIME + 0.01, p.attackCd * 0.75)),
+      ok: (p) => p.attackCd > 0.2,
+    },
   },
   {
     id: "wind",
@@ -375,6 +414,18 @@ export const UPGRADES: Upgrade[] = [
       color: "#fff2b0",
       icon: "path",
     },
+    samurai: {
+      tags: ["tezlik"],
+      name: "SHAMOL QADAMI",
+      desc: "Tezlik +15%, mukammal chetlanish oynasi kengroq",
+      color: "#ffd6e6",
+      icon: "windstep",
+      apply: (p) => {
+        p.speed *= 1.15;
+        p.dashCd *= 0.75;
+        p.dodgeWindow += DODGE_WINDOW_CARD;
+      },
+    },
   },
   {
     id: "vamp",
@@ -412,6 +463,14 @@ export const UPGRADES: Upgrade[] = [
       desc: "Har bir necha o'ldirishda +1 yurak",
       color: "#f2c14e",
       icon: "faith",
+    },
+    samurai: {
+      tags: ["hayot"],
+      name: "TIG' TASHNALIGI",
+      desc: "Har bir necha o'ldirishda +1 yurak",
+      color: "#d8324a",
+      text: "#ff8fb8",
+      icon: "thirst",
     },
   },
   {
@@ -452,6 +511,15 @@ export const UPGRADES: Upgrade[] = [
       color: "#f2c14e",
       icon: "avenger",
     },
+    samurai: {
+      tags: ["himoya"],
+      name: "QAYTGAN PO'LAT",
+      desc: "Parry dan keyin 2 s tezlashasan",
+      color: "#ffd6e6",
+      icon: "steelback",
+      apply: (p) => (p.parryBoost = true),
+      ok: (p) => !p.parryBoost,
+    },
   },
   {
     id: "dash2",
@@ -488,6 +556,13 @@ export const UPGRADES: Upgrade[] = [
       desc: "Ketma-ket 2 ta muqaddas hamla",
       color: "#f2c14e",
       icon: "hamla2",
+    },
+    samurai: {
+      tags: ["tezlik"],
+      name: "IKKI KARRA QADAM",
+      desc: "Ketma-ket 2 ta dash",
+      color: "#ff8fb8",
+      icon: "step2",
     },
   },
   {
@@ -526,6 +601,13 @@ export const UPGRADES: Upgrade[] = [
       desc: "Barcha yuraklarni tiklash",
       color: "#fff2b0",
       icon: "prayer",
+    },
+    samurai: {
+      tags: ["hayot"],
+      name: "YASHIL CHOY",
+      desc: "Barcha yuraklarni tiklash",
+      color: "#a6f08e",
+      icon: "tea",
     },
   },
   // ---- Faqat Sehrgar ----
@@ -623,6 +705,40 @@ export const UPGRADES: Upgrade[] = [
     hero: "paladin",
     apply: (p) => (p.aura = true),
     ok: (p) => !p.aura,
+  },
+  // ---- Faqat Samuray ----
+  {
+    id: "twincut",
+    name: "IKKI KESIM",
+    desc: "Iai har belgilangan dushmanni ikki marta kesadi",
+    color: "#ff8fb8",
+    tags: ["gul"],
+    icon: "twincut",
+    hero: "samurai",
+    apply: (p) => (p.iaiDouble = true),
+    ok: (p) => !p.iaiDouble,
+  },
+  {
+    id: "petalstorm",
+    name: "GULBARG BO'RONI",
+    desc: "Mukammal chetlanishda atrofga gulbarg zarbasi",
+    color: "#ffd6e6",
+    tags: ["gul"],
+    icon: "petalstorm",
+    hero: "samurai",
+    apply: (p) => (p.petalStorm = true),
+    ok: (p) => !p.petalStorm,
+  },
+  {
+    id: "coldblood",
+    name: "SOVUQ QON",
+    desc: "Joning 2 yoki kam bo'lsa — kritik imkoniyati ancha oshadi",
+    color: "#9fd0ef",
+    tags: ["gul"],
+    icon: "coldblood",
+    hero: "samurai",
+    apply: (p) => (p.coldBlood = true),
+    ok: (p) => !p.coldBlood,
   },
 ];
 

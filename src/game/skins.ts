@@ -134,6 +134,12 @@ const THEMES: Record<string, ThemeRow> = {
   "paladin-silver": ["#c8d4e6", "#6a7486", "#f4f8ff", "#d8e2f0", "#2a303a", "#ffffff", "#c8d4e6", "#e8eef6", "#f4f8ff", "#6a7486", "#f4f8ff", "#ffffff", "#0a0c10", "#2a303a", "#f4f8ff"],
   // Qora Paladin: binafsha soya, tutun va cho'g'
   "paladin-shadow": ["#b07aff", "#5a2a8a", "#e6d0ff", "#c8a0ff", "#2a1a3a", "#f0e4ff", "#b07aff", "#d0a8ff", "#e6d0ff", "#5a2a8a", "#e6d0ff", "#ffffff", "#050307", "#2a1a30", "#8a6aa8"],
+  // Tungi gul: binafsha tun — barcha effektlar binafsha
+  "samurai-night": ["#b98cff", "#5a3a8c", "#e6d6ff", "#d9c2ff", "#241a3a", "#f0e6ff", "#b98cff", "#e0ccff", "#c9a8ff", "#5a3a8c", "#e0ccff", "#ffffff", "#0c0714", "#241a3a", "#d9c8f0"],
+  // Qor lotos: oq-havorang muz, qor zarrachalari
+  "samurai-lotus": ["#9fe0ff", "#2f7f8f", "#eafaff", "#bfeaff", "#16303a", "#ffffff", "#9fe0ff", "#dff6ff", "#c6ecff", "#2f7f8f", "#c6ecff", "#ffffff", "#0a1420", "#16303a", "#f4fbff"],
+  // Qizil oy: och qizil-pushti oy nuri va to'q qirmizi soya (boss ogohlantirish qizilidan uzoq)
+  "samurai-moon": ["#ff5c93", "#8a0a24", "#ffe0e8", "#ff9db8", "#2a0a12", "#ffffff", "#ff5c93", "#ffd0dc", "#ff9db8", "#5a0818", "#ffd0dc", "#ffffff", "#0d0406", "#2a0a12", "#ffd0dc"],
   // Olov Paladin: oltin-sariq alanga, oq yadro (xavf zonasining qizilidan uzoq)
   "paladin-flame": ["#ffc24a", "#b8620a", "#fff0b0", "#ffc24a", "#3a1e08", "#fffbe8", "#ffd870", "#ffe08a", "#fff0b0", "#b8620a", "#fff0b0", "#ffffff", "#170602", "#4a1a06", "#ffd870"],
 };
@@ -168,6 +174,12 @@ const DEFS: Record<Hero, readonly Def[]> = {
     ["silver", "KUMUSH PALADIN", ["#0a0c10", "#4a5262", "#aab4c4", "#e8eef6", "#fbf8ec"]],
     ["shadow", "QORA PALADIN", ["#050307", "#2a1a30", "#4a3a5a", "#aab4c4", "#b02a2a"]],
     ["flame", "OLOV PALADIN", ["#170602", "#7a1a0a", "#d8452a", "#ffb02e", "#fff0b0"]],
+  ],
+  // Samuray: kontur va hakama, soch va qin, kimono va ko'zlar, obi, teri va tig'
+  samurai: [
+    ["night", "TUNGI GUL", ["#0c0714", "#1c1430", "#6b3fa8", "#d48aff", "#f0e4f4"]],
+    ["lotus", "QOR LOTOS", ["#0a1420", "#27405e", "#bfe6ff", "#5aa9e6", "#ffffff"]],
+    ["moon", "QIZIL OY", ["#0d0406", "#f4eef2", "#c41832", "#3a0c16", "#f6e2dc"]],
   ],
 };
 
@@ -258,6 +270,22 @@ const FX: Record<string, SkinFx> = {
     flair: "embers",
     tone: "flame",
   },
+  // NOYOB: qor zarrachalari va muz izi (IAI kesigi — muz chizig'i: Game theme ranglaridan)
+  "samurai-lotus": {
+    ...PLAIN_FX,
+    particle: "shard",
+    trail: "snow",
+    bits: ["#ffffff", "#c6ecff"],
+  },
+  // AFSONAVIY: qizil oy — yarim oy kesigi, porlovchi ko'zlar, qinga qaytarish kadri, koto ohangi
+  "samurai-moon": {
+    particle: "leaf",
+    trail: "shadow",
+    bits: ["#ffe0e8", "#ff9db8"],
+    impact: "moon",
+    flair: "moon",
+    tone: "moon",
+  },
 };
 
 const DEFAULT_NAME: Record<Hero, string> = {
@@ -266,6 +294,7 @@ const DEFAULT_NAME: Record<Hero, string> = {
   hunter: "ODDIY OVCHI",
   gunner: "ODDIY MERGAN",
   paladin: "ODDIY PALADIN",
+  samurai: "ODDIY SAMURAY",
 };
 
 /** Har qahramon skinlari: birinchisi — default (bepul) */

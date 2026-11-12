@@ -282,14 +282,15 @@ describe("Qalqonli skelet sprite", () => {
 
 describe("Upgrade card icons", () => {
   it("draws a 12x12 icon for every upgrade", () => {
-    for (const hero of ["knight", "mage", "hunter", "gunner", "paladin"] as const)
+    for (const hero of ["knight", "mage", "hunter", "gunner", "paladin", "samurai"] as const)
       for (const u of UPGRADES.map((u) => cardFor(u, new Player(hero)))) {
         const rows = UPGRADE_ICONS[upgradeIcon(u)];
         expect(rows, u.id).toBeDefined();
         expect(rows!.length).toBe(12);
         // Ovchi ikonkalari yashil-jigarrang (G, D, B, T, W), Merganniki mis-jez-kulrang
-        // (M, J, Y, P, N, H, E), Paladinniki oltin-oq (A, Q, U, V, Z) palitra harflari bilan
-        for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTWMJYPNHEAQUVZ]{12}$/);
+        // (M, J, Y, P, N, H, E), Paladinniki oltin-oq (A, Q, U, V, Z), Samurayniki sakura pushti
+        // (C, I, O) palitra harflari bilan
+        for (const row of rows!) expect(row).toMatch(/^[.XogkrRLFSKGDBTWMJYPNHEAQUVZCIO]{12}$/);
       }
   });
 });

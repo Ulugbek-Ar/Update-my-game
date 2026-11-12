@@ -199,6 +199,9 @@ export class Boss implements Body {
     this.step(this.berserk ? dt * BERSERK_SPEED : dt, p);
   }
 
+  /** Samuray zarbani parry qildi (zarba bekor): boss o'ziga xos javob beradi (Oni gandiraklaydi). */
+  parried() {}
+
   /** Yangi fazaga o'tganda (har boss o'zinikini qo'shadi). */
   protected onPhase(ph: BossPhase) {
     if (ph === 2) this.impTimer = 0.8;

@@ -42,11 +42,11 @@ function killBoss(g: Game, gi: GI) {
 }
 
 describe("Artefaktlar ro'yxati", () => {
-  it("12 shared + 1 per hero = 17, unique ids, code-drawn 9x9 icons within five colours", () => {
-    expect(ARTIFACTS).toHaveLength(17);
+  it("12 shared + 1 per hero = 18, unique ids, code-drawn 9x9 icons within five colours", () => {
+    expect(ARTIFACTS).toHaveLength(18);
     expect(ARTIFACTS.filter((a) => !a.hero)).toHaveLength(12);
     for (const h of HEROES) expect(ARTIFACTS.filter((a) => a.hero === h)).toHaveLength(1);
-    expect(new Set(ARTIFACTS.map((a) => a.id)).size).toBe(17);
+    expect(new Set(ARTIFACTS.map((a) => a.id)).size).toBe(18);
     for (const a of ARTIFACTS) {
       expect(a.icon).toHaveLength(9);
       for (const row of a.icon) expect(row).toHaveLength(9);

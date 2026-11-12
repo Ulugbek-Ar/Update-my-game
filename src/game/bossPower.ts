@@ -18,6 +18,12 @@
  *     SHANG = 2 × zarar / zarba_orasi (0.9 s, tayyorgarlik ichida),
  *     OSMON HUKMI = K × zarar (K = 3, NUR sinergiyasi bilan 4) har (spinCd + 1 s zaryad) da
  *
+ *   Samuray:
+ *     katana = 0.75 × zarar / zarba_orasi (0.3 s) = 2.5 — Paladin (2.38) va Ritsar (2.64) oralig'ida,
+ *     to'liq IAI = K × zarar (K = 2, SAKURA sinergiyasi bilan 3; IKKI KESIM bilan ikki marta)
+ *     har (spinCd + 0.8 s zaryad) da. Mukammal chetlanish va parry — mahorat: formulaga kirmaydi
+ *     (o'yinchi yaxshi o'ynasa bossni tezroq yengadi).
+ *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
@@ -30,7 +36,7 @@
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
  */
-import type { Player } from "./player";
+import { KATANA_MUL, type Player } from "./player";
 
 /** Ideal urib turishda boss shuncha soniyada o'ladi */
 export const BOSS_FIGHT_TIME = 60;
@@ -68,6 +74,12 @@ export function heroDps(p: Player) {
   if (p.paladin) {
     const basic = (2 * p.damage) / p.attackCd;
     const cycle = (basic * p.spinCd + p.strongMul * p.damage) / (p.spinCd + p.chargeTime);
+    return Math.max(basic, cycle);
+  }
+  if (p.samurai) {
+    const basic = (KATANA_MUL * p.damage) / p.attackCd;
+    const iai = p.strongMul * p.damage * (p.iaiDouble ? 2 : 1);
+    const cycle = (basic * p.spinCd + iai) / (p.spinCd + p.chargeTime);
     return Math.max(basic, cycle);
   }
   const multi = Math.max(1, p.multishot);
