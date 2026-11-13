@@ -19,6 +19,7 @@ import {
   type JoinReply,
 } from "../../src/realm/net/protocol";
 import { MAX_BODY, isOp } from "../../src/account/protocol";
+import { HERO_MARK, heroVersion, legacyHeroes } from "../../src/game/heroCompat";
 import { webhookSecret } from "../../src/account/server/telegram";
 import type { AccountDO } from "./account-do";
 import type { HallDO } from "./hall-do";
@@ -143,7 +144,9 @@ async function account(req: Request, url: URL, accounts: Accounts): Promise<Resp
     return json({ ok: false, error: "bad" }, 400);
   }
   try {
-    return json(await accounts().api(op, body, req.headers.get("CF-Connecting-IP") ?? ""));
+    const reply = await accounts().api(op, body, req.headers.get("CF-Connecting-IP") ?? "");
+    // eski klient (?hv yo'q) yangi qahramonni chiza olmaydi — unga Ritsar bo'lib ko'rinadi
+    return json(legacyHeroes(reply, heroVersion(url.searchParams.get(HERO_MARK))));
   } catch (e) {
     console.error("acc", op, e);
     return json({ ok: false, error: "server" }, 500);

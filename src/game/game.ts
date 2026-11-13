@@ -72,14 +72,17 @@ import {
 } from "./player";
 import {
   CUT_LIFE,
+  MOON_LIFE,
   STREAK_LIFE,
   renderCritReady,
   renderCut,
   renderFocus,
   renderKatanaArc,
   renderMark,
+  renderMoonFlash,
   renderStreak,
   type Cut,
+  type MoonFlash,
   type Streak,
 } from "./samuraiFx";
 import {
@@ -608,6 +611,8 @@ export class Game {
   } | null = null;
   cuts: Cut[] = [];
   streaks: Streak[] = [];
+  /** Afsonaviy "Qizil oy": mukammal chetlanishda ortda yonadigan yarim oy */
+  moons: MoonFlash[] = [];
   private iaiFrom = { x: 0, y: 0 };
   /** Mukammal chetlanish: qolgan sekin vaqt (real soniya) — Samurayning o'zi sekinlashmaydi */
   focus = 0;
@@ -2823,6 +2828,7 @@ export class Game {
     this.iaiCuts = null;
     this.cuts = [];
     this.streaks = [];
+    this.moons = [];
     this.focus = 0;
     this.reflectBudget = { t: 0, dmg: 0 };
   }
@@ -2838,6 +2844,8 @@ export class Game {
     this.cuts = this.cuts.filter((k) => k.life > 0);
     for (const k of this.streaks) k.life -= dt;
     this.streaks = this.streaks.filter((k) => k.life > 0);
+    for (const m of this.moons) m.life -= dt;
+    this.moons = this.moons.filter((m) => m.life > 0);
     if (this.reflectBudget.t > 0) this.reflectBudget.t -= dt;
     if (p.chargeFull) {
       // zaryad to'ldi: yaltirash va jarang
@@ -2900,7 +2908,15 @@ export class Game {
         sfx.iaiCut();
         // kesik chizig'i: sirpanish yo'nalishiga qiya; ikkinchi kesim — teskari qiyalikda
         const a = c.dir + (c.pass ? -0.9 : 0.9) + (Math.random() - 0.5) * 0.3;
-        this.cuts.push({ x: t.x, y: t.y - 2, a, len: t.size / 2 + 9, life: CUT_LIFE });
+        this.cuts.push({
+          x: t.x,
+          y: t.y - 2,
+          a,
+          len: t.size / 2 + 9,
+          life: CUT_LIFE,
+          // Qor lotos: kesik — muz chizig'i
+          shards: this.look.fx.particle === "shard",
+        });
         this.hb(t.x, t.y, T.accent, 5, 80, 1);
         heroImpact(this.fx, this.look, t.x, t.y);
         this.fx.addShake(0.06);
@@ -2983,8 +2999,8 @@ export class Game {
       // sakura gulbarglari sochiladi
       this.fx.burst(p.x, p.y, T.accent, 16, 100, 2, "leaf");
       this.fx.burst(p.x, p.y, T.glow, 10, 70, 2, "leaf");
-      if (p.flair === "moon")
-        this.rings.push({ x: p.x, y: p.y - 6, r: 22, life: 0.5, max: 0.5, color: T.accent });
+      // Qizil oy: Samuray ortida qizil yarim oy yonib so'nadi
+      if (p.flair === "moon") this.moons.push({ x: p.x, y: p.y - 12, life: MOON_LIFE });
       // GULBARG BO'RONI: atrofga gulbarg zarbasi
       if (p.petalStorm) this.blast(p.x, p.y, PETAL_RADIUS, p.damage, T.accent);
       // SAKURA SHAMOLI (artefakt): Iai darhol tayyor
@@ -3853,8 +3869,9 @@ export class Game {
     // Paladin: yerdagi yoriqlar, zarb to'lqinlari va QASAM aurasi
     for (const k of this.cracks) renderCrack(c, k, this.theme);
     for (const q of this.quakes) renderQuake(c, q, this.theme);
-    // Samuray: IAI sirpanish izi (yerda)
+    // Samuray: IAI sirpanish izi (yerda) va qizil oy silueti (o'yinchi ortida)
     for (const k of this.streaks) renderStreak(c, k, this.theme);
+    for (const m of this.moons) renderMoonFlash(c, m, this.theme, this.fx.isReduced());
     // OLOV IZI: yerdagi kichik alangalar
     for (const f of this.flames) {
       const fl = Math.floor(this.time * 12 + f.x) % 2;

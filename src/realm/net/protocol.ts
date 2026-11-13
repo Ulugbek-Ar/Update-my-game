@@ -164,6 +164,11 @@ export const HelloSchema = z.object({
     .max(32)
     .regex(/^[a-z0-9_-]+$/)
     .optional(),
+  /**
+   * Qahramonlar versiyasi (v3.8, heroCompat.ts): klient qaysi qahramonlarni chiza oladi. Eski klient
+   * yubormaydi — unga yangi qahramon (Samuray) Ritsar bo'lib ko'rinadi.
+   */
+  hv: z.number().int().min(0).max(999).optional(),
 });
 
 export const ClientMsgSchema = z.discriminatedUnion("t", [
@@ -234,7 +239,14 @@ export const PF_DASH = 1,
   PF_GUARD = 2,
   PF_HIDDEN = 4,
   /** Paladin QASAM qilmoqda (aura chiziladi) */
-  PF_VOW = 8;
+  PF_VOW = 8,
+  /**
+   * Samuray (v3.8): IAI sirpanishi, IAI zaryadi (turish holati), parry pozasi. Eski klient bu
+   * bitlarni bilmaydi va e'tiborsiz qoldiradi (IAI paytida PF_DASH ham yoqiq — dash ko'rinadi).
+   */
+  PF_IAI = 16,
+  PF_CHARGE = 32,
+  PF_PARRY = 64;
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,

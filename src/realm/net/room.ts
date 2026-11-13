@@ -8,6 +8,8 @@
  */
 import { DEFAULT_SKIN, isSkinId } from "@/game/skins";
 import type { Hero } from "@/game/hero";
+import { HERO_VERSION, heroFor } from "@/game/heroCompat";
+import { IAI_MIN } from "@/game/player";
 import { loadRealmData } from "../data";
 import {
   RealmSim,
@@ -31,6 +33,9 @@ import {
   PF_GUARD,
   PF_HIDDEN,
   PF_VOW,
+  PF_IAI,
+  PF_CHARGE,
+  PF_PARRY,
   MARK_KINDS,
   ROOM_CAP,
   SNAPSHOT_EVERY,
@@ -123,6 +128,8 @@ interface Member {
   guildId: number;
   guild: string;
   hero: Hero;
+  /** Klientning qahramonlar versiyasi (heroCompat.ts): eski klient — 0 */
+  hv: number;
   conn: RoomConn;
   tokens: number;
   tokensAt: number;
@@ -295,6 +302,7 @@ export class RealmRoom {
       guildId: ident?.guild?.id ?? 0,
       guild: netGuild(ident?.guild),
       hero: hello.hero,
+      hv: hello.hv ?? 0,
       conn,
       tokens: RATE_BURST,
       tokensAt: now,
@@ -463,7 +471,7 @@ export class RealmRoom {
       const mem = this.members.get(o.id);
       if (!mem) continue;
       seenP.add(o.id);
-      const t = netPlayer(o, mem.name, mem.level, mem.guild, o.skin);
+      const t = netPlayer(o, mem.name, mem.level, mem.guild, o.skin, m.hv);
       const k = JSON.stringify(t);
       if (b.players.get(o.id) !== k) {
         b.players.set(o.id, k);
@@ -639,22 +647,34 @@ function send(conn: RoomConn, msg: ServerMsg) {
 const loopFrame = (state: string, frame: number) =>
   state === "idle" || state === "walk" ? -1 : frame;
 
+/**
+ * O'yinchi holati bitta klient uchun. hv — o'sha klientning qahramonlar versiyasi: eski klient
+ * bilmagan qahramon (Samuray) unga Ritsar bo'lib, asl ranglarda yuboriladi (heroCompat.ts).
+ */
 export function netPlayer(
   o: RealmPlayer,
   name: string,
   level = 0,
   guild = "",
   skin = "",
+  hv = HERO_VERSION,
 ): NetPlayer {
   const p = o.p;
+  const hero = heroFor(o.hero, hv);
+  if (hero !== o.hero) skin = "";
   const flags =
     (p.dashing ? PF_DASH : 0) |
     (p.guarded ? PF_GUARD : 0) |
     (p.hidden ? PF_HIDDEN : 0) |
-    (p.vowing ? PF_VOW : 0);
+    (p.vowing ? PF_VOW : 0) |
+    (hero === "samurai"
+      ? (p.iai ? PF_IAI : 0) |
+        (p.charge >= IAI_MIN ? PF_CHARGE : 0) |
+        (p.parryPose > 0 ? PF_PARRY : 0)
+      : 0);
   const out: NetPlayer = [
     o.id,
-    o.hero,
+    hero,
     name,
     r1(p.x),
     r1(p.y),

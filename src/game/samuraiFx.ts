@@ -23,6 +23,8 @@ export interface Cut {
   life: number;
   /** Egasining skin ranglari (onlayn: boshqa Samuray) */
   theme?: SkinTheme;
+  /** Qor lotos: kesik muz chizig'i — bo'ylab mayda muz parchalari */
+  shards?: boolean;
 }
 
 /** IAI sirpanish izi: boshlanish nuqtasidan oxirigacha so'nuvchi chiziq */
@@ -37,6 +39,16 @@ export interface Streak {
 
 export const CUT_LIFE = 0.28;
 export const STREAK_LIFE = 0.38;
+/** Qizil oy silueti (afsonaviy skin, mukammal chetlanishda) ko'rinib turadigan vaqt */
+export const MOON_LIFE = 0.6;
+
+/** Afsonaviy "Qizil oy": mukammal chetlanishda Samuray ortida qisqa yonadigan yarim oy */
+export interface MoonFlash {
+  x: number;
+  y: number;
+  life: number;
+  theme?: SkinTheme;
+}
 
 /** Kesik: birinchi 30% da uchidan uchiga "chiziladi", so'ng so'nadi. Oq yadro, pushti chekka. */
 export function renderCut(c: CanvasRenderingContext2D, k: Cut, T: SkinTheme = k.theme ?? SAMURAI) {
@@ -63,6 +75,57 @@ export function renderCut(c: CanvasRenderingContext2D, k: Cut, T: SkinTheme = k.
   c.moveTo(x0, y0);
   c.lineTo(x1, y1);
   c.stroke();
+  c.restore();
+  if (k.shards) {
+    // muz chizig'i: chiziq bo'ylab chiqib turgan uchli parchalar
+    const nx = -uy,
+      ny = ux;
+    for (let i = 1; i <= 4; i++) {
+      const t = (i / 5) * 2 * grow;
+      if (t > 2 * grow) break;
+      const sx = x0 + ux * k.len * t,
+        sy = y0 + uy * k.len * t;
+      const side = i % 2 ? 1 : -1;
+      c.globalAlpha = a;
+      px(c, T.glint, sx + nx * side * 2, sy + ny * side * 2, 1, 1);
+      px(c, T.edge, sx + nx * side * 3, sy + ny * side * 3, 1, 1);
+      c.globalAlpha = 1;
+    }
+  }
+}
+
+/**
+ * Qizil oy silueti: tez paydo bo'lib, sekin so'nadigan yarim oy (Samuray ortida). Effektlar
+ * kamaytirilganda — xira va miltillashsiz.
+ */
+export function renderMoonFlash(
+  c: CanvasRenderingContext2D,
+  m: MoonFlash,
+  T: SkinTheme = m.theme ?? SAMURAI,
+  reduced = false,
+) {
+  const k = Math.max(0, Math.min(1, m.life / MOON_LIFE));
+  const t = 1 - k;
+  const a = (t < 0.15 ? t / 0.15 : k / 0.85) * (reduced ? 0.3 : 0.65);
+  if (a <= 0) return;
+  const R = 17;
+  const cx = m.x,
+    cy = m.y;
+  c.save();
+  // xira nur
+  c.fillStyle = withAlpha(T.glow, a * 0.25);
+  c.beginPath();
+  c.arc(cx, cy, R + 5, 0, Math.PI * 2);
+  c.fill();
+  // yarim oy: katta doiradan siljigan doira o'yib olinadi
+  c.beginPath();
+  c.arc(cx, cy, R, 0, Math.PI * 2);
+  c.clip();
+  c.fillStyle = withAlpha(T.accent, a);
+  c.beginPath();
+  c.rect(cx - R, cy - R, R * 2, R * 2);
+  c.arc(cx + R * 0.48, cy - R * 0.28, R * 0.86, 0, Math.PI * 2, true);
+  c.fill();
   c.restore();
 }
 
@@ -115,7 +178,11 @@ export function renderMark(
  * Katana yoyi: ingichka va tez. Komboning 1-zarbasi yuqoridan pastga, 2-si teskari, 3-si — keng
  * yoy (deyarli yarim aylana). Yoy zarba davomida boshidan oxirigacha "o'tadi" va so'nadi.
  */
-export function renderKatanaArc(c: CanvasRenderingContext2D, p: Player, T: SkinTheme = SAMURAI) {
+export function renderKatanaArc(
+  c: CanvasRenderingContext2D,
+  p: Pick<Player, "attackTimer" | "attackTime" | "fx" | "fy" | "comboStep" | "reach" | "x" | "y">,
+  T: SkinTheme = SAMURAI,
+) {
   if (p.attackTimer <= 0) return;
   const k = Math.max(0, Math.min(1, p.attackTimer / p.attackTime));
   const ang = Math.atan2(p.fy, p.fx);

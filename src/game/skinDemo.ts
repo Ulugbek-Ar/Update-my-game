@@ -10,7 +10,19 @@ import { Effects } from "./effects";
 import { chargeRingColor, withAlpha, type Hero } from "./hero";
 import { renderQuake } from "./paladinFx";
 import { heroBurst, heroImpact, heroTrail, renderFlair, type SkinLook } from "./skinFx";
-import { renderSprite, type SpritePalette } from "./sprites";
+import { SAMURAI_FRAME, renderSprite, type SpritePalette } from "./sprites";
+import type { AnimState } from "./animation";
+import { IAI_DELAY, KATANA_REACH, KATANA_TIME } from "./player";
+import {
+  CUT_LIFE,
+  STREAK_LIFE,
+  renderCut,
+  renderKatanaArc,
+  renderMark,
+  renderStreak,
+  type Cut,
+  type Streak,
+} from "./samuraiFx";
 
 export const DEMO_W = 128;
 export const DEMO_H = 64;
@@ -46,9 +58,94 @@ interface Shot {
 
 const FLOOR_Y = 40,
   TARGET_X = 104;
+/**
+ * Samuray namoyishi (o'yindagi kadrlar bilan): uch zarbali katana kombosi -> orqaga qadam va IAI
+ * zaryadi -> nishonni kesib o'tish (siluetlar, iz, belgi, 0.25 s dan keyin kesik; "Qizil oy"da qinga
+ * qaytarish kadri) -> dash bilan joyiga qaytish.
+ */
+export const SAM_DEMO = {
+  home: 84,
+  back: 54,
+  end: 118,
+  /** zarbalar: 0.5..1.0 da uchta */
+  slash: 0.5 / 3,
+  /** orqaga qadam 1.0..1.15, zaryad 1.15..1.6 */
+  step: 1.15,
+  iai: 1.6,
+  slide: 0.12,
+  /** dash 2.0..2.2 */
+  dash: 0.2,
+} as const;
+
+export interface SamuraiPose {
+  x: number;
+  state: AnimState;
+  frame: number;
+  flip: boolean;
+  /** IAI sirpanishi (orqada siluetlar) */
+  iai: boolean;
+}
+
+/** Aylanadagi vaqt k bo'yicha Samurayning joyi va kadri. sheathe — "Qizil oy" (qinga qaytarish). */
+export function samuraiPose(k: number, sheathe: boolean): SamuraiPose {
+  const F = SAMURAI_FRAME,
+    S = SAM_DEMO;
+  const stand = (x: number, flip = false): SamuraiPose => ({
+    x,
+    state: "idle",
+    frame: Math.floor(k * 4) % 4,
+    flip,
+    iai: false,
+  });
+  if (k < 0.5) return stand(S.home);
+  if (k < 1.0) {
+    const s = Math.min(2, Math.floor((k - 0.5) / S.slash));
+    const q = (k - 0.5 - s * S.slash) / S.slash;
+    const frame = (s === 2 ? F.wide : 0) + Math.min(2, Math.floor(q * 3));
+    return { x: S.home, state: "attack", frame, flip: false, iai: false };
+  }
+  if (k < S.step) {
+    const q = (k - 1.0) / (S.step - 1.0);
+    return {
+      x: S.home + (S.back - S.home) * q,
+      state: "walk",
+      frame: Math.floor(q * 6) % 6,
+      flip: false,
+      iai: false,
+    };
+  }
+  if (k < S.iai) return { x: S.back, state: "attack", frame: F.charge, flip: false, iai: false };
+  const te = S.iai + S.slide;
+  if (k < te) {
+    const q = (k - S.iai) / S.slide;
+    return {
+      x: S.back + (S.end - S.back) * q,
+      state: "attack",
+      frame: F.iai,
+      flip: false,
+      iai: true,
+    };
+  }
+  if (k < 2.0) {
+    const frame = sheathe && k >= te + 0.12 ? F.sheathe : F.iai;
+    return { x: S.end, state: "attack", frame, flip: false, iai: false };
+  }
+  if (k < 2.0 + S.dash) {
+    const q = (k - 2.0) / S.dash;
+    return {
+      x: S.end + (S.home - S.end) * q,
+      state: "attack",
+      frame: F.dash,
+      flip: true,
+      iai: false,
+    };
+  }
+  return stand(S.home);
+}
+
 /** Yaqin jangchilar nishon yonida turadi va dashda orqaga sirpanadi; uzoqdan otuvchilar — chapda */
 const melee = (h: Hero) => h === "knight" || h === "paladin" || h === "samurai";
-const homeOf = (h: Hero) => (melee(h) ? 80 : 30);
+const homeOf = (h: Hero) => (h === "samurai" ? SAM_DEMO.home : melee(h) ? 80 : 30);
 
 export class SkinDemo {
   fx = new Effects();
@@ -58,6 +155,10 @@ export class SkinDemo {
   private shots: Shot[] = [];
   private prev: DemoPhase = "idle";
   private ring = 0;
+  /** Samuray: oldingi kadrdagi aylana vaqti, iz va kesiklar */
+  private lastK = 0;
+  private streaks: Streak[] = [];
+  private cuts: Cut[] = [];
 
   constructor(
     public hero: Hero,
@@ -69,6 +170,7 @@ export class SkinDemo {
 
   update(dt: number) {
     this.t += dt;
+    if (this.hero === "samurai") return this.updateSamurai(dt);
     const ph = demoPhase(this.t);
     if (ph !== this.prev) this.enter(ph);
     this.prev = ph;
@@ -117,6 +219,57 @@ export class SkinDemo {
       }
       return s.life > 0;
     });
+    this.fx.update(dt);
+  }
+
+  /** Samuray: zarbalar, IAI izi va kechikkan kesik — aylanadagi lahzalarda */
+  private updateSamurai(dt: number) {
+    const T = this.look.theme,
+      S = SAM_DEMO;
+    const k = this.t % DEMO_LOOP;
+    const prev = k < this.lastK ? -1 : this.lastK;
+    this.lastK = k;
+    const at = (t: number) => prev < t && k >= t;
+    const pose = samuraiPose(k, this.look.fx.flair === "moon");
+    this.x = pose.x;
+    const y = FLOOR_Y - 2;
+    // katana kombosi: har zarba boshida nishonga tegadi
+    for (let s = 0; s < 3; s++) if (at(0.5 + s * S.slash)) this.hit(TARGET_X, y);
+    if (at(S.iai)) heroBurst(this.fx, this.look, S.back, FLOOR_Y + 2, T.spark, 8, 60, 1);
+    if (pose.iai) heroTrail(this.fx, this.look, this.x, FLOOR_Y + 2, T.trail);
+    const te = S.iai + S.slide;
+    if (at(te)) {
+      this.streaks.push({ x1: S.back, y1: FLOOR_Y, x2: S.end, y2: FLOOR_Y, life: STREAK_LIFE });
+      for (let i = 0; i < 5; i++)
+        heroBurst(
+          this.fx,
+          this.look,
+          S.back + ((S.end - S.back) * (i + 0.5)) / 5,
+          FLOOR_Y,
+          i % 2 ? T.accent : T.glow,
+          1,
+          40,
+          2,
+        );
+    }
+    // 0.25 s dan keyin — kesik ("chiq")
+    if (at(te + IAI_DELAY)) {
+      this.cuts.push({
+        x: TARGET_X + 4,
+        y: FLOOR_Y - 5,
+        a: 0.9,
+        len: 13,
+        life: CUT_LIFE,
+        shards: this.look.fx.particle === "shard",
+      });
+      heroBurst(this.fx, this.look, TARGET_X + 4, y, T.accent, 6, 80, 1);
+      this.hit(TARGET_X + 4, y);
+    }
+    if (k >= 2.0 && k < 2.0 + S.dash) heroTrail(this.fx, this.look, this.x, FLOOR_Y + 2, T.trail);
+    for (const s of this.streaks) s.life -= dt;
+    this.streaks = this.streaks.filter((s) => s.life > 0);
+    for (const c of this.cuts) c.life -= dt;
+    this.cuts = this.cuts.filter((c) => c.life > 0);
     this.fx.update(dt);
   }
 
@@ -179,6 +332,7 @@ export class SkinDemo {
     px(c, "#5a3e24", TARGET_X + 3, FLOOR_Y - 8, 2, 20);
     px(c, "#c9a26b", TARGET_X, FLOOR_Y - 10, 8, 10);
     px(c, "#7a5a2a", TARGET_X, FLOOR_Y - 6, 8, 1);
+    if (this.hero === "samurai") return this.renderSamurai(c, k);
     // soya
     c.fillStyle = "rgba(0,0,0,0.32)";
     c.beginPath();
@@ -276,6 +430,84 @@ export class SkinDemo {
       }
     }
     for (const s of this.shots) this.renderShot(c, s);
+    this.fx.renderParticles(c);
+  }
+
+  /** Samuray: o'yindagi kadrlar, katana yoyi, IAI zaryad halqasi, siluetlar, belgi va kesik. */
+  private renderSamurai(c: CanvasRenderingContext2D, k: number) {
+    const T = this.look.theme,
+      S = SAM_DEMO;
+    const pose = samuraiPose(k, this.look.fx.flair === "moon");
+    for (const s of this.streaks) renderStreak(c, s, T);
+    c.fillStyle = "rgba(0,0,0,0.32)";
+    c.beginPath();
+    c.ellipse(Math.round(pose.x), FLOOR_Y + 12, 6, 2.4, 0, 0, Math.PI * 2);
+    c.fill();
+    if (pose.iai) {
+      // IAI: orqada qoladigan oqish siluetlar (effektlar kamaytirilganda — bitta)
+      const n = this.fx.isReduced() ? 1 : 3;
+      for (let i = n; i >= 1; i--) {
+        c.globalAlpha = 0.34 - i * 0.08;
+        renderSprite(c, "samurai", pose.state, pose.frame, pose.x - i * 13, FLOOR_Y, true);
+      }
+      c.globalAlpha = 1;
+    }
+    renderSprite(
+      c,
+      "samurai",
+      pose.state,
+      pose.frame,
+      pose.x,
+      FLOOR_Y,
+      false,
+      pose.flip,
+      false,
+      this.palette,
+    );
+    const body = {
+      x: pose.x,
+      y: FLOOR_Y,
+      fx: pose.flip ? -1 : 1,
+      dead: false,
+      dashing: k >= 2.0 && k < 2.0 + S.dash,
+      attackTimer: k >= 0.5 && k < 1.0 ? 0.1 : 0,
+      spinning: pose.iai,
+      anim: { state: pose.state },
+    };
+    renderFlair(c, this.look, body, this.t, this.fx.isReduced());
+    // katana yoyi (kombo)
+    if (k >= 0.5 && k < 1.0) {
+      const s = Math.min(2, Math.floor((k - 0.5) / S.slash));
+      const q = (k - 0.5 - s * S.slash) / S.slash;
+      renderKatanaArc(
+        c,
+        {
+          x: pose.x,
+          y: FLOOR_Y,
+          fx: 1,
+          fy: 0,
+          comboStep: s,
+          reach: KATANA_REACH,
+          attackTime: KATANA_TIME,
+          attackTimer: KATANA_TIME * Math.max(0, 1 - q * 1.1),
+        },
+        T,
+      );
+    }
+    // IAI zaryadi: halqa to'lib boradi, to'lganda yaltiraydi
+    if (k >= S.step && k < S.iai) {
+      const q = Math.min(1, (k - S.step) / (S.iai - S.step - 0.05));
+      c.strokeStyle = chargeRingColor(T, q >= 1, this.t);
+      c.lineWidth = q >= 1 ? 2 : 1;
+      c.beginPath();
+      c.arc(pose.x, FLOOR_Y, 13, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q);
+      c.stroke();
+    }
+    // belgilangan nishon: kesilguncha miltillaydi
+    const passed = S.iai + S.slide * ((TARGET_X - S.back) / (S.end - S.back));
+    if (k >= passed && k < S.iai + S.slide + IAI_DELAY)
+      renderMark(c, TARGET_X + 4, FLOOR_Y - 18, this.t, T);
+    for (const cut of this.cuts) renderCut(c, cut, T);
     this.fx.renderParticles(c);
   }
 

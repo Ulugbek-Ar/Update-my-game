@@ -8,12 +8,14 @@
  * o'sha joydan oflayn davom etadi; progress (inventar, topshiriqlar, oltin) yo'qolmaydi.
  */
 import { DEFAULT_SKIN, selectedSkin, skinLook } from "@/game/skins";
-import { heroBurst, heroTrail, type SkinLook } from "@/game/skinFx";
+import { heroBurst, heroImpact, heroTrail, type SkinLook } from "@/game/skinFx";
+import { CUT_LIFE, MOON_LIFE, STREAK_LIFE } from "@/game/samuraiFx";
 import { nearestLook } from "./render";
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
 import type { Hero } from "@/game/hero";
+import { HERO_VERSION } from "@/game/heroCompat";
 import { CRACK_LIFE, QUAKE_LIFE } from "@/game/paladinFx";
 import { playableHero } from "@/game/save";
 import { loadSettings, onSettingsChange } from "@/game/settings";
@@ -223,6 +225,9 @@ export class RealmClient {
       hover: null,
       cracks: [],
       quakes: [],
+      streaks: [],
+      cuts: [],
+      moons: [],
       intro: 0,
       deadAt: -99,
       toasts: [],
@@ -316,6 +321,8 @@ export class RealmClient {
       ...(near && this.nearAcc ? { nearAcc: this.nearAcc } : {}),
       // skin: asl ranglarda yuborilmaydi (eski server ham qabul qiladi)
       ...(this.me.skin ? { skin: this.me.skin } : {}),
+      // qaysi qahramonlarni chiza olamiz (eski server bu maydonni e'tiborsiz qoldiradi)
+      hv: HERO_VERSION,
     };
   }
 
@@ -812,6 +819,12 @@ export class RealmClient {
     v.cracks = v.cracks.filter((k) => k.life > 0);
     for (const q of v.quakes) q.life -= dt;
     v.quakes = v.quakes.filter((q) => q.life > 0);
+    for (const s of v.streaks) s.life -= dt;
+    v.streaks = v.streaks.filter((s) => s.life > 0);
+    for (const k of v.cuts) k.life -= dt;
+    v.cuts = v.cuts.filter((k) => k.life > 0);
+    for (const m of v.moons) m.life -= dt;
+    v.moons = v.moons.filter((m) => m.life > 0);
     if (v.intro > 0) v.intro = Math.max(0, v.intro - dt / KING_INTRO);
     // halok bo'lgan vaqt (reydda qayta tug'ilish hisobi uchun)
     if (!this.me.p.dead) v.deadAt = -99;
@@ -1396,6 +1409,73 @@ export class RealmClient {
         const L = nearestLook(this.sim, e.x, e.y, "gunner");
         hb(L, e.x, e.y, L.theme.core, 18, 70, 3);
         hb(L, e.x, e.y, L.theme.spark, 10, 40, 3);
+        return;
+      }
+      case "iai": {
+        // Samuray IAI: sirpanish izi va yo'l bo'ylab gulbarglar — egasining skin ranglarida
+        const L = this.lookOf(e.pid),
+          t = L.theme;
+        this.view.streaks.push({
+          x1: e.x,
+          y1: e.y,
+          x2: e.x2,
+          y2: e.y2,
+          life: STREAK_LIFE,
+          theme: t,
+        });
+        const n = fx.isReduced() ? 3 : 6;
+        for (let i = 0; i < n; i++) {
+          const k = (i + 0.5) / n;
+          fx.burst(
+            e.x + (e.x2 - e.x) * k,
+            e.y + (e.y2 - e.y) * k,
+            i % 2 ? t.accent : t.glow,
+            1,
+            40,
+            2,
+            "leaf",
+          );
+        }
+        // o'z IAI ovozi qahramonning o'zida chalinadi
+        if (!mine) sfx.iai();
+        return;
+      }
+      case "cut": {
+        const L = this.lookOf(e.pid);
+        this.view.cuts.push({
+          x: e.x,
+          y: e.y - 2,
+          a: e.a,
+          len: e.r,
+          life: CUT_LIFE,
+          theme: L.theme,
+          // Qor lotos: muz chizig'i
+          shards: L.fx.particle === "shard",
+        });
+        // Qizil oy: katana qinga qaytgan lahzada ("chik") kesiklar boshlanadi
+        if (e.n === 0 && L.fx.flair === "moon") sfx.sheathe();
+        sfx.iaiCut();
+        heroImpact(fx, L, e.x, e.y);
+        return;
+      }
+      case "parry": {
+        const L = this.lookOf(e.pid);
+        fx.burst(e.x, e.y, "#ffffff", 7, 110, 1, "star");
+        hb(L, e.x, e.y, L.theme.glow, 5, 80, 1);
+        if (mine) fx.text(e.x, e.y - 18, "SHIK!", L.theme.glow);
+        sfx.parry();
+        return;
+      }
+      case "dodge": {
+        const L = this.lookOf(e.pid),
+          t = L.theme;
+        fx.burst(e.x, e.y, t.accent, fx.isReduced() ? 6 : 12, 90, 2, "leaf");
+        if (L.fx.flair === "moon")
+          this.view.moons.push({ x: e.x, y: e.y - 12, life: MOON_LIFE, theme: t });
+        if (mine) {
+          fx.text(e.x, e.y - 24, "CHETLANDI!", t.accent);
+          sfx.perfectDodge();
+        }
         return;
       }
       case "shang": {

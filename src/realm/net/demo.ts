@@ -12,6 +12,7 @@ import { TICK_DT } from "../sim";
 import { Loopback } from "./loopback";
 import { NetSession } from "./session";
 import { NET_VERSION, hallCode, type HallInfo, type NetIdent } from "./protocol";
+import { HERO_VERSION } from "@/game/heroCompat";
 import { HallRoom } from "./hall";
 import { account } from "@/account/account";
 import { cachedGuild } from "@/account/guild";
@@ -30,6 +31,8 @@ export interface DemoBot {
   guild?: { tag: string; emblem: string };
   /** shu plitkada turadi (masalan, zalda — sandiq yonida) */
   at?: [number, number];
+  /** skin id'si (masalan, "samurai-moon" — afsonaviy: ism yonida belgi) */
+  skin?: string;
 }
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -88,6 +91,8 @@ export async function startDemo(
         keys: [],
         near,
         ...(bot.nick ? { acct: `demo-bot-token-${i}-`.padEnd(32, "x") } : {}),
+        ...(bot.skin ? { skin: bot.skin } : {}),
+        hv: HERO_VERSION,
       }),
     });
     net.start();

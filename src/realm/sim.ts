@@ -103,6 +103,9 @@ export type RealmUi =
   | { kind: "lore"; secret: string }
   | { kind: "sign"; text: string[]; title?: string };
 
+/** Voqea koordinatasi: bitta kasr xonasi (trafik kichik bo'lsin) */
+const r1 = (v: number) => Math.round(v * 10) / 10;
+
 export type RealmEvent =
   | MobEvent
   /** pid — kim urdi (faqat mashq qo'g'irchog'ida: o'z zararini hisoblash uchun) */
@@ -178,7 +181,16 @@ export type RealmEvent =
   | { type: "shang"; pid: string; x: number; y: number; fx: number; fy: number; len: number }
   | { type: "judgment"; pid: string; x: number; y: number; r: number }
   | { type: "vow"; pid: string; x: number; y: number }
-  | { type: "aura"; pid: string; x: number; y: number };
+  | { type: "aura"; pid: string; x: number; y: number }
+  /**
+   * Samuray (v3.8): IAI sirpanishi izi (x,y -> x2,y2), kechikkan kesik (a — qiyalik, r — yarim
+   * uzunlik, n — shu IAIdagi tartibi), parry va mukammal chetlanish. Eski klient bilmagan voqealarni
+   * e'tiborsiz qoldiradi.
+   */
+  | { type: "iai"; pid: string; x: number; y: number; x2: number; y2: number }
+  | { type: "cut"; pid: string; x: number; y: number; a: number; r: number; n: number }
+  | { type: "parry"; pid: string; x: number; y: number }
+  | { type: "dodge"; pid: string; x: number; y: number };
 
 export interface Stack {
   item: string;
@@ -341,7 +353,18 @@ export class RealmPlayer {
   raidRespawn = false;
   /** Samuray: IAI yo'lida belgilangan moblar va kechikkan kesiklar navbati */
   iaiMarks: RealmMob[] = [];
-  iaiCut: { t: number; i: number; pass: number; mul: number; crit: boolean } | null = null;
+  iaiCut: {
+    t: number;
+    i: number;
+    pass: number;
+    mul: number;
+    crit: boolean;
+    /** sirpanish yo'nalishi (kesik qiyaligi) va chiqarilgan kesiklar soni */
+    dir: number;
+    n: number;
+  } | null = null;
+  /** IAI boshlangan joy (iz chizish uchun) */
+  iaiFrom = { x: 0, y: 0 };
   base: { maxHp: number; damage: number; speed: number };
 
   constructor(
@@ -1623,6 +1646,7 @@ export class RealmSim {
       p.iaiStarted = false;
       rp.iaiMarks = [];
       rp.iaiCut = null;
+      rp.iaiFrom = { x: rp.px, y: rp.py };
     }
     if (p.iai || p.iaiDone) {
       // shu tickdagi yo'l: (px, py) -> hozirgi joy
@@ -1643,8 +1667,25 @@ export class RealmSim {
       }
     }
     if (p.iaiDone) {
-      rp.iaiCut = { t: IAI_DELAY, i: 0, pass: 0, mul: p.iaiDone.mul, crit: p.iaiDone.crit };
+      const f = rp.iaiFrom;
+      rp.iaiCut = {
+        t: IAI_DELAY,
+        i: 0,
+        pass: 0,
+        mul: p.iaiDone.mul,
+        crit: p.iaiDone.crit,
+        dir: Math.atan2(p.y - f.y, p.x - f.x),
+        n: 0,
+      };
       p.iaiDone = null;
+      this.events.push({
+        type: "iai",
+        pid: rp.id,
+        x: r1(f.x),
+        y: r1(f.y),
+        x2: r1(p.x),
+        y2: r1(p.y),
+      });
     }
     const c = rp.iaiCut;
     if (c) {
@@ -1652,7 +1693,18 @@ export class RealmSim {
       while (c.t <= 0 && c.i < rp.iaiMarks.length) {
         const m = rp.iaiMarks[c.i++]!;
         c.t += IAI_GAP;
-        if (!m.dead) this.hit(rp, m, p.damage * c.mul * (c.crit ? CRIT_MUL : 1), 200);
+        if (m.dead) continue;
+        // kesik chizig'i (hamma ko'radi): sirpanishga qiya, ikkinchi o'tishda — teskari
+        this.events.push({
+          type: "cut",
+          pid: rp.id,
+          x: r1(m.x),
+          y: r1(m.y),
+          a: Math.round((c.dir + (c.pass ? -0.9 : 0.9)) * 100) / 100,
+          r: Math.round(m.size / 2 + 9),
+          n: c.n++,
+        });
+        this.hit(rp, m, p.damage * c.mul * (c.crit ? CRIT_MUL : 1), 200);
       }
       if (c.i >= rp.iaiMarks.length && c.t <= 0) {
         if (p.iaiDouble && c.pass === 0 && rp.iaiMarks.some((m) => !m.dead)) {
@@ -1668,9 +1720,16 @@ export class RealmSim {
     if (p.perfect) {
       p.perfect = false;
       p.critReady = true;
+      this.events.push({ type: "dodge", pid: rp.id, x: r1(p.x), y: r1(p.y) });
     }
     if (p.parried.length) {
       for (const hit of p.parried) {
+        this.events.push({
+          type: "parry",
+          pid: rp.id,
+          x: r1((p.x + hit.x) / 2),
+          y: r1((p.y + hit.y) / 2 - 2),
+        });
         const m = this.mobs.find((m) => !m.dead && Math.hypot(m.x - hit.x, m.y - hit.y) < 3);
         if (m && m.kind !== "warden" && m.kind !== "ashking") m.stun = Math.max(m.stun, PARRY_STUN);
         if (p.parryBoost) p.boost = Math.max(p.boost, PARRY_BOOST);

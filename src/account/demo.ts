@@ -102,6 +102,8 @@ const FRIENDS = () => ({
   friends: [
     { ...friend(2, "Dilnoza", "mage", 14, "realm", "K7QW2M"), guild: PQ },
     friend(3, "Sardor_07", "gunner", 9, "world"),
+    // v3.8: Samuray qiz — do'stlar ro'yxatida o'z belgisi bilan
+    friend(9, "Aiko_uz", "samurai", 17, "world"),
     { ...friend(4, "Malika", "hunter", 22, "menu"), guild: PQ },
     friend(5, "Bekzod", "knight", 6, null, null, Date.now() - 2 * H),
     {
@@ -119,6 +121,7 @@ function top(board: string): ScoreRow[] {
     ["Shahzoda", "paladin", 31],
     ["Malika", "hunter", 22],
     ["Temur_99", "knight", 27],
+    ["Aiko_uz", "samurai", 17],
     ["Dilnoza", "mage", 14],
     ["Aziza", "gunner", 18],
     ["Jamshid", "knight", 11],
@@ -205,6 +208,7 @@ const MEMBERS = () => [
   member(4, "Malika", "hunter", 22, "officer", true, 980),
   member(9, "Temur_99", "knight", 27, "officer", false, 760, 3),
   member(3, "Sardor_07", "gunner", 9, "member", true, 640),
+  member(17, "Aiko_uz", "samurai", 17, "member", true, 600),
   member(10, "Aziza", "gunner", 18, "member", true, 520),
   member(11, "Jamshid", "knight", 11, "member", false, 410, 5),
   member(12, "Nodira", "hunter", 16, "member", false, 380, 20),

@@ -21,6 +21,14 @@ import {
   type Crack,
   type Quake,
 } from "@/game/paladinFx";
+import {
+  renderCut,
+  renderMoonFlash,
+  renderStreak,
+  type Cut,
+  type MoonFlash,
+  type Streak,
+} from "@/game/samuraiFx";
 import { actionKey, moveLabel, type KeyBinds } from "@/game/keys";
 import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP, parseNetGuild } from "./net/protocol";
@@ -120,6 +128,10 @@ export interface RealmView {
   /** Paladin SHANG yoriqlari va zarb to'lqinlari (faqat chizish, klient voqealardan to'ldiradi) */
   cracks: Crack[];
   quakes: Quake[];
+  /** Samuray: IAI izlari, kechikkan kesiklar va "Qizil oy" silueti (egasining skin ranglarida) */
+  streaks: Streak[];
+  cuts: Cut[];
+  moons: MoonFlash[];
   /** reyd boss kirish sahnasi (nom kartochkasi): qolgan ulush 0..1 */
   intro: number;
   /** o'z qahramoni halok bo'lgan vaqt (reydda qayta tug'ilish hisobi) */
@@ -463,6 +475,10 @@ export class RealmRenderer {
     // Paladin: SHANG yoriqlari va zarb to'lqinlari (oq yadro, oltin chekka)
     for (const k of v.cracks) if (inView(k.x, k.y, camX, camY, 80)) renderCrack(c, k);
     for (const q of v.quakes) if (inView(q.x, q.y, camX, camY, 80)) renderQuake(c, q);
+    // Samuray: IAI izi (yerda) va Qizil oy silueti (o'yinchi ortida)
+    for (const s of v.streaks) if (inView(s.x2, s.y2, camX, camY, 120)) renderStreak(c, s);
+    for (const m of v.moons)
+      if (inView(m.x, m.y, camX, camY, 40)) renderMoonFlash(c, m, undefined, v.fx.isReduced());
     // reyd zali: yarmi lavaga to'lmoqda (ogohlantirish — miltillovchi yoriqlar) yoki to'lgan
     const raid = sim.raid;
     if (raid && raid.lava >= 0) {
@@ -713,6 +729,8 @@ export class RealmRenderer {
       px(c, "#ff5a1a", f.x - 2, f.y - 2, 4, 4);
       px(c, "#ffd36a", f.x - 1, f.y - 1, 2, 2);
     }
+    // Samuray: kechikkan IAI kesiklari (moblar ustida)
+    for (const k of v.cuts) if (inView(k.x, k.y, camX, camY, 40)) renderCut(c, k);
     v.fx.renderParticles(c);
   }
 

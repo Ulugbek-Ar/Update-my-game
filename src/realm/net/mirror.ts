@@ -8,6 +8,7 @@
 import { isSkinId } from "@/game/skins";
 import type { Hero } from "@/game/hero";
 import type { Animator, AnimState } from "@/game/animation";
+import { IAI_MIN, type IaiDash } from "@/game/player";
 import { RealmPlayer, RealmSim, TICK_DT, type RealmEvent, type RealmPlayerSave } from "../sim";
 import { RING_MAX, RING_SPEED, RealmMob, type Mark } from "../mobs";
 import type { RealmData } from "../schema";
@@ -18,6 +19,9 @@ import {
   PF_GUARD,
   PF_HIDDEN,
   PF_VOW,
+  PF_IAI,
+  PF_CHARGE,
+  PF_PARRY,
   MARK_KINDS,
   type NetMe,
   type NetMob,
@@ -29,6 +33,11 @@ import {
 export const INTERP_DELAY = 0.15;
 /** Bundan katta sakrash (teleport, qayta tug'ilish) silliqlanmaydi */
 const JUMP = 64;
+/**
+ * Boshqa Samurayning IAI sirpanishi: faqat ko'rinish uchun (kadr va siluetlar) — zarar, masofa va
+ * tezlik serverda hisoblanadi.
+ */
+const REMOTE_IAI: IaiDash = { speed: 0, mul: 1, k: 1, crit: false, from: { x: 0, y: 0 } };
 
 interface Sample<T> {
   t: number;
@@ -263,6 +272,18 @@ export class RealmMirror {
       p.guardAge = a[11] & PF_GUARD ? 0 : -1;
       p.hideT = a[11] & PF_HIDDEN ? 1 : 0;
       p.vowT = a[11] & PF_VOW ? 1 : 0;
+      if (p.samurai) {
+        // Samuray: IAI kesishi (orqada oqish siluetlar), zaryad turishi va parry pozasi
+        const f = a[11];
+        p.iai = f & PF_IAI ? REMOTE_IAI : null;
+        if (p.iai) {
+          const l = Math.hypot(p.fx, p.fy) || 1;
+          p.dashX = p.fx / l;
+          p.dashY = p.fy / l;
+        }
+        p.charge = f & PF_CHARGE ? IAI_MIN : 0;
+        p.parryPose = f & PF_PARRY ? 0.2 : 0;
+      }
       p.flash = a[12];
       rp.titles = a[13] ? [a[13]] : [];
       rp.skin = isSkinId(rp.hero, a[16]) ? a[16] : "";

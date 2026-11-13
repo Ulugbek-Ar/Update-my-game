@@ -6,6 +6,7 @@ import { SERVER_URL } from "@/realm/net/config";
 import { IS_APP, IS_DESKTOP, IS_PORTABLE } from "@/lib/platform";
 import { telegramApp } from "@/lib/telegram";
 import type { AccConfig, Device, ErrCode, Op, Reply, ReqOf } from "./protocol";
+import { HERO_MARK, HERO_VERSION } from "@/game/heroCompat";
 
 export type Transport = (
   op: string,
@@ -33,7 +34,9 @@ function http(base: string): Transport {
         cache: "no-store",
       };
       if (opts?.keepalive) init.keepalive = true;
-      const r = await fetch(`${base}/acc/${op}`, init);
+      // ?hv — qaysi qahramonlarni chiza olamiz: eski klientga server yangi qahramonni Ritsar
+      // qilib ko'rsatadi (heroCompat.ts); parametr CORS preflight'ga sabab bo'lmaydi
+      const r = await fetch(`${base}/acc/${op}?${HERO_MARK}=${HERO_VERSION}`, init);
       return await r.json();
     } finally {
       clearTimeout(t);
