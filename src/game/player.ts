@@ -13,6 +13,7 @@ import { sfx } from "./audio";
 import type { Hero } from "./hero";
 import type { FlairKind, ToneKind } from "./skinFx";
 import { currentSettings } from "./settings";
+import { HeroVisual, heroScale, subFrame } from "./heroAnim";
 
 export const PLAYER_MAX_HP = 6;
 const ATTACK_TIME = 0.24;
@@ -394,6 +395,8 @@ export class Player implements Body {
    * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
    */
   flair: FlairKind | null = null;
+  /** Vizual qatlam holati (heroAnim.ts): burilish va qadam — faqat chizish uchun */
+  vis = new HeroVisual();
   /** HAMLA paytida allaqachon itarilganlar */
   rammed = new Set<object>();
   /** Shift bosib turilgan vaqt (-1 — bosilmagan, -2 — tuzoq qo'yildi, qo'yib yuborilishi kutilmoqda) */
@@ -700,6 +703,8 @@ export class Player implements Body {
   }
 
   update(dt: number, input: PlayerInput) {
+    // vizual holat (burilish, qadam): mantiq undan hech narsa o'qimaydi
+    this.vis.update(dt, this.fx, this.anim);
     this.anim.update(dt);
     updatePhysics(this, dt, this.clamp);
     if (this.dead) return;
@@ -1334,6 +1339,19 @@ export class Player implements Body {
       [state, frame] = this.samuraiFrame();
       if (this.iai) this.renderAfterimages(ctx, state, frame);
     }
+    // vizual qatlam (heroAnim.ts): oraliq kadr, burilish va zarba siqilishi — faqat ko'rinish
+    const plain = state === this.anim.state && frame === this.anim.frame;
+    const sub = plain && !this.samurai ? subFrame(this.anim) : 0;
+    const [sx, sy] = plain ? heroScale(this.vis, this.anim) : [1, 1];
+    const scaled = sx !== 1 || sy !== 1;
+    if (scaled) {
+      // oyoq nuqtasiga nisbatan — sprayt yerdan uzilmaydi
+      const foot = this.y + 13;
+      ctx.save();
+      ctx.translate(this.x, foot);
+      ctx.scale(sx, sy);
+      ctx.translate(-this.x, -foot);
+    }
     renderSprite(
       ctx,
       this.hero,
@@ -1341,11 +1359,14 @@ export class Player implements Body {
       frame,
       this.x,
       this.y,
-      isFlashing(this) || this.anim.state === "hurt",
+      // yiqilgach (o'limning 2-3-kadri) oq miltillash yo'q — piksellar o'z rangida tarqaladi
+      (isFlashing(this) && !(this.dead && frame > 0)) || this.anim.state === "hurt",
       this.fx < 0,
       this.fy < 0,
       this.skin,
+      sub,
     );
+    if (scaled) ctx.restore();
     ctx.globalAlpha = 1;
   }
 

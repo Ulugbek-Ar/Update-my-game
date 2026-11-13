@@ -449,6 +449,8 @@ const WORLD_COLORS: Record<World, string> = {
   3: "#a6f08e",
   4: "#ff8fb8",
 };
+/** Qadam changi rangi: tosh, qor, tuproq, bog' */
+const STEP_DUST: Record<World, string> = { 1: "#8d819f", 2: "#f2f8fc", 3: "#5a4a34", 4: "#8a9a86" };
 /** Muz qalqoni ta'siri */
 const FROST_RADIUS = 56;
 const FROST_TIME = 1.5;
@@ -2091,6 +2093,11 @@ export class Game {
       py0 = p.y;
     this.parryNote = false;
     p.update(this.focus > 0 ? raw : dt, this.input);
+    // qadam changi (faqat ko'rinish): oyoq yerga tekkan kadrda
+    if (p.vis.step) {
+      p.vis.step = false;
+      if (!p.dashing && !p.dead) this.fx.dust(p.x, p.y + 12, STEP_DUST[this.chapter]);
+    }
     this.applySlip(px0, py0, dt);
     this.updateSynergies(dt);
     this.updateArtifacts(dt);

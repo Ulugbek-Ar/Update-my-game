@@ -87,6 +87,7 @@ export class Effects {
   /** "Effektlarni kamaytirish" (null — sozlamalardan o'qiladi) */
   reduced: boolean | null = null;
   private trailN = 0;
+  private dustN = 0;
 
   /** Effektlar kamaytirilganmi (sozlama yoki sinov uchun majburiy) */
   isReduced() {
@@ -171,6 +172,29 @@ export class Effects {
         color,
         size,
         shape,
+      });
+    }
+  }
+
+  /**
+   * Qadam changi: oyoq ostidan ikki mayda zarra yon tomonlarga. Tasodifsiz (Math.random
+   * ishlatilmaydi — o'yin tasodifiga ta'sir qilmaydi); effektlar kamaytirilganda chiqmaydi.
+   */
+  dust(x: number, y: number, color: string) {
+    if (this.isReduced()) return;
+    const k = this.dustN++;
+    for (const side of [-1, 1]) {
+      const life = 0.2 + (k % 3) * 0.04;
+      this.push({
+        x: x + side * 2,
+        y,
+        vx: side * (9 + (k % 4) * 3),
+        vy: -5 - (k % 2) * 4,
+        life,
+        max: life,
+        color,
+        size: 1,
+        shape: "square",
       });
     }
   }

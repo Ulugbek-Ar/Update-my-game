@@ -1,5 +1,6 @@
 import type { AnimState } from "./animation";
 import { ONI_GRID, drawSakura } from "./sakuraSprites";
+import { currentSettings } from "./settings";
 
 export type SpriteKind =
   | "knight"
@@ -333,6 +334,69 @@ export class Pixels {
   }
 }
 
+// ---------------- vizual oraliq kadrlar va ikkilamchi harakat (v3.8) ----------------
+
+/**
+ * Oraliq kadrli qahramonlar: idle va walk'da har Animator kadrining ikkinchi yarmida joriy va keyingi
+ * poza O'RTASI chiziladi (sub = 1). Kadrlar soni ikki baravar ko'rinadi, lekin Animator kadrlari,
+ * ularning davomiyligi va hujum (zarba) kadrlari aynan o'sha — faqat ko'rinish. Samuray o'z
+ * kadrlariga ega.
+ */
+const SUBFRAME_HEROES: readonly SpriteKind[] = ["knight", "mage", "hunter", "gunner", "paladin"];
+
+/** Ko'rinadigan kadrlar soni (Animator kadrlari `frames` ta bo'lganda) */
+export function visualFrames(kind: SpriteKind, state: AnimState, frames: number) {
+  return SUBFRAME_HEROES.includes(kind) && (state === "idle" || state === "walk")
+    ? frames * 2
+    : frames;
+}
+
+const midPoint = (a: Point, b: Point): Point => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+
+function midPose(a: Pose, b: Pose): Pose {
+  return {
+    bob: (a.bob + b.bob) / 2,
+    lean: (a.lean + b.lean) / 2,
+    leftFoot: midPoint(a.leftFoot, b.leftFoot),
+    rightFoot: midPoint(a.rightFoot, b.rightFoot),
+    hand: midPoint(a.hand, b.hand),
+    tip: midPoint(a.tip, b.tip),
+    otherHand: midPoint(a.otherHand, b.otherHand),
+  };
+}
+
+/** Qahramon pozasi: sub = 1 bo'lsa (idle/walk) — joriy va keyingi kadr o'rtasi. */
+function heroPose(
+  table: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]>,
+  state: Exclude<AnimState, "death">,
+  frame: number,
+  sub: number,
+): Pose {
+  const list = table[state];
+  const a = list[frame] ?? list[0]!;
+  if (!sub || (state !== "idle" && state !== "walk")) return a;
+  return midPose(a, list[(frame + 1) % list.length]!);
+}
+
+/** Jadvaldagi qiymat (soqol, plash): oraliq kadrda — joriy va keyingisining o'rtasi. */
+function midValue(list: readonly number[], frame: number, sub: number) {
+  const a = list[frame] ?? list[0] ?? 0;
+  return sub ? Math.round((a + (list[(frame + 1) % list.length] ?? a)) / 2) : a;
+}
+
+/**
+ * Ikkilamchi harakat (kamar uchi, etak, plash): tanadan chorak davr KECHIKIB tebranadi (px).
+ * Chizish paytida spritePixels o'rnatadi; boshqa personajlarda 0.
+ */
+let SWAY = 0;
+
+function swayAt(state: AnimState, frame: number, sub: number, frames: number) {
+  if (state !== "idle" && state !== "walk") return 0;
+  const v = frame * 2 + sub,
+    n = frames * 2;
+  return Math.round(Math.sin(((v - 1) / n) * Math.PI * 2) * (state === "walk" ? 1.4 : 1));
+}
+
 function sword(p: Pixels, pose: Pose, skeleton: boolean) {
   const [hx, hy] = pose.hand,
     [tx, ty] = pose.tip;
@@ -368,6 +432,8 @@ function knight(p: Pixels, pose: Pose, back: boolean) {
   p.rect(4, 13 + l, 14 + b, 2, 5);
   p.rect(2, 10, 21 + b, 12, 2);
   p.rect(5, 15, 21 + b, 2, 2);
+  // kamar uchi: sonda osilib turadi, nafas olganda va yurganda tebranadi
+  p.rect(5, 10 + SWAY, 23 + b, 1, 2);
   p.line(2, [11 + l, 14 + b], pose.otherHand, 4);
   p.line(3, [21 + l, 14 + b], pose.hand, 4);
   p.rect(4, 8 + l, 13 + b, 5, 3);
@@ -472,7 +538,8 @@ function mage(
   }
   // etak naqshi: qizil hoshiya va zigzag, ichida kumush nuqtalar
   p.rect(3, 9, 25, 14, 1);
-  for (let x = 10; x < 23; x += 3) p.rect(3, x, 24, 1, 1);
+  // zigzag etak bilan birga tebranadi
+  for (let x = 10; x < 23; x += 3) p.rect(3, Math.max(10, Math.min(22, x + SWAY)), 24, 1, 1);
   p.rect(4, 11, 25, 1, 1);
   p.rect(4, 20, 25, 1, 1);
   // to'ndagi mayda kumush bezaklar
@@ -1757,7 +1824,8 @@ function hunter(
     [23, 23 + b],
     [9, 23 + b],
   ]);
-  for (let x = 10; x < 23; x += 3) p.rect(2, x, 23 + b, 2, 1);
+  // tishli etak yurganda tebranadi
+  for (let x = 10; x < 23; x += 3) p.rect(2, Math.max(9, Math.min(21, x + SWAY)), 23 + b, 2, 1);
   if (!back) {
     // old tomonda to'q yashil kamzul va kamar
     p.polygon(2, [
@@ -2198,8 +2266,8 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
     p.rect(3, 13 + l, 17 + b, 1, 1);
     p.rect(3, 19 + l, 17 + b, 1, 1);
   } else p.rect(3, 16 + l, 15 + b, 1, 6);
-  // etak hoshiyasi
-  p.rect(3, 11, 25 + b, 11, 1);
+  // etak hoshiyasi (tabard etagi tebranadi)
+  p.rect(3, 11 + SWAY, 25 + b, 11, 1);
   // orqa yelkalik
   p.ellipse(3, 9 + l, 13 + b, 3.5, 2.6);
   p.rect(5, 8 + l, 11 + b, 3, 1);
@@ -2279,13 +2347,19 @@ function paladinFallen(p: Pixels, frame: number) {
 }
 
 /** Paladin kadri: tana 32x32 da chiziladi, PALADIN_GRID to'rning o'rtasiga siljitiladi. */
-function paladinPixels(state: AnimState, frame: number, back: boolean) {
+function paladinPixels(state: AnimState, frame: number, back: boolean, sub = 0) {
   const p = new Pixels(PALADIN_GRID);
   p.ox = p.oy = PALADIN_OFF;
   if (state === "death") paladinFallen(p, Math.min(2, Math.max(0, frame)));
   else {
-    const pose = paladinPoses[state][frame] ?? paladinPoses[state][0]!;
-    const s = PALADIN_SWORD[state][frame] ?? PALADIN_SWORD[state][0]!;
+    const pose = heroPose(paladinPoses, state, frame, sub);
+    const list = PALADIN_SWORD[state];
+    let s = list[frame] ?? list[0]!;
+    if (sub && (state === "idle" || state === "walk")) {
+      // yelkadagi qilich ham oraliq holatda
+      const next = list[(frame + 1) % list.length]!;
+      s = { hand: midPoint(s.hand, next.hand), tip: midPoint(s.tip, next.tip) };
+    }
     paladin(p, pose, back, s);
   }
   return p.outlined();
@@ -4830,8 +4904,20 @@ export function spriteGrid(kind: SpriteKind) {
           : 32;
 }
 
-export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
-  if (kind === "paladin") return paladinPixels(state, frame, back);
+export function spritePixels(
+  kind: SpriteKind,
+  state: AnimState,
+  frame: number,
+  back = false,
+  /** 1 — oraliq (vizual) kadr: faqat SUBFRAME_HEROES, idle va walk */
+  sub = 0,
+) {
+  const hero = SUBFRAME_HEROES.includes(kind);
+  // oraliq kadr faqat turish va yurishda: hujum, zarba va o'lim kadrlari aynan o'sha
+  if (!hero || (state !== "idle" && state !== "walk")) sub = 0;
+  // ikkilamchi harakat: faqat shu qahramonlarda (boshqalarda 0 — ko'rinishi o'zgarmaydi)
+  SWAY = hero && state !== "death" ? swayAt(state, frame, sub, poses[state].length) : 0;
+  if (kind === "paladin") return paladinPixels(state, frame, back, sub);
   if (kind === "samurai") return samuraiPixels(state, frame, back);
   if (kind === "ashking") return kingPixels(state, frame);
   if (kind === "ninja" || kind === "tengu" || kind === "kitsune" || kind === "oni") {
@@ -4969,7 +5055,7 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     else
       hunter(
         p,
-        poses[state][frame] ?? poses[state][0]!,
+        heroPose(poses, state, frame, sub),
         back,
         state === "attack" ? (hunterShots[frame] ?? hunterShots[0]!) : null,
       );
@@ -4980,10 +5066,11 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
     else
       gunner(
         p,
-        poses[state][frame] ?? poses[state][0]!,
+        heroPose(poses, state, frame, sub),
         back,
         state === "attack" ? (gunnerShots[frame] ?? gunnerShots[0]!) : null,
-        COAT_SWAY[state][frame] ?? 0,
+        // plash etagi: yurishda jadval bo'yicha, turganda nafas bilan sekin tebranadi
+        midValue(COAT_SWAY[state], frame, sub) + (state === "idle" ? SWAY : 0),
       );
     return p.outlined();
   }
@@ -4991,17 +5078,21 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
   else {
     const pose = poses[state][frame] ?? poses[state][0];
     if (pose) {
-      if (kind === "knight") knight(p, pose, back);
-      else if (kind === "mage")
+      if (kind === "knight") knight(p, heroPose(poses, state, frame, sub), back);
+      else if (kind === "mage") {
+        const tops = staffTops[state];
+        let top = tops[frame] ?? tops[0]!;
+        if (sub) top = midPoint(top, tops[(frame + 1) % tops.length]!);
         mage(
           p,
-          pose,
+          heroPose(poses, state, frame, sub),
           back,
-          staffTops[state][frame] ?? staffTops[state][0]!,
+          top,
           state === "attack" && frame === 1,
-          BEARD_SWAY[state][frame] ?? 0,
+          // soqol: jadval bo'yicha, turganda nafas bilan sekin tebranadi
+          midValue(BEARD_SWAY[state], frame, sub) + (state === "idle" ? SWAY : 0),
         );
-      else if (kind === "skeleton") skeleton(p, pose);
+      } else if (kind === "skeleton") skeleton(p, pose);
       else if (kind === "shield") shieldBearer(p, pose, shieldPush[state][frame] ?? 0);
       else demon(p, pose, state === "attack" ? frame : null);
     }
@@ -5010,6 +5101,34 @@ export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, 
 }
 
 const cache = new Map<string, HTMLCanvasElement>();
+
+/** O'lim kadrlarining shaffofligi: oddiy so'nish va piksel tarqalishi (o'zi siyraklashadi) */
+const DEATH_ALPHA = [1, 0.65, 0.3];
+const DISSOLVE_ALPHA = [1, 0.95, 0.8];
+/** Har o'lim kadrida yo'qolgan piksellar ulushi */
+export const DISSOLVE_GONE = [0, 0.3, 0.62];
+
+/**
+ * O'lim kadridagi piksel taqdiri: null — joyida qoladi; [dx, dy] — uchib ketmoqda (shu siljishda
+ * chiziladi); false — yo'qolgan. Tasodif emas — piksel joyidan hisoblanadi (har kadr bir xil).
+ * Tepadagi piksellar oldinroq ketadi — jasad pastdan yuqoriga "to'zg'ib" yo'qoladi.
+ */
+export function dissolvePixel(
+  x: number,
+  y: number,
+  n: number,
+  frame: number,
+): readonly [number, number] | false | null {
+  const h = (Math.imul(x + 11, 73856093) ^ Math.imul(y + 7, 19349663)) >>> 0;
+  const r = (h % 997) / 997;
+  const gone = DISSOLVE_GONE[Math.min(2, frame)] ?? 0;
+  if (r * 0.75 + (y / n) * 0.25 >= gone) return null;
+  // yo'qolganlarning uchdan biri hali havoda: yuqoriga va biroz yonga
+  if ((h >>> 10) % 3) return false;
+  const lift = frame * (2 + ((h >>> 4) % 4));
+  const dx = ((h >>> 7) % 3) - 1;
+  return y - lift < 1 || x + dx < 1 || x + dx > n - 2 ? false : [dx, -lift];
+}
 
 /** Qahramon skini: id (kesh kaliti) va PALETTES tartibidagi 5 rang */
 export interface SpritePalette {
@@ -5052,8 +5171,16 @@ export function renderSprite(
   back = false,
   /** Skin (skins.ts): boshqa 5 rang; kesh kalitiga id kiradi — skinlar aralashmaydi */
   palette?: SpritePalette,
+  /** 1 — oraliq (vizual) kadr (visualFrames): faqat qahramonlarning idle va walk holatida */
+  sub = 0,
 ) {
-  const key = `${kind}:${state}:${frame}:${flash}:${back}:${palette?.id ?? ""}`;
+  // o'lim: piksellar o'z rangida tarqaladi ("Effektlarni kamaytirish"da — oddiy so'nish)
+  const dissolve = state === "death" && frame > 0 && !currentSettings().reduceFx;
+  // oddiy kadr kaliti avvalgidek; oraliq kadr va tarqalish — qo'shimcha belgilar bilan
+  const key =
+    `${kind}:${state}:${frame}:${flash}:${back}:${palette?.id ?? ""}` +
+    (sub ? ":s" : "") +
+    (dissolve ? ":d" : "");
   let canvas = cache.get(key);
   if (!canvas) {
     canvas = document.createElement("canvas");
@@ -5061,7 +5188,7 @@ export function renderSprite(
     canvas.width = canvas.height = n;
     const raster = canvas.getContext("2d");
     if (!raster) return;
-    const data = spritePixels(kind, state, frame, back);
+    const data = spritePixels(kind, state, frame, back, sub);
     const colors = palette?.colors ?? PALETTES[kind];
     for (let py = 0; py < n; py++)
       for (let px = 0; px < n; px++) {
@@ -5069,6 +5196,12 @@ export function renderSprite(
         if (!color) continue;
         raster.fillStyle =
           flash && color > 1 ? "#ffffff" : (colors[color - 1] ?? colors[0] ?? "#000000");
+        if (dissolve) {
+          const fly = dissolvePixel(px, py, n, frame);
+          if (fly === null) raster.fillRect(px, py, 1, 1);
+          else if (fly) raster.fillRect(px + fly[0], py + fly[1], 1, 1);
+          continue;
+        }
         raster.fillRect(px, py, 1, 1);
       }
     cache.set(key, canvas);
@@ -5076,7 +5209,8 @@ export function renderSprite(
   const size = spriteSize(kind);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (state === "death") ctx.globalAlpha = [1, 0.65, 0.3][frame] ?? 0.3;
+  if (state === "death")
+    ctx.globalAlpha = (dissolve ? DISSOLVE_ALPHA : DEATH_ALPHA)[frame] ?? (dissolve ? 0.6 : 0.3);
   ctx.translate(Math.round(x), Math.round(y));
   if (flip) ctx.scale(-1, 1);
   ctx.drawImage(canvas, -size / 2, -size / 2, size, size);
