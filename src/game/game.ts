@@ -17,6 +17,8 @@ import {
 import { INTRO_TIME, PHASE_GUARD, bossHpFor } from "./bossPower";
 import { introFrame, phasePulse } from "./mobAnim";
 import { renderAirAmbience, renderGroundAmbience } from "./ambience";
+import { CombatFx, chestPop, flyerPos, renderChestRays, renderSpark } from "./combatFx";
+import { HudFx } from "./hudFx";
 import { ONI_HP, Oni } from "./oni";
 import {
   PETALS,
@@ -638,7 +640,7 @@ export class Game {
   darkness = 0;
   /** Boss kirish sahnasi qolgan vaqti (kamera yaqinlashadi, nom kartochkasi) */
   intro = 0;
-  /** Kirish sahnasida boss zarbasi ko'rsatildi (silkinish bir marta) — faqat ko'rinish */
+  /** Kirish sahnasida boss zarbasi ko'rsatildi (ovoz bir marta) — faqat ko'rinish */
   private introHit = false;
   /** Faza almashganda ekran chaqnashi */
   phaseFlash = 0;
@@ -666,6 +668,10 @@ export class Game {
   /** Do'kondan: yurak tushish ehtimoliga qo'shimcha */
   private dropBonus = 0;
   fx = new Effects();
+  /** Jang hissi (combatFx.ts): zarba uchqunlari va HUD'ga uchuvchi belgilar — faqat ko'rinish */
+  cfx = new CombatFx();
+  /** HUD animatsiyalari (hudFx.ts): yuraklar, oltin hisobi — faqat ko'rinish */
+  hud = new HudFx();
   attempt = 1;
   phase: Phase = "play";
   stage: Stage = "fight";
@@ -880,6 +886,8 @@ export class Game {
     this.runXp = 0;
     this.runBosses = 0;
     this.fx = new Effects();
+    this.cfx.clear();
+    this.hud.reset(this.player.hp, this.runGold);
     this.score = 0;
     this.newBest = false;
     this.combo = 0;
@@ -1578,6 +1586,8 @@ export class Game {
     this.stats.gold += c.value;
     if (this.runGold >= 50) this.achieve("rich");
     this.fx.text(c.x, c.y - 8, `+${c.value}`, "#ffcc33");
+    // tanga HUD'dagi oltin hisobiga uchib boradi (oltin allaqachon qo'shilgan — faqat ko'rinish)
+    this.cfx.fly("coin", c.x, c.y, ROOM.w - 8, ROOM.h - 9, this.fx.isReduced());
   }
 
   /** To'lqin yakunida yerda qolgan tangalar o'zi teriladi. */
@@ -1954,6 +1964,15 @@ export class Game {
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
     this.superMeter.add(hpBefore - Math.max(0, t.hp));
+    // zarba nuqtasida kichik uchqun, kritikda — alohida oltin chaqnash (faqat ko'rinish)
+    const hd = Math.hypot(t.x - p.x, t.y - p.y) || 1;
+    const edge = Math.min(t.size / 2, 8);
+    this.cfx.spark(
+      t.x - ((t.x - p.x) / hd) * edge,
+      t.y - 3 - ((t.y - p.y) / hd) * edge,
+      crit,
+      this.fx.isReduced(),
+    );
     // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
     if (this.damageNumsOn)
       this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp), crit);
@@ -2032,6 +2051,11 @@ export class Game {
     }
     this.time += dt;
     this.fx.update(dt);
+    this.cfx.update(dt);
+    // HUD'ga yetib kelgan tanga/yurak: hisob bir lahza "sakraydi" (hudFx — faqat ko'rinish)
+    for (const kind of this.cfx.arrived) this.hud.arrive(kind);
+    this.cfx.arrived.length = 0;
+    this.hud.update(dt, this.player.hp, this.runGold);
     // kuch tanlash ekranida yutuq xabari navbatda kutadi (sarlavhani yopmaydi)
     if (this.toasts.length && !this.toastHeld) {
       this.toasts[0]!.timer -= dt;
@@ -2080,10 +2104,10 @@ export class Game {
       else {
         this.intro -= dt;
         b.update(dt, this.player);
-        // boss o'z zarbasini ko'rsatdi (mobAnim.ts): zarba kadrida bir marta yengil silkinish
+        // boss o'z zarbasini ko'rsatdi (mobAnim.ts): zarba kadrida bir marta ovoz
         if (!this.introHit && introFrame(b.spawn, b.spawnMax) === 2) {
           this.introHit = true;
-          if (!this.fx.isReduced()) this.fx.addShake(0.16);
+          // (yangi ekran silkinishi qo'shilmaydi — faqat ovoz)
           sfx.stomp();
         }
         const skip =
@@ -2555,8 +2579,11 @@ export class Game {
     this.drops = this.drops.filter((d) => {
       if (d.life <= 0) return false;
       if (Math.hypot(d.x - p.x, d.y - p.y) > 11 || p.dead) return true;
-      if (p.heal(1)) this.fx.text(d.x, d.y - 8, "+1 YURAK", "#ff4d6d");
-      else {
+      if (p.heal(1)) {
+        this.fx.text(d.x, d.y - 8, "+1 YURAK", "#ff4d6d");
+        // yurak HUD'dagi o'z katagiga uchib boradi
+        this.cfx.fly("heart", d.x, d.y, 8 + (p.hp - 1) * 10, 7, this.fx.isReduced());
+      } else {
         this.score += 25;
         this.fx.text(d.x, d.y - 8, "+25", "#ffffff");
       }
@@ -4083,6 +4110,7 @@ export class Game {
     for (const cl of this.clouds) this.renderCloud(c, cl);
     for (const sm of this.smokes) this.renderSmoke(c, sm);
     this.fx.renderParticles(c);
+    for (const sp of this.cfx.sparks) renderSpark(c, sp, this.fx.isReduced());
     if (this.darkness > 0) {
       // O'rmon Shohi g'azabi: faqat o'yinchi atrofi yorug'
       const g = c.createRadialGradient(p.x, p.y, KING_LIGHT * 0.4, p.x, p.y, KING_LIGHT);
@@ -4135,7 +4163,10 @@ export class Game {
     c.restore();
 
     if (this.intro > 0) this.renderIntro();
-    else this.renderHud();
+    else {
+      this.renderHud();
+      this.renderFlyers();
+    }
     this.renderOverlays();
     this.renderToast();
     c.restore();
@@ -4414,6 +4445,21 @@ export class Game {
   /** Kod bilan chizilgan sandiq: yog'och, temir tasmalar, oltin qulf; ochilganda qopqoq ko'tariladi. */
   private renderChest(c: CanvasRenderingContext2D, ch: Chest) {
     this.shadow(c, ch.x, ch.y + 7, 18);
+    // ochilganda qisqa "sakrash" va tepaga yoyiluvchi oltin nurlar (combatFx.ts) — faqat ko'rinish
+    const lively = !this.fx.isReduced();
+    const [sx, sy] = lively ? chestPop(ch.openT) : [1, 1];
+    c.save();
+    if (sx !== 1 || sy !== 1) {
+      c.translate(ch.x, ch.y + 7);
+      c.scale(sx, sy);
+      c.translate(-ch.x, -(ch.y + 7));
+    }
+    this.drawChest(c, ch);
+    c.restore();
+    if (lively) renderChestRays(c, ch.x, ch.y - 2, ch.openT);
+  }
+
+  private drawChest(c: CanvasRenderingContext2D, ch: Chest) {
     const shake = ch.hitFlash > 0 ? (Math.floor(ch.hitFlash * 60) % 2 ? 1 : -1) : 0;
     const x = Math.round(ch.x - 8) + shake,
       y = Math.round(ch.y - 5);
@@ -4478,6 +4524,17 @@ export class Game {
     px(c, color, x + 1, y + 4, 6, 1);
     px(c, color, x + 2, y + 5, 4, 1);
     px(c, color, x + 3, y + 6, 2, 1);
+  }
+
+  /** Terilgan tanga va yuraklar HUD'dagi joyiga uchib boradi (combatFx.ts) — faqat ko'rinish. */
+  private renderFlyers() {
+    const c = this.ctx;
+    for (const f of this.cfx.flyers) {
+      const { x, y } = flyerPos(f);
+      if (f.kind === "coin")
+        this.coin(c, Math.round(x) - 3, Math.round(y) - 3, Math.floor(f.t * 14) % 4);
+      else this.heart(c, Math.round(x) - 4, Math.round(y) - 3, "#ff4d6d");
+    }
   }
 
   /** 6x6 piksel tanga; frame — aylanish kadri (0 va 2 — to'liq, 1 va 3 — yonidan). */

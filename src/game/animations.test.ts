@@ -15,6 +15,22 @@ import {
   riseShare,
 } from "./mobAnim";
 import { loadSettings, saveSettings } from "./settings";
+import {
+  CHEST_RAYS,
+  CHEST_RAY_TIME,
+  CRIT_SPARK_LIFE,
+  CombatFx,
+  FLY_TIME,
+  MAX_FLYERS,
+  MAX_SPARKS,
+  SPARK_LIFE,
+  chestPop,
+  flyerPos,
+  renderChestRays,
+} from "./combatFx";
+import { setCritSource } from "./crit";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { BOSS_WAVE, type World } from "./waves";
 import {
   AMBIENCE_MAX,
@@ -435,6 +451,129 @@ describe("Muhit: animatsiya qatlami", () => {
       expect(later.rects).not.toEqual(a.rects);
     }
     expect(rnd).not.toHaveBeenCalled();
+  });
+});
+
+describe("Jang hissi: uchqun, kritik chaqnashi, HUD'ga uchish, sandiq", () => {
+  const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
+  const makeGame = (hero: Hero = "knight") => {
+    const g = new Game(canvas as unknown as HTMLCanvasElement, hero);
+    g.hints = [];
+    const keeper = new Enemy("blob", 290, 30);
+    keeper.spawn = keeper.spawnMax = 99;
+    g.enemies = [keeper];
+    g.fx.reduced = false;
+    return g;
+  };
+
+  it("hit sparks: a small white one, a bigger longer golden one for crits — capped, no randomness", () => {
+    const rnd = vi.spyOn(Math, "random");
+    const fx = new CombatFx();
+    fx.spark(10, 10, false, false);
+    fx.spark(20, 10, true, false);
+    expect(fx.sparks.map((s) => s.life)).toEqual([SPARK_LIFE, CRIT_SPARK_LIFE]);
+    expect(CRIT_SPARK_LIFE).toBeGreaterThan(SPARK_LIFE);
+    for (let i = 0; i < 40; i++) fx.spark(i, 0, false, false);
+    expect(fx.sparks).toHaveLength(MAX_SPARKS);
+    fx.update(CRIT_SPARK_LIFE + 0.01);
+    expect(fx.sparks).toHaveLength(0);
+    // effektlar kamaytirilganda: faqat kritik
+    fx.spark(1, 1, false, true);
+    expect(fx.sparks).toHaveLength(0);
+    fx.spark(1, 1, true, true);
+    expect(fx.sparks).toHaveLength(1);
+    expect(rnd).not.toHaveBeenCalled();
+  });
+
+  it("a real hit makes a spark but does not touch hit stop or screen shake", () => {
+    const g = makeGame();
+    const p = g.player;
+    const foe = new Enemy("rammer", p.x + 14, p.y);
+    foe.spawn = 0;
+    foe.hp = foe.maxHp = 50;
+    foe.update = () => {};
+    g.enemies.push(foe);
+    p.fx = 1;
+    p.fy = 0;
+    setCritSource(() => 1);
+    g.input.pressAttack();
+    let sparks = 0;
+    let freeze = 0;
+    for (let i = 0; i < 12; i++) {
+      g.update(DT);
+      g.input.endFrame();
+      sparks = Math.max(sparks, g.cfx.sparks.length);
+      freeze = Math.max(freeze, (g as unknown as { freeze: number }).freeze);
+    }
+    setCritSource(null);
+    expect(foe.hp).toBeLessThan(50);
+    expect(sparks).toBe(1);
+    // v3.5 dan keyingi qiymat: oddiy zarbada 0.045 s dan oshmaydi
+    expect(freeze).toBeLessThanOrEqual(0.045 + 1e-9);
+    // modul hit stop va silkinishga umuman tegmaydi
+    const src = readFileSync(path.resolve(__dirname, "combatFx.ts"), "utf8");
+    expect(src).not.toMatch(/addShake|\.freeze|slowmo/);
+  });
+
+  it("a picked coin is counted at once; the flying coin only shows it and then nudges the HUD", () => {
+    const g = makeGame();
+    const p = g.player;
+    type Coins = { coins: { x: number; y: number; life: number; value: number }[] };
+    (g as unknown as Coins).coins.push({ x: p.x, y: p.y, life: 5, value: 3 });
+    g.update(DT);
+    expect(g.runGold).toBe(3);
+    expect(g.cfx.flyers).toHaveLength(1);
+    const f = g.cfx.flyers[0]!;
+    expect(flyerPos({ ...f, t: 0 })).toMatchObject({ x: f.x0, y: f.y0 });
+    const end = flyerPos({ ...f, t: FLY_TIME });
+    expect(end.x).toBeCloseTo(f.x1, 5);
+    expect(end.y).toBeCloseTo(f.y1, 5);
+    for (let t = 0; t < FLY_TIME + 0.05; t += DT) g.update(DT);
+    expect(g.cfx.flyers).toHaveLength(0);
+    expect(g.hud.goldPop).toBeGreaterThan(0);
+    expect(g.runGold).toBe(3);
+    // effektlar kamaytirilganda uchuvchi belgi yo'q, oltin baribir qo'shiladi
+    const low = makeGame();
+    low.fx.reduced = true;
+    (low as unknown as Coins).coins.push({ x: low.player.x, y: low.player.y, life: 5, value: 2 });
+    low.update(DT);
+    expect(low.runGold).toBe(2);
+    expect(low.cfx.flyers).toHaveLength(0);
+  });
+
+  it("flyers are capped and report their arrival once", () => {
+    const fx = new CombatFx();
+    for (let i = 0; i < 30; i++) fx.fly("coin", i, 0, 100, 100, false);
+    expect(fx.flyers).toHaveLength(MAX_FLYERS);
+    fx.fly("heart", 0, 0, 5, 5, true);
+    expect(fx.flyers).toHaveLength(MAX_FLYERS);
+    fx.update(FLY_TIME + 0.01);
+    expect(fx.arrived).toHaveLength(MAX_FLYERS);
+    expect(fx.flyers).toHaveLength(0);
+  });
+
+  it("chest: a short pop and golden rays right after it opens, nothing while closed", () => {
+    expect(chestPop(-1)).toEqual([1, 1]);
+    expect(chestPop(0.3)).toEqual([1, 1]);
+    const [sx] = chestPop(0.12);
+    expect(sx).toBeGreaterThan(1.05);
+    const draws = (t: number) => {
+      let n = 0;
+      const ctx = new Proxy(
+        {},
+        {
+          get: (_t, k) => () => {
+            if (k === "stroke") n++;
+          },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      renderChestRays(ctx, 100, 100, t);
+      return n;
+    };
+    expect(draws(-1)).toBe(0);
+    expect(draws(0.2)).toBe(CHEST_RAYS);
+    expect(draws(CHEST_RAY_TIME + 0.01)).toBe(0);
   });
 });
 
