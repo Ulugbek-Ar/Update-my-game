@@ -31,6 +31,15 @@ export const DANGER = {
   breathFill: "#3c8ce6",
   /** Onlayn: Sardorning yer yorig'i halqalari */
   quakeRing: "#ff7a2a",
+  /** Sakura bog'i: Ninja zarbasi doirasi va Tengu sho'ng'ish nuqtasi */
+  ninjaSlash: "#ff3c3c",
+  tenguMark: "#ff4646",
+  /** Kitsune ko'k olovi (yig'ilayotgan olov va sharlar) */
+  foxFire: "#3c8ce6",
+  /** Oni: gurzi zarbasi doirasi va to'lqini, supurish yo'lagi, olov halqasi */
+  oniSlam: "#ff3c3c",
+  oniSweep: "#ff5a1e",
+  oniRing: "#ff4614",
 } as const;
 
 export type DangerId = keyof typeof DANGER;

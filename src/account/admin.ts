@@ -42,7 +42,7 @@ export const adminApi = {
  * (bir martalik; menyu o'qiydi va tozalaydi).
  */
 export interface AdminStart {
-  world: 1 | 2 | 3;
+  world: 1 | 2 | 3 | 4;
   /** 0 — 1-to'lqin, 4 — boss */
   wave: number;
 }

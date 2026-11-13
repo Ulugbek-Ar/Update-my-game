@@ -64,7 +64,7 @@ export function checkSave(next: Keys, prev: Keys | null, hours: number): LimitFi
   }
   for (const hero of HERO_LIST) {
     const k = bestKeys(hero.id);
-    for (const key of [k.best, k.ch2, k.ch3]) {
+    for (const key of [k.best, k.ch2, k.ch3, k.ch4]) {
       if (int(next[key]) > SCORE_CAP) return "score";
     }
     if (int(next[k.endless]) > ENDLESS_CAP) return "score";

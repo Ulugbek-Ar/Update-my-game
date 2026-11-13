@@ -18,7 +18,10 @@ export type EnemyKind =
   | "shroom"
   | "treant"
   | "owl"
-  | "imp";
+  | "imp"
+  | "ninja"
+  | "tengu"
+  | "kitsune";
 
 const SPAWN_TIME = 1;
 export const ARCHER_RELOAD = 1.5;
@@ -117,6 +120,53 @@ export const IMP_WINDUP = 0.6;
 export const IMP_SHOT_SPEED = 90;
 const IMP_SPEED = 70;
 
+// ---- 4-dunyo: Sakura bog'i ----
+/**
+ * Ninja-soya: yaqinlashadi, tutunga aylanib o'yinchining orqasida paydo bo'ladi va qisqa
+ * ogohlantirishdan keyin kesadi (zarba vaqti aniq — parry uchun qulay). Zarbadan keyin ochiq qoladi.
+ */
+export const NINJA_STALK = 2.2;
+export const NINJA_VANISH = 0.35;
+export const NINJA_WARN = 0.5;
+export const NINJA_STRIKE = 0.18;
+export const NINJA_REST = 1;
+/** O'yinchi orqasida shu masofada paydo bo'ladi; zarba shu masofagacha yetadi */
+export const NINJA_BEHIND = 20;
+export const NINJA_REACH = 24;
+const NINJA_SPEED = 46;
+export type NinjaPhase = "stalk" | "vanish" | "warn" | "strike" | "rest";
+/**
+ * Tengu-qush: tepada keng aylanadi, soyasi tushgan joyga sho'ng'iydi — ketma-ket ikki marta
+ * (ikkinchisining ogohlantirishi qisqaroq), so'ng yerda dam oladi.
+ */
+export const TENGU_ALT = 40;
+export const TENGU_SOAR = 2.4;
+export const TENGU_MARK = 0.7;
+export const TENGU_MARK2 = 0.45;
+export const TENGU_DIVE = 0.22;
+export const TENGU_BOUNCE = 0.3;
+export const TENGU_REST = 1.2;
+export const TENGU_RISE = 0.4;
+export const TENGU_HIT = 13;
+/** Bir hujumda nechta sho'ng'ish */
+export const TENGU_DIVES = 2;
+const TENGU_SPEED = 70;
+export type TenguPhase = "soar" | "mark" | "dive" | "bounce" | "rest" | "rise";
+/** Kitsune-olov: uzoqda turadi, dumlarida olov yig'ib yelpig'ich qilib uchta ko'k shar otadi */
+export const KITSUNE_CD = 2.8;
+export const KITSUNE_WINDUP = 0.7;
+export const KITSUNE_SHOTS = 3;
+/** Sharlar orasidagi burchak (rad) */
+export const KITSUNE_SPREAD = 0.3;
+export const KITSUNE_SHOT_SPEED = 95;
+export const KITSUNE_NEAR = 80;
+export const KITSUNE_FAR = 125;
+const KITSUNE_SPEED = 44;
+/** Otgandan keyin "og'iz ochiq" kadri shuncha ko'rinadi */
+const KITSUNE_RELEASE = 0.25;
+/** Game ovoz va uchqun beradigan voqea (bir kadr) */
+export type EnemyCue = "vanish" | "appear" | "slash" | "dive" | "foxfire";
+
 /** O'rgimchak yuradigan devor bo'yi to'rtburchagi */
 function track() {
   const l = ROOM.wall + SPIDER_INSET,
@@ -179,6 +229,9 @@ export const ENEMY_HP: Record<EnemyKind, number> = {
   treant: 8,
   owl: 2,
   imp: 2,
+  ninja: 3,
+  tengu: 3,
+  kitsune: 3,
 };
 
 /** Dushman turi -> sprite turi */
@@ -197,6 +250,9 @@ const SPRITE: Record<EnemyKind, SpriteKind> = {
   treant: "treant",
   owl: "owl",
   imp: "imp",
+  ninja: "ninja",
+  tengu: "tengu",
+  kitsune: "kitsune",
 };
 
 export interface Arrow {
@@ -219,6 +275,9 @@ export interface Arrow {
  * treant – daraxt odam: sekin, uzoqdan yerdan ildiz chiqarib ushlaydi
  * owl    – tungi boyo'g'li: tepadan sho'ng'iydi, soyasi oldindan ko'rinadi
  * imp    – olov imp (Iblis chaqiradi): aylanib uchadi, yaltirab (ogohlantirish) olov shari otadi
+ * ninja  – ninja-soya: tutunga aylanib o'yinchi orqasida paydo bo'ladi, ogohlantirib kesadi
+ * tengu  – tengu-qush: tepada aylanadi, soyasi tushgan joyga ikki marta sho'ng'iydi
+ * kitsune – kitsune-olov: uzoqdan yelpig'ich qilib uchta ko'k olov shari otadi
  */
 export class Enemy implements Body {
   vx = 0;
@@ -295,6 +354,14 @@ export class Enemy implements Body {
   owlPhase: OwlPhase = "soar";
   /** Olov imp: otish tayyorgarligi (0 — tayyorlanmayapti) */
   impWindup = 0;
+  /** Ninja-soya va Tengu-qush bosqichlari; diveN — shu hujumdagi sho'ng'ishlar soni */
+  ninjaPhase: NinjaPhase = "stalk";
+  tenguPhase: TenguPhase = "soar";
+  diveN = 0;
+  /** Kitsune: olov yig'ish (0 — tayyorlanmayapti) */
+  foxWindup = 0;
+  /** Shu kadrdagi voqea — Game ovoz va uchqun beradi, so'ng tozalaydi */
+  cue: EnemyCue | null = null;
   markX = 0;
   markY = 0;
   private diveFrom = { x: 0, y: 0 };
@@ -319,9 +386,9 @@ export class Enemy implements Body {
           ? 18
           : kind === "wolf"
             ? 13
-            : kind === "rammer" || kind === "archer" || kind === "shield"
+            : kind === "rammer" || kind === "archer" || kind === "shield" || kind === "ninja"
               ? 14
-              : kind === "shroom"
+              : kind === "shroom" || kind === "kitsune"
                 ? 12
                 : 11;
     if (kind === "archer") this.aiTimer = ARCHER_RELOAD;
@@ -352,6 +419,13 @@ export class Enemy implements Body {
       this.size = 10;
       this.aiTimer = 1.2 + Math.random();
     }
+    // bir nechta ninja bir vaqtda g'oyib bo'lmasligi uchun biroz farq
+    if (kind === "ninja") this.aiTimer = NINJA_STALK * (0.5 + Math.random() * 0.6);
+    if (kind === "tengu") {
+      this.alt = TENGU_ALT;
+      this.aiTimer = TENGU_SOAR * 0.6 + Math.random();
+    }
+    if (kind === "kitsune") this.aiTimer = 1.2 + Math.random() * 1.2;
   }
 
   get dead() {
@@ -359,12 +433,17 @@ export class Enemy implements Body {
   }
 
   get active() {
-    return !this.dead && this.spawn <= 0 && !this.airborne;
+    return !this.dead && this.spawn <= 0 && !this.airborne && !this.hidden;
   }
 
-  /** Boyo'g'li tepada: urib bo'lmaydi va tegmaydi */
+  /** Boyo'g'li va Tengu tepada: urib bo'lmaydi va tegmaydi */
   get airborne() {
-    return this.kind === "owl" && this.alt > OWL_LOW;
+    return (this.kind === "owl" || this.kind === "tengu") && this.alt > OWL_LOW;
+  }
+
+  /** Ninja tutunga aylangan: urib bo'lmaydi va tegmaydi */
+  get hidden() {
+    return this.kind === "ninja" && this.ninjaPhase === "vanish";
   }
 
   /** Rammer nishon olayotganini ko'rsatish uchun */
@@ -427,6 +506,9 @@ export class Enemy implements Body {
     else if (this.kind === "treant") this.updateTreant(dt, p, dx, dy, d, m);
     else if (this.kind === "owl") this.updateOwl(dt, p, m);
     else if (this.kind === "imp") this.updateImp(dt, p, dx, dy, d, m);
+    else if (this.kind === "ninja") this.updateNinja(dt, p, dx, dy, d, m);
+    else if (this.kind === "tengu") this.updateTengu(dt, p, m);
+    else if (this.kind === "kitsune") this.updateKitsune(dt, dx, dy, d, m);
     else if (this.kind === "frost") this.updateFrost(dt, p, dx, dy, d, m);
     else if (this.kind === "golem") this.updateGolem(dt, p, dx, dy, d, m);
     else if (this.kind === "wolf") this.updateWolf(dt, dx, dy, d, m);
@@ -794,9 +876,218 @@ export class Enemy implements Body {
     }
   }
 
-  /** Poldagi ogohlantirishlar (boshqa jonzotlardan oldin chiziladi): ildiz yorig'i, boyo'g'li soyasi. */
+  /** Ninja-soya: yaqinlashish -> tutun -> o'yinchi orqasida paydo bo'lish -> ogohlantirish -> zarba. */
+  private updateNinja(dt: number, p: Target, dx: number, dy: number, d: number, m: number) {
+    this.aiTimer -= dt;
+    if (this.ninjaPhase === "stalk") {
+      if (d > 30) {
+        // to'g'ri emas, yonlab aylanib yaqinlashadi
+        const side = this.orbit * 0.6;
+        this.x += (dx / d + (-dy / d) * side) * NINJA_SPEED * m * dt;
+        this.y += (dy / d + (dx / d) * side) * NINJA_SPEED * m * dt;
+        this.anim.set("walk");
+      } else this.anim.set("idle");
+      if (this.aiTimer <= 0) {
+        this.ninjaPhase = "vanish";
+        this.aiTimer = NINJA_VANISH;
+        this.cue = "vanish";
+        this.showAttackFrame(0);
+      }
+    } else if (this.ninjaPhase === "vanish") {
+      this.showAttackFrame(0);
+      if (this.aiTimer <= 0) {
+        // o'yinchining orqasida (qaragan tomoniga teskari), xona ichida
+        const fl = Math.hypot(p.fx, p.fy) || 1;
+        const edge = ROOM.wall + this.size / 2 + 2;
+        this.x = Math.max(edge, Math.min(ROOM.w - edge, p.x - (p.fx / fl) * NINJA_BEHIND));
+        this.y = Math.max(edge, Math.min(ROOM.h - edge, p.y - (p.fy / fl) * NINJA_BEHIND));
+        this.vx = this.vy = 0;
+        if (p.x !== this.x) this.facingLeft = p.x < this.x;
+        this.ninjaPhase = "warn";
+        this.aiTimer = NINJA_WARN;
+        this.cue = "appear";
+        this.showAttackFrame(1);
+      }
+    } else if (this.ninjaPhase === "warn") {
+      this.showAttackFrame(1);
+      if (this.aiTimer <= 0) {
+        this.ninjaPhase = "strike";
+        this.aiTimer = NINJA_STRIKE;
+        this.cue = "slash";
+        this.showAttackFrame(2);
+        if (d < NINJA_REACH + p.size / 2) p.takeHit(1, this.x, this.y, 170);
+      }
+    } else if (this.ninjaPhase === "strike") {
+      this.showAttackFrame(2);
+      if (this.aiTimer <= 0) {
+        this.ninjaPhase = "rest";
+        this.aiTimer = NINJA_REST;
+      }
+    } else {
+      this.anim.set("idle");
+      if (this.aiTimer <= 0) {
+        this.ninjaPhase = "stalk";
+        this.aiTimer = NINJA_STALK * (0.8 + Math.random() * 0.4);
+      }
+    }
+  }
+
+  /** Tengu-qush: aylanish -> soya (ogohlantirish) -> sho'ng'ish, TENGU_DIVES marta -> dam -> ko'tarilish. */
+  private updateTengu(dt: number, p: Target, m: number) {
+    this.aiTimer -= dt;
+    const fly = (tx: number, ty: number, speed: number) => {
+      const l = Math.hypot(tx - this.x, ty - this.y);
+      if (l < 1) return;
+      const st = Math.min(l, speed * dt);
+      this.x += ((tx - this.x) / l) * st;
+      this.y += ((ty - this.y) / l) * st;
+    };
+    const mark = (time: number) => {
+      this.tenguPhase = "mark";
+      this.aiTimer = time;
+      this.markX = p.x;
+      this.markY = p.y;
+    };
+    if (this.tenguPhase === "soar") {
+      this.alt = TENGU_ALT;
+      const a = this.t * 1.7 * this.orbit;
+      fly(p.x + Math.cos(a) * 56, p.y + Math.sin(a) * 38, TENGU_SPEED * m);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.diveN = 0;
+        mark(TENGU_MARK);
+      }
+    } else if (this.tenguPhase === "mark") {
+      this.alt = TENGU_ALT;
+      fly(this.markX, this.markY, TENGU_SPEED * 1.6 * m);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.tenguPhase = "dive";
+        this.aiTimer = TENGU_DIVE;
+        this.diveFrom = { x: this.x, y: this.y };
+      }
+    } else if (this.tenguPhase === "dive") {
+      const k = Math.min(1, 1 - this.aiTimer / TENGU_DIVE);
+      this.x = this.diveFrom.x + (this.markX - this.diveFrom.x) * k;
+      this.y = this.diveFrom.y + (this.markY - this.diveFrom.y) * k;
+      this.alt = TENGU_ALT * (1 - k);
+      this.showAttackFrame(k < 0.5 ? 0 : 1);
+      if (this.aiTimer <= 0) {
+        this.alt = 0;
+        this.diveN++;
+        this.cue = "dive";
+        this.showAttackFrame(2);
+        if (Math.hypot(p.x - this.x, p.y - this.y) < TENGU_HIT + p.size / 2)
+          p.takeHit(1, this.x, this.y, 170);
+        if (this.diveN < TENGU_DIVES) {
+          this.tenguPhase = "bounce";
+          this.aiTimer = TENGU_BOUNCE;
+        } else {
+          this.tenguPhase = "rest";
+          this.aiTimer = TENGU_REST;
+        }
+      }
+    } else if (this.tenguPhase === "bounce") {
+      // yerdan sapchib qayta ko'tariladi va darhol keyingi nishonni belgilaydi
+      this.alt = TENGU_ALT * Math.min(1, 1 - this.aiTimer / TENGU_BOUNCE);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) mark(TENGU_MARK2);
+    } else if (this.tenguPhase === "rest") {
+      this.alt = 0;
+      if (this.aiTimer > TENGU_REST - 0.25) this.showAttackFrame(2);
+      else this.anim.set("idle");
+      if (this.aiTimer <= 0) {
+        this.tenguPhase = "rise";
+        this.aiTimer = TENGU_RISE;
+      }
+    } else {
+      this.alt = TENGU_ALT * Math.min(1, 1 - this.aiTimer / TENGU_RISE);
+      this.anim.set("walk");
+      if (this.aiTimer <= 0) {
+        this.tenguPhase = "soar";
+        this.aiTimer = TENGU_SOAR;
+      }
+    }
+  }
+
+  /** Kitsune-olov: masofani saqlab yonlab yuradi, olov yig'ib (ogohlantirish) uchta ko'k shar otadi. */
+  private updateKitsune(dt: number, dx: number, dy: number, d: number, m: number) {
+    if (this.foxWindup > 0) {
+      this.foxWindup -= dt;
+      this.showAttackFrame(this.foxWindup > KITSUNE_WINDUP / 2 ? 0 : 1);
+      if (this.foxWindup <= 0) {
+        const a = Math.atan2(dy, dx);
+        const mid = (KITSUNE_SHOTS - 1) / 2;
+        for (let i = 0; i < KITSUNE_SHOTS; i++) {
+          const sa = a + (i - mid) * KITSUNE_SPREAD;
+          this.shots.push({
+            x: this.x,
+            y: this.y - 2,
+            vx: Math.cos(sa) * KITSUNE_SHOT_SPEED,
+            vy: Math.sin(sa) * KITSUNE_SHOT_SPEED,
+          });
+        }
+        this.aiTimer = KITSUNE_CD + Math.random() * 0.5;
+        this.releaseTimer = KITSUNE_RELEASE;
+        this.showAttackFrame(2);
+      }
+      return;
+    }
+    if (this.releaseTimer > 0) {
+      this.releaseTimer -= dt;
+      this.showAttackFrame(2);
+      return;
+    }
+    this.aiTimer -= dt;
+    if (this.aiTimer <= 0) {
+      this.foxWindup = KITSUNE_WINDUP;
+      this.cue = "foxfire";
+      this.showAttackFrame(0);
+      return;
+    }
+    // yaqinlashsa qochadi, uzoqlashsa yaqinlashadi, aks holda aylana bo'ylab yonlab yuradi
+    const away = d < KITSUNE_NEAR ? -1 : d > KITSUNE_FAR ? 1 : 0;
+    const sx = away ? (dx / d) * away : (-dy / d) * this.orbit;
+    const sy = away ? (dy / d) * away : (dx / d) * this.orbit;
+    const nx = this.x + sx * KITSUNE_SPEED * m * dt,
+      ny = this.y + sy * KITSUNE_SPEED * m * dt;
+    this.x = nx;
+    this.y = ny;
+    clampToRoom(this);
+    // devorga taqalsa — teskari tomonga aylanadi (burchakda qolib ketmaydi)
+    if (this.x !== nx || this.y !== ny) this.orbit *= -1;
+    this.anim.set("walk");
+  }
+
+  /**
+   * Poldagi ogohlantirishlar (boshqa jonzotlardan oldin chiziladi): ildiz yorig'i, boyo'g'li va
+   * Tengu soyasi, Ninja zarbasi doirasi.
+   */
   renderFloor(ctx: CanvasRenderingContext2D) {
     if (this.dead) return;
+    if (this.kind === "tengu" && (this.tenguPhase === "mark" || this.tenguPhase === "dive")) {
+      // sho'ng'ish nuqtasida qorayib boruvchi soya va qizil halqa
+      const total = this.diveN ? TENGU_MARK2 : TENGU_MARK;
+      const k = this.tenguPhase === "dive" ? 1 : 1 - Math.max(0, this.aiTimer) / total;
+      ctx.fillStyle = `rgba(0,0,0,${0.25 + 0.35 * k})`;
+      ctx.beginPath();
+      ctx.ellipse(this.markX, this.markY + 6, 7 + 5 * k, 3.5 + 2 * k, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(DANGER.tenguMark, 0.45 + 0.4 * Math.sin(this.t * 25));
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    if (this.kind === "ninja" && this.ninjaPhase === "warn") {
+      // zarba yetadigan doira: tez to'lib boradi
+      const k = 1 - Math.max(0, this.aiTimer) / NINJA_WARN;
+      ctx.strokeStyle = withAlpha(DANGER.ninjaSlash, 0.45 + 0.4 * Math.sin(this.t * 30));
+      ctx.fillStyle = withAlpha(DANGER.ninjaSlash, 0.08 + 0.14 * k);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y + 3, NINJA_REACH, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
     if (this.kind === "treant" && this.rootWarn > 0) {
       // yerdan nishon tomonga o'sib boruvchi siniq yoriq
       const k = 1 - this.rootWarn / ROOT_WARN;
@@ -978,6 +1269,14 @@ export class Enemy implements Body {
     }
     if (this.kind === "frost" && (this.breathWindup > 0 || this.breathShow > 0))
       this.renderBreath(ctx);
+    if (this.kind === "kitsune" && this.foxWindup > 0 && !this.dead) {
+      // dumlarida ko'k olov yig'iladi: kattalashuvchi ko'k doira
+      const k = 1 - this.foxWindup / KITSUNE_WINDUP;
+      ctx.fillStyle = withAlpha(DANGER.foxFire, 0.18 + 0.3 * k);
+      ctx.beginPath();
+      ctx.arc(this.x + (this.facingLeft ? 7 : -7), this.y - 9, 5 + 5 * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
       const a = 0.35 + 0.35 * Math.sin(this.spawn * 20);
@@ -985,9 +1284,11 @@ export class Enemy implements Body {
         ? `rgba(140,215,255,${a})`
         : FOREST_KINDS.has(this.kind)
           ? `rgba(150,235,90,${a})`
-          : this.kind === "imp"
-            ? `rgba(255,120,40,${a})`
-            : `rgba(200,120,255,${a})`;
+          : SAKURA_KINDS.has(this.kind)
+            ? `rgba(255,170,205,${a})`
+            : this.kind === "imp"
+              ? `rgba(255,120,40,${a})`
+              : `rgba(200,120,255,${a})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.x, this.y + 4, 4 + 8 * k, 0, Math.PI * 2);
@@ -1004,7 +1305,10 @@ export class Enemy implements Body {
       this.kind === "archer" ||
       this.kind === "shield" ||
       this.kind === "golem" ||
-      this.kind === "treant";
+      this.kind === "treant" ||
+      this.kind === "ninja";
+    // ninja tutunga aylanayotganda asta so'nadi
+    if (this.hidden) ctx.globalAlpha *= 0.35 + 0.65 * Math.max(0, this.aiTimer / NINJA_VANISH);
     // muz ruhi yarim shaffof, muz slime biroz shaffof
     if (this.kind === "frost") ctx.globalAlpha *= 0.78;
     else if (this.kind === "iceblob") ctx.globalAlpha *= 0.88;
@@ -1036,6 +1340,9 @@ export class Enemy implements Body {
 const ICE_KINDS: ReadonlySet<EnemyKind> = new Set(["frost", "golem", "iceblob", "shield", "wolf"]);
 /** 3-dunyo moblari: paydo bo'lishda yashil doira */
 const FOREST_KINDS: ReadonlySet<EnemyKind> = new Set(["spider", "shroom", "treant", "owl"]);
+
+/** 4-dunyo moblari: paydo bo'lishda pushti doira */
+const SAKURA_KINDS: ReadonlySet<EnemyKind> = new Set(["ninja", "tengu", "kitsune"]);
 
 /** Yerdan chiqqan ildizlar (daraxt odam va O'rmon Shohi): t — chiqqandan beri o'tgan vaqt. */
 export function renderRoots(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {

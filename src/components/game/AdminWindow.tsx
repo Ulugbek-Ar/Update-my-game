@@ -77,7 +77,7 @@ function UnlockTab({
   const [gold, setGold] = useState("1000");
   const [xp, setXp] = useState("500");
   const [level, setLevel] = useState("50");
-  const [world, setWorld] = useState<1 | 2 | 3>(1);
+  const [world, setWorld] = useState<1 | 2 | 3 | 4>(1);
   const [wave, setWave] = useState(0);
   const [reset, setReset] = useState<0 | 1 | 2>(0);
   const [resetText, setResetText] = useState("");
@@ -198,14 +198,14 @@ function UnlockTab({
       </Section>
       <Section title="ISTALGAN JOYDAN BOSHLASH">
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Dunyo">
-          {([1, 2, 3] as const).map((w) => (
+          {([1, 2, 3, 4] as const).map((w) => (
             <button
               key={w}
               aria-pressed={world === w}
               onClick={() => setWorld(w)}
               className={tabBtn(world === w)}
             >
-              {w}-DUNYO
+              {w === 4 ? "SAKURA BOG'I" : `${w}-DUNYO`}
             </button>
           ))}
         </div>

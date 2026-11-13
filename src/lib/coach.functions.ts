@@ -62,6 +62,10 @@ export const getCombatTip = createServerFn({ method: "POST" })
           "treant",
           "owl",
           "king",
+          "ninja",
+          "tengu",
+          "kitsune",
+          "oni",
         ]),
         problem: z.string().max(500),
         hero: z
@@ -97,6 +101,11 @@ export const getCombatTip = createServerFn({ method: "POST" })
       treant: "Daraxt odam (3-dunyo)",
       owl: "Tungi boyo'g'li (3-dunyo)",
       king: "O'rmon Shohi (3-dunyo Bossi)",
+      ninja:
+        "Ninja-soya (Sakura bog'i): tutunga aylanib orqadan paydo bo'ladi, ogohlantirib kesadi",
+      tengu: "Tengu-qush (Sakura bog'i): soyasi tushgan joyga ketma-ket ikki marta sho'ng'iydi",
+      kitsune: "Kitsune-olov (Sakura bog'i): uzoqdan yelpig'ich qilib uchta ko'k olov otadi",
+      oni: "Oni (Sakura bog'i Bossi): gurzi bilan yerga uradi (to'lqin), yo'lak bo'ylab supuradi; 2-fazada olov halqasi va uch zarbali kombo",
     };
     try {
       const result = streamText({

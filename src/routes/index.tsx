@@ -2375,6 +2375,10 @@ function CoachPanel({ hero }: { hero: Hero }) {
     | "treant"
     | "owl"
     | "king"
+    | "ninja"
+    | "tengu"
+    | "kitsune"
+    | "oni"
   >("boss");
   const [problem, setProblem] = useState("");
   const [tip, setTip] = useState("");
@@ -2427,6 +2431,12 @@ function CoachPanel({ hero }: { hero: Hero }) {
             <option value="treant">Daraxt odam</option>
             <option value="owl">Tungi boyo'g'li</option>
             <option value="king">O'rmon Shohi (Boss)</option>
+          </optgroup>
+          <optgroup label="4-DUNYO: Sakura bog'i">
+            <option value="ninja">Ninja-soya</option>
+            <option value="tengu">Tengu-qush</option>
+            <option value="kitsune">Kitsune-olov</option>
+            <option value="oni">Oni (Boss)</option>
           </optgroup>
         </select>
       </label>

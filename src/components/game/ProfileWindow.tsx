@@ -266,9 +266,10 @@ function ProfileTab({ me, rev }: { me: Me; rev: number }) {
       best: readNum(k.best),
       ch2: readNum(k.ch2),
       ch3: readNum(k.ch3),
+      ch4: readNum(k.ch4),
       endless: readNum(k.endless),
     };
-  }).filter((r) => r.best || r.ch2 || r.ch3 || r.endless);
+  }).filter((r) => r.best || r.ch2 || r.ch3 || r.ch4 || r.endless);
   return (
     <>
       <div className="flex items-start gap-3">
@@ -354,6 +355,7 @@ function ProfileTab({ me, rev }: { me: Me; rev: number }) {
               {r.best > 0 && <span>Rekord: {r.best}</span>}
               {r.ch2 > 0 && <span>· 2-dunyo: {r.ch2}</span>}
               {r.ch3 > 0 && <span>· 3-dunyo: {r.ch3}</span>}
+              {r.ch4 > 0 && <span>· Sakura bog'i: {r.ch4}</span>}
               {r.endless > 0 && <span>· Cheksiz: {r.endless}</span>}
             </li>
           ))}

@@ -14,6 +14,7 @@ import {
   WORLD1_WON_KEY,
   WORLD2_WON_KEY,
   WORLD3_WON_KEY,
+  WORLD4_WON_KEY,
   WORLD_WINS_KEY,
 } from "@/game/progress";
 import { UNLOCKED_HEROES_KEY } from "@/game/save";
@@ -176,6 +177,7 @@ export function unlockAll(data: Keys, lists: UnlockLists = defaultLists()): Keys
   out[WORLD1_WON_KEY] = "1";
   out[WORLD2_WON_KEY] = "1";
   out[WORLD3_WON_KEY] = "1";
+  out[WORLD4_WON_KEY] = "1";
   const ids = lists.heroes.map((h) => h.id);
   out[WORLD_WINS_KEY] = JSON.stringify(Object.fromEntries(MAP_WORLDS.map((w) => [w, ids])));
   // bosslar: olam darvozalari kalitlari

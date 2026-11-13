@@ -2,14 +2,15 @@ import type { EnemyKind } from "./enemy";
 import { DODGE_WINDOW_CARD, IAI_RANGE_CARD, KATANA_TIME, type Player } from "./player";
 import type { Hero } from "./hero";
 
-/** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi, 3 — Zulmat o'rmoni */
-export type World = 1 | 2 | 3;
+/** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi, 3 — Zulmat o'rmoni, 4 — Sakura bog'i */
+export type World = 1 | 2 | 3 | 4;
 
 /** Har dunyoning o'z moblari (Bosslardan tashqari): boshqa dunyo moblari chiqmaydi. */
 export const WORLD_KINDS: Record<World, readonly EnemyKind[]> = {
   1: ["blob", "wisp", "rammer", "archer"],
   2: ["iceblob", "frost", "golem", "shield", "wolf"],
   3: ["spider", "shroom", "treant", "owl"],
+  4: ["ninja", "tengu", "kitsune"],
 };
 
 /** 1-dunyo: Olovli zindon. Oxirgi to'lqinda Iblis ham chiqadi. */
@@ -51,6 +52,23 @@ export function waveSpeed3(i: number) {
   return 1.2 + i * 0.05;
 }
 
+/**
+ * 4-dunyo: Sakura bog'i (Samurayning o'z dunyosi) — faqat bog' moblari; 5-to'lqinda Oni.
+ * Moblari ayyorroq (parry va chetlanishni o'rgatadi), shuning uchun soni kamroq.
+ */
+export const WAVES4: EnemyKind[][] = [
+  ["ninja", "ninja", "kitsune"],
+  ["tengu", "tengu", "ninja", "kitsune"],
+  ["kitsune", "kitsune", "ninja", "ninja", "tengu"],
+  ["tengu", "tengu", "ninja", "ninja", "kitsune", "kitsune", "ninja"],
+  ["kitsune", "ninja"],
+];
+
+/** 4-dunyoda dushmanlar 3-dunyodagidek tezlikda. */
+export function waveSpeed4(i: number) {
+  return 1.2 + i * 0.05;
+}
+
 // ---- Cheksiz rejim: Boss mag'lub bo'lgach to'lqinlar indeksi BOSS_WAVE+1 dan davom etadi ----
 /** Har nechanchi cheksiz to'lqinda Boss qaytadi */
 export const ENDLESS_BOSS_EVERY = 5;
@@ -88,7 +106,8 @@ export function waveSpeed(i: number) {
  */
 export function waveEnemies(i: number, rand = Math.random, world: World = 1): EnemyKind[] {
   const n = endlessNumber(i);
-  if (n === 0) return (world === 3 ? WAVES3 : world === 2 ? WAVES2 : WAVES)[i]!;
+  if (n === 0)
+    return (world === 4 ? WAVES4 : world === 3 ? WAVES3 : world === 2 ? WAVES2 : WAVES)[i]!;
   const count = isBossWave(i) ? 2 + n / ENDLESS_BOSS_EVERY : Math.min(16, 5 + n);
   const kinds = WORLD_KINDS[world];
   return Array.from({ length: count }, () => kinds[Math.floor(rand() * kinds.length)]!);

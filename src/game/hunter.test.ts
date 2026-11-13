@@ -288,6 +288,7 @@ describe("Ovchi: do'kon, yutuqlar, rekordlar, kunlik sinov", () => {
       endless: "pixel-rpg-endless-best-hunter",
       ch2: "pixel-rpg-best-ch2-hunter",
       ch3: "pixel-rpg-best-ch3-hunter",
+      ch4: "pixel-rpg-best-ch4-hunter",
     });
   });
 

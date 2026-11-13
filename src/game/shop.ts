@@ -24,6 +24,9 @@ export const KILL_GOLD: Record<EnemyKind, number> = {
   treant: 4,
   owl: 2,
   imp: 1,
+  ninja: 3,
+  tengu: 3,
+  kitsune: 3,
 };
 export const BOSS_GOLD = 25;
 

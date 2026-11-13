@@ -14,14 +14,15 @@ import { bestKeys } from "./hero";
 beforeEach(() => localStorage.clear());
 
 describe("Sarguzasht xaritasi: qulflar", () => {
-  it("a fresh player sees only world 1 open; worlds 2 and 3 are locked", () => {
+  it("a fresh player sees only world 1 open; worlds 2, 3 and Sakura bog'i are locked", () => {
     const s = new MapState([1, 2, 3]);
-    expect(s.open).toEqual({ 1: true, 2: false, 3: false });
+    expect(s.open).toEqual({ 1: true, 2: false, 3: false, 4: false });
     expect(s.sel).toBe(1);
     expect(MAP_NODES.map((n) => n.name)).toEqual([
       "OLOVLI ZINDON",
       "MUZ SARDOBASI",
       "ZULMAT O'RMONI",
+      "SAKURA BOG'I",
     ]);
   });
 
@@ -41,8 +42,11 @@ describe("Sarguzasht xaritasi: qulflar", () => {
     expect(s.sel).toBe(1);
     s.move(1);
     s.move(1);
-    s.move(1);
     expect(s.sel).toBe(3);
+    // oxirgisi — Sakura bog'i
+    s.move(1);
+    s.move(1);
+    expect(s.sel).toBe(4);
   });
 
   it("winning world 1 opens world 2, winning world 2 opens world 3", () => {
@@ -52,7 +56,8 @@ describe("Sarguzasht xaritasi: qulflar", () => {
     recordWorldWin(2, "mage");
     expect(isWorldOpen(3)).toBe(true);
     const s = new MapState([1, 2, 3]);
-    expect(s.open).toEqual({ 1: true, 2: true, 3: true });
+    // Sakura bog'i dunyolar bilan emas, Samuray qiz bilan ochiladi
+    expect(s.open).toEqual({ 1: true, 2: true, 3: true, 4: false });
     expect(s.wins[1]).toEqual(["knight"]);
     expect(s.wins[2]).toEqual(["mage"]);
     s.move(1);
@@ -96,7 +101,7 @@ describe("Sarguzasht xaritasi: qulflar", () => {
     expect(worldBest(2)).toBe(800);
     expect(worldBest(3)).toBe(0);
     const s = new MapState();
-    expect(s.best).toEqual({ 1: 1500, 2: 800, 3: 0 });
+    expect(s.best).toEqual({ 1: 1500, 2: 800, 3: 0, 4: 0 });
   });
 
   it("finds the clicked world node", () => {

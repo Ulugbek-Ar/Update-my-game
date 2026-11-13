@@ -1,18 +1,23 @@
 /** Dunyolar bo'yicha yutuqlar: xarita qulflari, eng yaxshi ochko va yutgan qahramonlar (localStorage). */
 import { loadAchievements } from "./achievements";
 import { HEROES, bestKeys, type Hero } from "./hero";
+import { isHeroUnlocked } from "./save";
 
-export type MapWorld = 1 | 2 | 3;
-export const MAP_WORLDS: readonly MapWorld[] = [1, 2, 3];
+export type MapWorld = 1 | 2 | 3 | 4;
+export const MAP_WORLDS: readonly MapWorld[] = [1, 2, 3, 4];
+/** Sakura bog'i — Samuray qizning o'z dunyosi: oldingi dunyo emas, qahramonning o'zi ochadi */
+export const SAKURA_WORLD = 4;
 
 /** Dunyo yutilgan belgisi (1-dunyoniki v1.9.0 dan beri bor) */
 export const WORLD1_WON_KEY = "pixel-rpg-world1-won";
 export const WORLD2_WON_KEY = "pixel-rpg-world2-won";
 export const WORLD3_WON_KEY = "pixel-rpg-world3-won";
+export const WORLD4_WON_KEY = "pixel-rpg-world4-won";
 const WON_KEYS: Record<MapWorld, string> = {
   1: WORLD1_WON_KEY,
   2: WORLD2_WON_KEY,
   3: WORLD3_WON_KEY,
+  4: WORLD4_WON_KEY,
 };
 /** Har dunyoni qaysi qahramonlar yutgan: { "1": ["knight"], ... } */
 export const WORLD_WINS_KEY = "pixel-rpg-world-wins";
@@ -35,11 +40,11 @@ function set(key: string, v: string) {
 /** Dunyo bo'yicha rekord kaliti (1-dunyo — umumiy o'yin rekordi). */
 function bestKey(w: MapWorld, h: Hero) {
   const k = bestKeys(h);
-  return w === 1 ? k.best : w === 2 ? k.ch2 : k.ch3;
+  return w === 1 ? k.best : w === 2 ? k.ch2 : w === 3 ? k.ch3 : k.ch4;
 }
 
 function storedWins(): Record<MapWorld, Hero[]> {
-  const out: Record<MapWorld, Hero[]> = { 1: [], 2: [], 3: [] };
+  const out: Record<MapWorld, Hero[]> = { 1: [], 2: [], 3: [], 4: [] };
   try {
     const raw = JSON.parse(get(WORLD_WINS_KEY) ?? "null") as Record<string, unknown> | null;
     if (!raw || typeof raw !== "object") return out;
@@ -72,6 +77,7 @@ export function worldWins(): Record<MapWorld, Hero[]> {
   for (const h of HEROES) {
     if (Number(get(bestKey(2, h))) > 0) add(2, h);
     if (Number(get(bestKey(3, h))) > 0) add(3, h);
+    if (Number(get(bestKey(4, h))) > 0) add(4, h);
   }
   return wins;
 }
@@ -91,8 +97,12 @@ export function isWorldWon(w: MapWorld) {
   return w === 2 && loadAchievements().has("queen");
 }
 
-/** Xaritada dunyo ochiqmi: oldingi dunyo yutilgan bo'lishi kerak. */
+/**
+ * Xaritada dunyo ochiqmi: oldingi dunyo yutilgan bo'lishi kerak. Sakura bog'i bundan mustasno —
+ * u Samuray qiz bilan birga ochiladi (qahramon sotib olingan yoki sovg'a qilingan bo'lsa).
+ */
 export function isWorldOpen(w: MapWorld) {
+  if (w === SAKURA_WORLD) return isHeroUnlocked("samurai");
   return w === 1 || isWorldWon((w - 1) as MapWorld);
 }
 

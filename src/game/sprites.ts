@@ -1,4 +1,5 @@
 import type { AnimState } from "./animation";
+import { ONI_GRID, drawSakura } from "./sakuraSprites";
 
 export type SpriteKind =
   | "knight"
@@ -37,7 +38,11 @@ export type SpriteKind =
   | "obsguard"
   | "monk"
   | "ashking"
-  | "ashspirit";
+  | "ashspirit"
+  | "ninja"
+  | "tengu"
+  | "kitsune"
+  | "oni";
 type Point = readonly [number, number];
 type Pose = {
   bob: number;
@@ -227,6 +232,14 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   ashking: ["#120403", "#261c1a", "#4c3e3a", "#ff6a1a", "#ffe08a"],
   // Kul ruhi: siyoh, to'q tutun, kul tutun, cho'g', qizigan uchqun
   ashspirit: ["#0b0807", "#2e2a2c", "#6e6862", "#ff5a1a", "#ffd36a"],
+  // Sakura bog'i. Ninja-soya: siyoh, to'q ko'k libos, och ko'k (qat va tutun), qizil sharf va ko'z, po'lat
+  ninja: ["#08060c", "#2a2748", "#4d4a80", "#c8324a", "#e8e4f0"],
+  // Tengu-qush: siyoh, qora qanot, oq yol va to'n, qizil yuz va burun, oltin ko'z va tirnoq
+  tengu: ["#0c0808", "#2e2838", "#e4e0ea", "#c8362e", "#f2c24a"],
+  // Kitsune-olov: siyoh, soya junlari, oq jun, qizil belgilar, ko'k olov va ko'z
+  kitsune: ["#0c0a10", "#8a8698", "#f0ecf6", "#e0562a", "#5ab8ff"],
+  // Oni: siyoh, to'q qizil soya, qizil teri, temir (gurzi, yol, kamar), suyak (shox, tish, ko'z)
+  oni: ["#100608", "#6a1418", "#d03a30", "#3c3a4a", "#f2e4c4"],
 };
 
 /**
@@ -234,7 +247,7 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
  * n — to'r o'lchami (odatda 32; Paladin ulkan qilichi uchun kattaroq), ox/oy — chizish siljishi:
  * tana 32x32 koordinatalarda chiziladi, katta to'rning o'rtasiga tushadi.
  */
-class Pixels {
+export class Pixels {
   data: Uint8Array;
   ox = 0;
   oy = 0;
@@ -4812,13 +4825,20 @@ export function spriteGrid(kind: SpriteKind) {
       ? SAMURAI_GRID
       : kind === "ashking"
         ? KING_GRID
-        : 32;
+        : kind === "oni"
+          ? ONI_GRID
+          : 32;
 }
 
 export function spritePixels(kind: SpriteKind, state: AnimState, frame: number, back = false) {
   if (kind === "paladin") return paladinPixels(state, frame, back);
   if (kind === "samurai") return samuraiPixels(state, frame, back);
   if (kind === "ashking") return kingPixels(state, frame);
+  if (kind === "ninja" || kind === "tengu" || kind === "kitsune" || kind === "oni") {
+    const p = new Pixels(kind === "oni" ? ONI_GRID : 32);
+    drawSakura(p, kind, state, frame, back);
+    return p.outlined();
+  }
   if (kind === "ashspirit") {
     const p = new Pixels();
     if (state === "death") ashSpiritFallen(p, Math.min(2, Math.max(0, frame)));
@@ -5081,21 +5101,24 @@ export function spriteSize(kind: SpriteKind) {
       : kind === "samurai"
         ? // Samuray: tana 32 px, katta to'r — katana va soch dumi uchun (1 to'r piksel = 1 px)
           SAMURAI_GRID
-        : kind === "demon" || kind === "queen" || kind === "king"
-          ? 64
-          : kind === "golem" || kind === "treant"
-            ? 40
-            : kind === "slime" ||
-                kind === "bat" ||
-                kind === "imp" ||
-                kind === "frost" ||
-                kind === "iceblob" ||
-                kind === "spider" ||
-                kind === "owl"
-              ? 26
-              : kind === "shroom"
-                ? 28
-                : 32)
+        : kind === "oni"
+          ? // Oni: 40x40 to'r, boshqa bosslardek 2 baravar — ulardan kattaroq ko'rinadi
+            ONI_GRID * 2
+          : kind === "demon" || kind === "queen" || kind === "king"
+            ? 64
+            : kind === "golem" || kind === "treant"
+              ? 40
+              : kind === "slime" ||
+                  kind === "bat" ||
+                  kind === "imp" ||
+                  kind === "frost" ||
+                  kind === "iceblob" ||
+                  kind === "spider" ||
+                  kind === "owl"
+                ? 26
+                : kind === "shroom"
+                  ? 28
+                  : 32)
   );
 }
 

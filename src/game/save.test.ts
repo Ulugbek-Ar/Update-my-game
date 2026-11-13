@@ -66,7 +66,7 @@ describe("Saqlash migratsiyasi (v1.9 -> 2.0)", () => {
     expect(worldWins()[2]).toEqual(["knight"]);
     expect(localStorage.getItem(WORLD2_WON_KEY)).toBe("1");
     const s = new MapState();
-    expect(s.open).toEqual({ 1: true, 2: true, 3: true });
+    expect(s.open).toEqual({ 1: true, 2: true, 3: true, 4: false });
     expect(s.best[1]).toBe(4210);
     expect(s.best[2]).toBe(6100);
   });
@@ -89,6 +89,6 @@ describe("Saqlash migratsiyasi (v1.9 -> 2.0)", () => {
     localStorage.clear();
     expect(migrateSave()).toBe(true);
     expect(loadGold()).toBe(0);
-    expect(new MapState().open).toEqual({ 1: true, 2: false, 3: false });
+    expect(new MapState().open).toEqual({ 1: true, 2: false, 3: false, 4: false });
   });
 });

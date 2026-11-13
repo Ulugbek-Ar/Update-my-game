@@ -90,6 +90,33 @@ describe("Har qahramon bilan har boss (bot jangi)", () => {
       });
 });
 
+describe("Samuray bilan har boss (bot jangi)", () => {
+  for (const world of [1, 2, 3] as World[])
+    it(`samurai vs ${world === 1 ? "Iblis" : world === 2 ? "Qor Malikasi" : "O'rmon Shohi"}`, () => {
+      unlockHero("samurai");
+      const r = playBoss("samurai", world);
+      expect(r.hero).toBe("samurai");
+      expect(r.dead).toBe(true);
+      expect([...r.phases].sort()).toEqual([1, 2, 3]);
+      expect(r.t).toBeGreaterThan(60);
+      expect(r.t).toBeLessThan(160);
+    });
+});
+
+describe("Oni (Sakura bog'i) — har qahramon bilan (bot jangi)", () => {
+  for (const hero of ["knight", "mage", "hunter", "gunner", "paladin", "samurai"] as Hero[])
+    it(`${hero} vs Oni`, () => {
+      unlockHero(hero);
+      const r = playBoss(hero, 4);
+      expect(r.hero).toBe(hero);
+      expect(r.dead).toBe(true);
+      // Oni ikki fazali: niqob yarim jonda yoriladi
+      expect([...r.phases].sort()).toEqual([1, 2]);
+      expect(r.t).toBeGreaterThan(60);
+      expect(r.t).toBeLessThan(160);
+    });
+});
+
 describe("Paladin bilan har boss (bot jangi)", () => {
   for (const world of [1, 2, 3] as World[])
     it(`paladin vs ${world === 1 ? "Iblis" : world === 2 ? "Qor Malikasi" : "O'rmon Shohi"}`, () => {

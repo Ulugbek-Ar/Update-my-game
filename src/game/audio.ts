@@ -3,7 +3,7 @@ import { TONES, type ToneKind } from "./skinFx";
 export const MUTE_KEY = "pixel-rpg-muted";
 
 export type MusicTrack =
-  "normal" | "boss" | "ice" | "queen" | "forest" | "king" | "ash" | "ashking";
+  "normal" | "boss" | "ice" | "queen" | "forest" | "king" | "ash" | "ashking" | "sakura" | "oni";
 
 /** Fon musiqasi treki: har qadamda bitta nota (MIDI raqami, null — pauza). */
 export interface Track {
@@ -104,6 +104,36 @@ export const TRACKS: Record<MusicTrack, Track> = {
     bass: [
       31, 31, 43, 31, 31, 31, 43, 31, 32, 32, 44, 32, 30, 30, 42, 30,
       31, 31, 43, 31, 27, 27, 39, 27, 26, 26, 38, 26, 30, 30, 42, 30,
+    ],
+    leadWave: "square",
+    bassWave: "sawtooth",
+    kick: 2,
+  },
+  // Sakura bog'i: yapon "in" ladi (re, mi-bemol, sol, lya, si-bemol) — sokin, koto chertishidek
+  sakura: {
+    step: 60 / 84 / 2,
+    lead: [
+      69, null, 70, 69, 67, null, 63, 62, null, null, 62, 63, 67, null, null, null,
+      69, null, 74, 70, 69, null, 67, 63, 62, null, null, 63, 62, null, null, null,
+    ],
+    bass: [
+      38, null, null, null, 45, null, null, null, 38, null, null, 43, null, null, null, null,
+      38, null, null, null, 46, null, null, 45, 38, null, null, null, 43, null, 38, null,
+    ],
+    leadWave: "triangle",
+    bassWave: "sine",
+    kick: 0,
+  },
+  // Oni: o'sha lad, tez va og'ir — har ikki qadamda tayko barabani, arra bas
+  oni: {
+    step: 60 / 150 / 2,
+    lead: [
+      74, null, 75, 74, 70, null, 69, 67, 69, null, 70, null, 67, null, 63, 62,
+      74, 74, 75, 79, 82, null, 79, 75, 74, null, 70, 69, 67, null, null, null,
+    ],
+    bass: [
+      26, 26, 38, 26, 26, 26, 38, 26, 27, 27, 39, 27, 31, 31, 43, 31,
+      26, 26, 38, 26, 26, 26, 38, 26, 34, 34, 46, 34, 33, 33, 45, 33,
     ],
     leadWave: "square",
     bassWave: "sawtooth",
@@ -520,6 +550,36 @@ class SoundFX {
   warn() {
     this.tone(520, 0.08, "square", 0.05, 760);
     this.tone(620, 0.1, "square", 0.05, 900, 0.1);
+  }
+
+  /** Ninja-soya orqada paydo bo'ldi — qisqa o'tkir "shing" (zarba oldidan ogohlantirish) */
+  ninja() {
+    this.noise(0.05, 0.04, 6000);
+    this.tone(1900, 0.12, "triangle", 0.05, 2600);
+  }
+
+  /** Ninja kesdi */
+  ninjaSlash() {
+    this.noise(0.07, 0.05, 4500);
+    this.tone(1500, 0.08, "square", 0.03, 700);
+  }
+
+  /** Tengu sho'ng'idi — pastga tushuvchi hushtak va zarb */
+  swoop() {
+    this.tone(1200, 0.14, "triangle", 0.04, 300);
+    this.tone(120, 0.12, "square", 0.05, 60, 0.1);
+  }
+
+  /** Kitsune ko'k olov yig'moqda — ko'tariluvchi jarang */
+  foxCharge() {
+    this.tone(520, 0.5, "sine", 0.035, 1100);
+    this.tone(780, 0.4, "triangle", 0.02, 1500, 0.1);
+  }
+
+  /** Kitsune uchta ko'k olov otdi */
+  foxfire() {
+    this.tone(900, 0.18, "triangle", 0.05, 420);
+    this.tone(1350, 0.14, "sine", 0.03, 700, 0.03);
   }
 
   /** Boss bo'kirishi */

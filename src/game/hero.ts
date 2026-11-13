@@ -242,6 +242,7 @@ export function bestKeys(h: Hero) {
         endless: "pixel-rpg-endless-best",
         ch2: "pixel-rpg-best-ch2",
         ch3: "pixel-rpg-best-ch3",
+        ch4: "pixel-rpg-best-ch4",
       }
     : {
         best: `pixel-rpg-best-${h}`,
@@ -249,5 +250,7 @@ export function bestKeys(h: Hero) {
         // 2- va 3-dunyoni yutgan o'yinlar rekordi alohida
         ch2: `pixel-rpg-best-ch2-${h}`,
         ch3: `pixel-rpg-best-ch3-${h}`,
+        // 4-dunyo — Sakura bog'i
+        ch4: `pixel-rpg-best-ch4-${h}`,
       };
 }

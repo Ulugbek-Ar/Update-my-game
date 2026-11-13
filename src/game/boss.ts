@@ -172,7 +172,7 @@ export class Boss implements Body {
   takeDamage(dmg: number) {
     if (this.dead || this.invulnerable) return false;
     if (this.hp - dmg > 0) {
-      const floor = phaseFloor(this.phase, this.maxHp);
+      const floor = this.phaseEdge();
       if (this.hp - dmg < floor) dmg = Math.max(0, this.hp - floor);
     }
     this.hp -= dmg;
@@ -189,7 +189,7 @@ export class Boss implements Body {
     if (!this.justBerserk && this.berserk && this.fightT - dt < BERSERK_TIME)
       this.justBerserk = true;
     if (this.guard > 0) this.guard -= dt;
-    const ph = phaseFor(this.hp, this.maxHp);
+    const ph = this.phaseAt();
     if (ph > this.phase) {
       this.phase = ph;
       this.justPhased = true;
@@ -199,8 +199,28 @@ export class Boss implements Body {
     this.step(this.berserk ? dt * BERSERK_SPEED : dt, p);
   }
 
-  /** Samuray zarbani parry qildi (zarba bekor): boss o'ziga xos javob beradi (Oni gandiraklaydi). */
-  parried() {}
+  /** Jon ulushiga mos faza (ikki fazali Oni o'zinikini beradi). */
+  protected phaseAt(): BossPhase {
+    return phaseFor(this.hp, this.maxHp);
+  }
+
+  /** Joriy fazaning pastki chegarasi (jon): zarba undan o'tib ketmaydi. */
+  protected phaseEdge() {
+    return phaseFloor(this.phase, this.maxHp);
+  }
+
+  /** Jon chizig'idagi faza chegaralari (ulush): HUD belgilari va fazalar soni shundan. */
+  get phaseMarks(): readonly number[] {
+    return [PHASE2_AT, PHASE3_AT];
+  }
+
+  /**
+   * Samuray zarbani parry qildi (zarba bekor): boss o'ziga xos javob beradi. true — boss
+   * gandiraklab qoldi (Oni); boshqa bosslar faqat sekinlashadi (Game).
+   */
+  parried(): boolean {
+    return false;
+  }
 
   /** Yangi fazaga o'tganda (har boss o'zinikini qo'shadi). */
   protected onPhase(ph: BossPhase) {

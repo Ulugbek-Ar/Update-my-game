@@ -1,7 +1,7 @@
 import { ROOM, applyHit, clampToRoom, overlap, px, separate, type Body } from "./animation";
 import { Input } from "./input";
 import { Player } from "./player";
-import { Enemy, GOLEM_SPLIT, ICEBLOB_CHILL, OWL_ALT, type EnemyKind } from "./enemy";
+import { Enemy, GOLEM_SPLIT, ICEBLOB_CHILL, OWL_ALT, TENGU_ALT, type EnemyKind } from "./enemy";
 import {
   Boss,
   ForestKing,
@@ -15,6 +15,18 @@ import {
   summonCount,
 } from "./boss";
 import { INTRO_TIME, bossHpFor } from "./bossPower";
+import { ONI_HP, Oni } from "./oni";
+import {
+  PETALS,
+  PETALS_REDUCED,
+  SAKURA_BOSS_COLORS,
+  SAKURA_COLORS,
+  renderPetals,
+  renderSakuraLights,
+  sakuraDecor,
+  sakuraTile,
+  sakuraWalls,
+} from "./sakura";
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings, onSettingsChange } from "./settings";
@@ -35,6 +47,7 @@ import {
   waveSpeed,
   waveSpeed2,
   waveSpeed3,
+  waveSpeed4,
   type World,
   upgradeIcon,
   isChestWave,
@@ -305,6 +318,9 @@ const KILL_POINTS: Record<EnemyKind, number> = {
   treant: 40,
   owl: 20,
   imp: 15,
+  ninja: 25,
+  tengu: 25,
+  kitsune: 25,
 };
 const KILL_COLOR: Record<EnemyKind, string> = {
   blob: "#5bc85b",
@@ -321,6 +337,9 @@ const KILL_COLOR: Record<EnemyKind, string> = {
   treant: "#6b4a2a",
   owl: "#c9b8a0",
   imp: "#ff6a2a",
+  ninja: "#4d4a80",
+  tengu: "#e4e0ea",
+  kitsune: "#5ab8ff",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -339,6 +358,8 @@ interface FloorTheme {
   ice?: boolean;
   /** 3-dunyo: o'rmon tuprog'i, ildizlar, qo'ziqorinlar, devorda daraxt tanalari */
   forest?: boolean;
+  /** 4-dunyo: kechki bog' maysasi, hovuz va ko'prik, sakura daraxtlari (sakura.ts) */
+  sakura?: boolean;
 }
 const STONE_WALLS = { wall: "#5c4a6e", wallDark: "#4a3b59", brick: "#6e5a82" };
 const FLOORS: FloorTheme[] = [
@@ -392,7 +413,15 @@ const FOREST_FLOOR: FloorTheme = {
 };
 /** O'rmon Shohi xonasi: to'qroq, polda nurli ildizlar */
 const FOREST_BOSS_FLOOR: FloorTheme = { ...FOREST_FLOOR, a: "#161e15", b: "#161e15" };
-/** Pol variantlari: -1 Iblis xonasi, -2 muz, -3 Malika xonasi, -4 o'rmon, -5 Shoh xonasi */
+/** 4-dunyo: Sakura bog'i va Oni xonasi (chizilishi — sakura.ts) */
+const SAKURA_FLOOR: FloorTheme = { ...SAKURA_COLORS, moss: 0, red: false, sakura: true };
+const SAKURA_BOSS_FLOOR: FloorTheme = { ...SAKURA_BOSS_COLORS, moss: 0, red: false, sakura: true };
+/**
+ * Pol variantlari: -1 Iblis xonasi, -2 muz, -3 Malika xonasi, -4 o'rmon, -5 Shoh xonasi,
+ * -6 Sakura bog'i, -7 Oni xonasi
+ */
+const FLOOR_SAKURA = -6;
+const FLOOR_SAKURA_BOSS = -7;
 const FLOOR_ICE = -2;
 const FLOOR_ICE_BOSS = -3;
 const FLOOR_FOREST = -4;
@@ -402,13 +431,21 @@ const QUEEN_POINTS = 500;
 const QUEEN_GOLD = 40;
 const KING_POINTS = 700;
 const KING_GOLD = 50;
+const ONI_POINTS = 800;
+const ONI_GOLD = 55;
 /** Har dunyo nomi (to'lqin bannerida) va Bossi */
 const WORLD_TITLES: Record<World, string> = {
   1: "1-DUNYO: OLOVLI ZINDON",
   2: "2-DUNYO: MUZ SARDOBASI",
   3: "3-DUNYO: ZULMAT O'RMONI",
+  4: "4-DUNYO: SAKURA BOG'I",
 };
-const WORLD_COLORS: Record<World, string> = { 1: "#ffcc33", 2: "#9fd0ef", 3: "#a6f08e" };
+const WORLD_COLORS: Record<World, string> = {
+  1: "#ffcc33",
+  2: "#9fd0ef",
+  3: "#a6f08e",
+  4: "#ff8fb8",
+};
 /** Muz qalqoni ta'siri */
 const FROST_RADIUS = 56;
 const FROST_TIME = 1.5;
@@ -421,6 +458,7 @@ const BOSS_CARDS = {
   devil: { name: "IBLIS", nick: "OLOVLI ZINDON HUKMDORI", color: "#ff6a2a" },
   queen: { name: "QOR MALIKASI", nick: "ABADIY MUZ BEKASI", color: "#7fe9ff" },
   king: { name: "O'RMON SHOHI", nick: "ZULMAT O'RMONI QALBI", color: "#d8ff7a" },
+  oni: { name: "ONI", nick: "SAKURA BOG'INING LA'NATI", color: "#ff6a5a" },
 } as const;
 /** Faza almashganda banner: [2-faza, 3-faza] */
 const PHASE_BANNERS = {
@@ -436,6 +474,8 @@ const PHASE_BANNERS = {
     { title: "2-FAZA: HAYOT GULLARI", sub: "Gullarni yo'q qil!" },
     { title: "3-FAZA: ZULMAT", sub: "Svetlyachoklarga qara!" },
   ],
+  // Oni ikki fazali
+  oni: [{ title: "2-FAZA: NIQOB YORILDI", sub: "Olov halqasi va uch zarba!" }],
 } as const;
 /** Muz polda sirpanish: harakat shu tezlikda (1/s) yangi yo'nalishga moslashadi */
 const ICE_GRIP = 2.2;
@@ -643,6 +683,9 @@ export class Game {
   newCh2Best = false;
   ch3Best = 0;
   newCh3Best = false;
+  /** 4-dunyo (Sakura bog'i) rekordi */
+  ch4Best = 0;
+  newCh4Best = false;
   /** Dunyo boshidagi kuchlar va ochko — 2-/3-dunyoda o'lganda shu holatdan qayta boshlanadi */
   private chStart: { powers: Powers; score: number; tags: TagCounts } | null = null;
   /** Shu o'yinda olingan kartalar teglari (sinergiyalar — synergy.ts) */
@@ -741,6 +784,7 @@ export class Game {
     this.endlessBest = load(bestKeys(hero).endless);
     this.ch2Best = load(bestKeys(hero).ch2);
     this.ch3Best = load(bestKeys(hero).ch3);
+    this.ch4Best = load(bestKeys(hero).ch4);
     this.totalGold = loadGold();
     const settings = loadSettings();
     this.shakeOn = settings.shake;
@@ -838,6 +882,7 @@ export class Game {
     this.noDeathRun = false;
     this.newCh2Best = false;
     this.newCh3Best = false;
+    this.newCh4Best = false;
     this.input.clearQueued();
     if (this.daily) {
       // kunlik sinov: har safar bir xil seed — bir xil to'lqinlar va kartalar
@@ -869,7 +914,7 @@ export class Game {
     this.startPick = true;
     this.stage = this.choices.length ? "upgrade" : "fight";
     if (!this.choices.length) this.beginWorld();
-    sfx.playMusic(this.chapter === 3 ? "forest" : "ice");
+    sfx.playMusic(this.chapter === 4 ? "sakura" : this.chapter === 3 ? "forest" : "ice");
   }
 
   /**
@@ -942,24 +987,33 @@ export class Game {
     // muz dunyosi: 2-dunyo va undan keyingi cheksiz rejim; o'rmon — 3-dunyo
     const ice = ch === 2;
     const forest = ch === 3;
+    const sakura = ch === 4;
     // qobiliyat ko'rsatmasi chizish paytida yoziladi: telefonda — tugma nomi, kompyuterda —
     // belgilangan tugma (o'yin yaratilganda touch hali ma'lum emas)
     const hint = i === 0 && !this.hints.length;
     this.banner = later
       ? boss
-        ? forest
-          ? { title: "BOSS: O'RMON SHOHI", sub: "Yoriqlardan qoch!", timer: 2.2 }
-          : { title: "BOSS: QOR MALIKASI", sub: "Ko'k doiradan qoch!", timer: 2.2 }
+        ? sakura
+          ? { title: "BOSS: ONI", sub: "Gurzidan chetlan yoki zarbani qaytar!", timer: 2.2 }
+          : forest
+            ? { title: "BOSS: O'RMON SHOHI", sub: "Yoriqlardan qoch!", timer: 2.2 }
+            : { title: "BOSS: QOR MALIKASI", sub: "Ko'k doiradan qoch!", timer: 2.2 }
         : i === 0
           ? { title: WORLD_TITLES[ch], sub: `TO'LQIN 1/${TOTAL_WAVES}`, timer: 2.6 }
           : { title: `TO'LQIN ${i + 1}/${TOTAL_WAVES}`, sub: `${ch}-DUNYO`, timer: 1.6 }
       : boss
         ? endless
-          ? forest
-            ? { title: "SHOH QAYTDI!", sub: `Shoh joni: ${bossHp(i, KING_HP)}`, timer: 2.2 }
-            : ice
-              ? { title: "MALIKA QAYTDI!", sub: `Malika joni: ${bossHp(i, QUEEN_HP)}`, timer: 2.2 }
-              : { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
+          ? sakura
+            ? { title: "ONI QAYTDI!", sub: `Oni joni: ${bossHp(i, ONI_HP)}`, timer: 2.2 }
+            : forest
+              ? { title: "SHOH QAYTDI!", sub: `Shoh joni: ${bossHp(i, KING_HP)}`, timer: 2.2 }
+              : ice
+                ? {
+                    title: "MALIKA QAYTDI!",
+                    sub: `Malika joni: ${bossHp(i, QUEEN_HP)}`,
+                    timer: 2.2,
+                  }
+                : { title: "BOSS QAYTDI!", sub: `Iblis joni: ${bossHp(i)}`, timer: 2.2 }
           : { title: "BOSS: IBLIS", sub: "Qizil doiradan qoch!", timer: 2.2 }
         : endless
           ? { title: `CHEKSIZ: ${endless}-TO'LQIN`, sub: "", timer: 1.6 }
@@ -980,7 +1034,13 @@ export class Game {
       const [x, y] = this.spawnPoint();
       const e = new Enemy(kind, x, y);
       e.spawn = e.spawnMax = 1 + n * 0.18 + (boss ? 1.2 : 0);
-      e.speedMul = later ? (forest ? waveSpeed3(i) : waveSpeed2(i)) : waveSpeed(i);
+      e.speedMul = later
+        ? sakura
+          ? waveSpeed4(i)
+          : forest
+            ? waveSpeed3(i)
+            : waveSpeed2(i)
+        : waveSpeed(i);
       this.enemies.push(e);
     });
     this.fx.snowOn = ice;
@@ -1002,11 +1062,13 @@ export class Game {
       // boss joni o'yinchining shu paytdagi kuchiga moslashadi (bossPower.ts)
       const cycle = Math.floor(endless / ENDLESS_BOSS_EVERY);
       const p = this.player;
-      this.boss = forest
-        ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor()))
-        : ice
-          ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor()))
-          : new Boss(bossHpFor(p, bossHp(i), cycle, this.powerFactor()));
+      this.boss = sakura
+        ? new Oni(bossHpFor(p, bossHp(i, ONI_HP), cycle, this.powerFactor()))
+        : forest
+          ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor()))
+          : ice
+            ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor()))
+            : new Boss(bossHpFor(p, bossHp(i), cycle, this.powerFactor()));
       // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
       this.intro = INTRO_TIME;
       this.boss.spawn = this.boss.spawnMax = INTRO_TIME + 0.4;
@@ -1016,22 +1078,32 @@ export class Game {
     } else sfx.wave();
     sfx.playMusic(
       boss
-        ? forest
-          ? "king"
-          : ice
-            ? "queen"
-            : "boss"
-        : forest
-          ? "forest"
-          : ice
-            ? "ice"
-            : "normal",
+        ? sakura
+          ? "oni"
+          : forest
+            ? "king"
+            : ice
+              ? "queen"
+              : "boss"
+        : sakura
+          ? "sakura"
+          : forest
+            ? "forest"
+            : ice
+              ? "ice"
+              : "normal",
     );
   }
 
   /** Kirish kartochkasi va faza bannerlari uchun boss turi. */
   bossKind(b: Boss = this.boss!) {
-    return b instanceof ForestKing ? "king" : b instanceof Queen ? "queen" : "devil";
+    return b instanceof Oni
+      ? "oni"
+      : b instanceof ForestKing
+        ? "king"
+        : b instanceof Queen
+          ? "queen"
+          : "devil";
   }
 
   /** Kirish sahnasini o'tkazib yuborish (klaviatura, sensor yoki sichqoncha). */
@@ -1131,7 +1203,7 @@ export class Game {
    * Boss yengildi: keyingi dunyoga kuchlar, yuraklar va ochko saqlanadi, 1 yurak tiklanadi.
    * 1-dunyodan 2-ga o'tishda "Ikki dunyo" yutug'i uchun o'lmasdan o'ynash hisobi boshlanadi.
    */
-  startChapter(n: 2 | 3 = 2) {
+  startChapter(n: 2 | 3 | 4 = 2) {
     if (n === 2) this.noDeathRun = true;
     this.chapter = n;
     const p = this.player;
@@ -1180,6 +1252,7 @@ export class Game {
     this.newBest = false;
     this.newCh2Best = false;
     this.newCh3Best = false;
+    this.newCh4Best = false;
     this.combo = 0;
     this.comboTimer = 0;
     this.killsForHeal = 0;
@@ -1877,24 +1950,33 @@ export class Game {
     else {
       const queen = t instanceof Queen;
       const king = t instanceof ForestKing;
-      const pts = king ? KING_POINTS : queen ? QUEEN_POINTS : BOSS_POINTS;
+      const oni = t instanceof Oni;
+      const pts = oni ? ONI_POINTS : king ? KING_POINTS : queen ? QUEEN_POINTS : BOSS_POINTS;
       this.score += pts;
-      if (!king) this.achieve(queen ? "queen" : "boss");
+      if (!king && !oni) this.achieve(queen ? "queen" : "boss");
       if (p.paladin && this.bossClean) this.achieve("wallNoShield");
       this.fx.text(t.x, t.y - 24, `+${pts}`, "#ffcc33");
       // Abadiyat olami: birinchi g'alabada darvoza kaliti, faol topshiriqda — Iblis shoxi
-      if (recordBossKey(king ? "king" : queen ? "queen" : "devil"))
+      // (Oni Abadiyat olami darvozasini ochmaydi — uning kaliti yo'q)
+      if (!oni && recordBossKey(king ? "king" : queen ? "queen" : "devil"))
         this.fx.text(t.x, t.y - 44, "DARVOZA KALITI!", "#c9a25a");
       this.runBosses++;
       // yozuv boss ostida: tepada XP, kalit va ochko yozuvlari bor
       this.gainArtifact(t.x, t.y + 40);
-      this.gainXp(king ? XP.king : queen ? XP.queen : XP.devil, t.x, t.y - 54);
-      if (!king && !queen && hornWanted()) {
+      this.gainXp(king || oni ? XP.king : queen ? XP.queen : XP.devil, t.x, t.y - 54);
+      if (!king && !queen && !oni && hornWanted()) {
         sendToRealm(HORN_ITEM);
         this.fx.text(t.x, t.y - 34, "IBLIS SHOXI — OLAMGA", "#ff7a2a");
         this.fx.burst(t.x, t.y - 10, "#ff7a2a", 16, 80, 2);
       }
-      this.fx.burst(t.x, t.y, king ? "#a6f08e" : queen ? "#7fe9ff" : "#f4cb45", 40, 120, 3);
+      this.fx.burst(
+        t.x,
+        t.y,
+        oni ? "#ff8fb8" : king ? "#a6f08e" : queen ? "#7fe9ff" : "#f4cb45",
+        40,
+        120,
+        3,
+      );
       // sekin harakat va tanga yomg'iri (oflayn o'yin; oltin miqdori o'zgarmaydi)
       this.slowmo = SLOWMO_TIME;
       for (let k = 0; k < COIN_RAIN; k++)
@@ -1907,7 +1989,7 @@ export class Game {
       this.fx.addShake(0.6);
       this.shots = [];
       // Boss xazinasi: 5 ta tanga atrofga sochiladi
-      const gold = king ? KING_GOLD : queen ? QUEEN_GOLD : BOSS_GOLD;
+      const gold = oni ? ONI_GOLD : king ? KING_GOLD : queen ? QUEEN_GOLD : BOSS_GOLD;
       for (let k = 0; k < 5; k++) {
         const a = (k / 5) * Math.PI * 2;
         this.coins.push({
@@ -2125,15 +2207,36 @@ export class Game {
         this.fx.burst(e.x, e.y + 8, "#d8ecf7", 10, 70, 1);
       }
       if (e.shots.length) {
-        // olov imp — kichik olov shari, kamonchi — o'q
+        // olov imp — kichik olov shari, kitsune — ko'k olov, kamonchi — o'q
         const imp = e.kind === "imp";
+        const fox = e.kind === "kitsune";
         for (const s of e.shots)
           this.shots.push(
-            imp ? { ...s, size: 5, owner: e } : { ...s, size: 4, arrow: true, owner: e },
+            fox
+              ? { ...s, size: 5, blue: true, owner: e }
+              : imp
+                ? { ...s, size: 5, owner: e }
+                : { ...s, size: 4, arrow: true, owner: e },
           );
         e.shots = [];
-        if (imp) sfx.fireball();
+        if (fox) sfx.foxfire();
+        else if (imp) sfx.fireball();
         else sfx.arrow();
+      }
+      if (e.cue) {
+        // Sakura bog'i moblari: tutun, tig' va sho'ng'ish ovozlari hamda uchqunlari
+        const cue = e.cue;
+        e.cue = null;
+        if (cue === "vanish" || cue === "appear") {
+          this.fx.burst(e.x, e.y - 2, KILL_COLOR.ninja, 10, 50, 2);
+          if (cue === "appear") sfx.ninja();
+          else sfx.smoke();
+        } else if (cue === "slash") sfx.ninjaSlash();
+        else if (cue === "dive") {
+          sfx.swoop();
+          this.fx.addShake(0.05);
+          this.fx.burst(e.x, e.y + 5, KILL_COLOR.tengu, 8, 60, 1);
+        } else sfx.foxCharge();
       }
       if (e.webs.length) {
         for (const w of e.webs)
@@ -2200,7 +2303,13 @@ export class Game {
       }
       if (boss instanceof Queen) this.updateQueen(boss, dt);
       if (boss instanceof ForestKing) this.updateForestKing(boss);
-      if (!(boss instanceof Queen) && !(boss instanceof ForestKing)) this.updateDevil(boss);
+      if (boss instanceof Oni) {
+        if (boss.justIgnited) {
+          boss.justIgnited = false;
+          sfx.fireball();
+          this.fx.addShake(0.12);
+        }
+      } else if (!(boss instanceof Queen) && !(boss instanceof ForestKing)) this.updateDevil(boss);
       if (boss.shots.length) {
         for (const s of boss.shots)
           this.shots.push({ ...s, size: 6, dmg: boss.dmg(1), owner: boss });
@@ -2221,7 +2330,8 @@ export class Game {
     for (const s of this.shots) {
       s.x += s.vx * dt;
       s.y += s.vy * dt;
-      if (!s.arrow && Math.random() < 0.5) this.fx.trail(s.x, s.y, "rgba(255,140,40,0.7)");
+      if (!s.arrow && Math.random() < 0.5)
+        this.fx.trail(s.x, s.y, s.blue ? "rgba(90,184,255,0.7)" : "rgba(255,140,40,0.7)");
     }
     const inRoom = (s: Shot) =>
       s.x > ROOM.wall && s.x < ROOM.w - ROOM.wall && s.y > ROOM.wall && s.y < ROOM.h - ROOM.wall;
@@ -2503,6 +2613,15 @@ export class Game {
               this.ch3Best = this.score;
               this.newCh3Best = true;
               save(bestKeys(this.hero).ch3, this.ch3Best);
+            }
+            if (this.chapter === 4) {
+              // Sakura bog'i: Samuray bilan tugatilsa — alohida yutuq
+              if (this.hero === "samurai") this.achieve("winSakura");
+              if (this.score > this.ch4Best) {
+                this.ch4Best = this.score;
+                this.newCh4Best = true;
+                save(bestKeys(this.hero).ch4, this.ch4Best);
+              }
             }
             this.stats.waves++;
             this.flushStats(true);
@@ -2889,7 +3008,11 @@ export class Game {
         } else if (foe) {
           // boss gangimaydi — qisqa sekinlashadi; zarbasi baribir bekor
           foe.slow = Math.max(foe.slow, PARRY_STUN);
-          foe.parried();
+          if (foe.parried()) {
+            // Oni gandiraklab qoldi: hujum qilish fursati
+            this.fx.text(foe.x, foe.y - 44, "GANDIRAKLADI!", "#ffcc33");
+            this.fx.burst(foe.x, foe.y - 10, "#ffcc33", 12, 90, 2, "star");
+          }
           this.achieve("parryBoss");
         }
       }
@@ -3276,6 +3399,7 @@ export class Game {
   private floorIndex() {
     if (this.chapter === 2) return isBossWave(this.wave) ? FLOOR_ICE_BOSS : FLOOR_ICE;
     if (this.chapter === 3) return isBossWave(this.wave) ? FLOOR_FOREST_BOSS : FLOOR_FOREST;
+    if (this.chapter === 4) return isBossWave(this.wave) ? FLOOR_SAKURA_BOSS : FLOOR_SAKURA;
     if (isBossWave(this.wave)) return -1;
     const n = endlessNumber(this.wave);
     return n > 0 ? n % FLOORS.length : Math.min(this.wave, FLOORS.length - 1);
@@ -3291,9 +3415,13 @@ export class Game {
             ? FOREST_FLOOR
             : index === FLOOR_FOREST_BOSS
               ? FOREST_BOSS_FLOOR
-              : index < 0
-                ? BOSS_FLOOR
-                : FLOORS[index]!;
+              : index === FLOOR_SAKURA
+                ? SAKURA_FLOOR
+                : index === FLOOR_SAKURA_BOSS
+                  ? SAKURA_BOSS_FLOOR
+                  : index < 0
+                    ? BOSS_FLOOR
+                    : FLOORS[index]!;
     const cv = document.createElement("canvas");
     cv.width = ROOM.w;
     cv.height = ROOM.h;
@@ -3310,6 +3438,10 @@ export class Game {
         const r = rnd();
         if (t.forest) {
           this.forestTile(c, x, y, r, rnd2);
+          continue;
+        }
+        if (t.sakura) {
+          sakuraTile(c, x, y, r, rnd2, index === FLOOR_SAKURA_BOSS);
           continue;
         }
         px(c, t.grout, x, y + 15, 16, 1);
@@ -3401,12 +3533,14 @@ export class Game {
         }
       }
     }
+    if (t.sakura) sakuraDecor(c, index === FLOOR_SAKURA_BOSS);
     // devorlar
     px(c, t.wall, 0, 0, ROOM.w, ROOM.wall);
     px(c, t.wallDark, 0, ROOM.h - ROOM.wall, ROOM.w, ROOM.wall);
     px(c, t.wallDark, 0, 0, ROOM.wall, ROOM.h);
     px(c, t.wallDark, ROOM.w - ROOM.wall, 0, ROOM.wall, ROOM.h);
     if (t.forest) this.forestWalls(c, rnd2);
+    else if (t.sakura) sakuraWalls(c, index === FLOOR_SAKURA_BOSS, rnd2);
     else
       for (let x = 0; x < ROOM.w; x += 16) {
         px(c, t.brick, x, 2, 14, 5);
@@ -3429,7 +3563,8 @@ export class Game {
       for (const tx of [64, 160, 256]) px(c, "#3b4d63", tx - 3, 10, 6, 4);
     }
     // mash'ala tutqichlari (o'rmonda mash'ala o'rniga svetlyachoklar)
-    else if (!t.forest) for (const tx of [64, 160, 256]) px(c, "#2a1f38", tx - 2, 8, 4, 6);
+    else if (!t.forest && !t.sakura)
+      for (const tx of [64, 160, 256]) px(c, "#2a1f38", tx - 2, 8, 4, 6);
     this.floor = cv;
     this.floorKey = index;
   }
@@ -3518,6 +3653,11 @@ export class Game {
     const fi = this.floorIndex();
     if (!this.floor || this.floorKey !== fi) this.buildFloor(fi);
     c.drawImage(this.floor!, 0, 0);
+    if (this.chapter === 4) {
+      // mash'alalar o'rniga tosh fonuslar, hovuz yaltirashi va kechki shafaq
+      renderSakuraLights(c, this.time, fi === FLOOR_SAKURA_BOSS);
+      return;
+    }
     if (this.chapter === 3) {
       // mash'alalar o'rniga yashil-sariq svetlyachok to'dalari
       for (const [i, tx] of [64, 160, 256].entries()) {
@@ -3766,7 +3906,11 @@ export class Game {
             e.y +
               (e.kind === "wisp" || e.kind === "frost" || e.kind === "imp" ? 11 : e.size / 2 + 1),
             // baland uchayotgan boyo'g'lining soyasi kichikroq
-            e.kind === "owl" ? e.size * (1 - (e.alt / OWL_ALT) * 0.45) : e.size,
+            e.kind === "owl"
+              ? e.size * (1 - (e.alt / OWL_ALT) * 0.45)
+              : e.kind === "tengu"
+                ? e.size * (1 - (e.alt / TENGU_ALT) * 0.45)
+                : e.size,
           );
         e.render(c);
         // Merganda sekinlashish faqat tutundan — muz uchqunlari chizilmaydi
@@ -3843,12 +3987,13 @@ export class Game {
         px(c, "#8a88a3", s.x - ux * 5 + uy, s.y - uy * 5 - ux, 1, 1);
         continue;
       }
-      c.fillStyle = "rgba(255,120,40,0.35)";
+      // kitsune olovi — ko'k, qolganlari — to'q sariq
+      c.fillStyle = s.blue ? "rgba(60,140,230,0.4)" : "rgba(255,120,40,0.35)";
       c.beginPath();
       c.arc(s.x, s.y, 5, 0, Math.PI * 2);
       c.fill();
-      px(c, "#ff6a2a", s.x - 2, s.y - 2, 4, 4);
-      px(c, "#ffe14d", s.x - 1, s.y - 1, 2, 2);
+      px(c, s.blue ? "#3c8ce6" : "#ff6a2a", s.x - 2, s.y - 2, 4, 4);
+      px(c, s.blue ? "#d8f0ff" : "#ffe14d", s.x - 1, s.y - 1, 2, 2);
     }
     const T = this.theme;
     for (const b of this.bolts) {
@@ -3896,6 +4041,8 @@ export class Game {
       }
     }
     if (this.chapter === 3) this.renderFireflies(c);
+    // Sakura bog'i: doimiy tushayotgan gulbarglar (effektlar kamaytirilganda — kamroq)
+    if (this.chapter === 4) renderPetals(c, this.time, this.petalCount());
     this.fx.renderSnow(c);
     this.fx.renderTexts((s, x, y, color, a) => {
       c.globalAlpha = a;
@@ -3949,7 +4096,9 @@ export class Game {
         ? `rgba(200,40,10,${a + pulse})`
         : kind === "queen"
           ? `rgba(60,140,255,${a + pulse})`
-          : `rgba(10,40,5,${a + pulse})`;
+          : kind === "oni"
+            ? `rgba(190,30,40,${a + pulse})`
+            : `rgba(10,40,5,${a + pulse})`;
     c.fillRect(0, 0, ROOM.w, ROOM.h);
   }
 
@@ -4174,6 +4323,11 @@ export class Game {
       const ang = this.time * 1.6 + k;
       px(c, "#d8ff7a", cl.x + Math.cos(ang) * (k * 4), cl.y - 4 + Math.sin(ang * 1.3) * 8, 1, 1);
     }
+  }
+
+  /** Sakura bog'idagi gulbarglar soni ("Effektlarni kamaytirish" bilan kamayadi). */
+  petalCount() {
+    return this.fx.isReduced() ? PETALS_REDUCED : PETALS;
   }
 
   /** 3-dunyo: xona bo'ylab uchib yuradigan miltillovchi svetlyachoklar. */
@@ -4411,8 +4565,9 @@ export class Game {
         by = ROOM.h - 10;
       const queen = boss instanceof Queen;
       const king = boss instanceof ForestKing;
+      const oni = boss instanceof Oni;
       this.text(
-        king ? "O'RMON SHOHI" : queen ? "QOR MALIKASI" : "IBLIS",
+        oni ? "ONI" : king ? "O'RMON SHOHI" : queen ? "QOR MALIKASI" : "IBLIS",
         ROOM.w / 2,
         by - 2,
         5,
@@ -4421,28 +4576,32 @@ export class Game {
       px(c, "#000", bx - 1, by, bw + 2, 6);
       px(
         c,
-        king
+        oni
           ? boss.enraged
-            ? "#d8ff7a"
-            : "#4f8a3a"
-          : queen
+            ? "#ff5a4a"
+            : "#b8322e"
+          : king
             ? boss.enraged
-              ? "#7fe9ff"
-              : "#4a8fd0"
-            : boss.enraged
-              ? "#b23238"
-              : "#8e44ad",
+              ? "#d8ff7a"
+              : "#4f8a3a"
+            : queen
+              ? boss.enraged
+                ? "#7fe9ff"
+                : "#4a8fd0"
+              : boss.enraged
+                ? "#b23238"
+                : "#8e44ad",
         bx,
         by + 1,
         (bw * Math.max(0, boss.hp)) / boss.maxHp,
         4,
       );
       px(c, "rgba(255,255,255,0.25)", bx, by + 1, (bw * Math.max(0, boss.hp)) / boss.maxHp, 1);
-      // faza chegaralari (60% va 30%) va daxlsizlik
-      px(c, "#000", bx + bw * 0.6, by + 1, 1, 4);
-      px(c, "#000", bx + bw * 0.3, by + 1, 1, 4);
+      // faza chegaralari (odatda 60% va 30%; Oni — 50%) va daxlsizlik
+      const marks = boss.phaseMarks;
+      for (const m of marks) px(c, "#000", bx + bw * m, by + 1, 1, 4);
       if (boss.invulnerable) px(c, "rgba(255,255,255,0.5)", bx, by + 1, bw, 4);
-      for (let i = 0; i < 3; i++)
+      for (let i = 0; i <= marks.length; i++)
         px(c, i < boss.phase ? "#ffcc33" : "#3b2a3a", bx + bw + 4 + i * 4, by + 1, 3, 4);
       if (boss.berserk && Math.floor(this.time * 4) % 2)
         this.text("G'AZAB", bx - 4, by + 5, 5, "#ff4d4d", "right");
@@ -4797,8 +4956,15 @@ export class Game {
         "#ffffff",
       );
       this.text(`Ochko: ${this.score}`, ROOM.w / 2, 96, 8, "#ffcc33");
-      const record = ch === 3 ? this.newCh3Best : ch === 2 ? this.newCh2Best : this.newBest;
-      const chBest = ch === 3 ? this.ch3Best : this.ch2Best;
+      const record =
+        ch === 4
+          ? this.newCh4Best
+          : ch === 3
+            ? this.newCh3Best
+            : ch === 2
+              ? this.newCh2Best
+              : this.newBest;
+      const chBest = ch === 4 ? this.ch4Best : ch === 3 ? this.ch3Best : this.ch2Best;
       this.text(
         this.daily
           ? "Ertaga yangi sinov"
@@ -4817,7 +4983,7 @@ export class Game {
       this.renderStats(126);
       const buttons: (readonly [typeof this.endlessBtn, string])[] = this.daily
         ? [[this.endlessBtn, this.touch ? "BOSH MENYU" : "BOSH MENYU: Enter"]]
-        : ch === 3
+        : ch >= 3
           ? [
               [this.endlessBtn, this.touch ? "CHEKSIZ REJIM" : "CHEKSIZ REJIM: Enter"],
               [this.newRunBtn, this.touch ? "Qaytadan boshlash" : "Qaytadan: R"],

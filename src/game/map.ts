@@ -11,7 +11,7 @@ import { MAP_WORLDS, isWorldOpen, worldBest, worldWins, type MapWorld } from "./
 /** Xaritada oxirgi tanlangan dunyo */
 export const MAP_SEL_KEY = "pixel-rpg-map-world";
 /** O'ynash mumkin bo'lgan dunyolar */
-export const PLAYABLE_WORLDS: readonly MapWorld[] = [1, 2, 3];
+export const PLAYABLE_WORLDS: readonly MapWorld[] = [1, 2, 3, 4];
 
 export interface MapNode {
   world: MapWorld;
@@ -53,6 +53,16 @@ export const MAP_NODES: readonly MapNode[] = [
     y: 138,
     color: "#a6f08e",
   },
+  {
+    // Samuray qizning o'z dunyosi: oldingi dunyoni yutish shart emas — qahramon bilan birga ochiladi
+    world: 4,
+    name: "SAKURA BOG'I",
+    desc: "Ninja, Tengu, Kitsune va Oni",
+    lock: "Samuray qizni oching",
+    x: 160,
+    y: 156,
+    color: "#ff8fb8",
+  },
 ];
 
 /** Tugunni bosish maydoni (radius) */
@@ -61,9 +71,9 @@ const NODE_HIT = 22;
 /** Xarita holati — chizishdan alohida, test qilinadi. */
 export class MapState {
   sel: MapWorld = 1;
-  open: Record<MapWorld, boolean> = { 1: true, 2: false, 3: false };
-  best: Record<MapWorld, number> = { 1: 0, 2: 0, 3: 0 };
-  wins: Record<MapWorld, Hero[]> = { 1: [], 2: [], 3: [] };
+  open: Record<MapWorld, boolean> = { 1: true, 2: false, 3: false, 4: false };
+  best: Record<MapWorld, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  wins: Record<MapWorld, Hero[]> = { 1: [], 2: [], 3: [], 4: [] };
   /** Qulfli dunyoga kirishga urinilganda qisqa titrash va xabar */
   shake = 0;
   msg = "";
@@ -99,6 +109,12 @@ export class MapState {
     const i = MAP_WORLDS.indexOf(this.sel) + dir;
     const w = MAP_WORLDS[Math.max(0, Math.min(MAP_WORLDS.length - 1, i))]!;
     this.sel = w;
+  }
+
+  /** W/S: Sakura bog'i xaritaning o'rtasida, Muz sardobasi ostida — tepa-pastga o'tiladi. */
+  jump(dir: "up" | "down") {
+    if (dir === "down" && this.sel !== 4) this.sel = 4;
+    else if (dir === "up" && this.sel === 4) this.sel = 2;
   }
 
   /** Tanlangan dunyoga kirish; qulfli bo'lsa xabar chiqadi va null qaytadi. */
@@ -162,6 +178,8 @@ export class WorldMap {
     const key = normKey(e.code);
     if (k.left.includes(key) || key === "ArrowLeft") this.state.move(-1);
     else if (k.right.includes(key) || key === "ArrowRight") this.state.move(1);
+    else if (k.up.includes(key) || key === "ArrowUp") this.state.jump("up");
+    else if (k.down.includes(key) || key === "ArrowDown") this.state.jump("down");
     else if (key === "Enter" || k.attack.includes(key)) this.enter();
     else if (key === "Escape" || k.pause.includes(key)) this.onBack?.();
     else return;
@@ -363,6 +381,39 @@ function forest(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
   }
 }
 
+/** 4-dunyo: qizil torii darvozasi, ikki sakura daraxti va tushayotgan gulbarglar */
+function sakura(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  // orqadagi daraxtlar
+  px(c, "#3a2418", x - 15, y - 7, 2, 9);
+  px(c, "#e0679a", x - 21, y - 13, 12, 5);
+  px(c, "#ff8fb8", x - 20, y - 16, 10, 5);
+  px(c, "#ffb3cf", x - 19, y - 18, 7, 3);
+  px(c, "#ffd6e6", x - 17, y - 17, 3, 1);
+  px(c, "#3a2418", x + 14, y - 5, 2, 7);
+  px(c, "#e0679a", x + 10, y - 10, 11, 4);
+  px(c, "#ff8fb8", x + 11, y - 13, 9, 5);
+  px(c, "#ffb3cf", x + 12, y - 15, 6, 3);
+  // torii
+  px(c, "#7a1c1c", x - 9, y - 12, 3, 14);
+  px(c, "#7a1c1c", x + 6, y - 12, 3, 14);
+  px(c, "#c8362e", x - 8, y - 12, 2, 14);
+  px(c, "#c8362e", x + 7, y - 12, 2, 14);
+  px(c, "#2a1418", x - 13, y - 17, 26, 2);
+  px(c, "#d8483a", x - 12, y - 15, 24, 3);
+  px(c, "#a02822", x - 10, y - 9, 20, 2);
+  for (let i = 0; i < 6; i++) {
+    const k = (t * (0.22 + i * 0.04) + i * 0.37) % 1;
+    px(
+      c,
+      i % 2 ? "#ffd6e6" : "#ff8fb8",
+      x - 20 + i * 8 + Math.sin(t * 2 + i) * 2,
+      y - 15 + k * 17,
+      1,
+      1,
+    );
+  }
+}
+
 /**
  * Qahramon belgisi (7x7): ritsar dubulg'asi, sehrgar qalpog'i, ovchi kapyushoni, mergan shlyapasi,
  * paladin dubulg'asi, samuray qizning soch dumi.
@@ -431,7 +482,7 @@ export function heroBadge(
 
 let background: HTMLCanvasElement | null = null;
 
-/** Xarita foni: tun osmoni va uchta o'lka (lava, muz, o'rmon). */
+/** Xarita foni: tun osmoni va to'rt o'lka (lava, muz, o'rmon, sakura bog'i). */
 function mapBackground() {
   if (background) return background;
   const cv = document.createElement("canvas");
@@ -446,6 +497,10 @@ function mapBackground() {
   blob(c, 160, 100, 48, 28, "#7a93ad");
   blob(c, 256, 150, 62, 46, "#0f1d12");
   blob(c, 256, 154, 50, 34, "#16261a");
+  // sakura bog'i: o'rtadagi pushti-binafsha orolcha
+  blob(c, 160, 168, 44, 24, "#33203a");
+  blob(c, 160, 170, 34, 16, "#452a4a");
+  for (let i = 0; i < 7; i++) px(c, "#b8456e", 132 + i * 9, 176 + ((i * 5) % 9), 2, 1);
   // lava yoriqlari, qor parchalari va o'rmon ildizlari
   for (let i = 0; i < 8; i++) {
     px(c, "#b23238", 30 + i * 9, 170 + ((i * 7) % 11), 4, 1);
@@ -478,7 +533,7 @@ export function renderMap(
     if (Math.sin(t * 2 + i) > -0.3) px(c, i % 5 ? "#5a5470" : "#e0d6ee", sx, sy, 1, 1);
   }
 
-  const [n1, n2, n3] = MAP_NODES as [MapNode, MapNode, MapNode];
+  const [n1, n2, n3] = MAP_NODES as [MapNode, MapNode, MapNode, MapNode];
   path(c, n1, n2, -6, s.open[2]);
   path(c, n2, n3, -6, s.open[3]);
 
@@ -500,7 +555,8 @@ export function renderMap(
     c.globalAlpha = open ? 1 : 0.4;
     if (n.world === 1) dungeon(c, x, y, t);
     else if (n.world === 2) iceCastle(c, x, y, t);
-    else forest(c, x, y, t);
+    else if (n.world === 3) forest(c, x, y, t);
+    else sakura(c, x, y, t);
     c.globalAlpha = 1;
     if (!open) padlock(c, x, y - 6);
 

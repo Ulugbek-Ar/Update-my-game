@@ -11,9 +11,10 @@ interface Step {
 
 const DIR = path.resolve(__dirname, "../../screenshots");
 
-/** Sahna dunyosi: startChapter2/3 (yoki chapter = n) bo'lmasa — 1-dunyo */
+/** Sahna dunyosi: startChapter2/3/4 (yoki chapter = n, startWorld = n) bo'lmasa — 1-dunyo */
 function worldOf(steps: Step[]): World {
   const ev = steps.map((s) => s.eval ?? "").join(" ");
+  if (/startChapter\(4\)|chapter = 4|startWorld = 4/.test(ev)) return 4;
   if (/startChapter3\(|startChapter\(3\)|chapter = 3/.test(ev)) return 3;
   if (/startChapter2\(|startChapter\(2\)|chapter = 2/.test(ev)) return 2;
   return 1;
