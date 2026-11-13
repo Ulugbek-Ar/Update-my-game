@@ -16,6 +16,7 @@ import {
 } from "./boss";
 import { INTRO_TIME, PHASE_GUARD, bossHpFor } from "./bossPower";
 import { introFrame, phasePulse } from "./mobAnim";
+import { renderAirAmbience, renderGroundAmbience } from "./ambience";
 import { ONI_HP, Oni } from "./oni";
 import {
   PETALS,
@@ -3860,6 +3861,8 @@ export class Game {
       c.translate(-cx, -cy);
     }
     this.renderRoom(c);
+    // muhit qatlami (ambience.ts): mash'ala nuri, tebranuvchi o't, muz yaltirashi — faqat ko'rinish
+    renderGroundAmbience(c, this.chapter, this.time, isBossWave(this.wave), this.fx.isReduced());
     this.renderPhaseTint(c);
 
     // yurak tushumlari
@@ -4093,6 +4096,8 @@ export class Game {
       }
     }
     if (this.chapter === 3) this.renderFireflies(c);
+    // havodagi muhit zarralari: cho'g', barg, chang (soni qat'iy, effektlar kamaytirilganda — kamroq)
+    renderAirAmbience(c, this.chapter, this.time, isBossWave(this.wave), this.fx.isReduced());
     // Sakura bog'i: doimiy tushayotgan gulbarglar (effektlar kamaytirilganda — kamroq)
     if (this.chapter === 4) renderPetals(c, this.time, this.petalCount());
     this.fx.renderSnow(c);

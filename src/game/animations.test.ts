@@ -15,7 +15,14 @@ import {
   riseShare,
 } from "./mobAnim";
 import { loadSettings, saveSettings } from "./settings";
-import { BOSS_WAVE } from "./waves";
+import { BOSS_WAVE, type World } from "./waves";
+import {
+  AMBIENCE_MAX,
+  ambienceSet,
+  ambienceTotal,
+  renderAirAmbience,
+  renderGroundAmbience,
+} from "./ambience";
 import { HEROES, type Hero } from "./hero";
 import {
   HURT_SQUASH,
@@ -365,6 +372,69 @@ describe("Dushmanlar va bosslar: squash & stretch, paydo bo'lish, kirish sahnasi
     }
     expect(max).toBeGreaterThan(1.04);
     expect(max).toBeLessThanOrEqual(1.12);
+  });
+});
+
+describe("Muhit: animatsiya qatlami", () => {
+  /** Chizilgan to'rtburchaklarni sanaydigan kanvas */
+  const counter = () => {
+    const rects: string[] = [];
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_t, k) =>
+          k === "createRadialGradient" || k === "createLinearGradient"
+            ? () => ({ addColorStop() {} })
+            : (...args: number[]) => {
+                if (k === "fillRect") rects.push(args.join(","));
+              },
+        set: () => true,
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    return { ctx, rects };
+  };
+
+  it("every world has its own atmosphere, within a fixed particle budget", () => {
+    for (const w of [1, 2, 3, 4] as World[])
+      for (const boss of [false, true]) {
+        const s = ambienceSet(w, boss, false);
+        expect(ambienceTotal(s)).toBeGreaterThan(0);
+        expect(ambienceTotal(s)).toBeLessThanOrEqual(AMBIENCE_MAX);
+      }
+    expect(ambienceSet(1, false, false).embers).toBeGreaterThan(0);
+    expect(ambienceSet(2, false, false).glints).toBeGreaterThan(0);
+    expect(ambienceSet(3, false, false).leaves).toBeGreaterThan(0);
+    expect(ambienceSet(3, false, false).grass).toBeGreaterThan(0);
+    expect(ambienceSet(4, false, false).grass).toBeGreaterThan(0);
+  });
+
+  it("'Effektlarni kamaytirish' cuts it to a third and drops the dust motes", () => {
+    for (const w of [1, 2, 3, 4] as World[]) {
+      const full = ambienceSet(w, false, false),
+        low = ambienceSet(w, false, true);
+      expect(low.motes).toBe(0);
+      expect(ambienceTotal(low)).toBeLessThanOrEqual(Math.ceil(ambienceTotal(full) / 2));
+    }
+  });
+
+  it("is stateless and uses no game randomness: the same time draws the same picture", () => {
+    const rnd = vi.spyOn(Math, "random");
+    for (const w of [1, 2, 3, 4] as World[]) {
+      const a = counter(),
+        b = counter(),
+        later = counter();
+      for (const k of [a, b]) {
+        renderGroundAmbience(k.ctx, w, 12.5, false, false);
+        renderAirAmbience(k.ctx, w, 12.5, false, false);
+      }
+      renderGroundAmbience(later.ctx, w, 13.1, false, false);
+      renderAirAmbience(later.ctx, w, 13.1, false, false);
+      expect(a.rects.length).toBeGreaterThan(0);
+      expect(a.rects).toEqual(b.rects);
+      // vaqt o'tishi bilan harakatlanadi
+      expect(later.rects).not.toEqual(a.rects);
+    }
+    expect(rnd).not.toHaveBeenCalled();
   });
 });
 
