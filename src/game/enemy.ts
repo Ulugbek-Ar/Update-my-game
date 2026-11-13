@@ -1,6 +1,8 @@
 import { Animator, Body, updatePhysics, isFlashing, clampToRoom, ROOM } from "./animation";
 import type { Target } from "./player";
-import { renderSprite, type SpriteKind } from "./sprites";
+import { renderSprite, spriteSize, type SpriteKind } from "./sprites";
+import { FLYING_KINDS, mobScale, renderSpawnSmoke, riseShare } from "./mobAnim";
+import { currentSettings } from "./settings";
 import { DANGER } from "./danger";
 import { withAlpha } from "./hero";
 
@@ -1312,18 +1314,56 @@ export class Enemy implements Body {
     // muz ruhi yarim shaffof, muz slime biroz shaffof
     if (this.kind === "frost") ctx.globalAlpha *= 0.78;
     else if (this.kind === "iceblob") ctx.globalAlpha *= 0.88;
+    const sy = tall
+      ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
+      : this.y - 3 - Math.round(this.alt);
+    // vizual qatlam (mobAnim.ts): squash & stretch va paydo bo'lish — faqat ko'rinish
+    const lively = !currentSettings().reduceFx;
+    const flying = FLYING_KINDS.has(this.kind);
+    const size = spriteSize(SPRITE[this.kind]);
+    // sprayt oyog'i turgan chiziq (uchadiganlarda — markaz)
+    const ground = flying ? sy : sy + size * 0.42;
+    ctx.save();
+    if (lively && this.spawn > 0) {
+      const k = 1 - this.spawn / this.spawnMax;
+      if (flying) {
+        // tutundan paydo bo'ladi: bulutchalar tarqaladi, sprayt kattalashib tiniqlashadi
+        renderSpawnSmoke(ctx, this.x, sy, k, "#b8b0c8");
+        const sc = 0.55 + 0.45 * k;
+        ctx.translate(this.x, sy);
+        ctx.scale(sc, sc);
+        ctx.translate(-this.x, -sy);
+      } else {
+        // yerdan ko'tarilib chiqadi: yer chizig'idan pasti kesiladi, ostida qora o'yiq
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.beginPath();
+        ctx.ellipse(this.x, ground, size * 0.36, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.45 + 0.4 * k;
+        ctx.beginPath();
+        ctx.rect(this.x - size, ground - size * 1.4, size * 2, size * 1.4);
+        ctx.clip();
+        ctx.translate(0, Math.round((1 - riseShare(k)) * size * 0.95));
+      }
+    } else if (lively) {
+      const [mx, my] = mobScale(this);
+      if (mx !== 1 || my !== 1) {
+        ctx.translate(this.x, ground);
+        ctx.scale(mx, my);
+        ctx.translate(-this.x, -ground);
+      }
+    }
     renderSprite(
       ctx,
       SPRITE[this.kind],
       state,
       frame,
       this.x,
-      tall
-        ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
-        : this.y - 3 - Math.round(this.alt),
+      sy,
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
+    ctx.restore();
     if (this.kind === "shield" && !this.dead && this.spawn <= 0) {
       // qalqon qaragan tomon: temir yoy (to'sganda yaltiraydi)
       ctx.strokeStyle = this.blockFlash > 0 ? "rgba(255,240,170,0.95)" : "rgba(170,175,188,0.45)";

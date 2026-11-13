@@ -14,7 +14,8 @@ import {
   spiderSummonCount,
   summonCount,
 } from "./boss";
-import { INTRO_TIME, bossHpFor } from "./bossPower";
+import { INTRO_TIME, PHASE_GUARD, bossHpFor } from "./bossPower";
+import { introFrame, phasePulse } from "./mobAnim";
 import { ONI_HP, Oni } from "./oni";
 import {
   PETALS,
@@ -636,6 +637,8 @@ export class Game {
   darkness = 0;
   /** Boss kirish sahnasi qolgan vaqti (kamera yaqinlashadi, nom kartochkasi) */
   intro = 0;
+  /** Kirish sahnasida boss zarbasi ko'rsatildi (silkinish bir marta) — faqat ko'rinish */
+  private introHit = false;
   /** Faza almashganda ekran chaqnashi */
   phaseFlash = 0;
   /** Muz polda sirpanish tezligi */
@@ -1053,6 +1056,7 @@ export class Game {
     this.fx.snowOn = ice;
     this.fx.wind = 0;
     this.intro = 0;
+    this.introHit = false;
     this.phaseFlash = 0;
     this.slip = { vx: 0, vy: 0, on: false };
     this.webs = [];
@@ -2075,6 +2079,12 @@ export class Game {
       else {
         this.intro -= dt;
         b.update(dt, this.player);
+        // boss o'z zarbasini ko'rsatdi (mobAnim.ts): zarba kadrida bir marta yengil silkinish
+        if (!this.introHit && introFrame(b.spawn, b.spawnMax) === 2) {
+          this.introHit = true;
+          if (!this.fx.isReduced()) this.fx.addShake(0.16);
+          sfx.stomp();
+        }
         const skip =
           this.input.consumeEnter() || this.input.consumeAttack() || this.input.consumeDash();
         if (skip || this.intro <= 0) this.skipIntro();
@@ -3955,7 +3965,25 @@ export class Game {
           if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
           // ko'zgular bor paytda haqiqiy Malikaning soyasi och muz polda ham aniq ko'rinsin
           if (boss instanceof Queen && boss.mirrors.length) this.shadow(c, boss.x, boss.y + 24, 34);
+          const lively = !this.fx.isReduced();
+          if (this.intro > 0 && lively) {
+            // kirish sahnasi: xona qorayadi, boss (va undan keyin chiziladiganlar) yoritilgan qoladi
+            const t = INTRO_TIME - this.intro;
+            const a = Math.min(1, t / 0.4, this.intro / 0.4);
+            px(c, `rgba(0,0,0,${0.5 * a})`, -8, -8, ROOM.w + 16, ROOM.h + 16);
+          }
+          // faza almashganda qisqa "o'zgarish" pulsi (faqat ko'rinish)
+          const [bx, by] = lively ? phasePulse(boss.guard, PHASE_GUARD) : [1, 1];
+          const pulse = bx !== 1 && !boss.dead;
+          if (pulse) {
+            const foot = boss.y + 24;
+            c.save();
+            c.translate(boss.x, foot);
+            c.scale(bx, by);
+            c.translate(-boss.x, -foot);
+          }
           boss.render(c);
+          if (pulse) c.restore();
           // Paladin: Boss OSMON HUKMIdan sekinlashdi — muz emas, gangish yulduzchalari
           if (boss.slow > 0 && !boss.dead && p.paladin)
             renderDazeStars(c, boss.x, boss.y - boss.size / 2 - 6, this.time, this.theme);
@@ -4168,7 +4196,16 @@ export class Game {
     px(c, "rgba(8,4,16,0.8)", 0, 150, ROOM.w, 46);
     px(c, card.color, 0, 150, ROOM.w, 1);
     px(c, card.color, 0, 195, ROOM.w, 1);
+    // katta nom chapdan o'ngga "yoziladi", ostidagi chiziq markazdan o'sadi
+    const w = card.name.length * 16;
+    const k = this.fx.isReduced() ? 1 : Math.min(1, t / 0.55);
+    c.save();
+    c.beginPath();
+    c.rect(ROOM.w / 2 - slide - w / 2 - 4, 154, (w + 8) * k, 26);
+    c.clip();
     this.text(card.name, ROOM.w / 2 - slide, 176, 16, card.color);
+    c.restore();
+    px(c, card.color, Math.round(ROOM.w / 2 - (w / 2) * k), 180, Math.round(w * k), 1);
     this.text(card.nick, ROOM.w / 2 + slide, 189, 6, "#e0d6ee");
     if (Math.floor(this.time * 3) % 2)
       this.text(

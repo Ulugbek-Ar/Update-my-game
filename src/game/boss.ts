@@ -1,4 +1,13 @@
-import { Animator, Body, ROOM, updatePhysics, isFlashing, overlap } from "./animation";
+import {
+  Animator,
+  Body,
+  ROOM,
+  updatePhysics,
+  isFlashing,
+  overlap,
+  type AnimState,
+} from "./animation";
+import { introFrame } from "./mobAnim";
 import type { Target } from "./player";
 import { renderSprite } from "./sprites";
 import { DANGER } from "./danger";
@@ -197,6 +206,17 @@ export class Boss implements Body {
       this.onPhase(ph);
     }
     this.step(this.berserk ? dt * BERSERK_SPEED : dt, p);
+  }
+
+  /**
+   * Chiziladigan kadr: kirish sahnasida (uzun paydo bo'lish) boss o'z zarbasini ko'rsatadi
+   * (mobAnim.ts: introFrame) — faqat ko'rinish, Animator holati o'zgarmaydi.
+   */
+  protected showFrame(): { state: AnimState; frame: number } {
+    const f = introFrame(this.spawn, this.spawnMax);
+    return f === null
+      ? { state: this.anim.state, frame: this.anim.frame }
+      : { state: "attack", frame: f };
   }
 
   /** Jon ulushiga mos faza (ikki fazali Oni o'zinikini beradi). */
@@ -505,7 +525,7 @@ export class Boss implements Body {
   }
 
   render(ctx: CanvasRenderingContext2D) {
-    const { state, frame } = this.anim;
+    const { state, frame } = this.showFrame();
 
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
@@ -965,7 +985,7 @@ export class Queen extends Boss {
   }
 
   override render(ctx: CanvasRenderingContext2D) {
-    const { state, frame } = this.anim;
+    const { state, frame } = this.showFrame();
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
       ctx.fillStyle = `rgba(127,233,255,${0.2 + 0.2 * Math.sin(this.spawn * 18)})`;
@@ -1323,7 +1343,7 @@ export class ForestKing extends Boss {
   }
 
   override render(ctx: CanvasRenderingContext2D) {
-    const { state, frame } = this.anim;
+    const { state, frame } = this.showFrame();
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
       ctx.fillStyle = `rgba(120,210,80,${0.2 + 0.2 * Math.sin(this.spawn * 18)})`;

@@ -486,7 +486,7 @@ export class Oni extends Boss {
   }
 
   override render(ctx: CanvasRenderingContext2D) {
-    const { state, frame } = this.anim;
+    const { state, frame } = this.showFrame();
     if (this.spawn > 0) {
       const k = 1 - this.spawn / this.spawnMax;
       ctx.fillStyle = withAlpha(DANGER.spawn, 0.25 + 0.2 * Math.sin(this.spawn * 18));

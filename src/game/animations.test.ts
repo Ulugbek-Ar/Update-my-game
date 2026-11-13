@@ -3,6 +3,19 @@ import golden from "./golden-numbers.json";
 import { goldenNumbers } from "./golden";
 import { Animator } from "./animation";
 import { Effects } from "./effects";
+import { Enemy, type EnemyKind } from "./enemy";
+import { Game } from "./game";
+import { INTRO_TIME, PHASE_GUARD } from "./bossPower";
+import {
+  FLYING_KINDS,
+  MOB_HURT_SQUASH,
+  introFrame,
+  mobScale,
+  phasePulse,
+  riseShare,
+} from "./mobAnim";
+import { loadSettings, saveSettings } from "./settings";
+import { BOSS_WAVE } from "./waves";
 import { HEROES, type Hero } from "./hero";
 import {
   HURT_SQUASH,
@@ -194,6 +207,164 @@ describe("Qahramonlar: oraliq kadrlar va ikkilamchi harakat", () => {
     low.reduced = true;
     low.dust(100, 100, "#8d819f");
     expect(low.particles).toHaveLength(0);
+  });
+});
+
+describe("Dushmanlar va bosslar: squash & stretch, paydo bo'lish, kirish sahnasi", () => {
+  const mob = (kind: EnemyKind) => {
+    const e = new Enemy(kind, 100, 100);
+    e.spawn = 0;
+    return e;
+  };
+
+  it("a hit squashes the mob and it springs back; the dead and the spawning are left alone", () => {
+    const e = mob("rammer");
+    e.anim.set("hurt", true);
+    const [sx, sy] = mobScale(e);
+    expect(sx).toBeGreaterThan(1.1);
+    expect(sy).toBeLessThan(0.9);
+    e.anim.t = MOB_HURT_SQUASH;
+    expect(mobScale(e)).toEqual([1, 1]);
+    e.anim.set("death", true);
+    expect(mobScale(e)).toEqual([1, 1]);
+    const s = new Enemy("blob", 0, 0);
+    s.spawn = 0.5;
+    expect(mobScale(s)).toEqual([1, 1]);
+  });
+
+  it("slimes stretch while hopping up and squash on landing; others breathe by about a pixel", () => {
+    const b = mob("blob");
+    b.t = Math.PI / 10; // sin(t * 5) = 1 — sakrash cho'qqisi
+    expect(mobScale(b)[1]).toBeGreaterThan(1.1);
+    b.t = (3 * Math.PI) / 10; // sin = -1 — qo'nish
+    expect(mobScale(b)[1]).toBeLessThan(0.95);
+    expect(mobScale(b)[0]).toBeGreaterThan(1.05);
+    for (const kind of ["archer", "wolf", "ninja", "kitsune", "treant"] as EnemyKind[]) {
+      const e = mob(kind);
+      for (let t = 0; t < 4; t += 0.1) {
+        e.t = t;
+        const [x, y] = mobScale(e);
+        expect(Math.abs(x - 1)).toBeLessThanOrEqual(0.021);
+        expect(Math.abs(y - 1)).toBeLessThanOrEqual(0.036);
+      }
+    }
+  });
+
+  it("attack frames: squeeze on the wind-up, stretch on the strike", () => {
+    const e = mob("rammer");
+    e.anim.set("attack", true);
+    e.anim.frame = 0;
+    expect(mobScale(e)[1]).toBeLessThan(1);
+    e.anim.frame = 1;
+    expect(mobScale(e)[1]).toBeGreaterThan(1);
+  });
+
+  it("spawning: ground mobs rise out of the floor, flying ones come out of smoke — timing untouched", () => {
+    expect(riseShare(0)).toBe(0);
+    expect(riseShare(1)).toBe(1);
+    let last = -1;
+    for (let k = 0; k <= 1.0001; k += 0.05) {
+      const v = riseShare(k);
+      expect(v).toBeGreaterThanOrEqual(last);
+      last = v;
+    }
+    expect(FLYING_KINDS.has("wisp")).toBe(true);
+    expect(FLYING_KINDS.has("tengu")).toBe(true);
+    expect(FLYING_KINDS.has("rammer")).toBe(false);
+    // paydo bo'lish vaqti va daxlsizligi avvalgidek
+    const e = new Enemy("rammer", 100, 100);
+    e.spawn = e.spawnMax = 1;
+    const p = new Player("knight");
+    for (let t = 0; t < 0.5; t += DT) e.update(DT, p);
+    expect(e.active).toBe(false);
+    for (let t = 0; t < 0.55; t += DT) e.update(DT, p);
+    expect(e.active).toBe(true);
+  });
+
+  it("draws the squash/rise only when effects are not reduced", () => {
+    const calls = (reduce: boolean, prep: (e: Enemy) => void) => {
+      saveSettings({ ...loadSettings(), reduceFx: reduce });
+      const seen: string[] = [];
+      const ctx = new Proxy(
+        {},
+        {
+          get:
+            (_t, k) =>
+            (...args: unknown[]) => {
+              if (k === "scale" || k === "clip") seen.push(`${String(k)}:${args.join(",")}`);
+            },
+          set: () => true,
+        },
+      ) as unknown as CanvasRenderingContext2D;
+      const e = new Enemy("rammer", 100, 100);
+      prep(e);
+      e.render(ctx);
+      return seen;
+    };
+    const hurt = (e: Enemy) => {
+      e.spawn = 0;
+      e.anim.set("hurt", true);
+    };
+    const rising = (e: Enemy) => {
+      e.spawn = 0.5;
+      e.spawnMax = 1;
+    };
+    expect(calls(false, hurt).some((c) => c.startsWith("scale:"))).toBe(true);
+    expect(calls(false, rising)).toContain("clip:");
+    expect(calls(true, hurt)).toEqual([]);
+    expect(calls(true, rising)).toEqual([]);
+  });
+
+  it("boss intro: the boss shows its strike in the second half of the entrance", () => {
+    // oddiy (qisqa) paydo bo'lishda — yo'q
+    expect(introFrame(0.5, 1)).toBeNull();
+    const total = INTRO_TIME + 0.4;
+    expect(introFrame(total, total)).toBeNull();
+    expect(introFrame(total * 0.6, total)).toBeNull();
+    const frames = new Set<number>();
+    for (let s = total * 0.5; s > 0; s -= 0.02) {
+      const f = introFrame(s, total);
+      if (f !== null) frames.add(f);
+    }
+    expect([...frames].sort()).toEqual([0, 1, 2]);
+    expect(introFrame(0, total)).toBeNull();
+  });
+
+  it("the intro still lasts INTRO_TIME, can be skipped, and the boss stays untouchable during it", () => {
+    const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
+    const g = new Game(canvas as unknown as HTMLCanvasElement, "knight");
+    (g as unknown as { startWave(i: number): void }).startWave(BOSS_WAVE);
+    expect(g.intro).toBe(INTRO_TIME);
+    const boss = g.boss!;
+    const hp = boss.hp;
+    let t = 0;
+    while (g.intro > 0 && t < 10) {
+      g.update(DT);
+      t += DT;
+    }
+    expect(t).toBeGreaterThan(INTRO_TIME - 0.1);
+    expect(t).toBeLessThan(INTRO_TIME + 0.1);
+    expect(boss.hp).toBe(hp);
+    expect(boss.active).toBe(false);
+    // o'tkazib yuborish
+    const g2 = new Game(canvas as unknown as HTMLCanvasElement, "knight");
+    (g2 as unknown as { startWave(i: number): void }).startWave(BOSS_WAVE);
+    g2.skipIntro();
+    expect(g2.intro).toBe(0);
+    expect(g2.boss!.spawn).toBeLessThanOrEqual(0.3);
+  });
+
+  it("phase change: a short fading pulse while the boss is invulnerable, nothing afterwards", () => {
+    expect(phasePulse(0, PHASE_GUARD)).toEqual([1, 1]);
+    let max = 1;
+    for (let gd = PHASE_GUARD; gd > 0; gd -= 0.02) {
+      const [x, y] = phasePulse(gd, PHASE_GUARD);
+      expect(x).toBe(y);
+      expect(x).toBeGreaterThanOrEqual(1);
+      max = Math.max(max, x);
+    }
+    expect(max).toBeGreaterThan(1.04);
+    expect(max).toBeLessThanOrEqual(1.12);
   });
 });
 
