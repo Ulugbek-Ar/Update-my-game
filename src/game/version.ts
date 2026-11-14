@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.7.0";
+export const GAME_VERSION = "3.8.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.8.0",
+    date: "2026-11-14",
+    notes:
+      "Yangi qahramon — Samuray qiz. Iai zarbasi bilan chaqmoqdek kesib o'tadi. Mukammal chetlanish vaqtni sekinlashtiradi va keyingi zarbani kritik qiladi. Parry dushman zarbasini qaytaradi. Yangi dunyo — Sakura bog'i. Yangi dushmanlar: Ninja-soya, Tengu-qush va Kitsune-olov. Yangi boss — Oni. Samuray qiz uchun uchta skin. O'yin bo'ylab yangi animatsiyalar: qahramonlar, dushmanlar, muhit, menyu va interfeys jonlandi. Bosslar endi o'z kirish sahnasi bilan chiqadi.",
+  },
   {
     version: "3.7.0",
     date: "2026-11-07",

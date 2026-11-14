@@ -1,0 +1,242 @@
+[
+  {
+    "title": "Samuray qiz",
+    "text": "Yangi qahramon — Samuray qiz (rol: JANGCHI): uzun qora soch dumi, oq-pushti kimono, qizil obi va qinidagi katana. 4 yurak, eng tezlaridan biri. Space — tez katana kombosi, uchinchi zarba keng yoy bo'ylab. Bosib tursang — IAI: chaqmoqdek sirpanib o'tadi, yo'lidagilar 0.25 soniyadan keyin ketma-ket kesiladi. Dashni zarba tegishidan sal oldin bossang — mukammal chetlanish: vaqt sekinlashadi, keyingi zarba kritik. Zarba aynan tegayotganda katana — parry: zarba bekor, snaryad egasiga qaytadi. Do'konda 600 oltinga sotiladi.",
+    "hero": true,
+    "video": 6,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-samurai-tips-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-unlocked-heroes": ["samurai"]
+        }
+      },
+      {
+        "click": "SAMURAY JANGCHI"
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 70
+        }
+      }
+    ]
+  },
+  {
+    "title": "Ninja-soya",
+    "text": "Sakura bog'ining yangi dushmani. Yaqinlashadi, so'ng tutunga aylanadi (bu paytda urib bo'lmaydi) va orqangizda paydo bo'ladi. Qizil doira bilan yarim soniya ogohlantirib kesadi, zarbadan keyin bir lahza ochiq qoladi. Ogohlantirishda doiradan chiqing yoki Samuray bilan parry qiling — ninja gangib qoladi. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter(4);"
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "ninja",
+          "dx": 90
+        }
+      }
+    ]
+  },
+  {
+    "title": "Tengu-qush",
+    "text": "Uzun burunli qizil yuzli tog' ruhi. Tepada keng aylanadi — bu paytda urib bo'lmaydi. Soyasi tushgan joyga ketma-ket ikki marta sho'ng'iydi, ikkinchisi tezroq. Qizil halqali soyadan uzoqlashing; Samuray sho'ng'ish oldidan dash bossa — mukammal chetlanish. Ikki sho'ng'ishdan keyin yerda dam oladi — shunda uring. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter(4);"
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "tengu",
+          "dx": 90,
+          "dy": -20
+        }
+      }
+    ]
+  },
+  {
+    "title": "Kitsune-olov",
+    "text": "Uch dumli oq tulki. Masofani saqlaydi, yaqinlashsangiz qochadi. Dumlarida ko'k olov yig'ib (ogohlantirish), yelpig'ich qilib uchta ko'k olov shari otadi. Sharlar orasidan o'ting yoki dash bilan chetlaning; Samurayning parry'si sharni kitsunening o'ziga qaytaradi. Joni: 3.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "knight"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter(4);"
+      },
+      {
+        "wave": 0
+      },
+      {
+        "spawn": {
+          "kind": "kitsune",
+          "dx": 100,
+          "speed": 0.3
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.aiTimer = 0.4; });"
+      }
+    ]
+  },
+  {
+    "title": "Yangi boss — Oni: o'z kirish sahnasi bilan",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-samurai-tips-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "samurai",
+          "pixel-rpg-unlocked-heroes": ["samurai"]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter(4);"
+      },
+      {
+        "wave": 4
+      },
+      {
+        "eval": "g.player.x = 160; g.player.y = 196; g.player.fx = 0; g.player.fy = -1;"
+      },
+      {
+        "wait": 1700
+      }
+    ]
+  },
+  {
+    "title": "Yangi dunyo — Sakura bog'i: hovuz, ko'prik, fonuslar va gulbarglar",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-samurai-tips-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "samurai",
+          "pixel-rpg-unlocked-heroes": ["samurai"]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter(4);"
+      },
+      {
+        "wave": 2
+      },
+      {
+        "eval": "g.player.takeHit = () => false; g.player.x = 120; g.player.y = 150;"
+      },
+      {
+        "wait": 1800
+      }
+    ]
+  },
+  {
+    "title": "QIZIL OY — Samurayning afsonaviy skini",
+    "text": "Qirmizi-qora kimono va oq soch. Turganda ko'zlari qizil porlaydi, soch uchlari to'lqinlanadi. IAI dan keyin katana sekin qiniga qaytadi — o'sha \"chik\" lahzasida dushmanlar kesiladi. Zarbalar yarim oy shaklida, mukammal chetlanishda ortda qizil oy silueti yonadi; o'z ovozi bor.",
+    "video": 5,
+    "autoplay": true,
+    "combo": true,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-samurai-tips-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "samurai",
+          "pixel-rpg-unlocked-heroes": "[\"samurai\"]",
+          "pixel-rpg-skins": "{\"owned\": [\"samurai-moon\"], \"sel\": {\"samurai\": \"samurai-moon\"}}"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "count": 3,
+          "dx": 50
+        }
+      },
+      {
+        "eval": "g.enemies.forEach((e) => { e.hp = e.maxHp = 30; });"
+      },
+      {
+        "wait": 200
+      }
+    ]
+  },
+  {
+    "title": "Bosh menyu jonlandi: parallaks osmon, qahramonlar harakatda",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.8.0",
+          "pixel-rpg-hero": "samurai",
+          "pixel-rpg-unlocked-heroes": ["samurai", "gunner", "paladin"]
+        }
+      },
+      {
+        "wait": 2400
+      }
+    ]
+  }
+]
