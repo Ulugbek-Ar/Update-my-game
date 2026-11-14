@@ -25,7 +25,7 @@ import { getLatestVersion } from "@/lib/version.functions";
 import { HAS_SERVER, IS_APP, IS_DESKTOP } from "@/lib/platform";
 import { backAction, exitApp, onAppActive, onBackButton } from "@/lib/native";
 import { sfx } from "@/game/audio";
-import { loadSettings, saveSettings, type Settings } from "@/game/settings";
+import { currentSettings, loadSettings, saveSettings, type Settings } from "@/game/settings";
 import {
   SHOP_ITEMS,
   buy,
@@ -36,7 +36,7 @@ import {
   nextCost,
   type ShopItem,
 } from "@/game/shop";
-import { heroView, renderSprite, renderUpgradeIcon } from "@/game/sprites";
+import { heroView, renderSprite, renderUpgradeIcon, visualFrames } from "@/game/sprites";
 import type { AnimState } from "@/game/animation";
 import { ACHIEVEMENTS, loadAchievements } from "@/game/achievements";
 import { loadDaily, todayKey, type DailyResult } from "@/game/daily";
@@ -635,6 +635,8 @@ function Index() {
 
   return (
     <main className="game-viewport font-pixel">
+      {/* ekran almashganda piksel parda ochiladi (kalit o'zgarsa animatsiya qaytadan boshlanadi) */}
+      <ScreenWipe key={started ? "game" : realm ? "realm" : mapOpen ? "map" : "menu"} />
       <div className="game-screen">
         <canvas ref={canvasRef} width={960} height={540} className="game-canvas" />
         {mapOpen && !started && !realm && canvasRef.current && (
@@ -658,7 +660,7 @@ function Index() {
             style={{ textShadow: "1px 1px 0 #000" }}
           >
             <MenuScene />
-            <h1 className="text-primary text-lg sm:text-2xl drop-shadow-[2px_2px_0_#000]">
+            <h1 className="logo-live text-primary text-lg sm:text-2xl drop-shadow-[2px_2px_0_#000]">
               PIKSEL QAL'A
             </h1>
             {/* 10 tagacha qahramon: sig'masa gorizontal aylanadi */}
@@ -1323,7 +1325,7 @@ function MenuScene() {
       // ~30 kadr/s yetarli — sahna sekin harakatlanadi
       if (now - last > 33) {
         last = now;
-        renderMenuScene(c, (now - start) / 1000, short.matches);
+        renderMenuScene(c, (now - start) / 1000, short.matches, currentSettings().reduceFx);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -1385,6 +1387,37 @@ const SHOWCASE: readonly (readonly [AnimState, number])[] = [
 ];
 
 /**
+ * Menyuda tanlangan qahramon kadri: joyida yuradi (oraliq kadrlar bilan), ora-sira to'xtab nafas
+ * oladi. moving = false — faqat sekin nafas (tanlanmagan yoki effektlar kamaytirilgan).
+ */
+function selectedHeroFrame(
+  hero: Hero,
+  tick: number,
+  moving: boolean,
+): readonly [AnimState, number, number] {
+  // 110 ms lik taymer: nafas — har 5 tikda bir kadr
+  if (!moving) return ["idle", Math.floor(tick / 5) % (hero === "samurai" ? 4 : 2), 0];
+  const n = visualFrames(hero, "walk", hero === "samurai" ? 6 : 4);
+  // 3 aylana yuradi, so'ng 8 tik nafas oladi
+  const cycle = n * 3 + 8;
+  const k = tick % cycle;
+  if (k >= n * 3) return ["idle", Math.floor((k - n * 3) / 4) % 2, 0];
+  const v = k % n;
+  return hero === "samurai" ? ["walk", v, 0] : ["walk", v >> 1, v & 1];
+}
+
+/** Ekran almashganda ochiladigan piksel parda (styles.css: screen-wipe) — faqat bezak. */
+function ScreenWipe() {
+  return (
+    <div aria-hidden="true" className="screen-wipe">
+      {Array.from({ length: 10 }, (_, i) => (
+        <span key={i} style={{ animationDelay: `${(i % 5) * 28}ms` }} />
+      ))}
+    </div>
+  );
+}
+
+/**
  * Menyudagi qahramon rasmi: kod bilan chizilgan sprite, tanlanganda "nafas oladi".
  * showcase — do'konda yurish va hujumni ham ko'rsatadi; locked — xira (sotib olinmagan).
  */
@@ -1408,19 +1441,20 @@ function HeroPreview({
   const view = heroView(hero);
   useEffect(() => {
     if (!active) return setFrame(0);
-    const id = window.setInterval(() => setFrame((f) => f + 1), showcase ? 160 : 500);
+    // tanlangan qahramon joyida yuradi (oraliq kadrlar bilan — tezroq taymer)
+    const id = window.setInterval(() => setFrame((f) => f + 1), showcase ? 160 : 110);
     return () => window.clearInterval(id);
   }, [active, showcase]);
   useEffect(() => {
     const c = ref.current?.getContext("2d");
     if (!c) return;
     c.clearRect(0, 0, view, view);
-    const [state, f] = showcase
-      ? SHOWCASE[frame % SHOWCASE.length]!
-      : (["idle", frame % 2] as const);
+    const [state, f, sub] = showcase
+      ? ([...SHOWCASE[frame % SHOWCASE.length]!, 0] as const)
+      : selectedHeroFrame(hero, active ? frame : 0, active && !currentSettings().reduceFx);
     // tanlangan skin (do'kondan qaytganda menyu qayta chiziladi)
-    renderSprite(c, hero, state, f, view / 2, view / 2, false, false, false, pal);
-  }, [hero, frame, showcase, view, pal]);
+    renderSprite(c, hero, state, f, view / 2, view / 2, false, false, false, pal, sub);
+  }, [hero, frame, showcase, view, pal, active]);
   return (
     <canvas
       ref={ref}
@@ -1952,7 +1986,12 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
         </ol>
         {claim ? (
           <div role="status" className="flex flex-col gap-1">
-            <p className="gift-pop inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
+            {/* quti silkinib ochiladi, so'ng mukofot chiqadi (styles.css: gift-open) */}
+            <span aria-hidden="true" className="gift-open self-start">
+              <span className="gift-open-box" />
+              <span className="gift-open-lid" />
+            </span>
+            <p className="gift-pop gift-late inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
               <PixelIcon id="coin" color="#ffcc33" size={16} />+{claim.gold} OLTIN!
             </p>
             {!!claim.bonus && (

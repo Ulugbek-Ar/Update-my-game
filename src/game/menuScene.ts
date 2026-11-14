@@ -62,6 +62,62 @@ const STARS = Array.from({ length: 60 }, (_, i) => ({
   speed: 1 + (i % 5) * 0.4,
 }));
 
+/**
+ * v3.8: parallaks bulutlar — uzoqdagilari sekin, yaqinlari tezroq suzadi (x — boshlang'ich joy,
+ * v — px/s, a — quyuqligi). Faqat bezak.
+ */
+export const CLOUDS: readonly { x: number; y: number; w: number; v: number; a: number }[] = [
+  { x: 20, y: 22, w: 46, v: 1.6, a: 0.5 },
+  { x: 150, y: 44, w: 60, v: 2.6, a: 0.6 },
+  { x: 250, y: 14, w: 38, v: 1.1, a: 0.45 },
+  { x: 90, y: 66, w: 70, v: 3.4, a: 0.55 },
+];
+
+/** Bulutning chap cheti: sahnadan chiqib ketgach narigi tomondan qaytadi. still — harakatsiz. */
+export function cloudX(k: (typeof CLOUDS)[number], t: number, still = false) {
+  const span = SCENE_W + k.w * 2;
+  return ((k.x + k.w + (still ? 0 : t * k.v)) % span) - k.w;
+}
+
+/** Sahnadagi personajlar ora-sira harakat qiladi: shuncha soniyada bir marta */
+export const CAST_ACT_EVERY = 9;
+const ACT_TIME = 0.45;
+/** Oraliq (vizual) kadrli qahramonlar — sprites.ts: visualFrames */
+const SMOOTH: readonly SpriteKind[] = ["knight", "mage", "hunter", "gunner", "paladin"];
+
+/**
+ * i-personajning t paytdagi kadri: sekin nafas (qahramonlarda oraliq kadrlar bilan), ora-sira
+ * qahramonlar va skelet zarba ko'rsatadi, slime sakraydi. still — "Effektlarni kamaytirish".
+ */
+export function castPose(
+  i: number,
+  kind: SpriteKind,
+  phase: number,
+  t: number,
+  still = false,
+): { state: "idle" | "walk" | "attack"; frame: number; sub: number } {
+  const cyc = t * 2 + phase * 2;
+  const idle =
+    kind === "samurai"
+      ? { state: "idle" as const, frame: Math.floor(t * 4 + phase * 4) % 4, sub: 0 }
+      : {
+          state: "idle" as const,
+          frame: Math.floor(cyc) % 2,
+          sub: !still && SMOOTH.includes(kind) && cyc % 1 >= 0.5 ? 1 : 0,
+        };
+  if (still) return idle;
+  const act = (t + i * 2.7) % CAST_ACT_EVERY;
+  if (kind === "slime") {
+    // sakrab qo'yadi
+    const hop = (t + 1.3) % 5;
+    return hop < 0.56 ? { state: "walk", frame: Math.floor(hop / 0.14), sub: 0 } : idle;
+  }
+  if (kind === "wolf" || kind === "treant") return idle;
+  return act < ACT_TIME
+    ? { state: "attack", frame: Math.min(2, Math.floor(act / (ACT_TIME / 3))), sub: 0 }
+    : idle;
+}
+
 let still: HTMLCanvasElement | null = null;
 
 /** Qimirlamaydigan qism (osmon, oy, tepaliklar, qasr) bir marta chiziladi. */
@@ -149,22 +205,57 @@ function bats(c: CanvasRenderingContext2D, t: number) {
   }
 }
 
-/** Butun sahnani SCENE_W x SCENE_H koordinatalarda chizadi; t — soniya; compact — past ekran. */
-export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact = false) {
+/**
+ * Butun sahnani SCENE_W x SCENE_H koordinatalarda chizadi; t — soniya; compact — past ekran;
+ * calm — "Effektlarni kamaytirish": bulutlar va yulduzlar suzmaydi, personajlar faqat nafas oladi.
+ */
+export function renderMenuScene(
+  c: CanvasRenderingContext2D,
+  t: number,
+  compact = false,
+  calm = false,
+) {
   c.imageSmoothingEnabled = false;
   c.drawImage(background(), 0, 0);
-  // miltillovchi yulduzlar
+  // oy gardishi sekin "nafas oladi"
+  if (!calm) {
+    c.fillStyle = `rgba(242,236,208,${0.05 + 0.03 * Math.sin(t * 0.8)})`;
+    c.beginPath();
+    c.arc(258, 36, 24 + Math.sin(t * 0.8) * 2, 0, Math.PI * 2);
+    c.fill();
+  }
+  // miltillovchi yulduzlar: juda sekin suzadi (parallaks — uzoq qatlam)
   for (const [i, s] of STARS.entries()) {
     const b = Math.sin(t * s.speed + i * 1.7);
     if (b < -0.55) continue;
-    px(c, b > 0.7 ? "#ffffff" : i % 4 ? "#8a84a8" : "#e0d6ee", s.x, s.y, 1, 1);
+    const sx = calm ? s.x : (s.x + t * 0.22 * s.speed) % SCENE_W;
+    px(c, b > 0.7 ? "#ffffff" : i % 4 ? "#8a84a8" : "#e0d6ee", sx, s.y, 1, 1);
     if (s.big && b > 0.5) {
-      px(c, "#8a84a8", s.x - 1, s.y, 1, 1);
-      px(c, "#8a84a8", s.x + 1, s.y, 1, 1);
-      px(c, "#8a84a8", s.x, s.y - 1, 1, 1);
-      px(c, "#8a84a8", s.x, s.y + 1, 1, 1);
+      px(c, "#8a84a8", sx - 1, s.y, 1, 1);
+      px(c, "#8a84a8", sx + 1, s.y, 1, 1);
+      px(c, "#8a84a8", sx, s.y - 1, 1, 1);
+      px(c, "#8a84a8", sx, s.y + 1, 1, 1);
     }
   }
+  // uchar yulduz: 11 soniyada bir marta osmonni kesib o'tadi
+  const shoot = (t % 11) / 0.7;
+  if (!calm && shoot < 1)
+    for (let k = 0; k < 6; k++) {
+      c.globalAlpha = (1 - k / 6) * (1 - shoot * 0.5);
+      px(c, "#ffffff", 40 + shoot * 90 - k * 2, 8 + shoot * 34 - k, 1, 1);
+    }
+  c.globalAlpha = 1;
+  // bulutlar: oy va yulduzlar oldidan turli tezlikda suzadi
+  for (const k of CLOUDS) {
+    const x = Math.round(cloudX(k, t, calm));
+    const h = Math.max(4, Math.round(k.w / 7));
+    c.globalAlpha = k.a;
+    px(c, "#2a2550", x + Math.round(k.w * 0.18), k.y, Math.round(k.w * 0.5), h);
+    px(c, "#2a2550", x, k.y + h - 1, k.w, h);
+    px(c, "#231f46", x + Math.round(k.w * 0.1), k.y + h * 2 - 2, Math.round(k.w * 0.75), h - 2);
+    px(c, "#3a3466", x + Math.round(k.w * 0.22), k.y, Math.round(k.w * 0.3), 1);
+  }
+  c.globalAlpha = 1;
   // qasr derazalarida yonib-o'chuvchi chiroq
   for (const [i, [wx, wy]] of (
     [
@@ -180,9 +271,9 @@ export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact 
     px(c, fl ? "#ffcc33" : "#a8741a", wx, wy, 2, 3);
   }
   bats(c, t);
-  // qahramonlar va moblar: sekin "nafas oladi"
+  // qahramonlar va moblar: sekin "nafas oladi", ora-sira zarba ko'rsatadi (castPose)
   CAST.forEach((a, i) => {
-    const frame = Math.floor(t * 2 + a.phase * 2) % 2;
+    const pose = castPose(i, a.kind, a.phase, t, calm);
     const k = compact ? CAST_COMPACT[i]! : { x: a.x, scale: 1 };
     // oyoqlari yerda qoladi: kichraytirish yer chizig'iga nisbatan
     const footY = GROUND + 4;
@@ -192,8 +283,19 @@ export function renderMenuScene(c: CanvasRenderingContext2D, t: number, compact 
     c.translate(k.x, footY);
     c.scale(k.scale, k.scale);
     // Samurayda 4 ta turish kadri (soch va kamar hilpiraydi) — o'sha 1 s lik sikl
-    const f = a.kind === "samurai" ? Math.floor(t * 4 + a.phase * 4) % 4 : frame;
-    renderSprite(c, a.kind, "idle", f, 0, a.y - footY, false, a.flip);
+    renderSprite(
+      c,
+      a.kind,
+      pose.state,
+      pose.frame,
+      0,
+      a.y - footY,
+      false,
+      a.flip,
+      false,
+      undefined,
+      pose.sub,
+    );
     c.restore();
   });
   // boyo'g'li Daraxt odamning tojida; Daraxt odam nafas olganda (idle 1-kadr) toji

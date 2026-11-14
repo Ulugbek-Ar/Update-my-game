@@ -29,6 +29,8 @@ import {
   renderChestRays,
 } from "./combatFx";
 import { setCritSource } from "./crit";
+import { CAST_ACT_EVERY, CLOUDS, SCENE_W, castPose, cloudX } from "./menuScene";
+import { pixelPress } from "@/lib/pixel-ui";
 import {
   BANNER_SLIDE,
   CARD_FLIP,
@@ -37,10 +39,14 @@ import {
   HEART_SHAKE,
   HudFx,
   PICK_TIME,
+  SCREEN_IN,
+  VICTORY_STARS,
   cardFlip,
   cardGlow,
   cardsShownAt,
   framePoint,
+  titleDrop,
+  victoryStar,
 } from "./hudFx";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -687,6 +693,83 @@ describe("HUD: yuraklar, oltin hisobi, banner, kuch kartalari", () => {
         expect(g.hud.picked).toBeNull();
       }
     }
+  });
+});
+
+describe("Menyu va ekranlar", () => {
+  it("parallax clouds drift at different speeds and wrap around; reduced effects keep them still", () => {
+    const speeds = new Set(CLOUDS.map((k) => k.v));
+    expect(speeds.size).toBe(CLOUDS.length);
+    for (const k of CLOUDS) {
+      const a = cloudX(k, 0),
+        b = cloudX(k, 5);
+      expect(b - a).toBeCloseTo(5 * k.v, 5);
+      // sahnadan chiqib ketgach narigi tomondan qaytadi
+      for (let t = 0; t < 400; t += 7) {
+        const x = cloudX(k, t);
+        expect(x).toBeGreaterThanOrEqual(-k.w);
+        expect(x).toBeLessThan(SCENE_W + k.w);
+      }
+      expect(cloudX(k, 123, true)).toBe(cloudX(k, 0, true));
+    }
+  });
+
+  it("the cast is alive: heroes breathe with in-between frames and show a strike now and then", () => {
+    const seen = (i: number, kind: SpriteKind, still = false) => {
+      const out = new Set<string>();
+      for (let t = 0; t < CAST_ACT_EVERY * 2; t += 0.05) {
+        const p = castPose(i, kind, 0.3, t, still);
+        out.add(`${p.state}:${p.frame}:${p.sub}`);
+      }
+      return out;
+    };
+    const knight = seen(1, "knight");
+    expect(knight.has("idle:0:1")).toBe(true);
+    expect(knight.has("idle:1:1")).toBe(true);
+    for (const f of [0, 1, 2]) expect(knight.has(`attack:${f}:0`)).toBe(true);
+    expect([...seen(4, "samurai")].filter((k) => k.startsWith("idle")).length).toBe(4);
+    expect([...seen(6, "slime")].some((k) => k.startsWith("walk"))).toBe(true);
+    // effektlar kamaytirilganda — faqat sekin nafas, oraliq kadrsiz
+    expect([...seen(1, "knight", true)].sort()).toEqual(["idle:0:0", "idle:1:0"]);
+    // bir lahzada hamma birga hujum qilmaydi
+    for (let t = 0; t < CAST_ACT_EVERY; t += 0.1) {
+      const acting = [0, 1, 2, 3, 4].filter(
+        (i) => castPose(i, "knight", 0, t).state === "attack",
+      ).length;
+      expect(acting).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("end screens: the title drops in and settles; victory stars twinkle around it", () => {
+    expect(titleDrop(0)).toBeLessThan(-30);
+    expect(titleDrop(SCREEN_IN)).toBe(0);
+    expect(titleDrop(5)).toBe(0);
+    for (let i = 0; i < VICTORY_STARS; i++) {
+      const s = victoryStar(i, 1.7);
+      expect(Math.abs(s.x)).toBeLessThanOrEqual(96);
+      expect(Math.abs(s.y)).toBeLessThanOrEqual(20);
+      expect(s.glow).toBeGreaterThanOrEqual(0);
+      expect(s.glow).toBeLessThanOrEqual(1);
+    }
+    const h = new HudFx();
+    h.update(DT, 5, 0, 0, "", "play");
+    for (let t = 0; t < 1; t += DT) h.update(DT, 5, 0, 0, "", "play");
+    expect(h.screenAge).toBeGreaterThan(0.9);
+    h.update(DT, 0, 0, 0, "", "attempt");
+    expect(h.screenAge).toBe(0);
+  });
+
+  it("buttons press like pixels, and every new menu animation switches off with reduced effects", () => {
+    expect(pixelPress).toContain("active:translate-y-[2px]");
+    expect(pixelPress).toContain("steps(2,end)");
+    const css = readFileSync(path.resolve(__dirname, "../styles.css"), "utf8");
+    for (const cls of ["logo-live", "screen-wipe", "level-rays", "gift-open"]) {
+      expect(css, cls).toContain(`.${cls}`);
+      expect(css, cls).toMatch(new RegExp(`\\.reduce-fx [^{,]*${cls}`));
+    }
+    expect(css).toContain("prefers-reduced-motion");
+    // parda bosishlarni to'smaydi
+    expect(css).toMatch(/\.screen-wipe \{[^}]*pointer-events: none/);
   });
 });
 

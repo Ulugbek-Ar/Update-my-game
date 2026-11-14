@@ -25,9 +25,12 @@ import {
   PICK_TIME,
   SHIMMER_LEN,
   SHIMMER_SPEED,
+  VICTORY_STARS,
   cardFlip,
   cardGlow,
   framePoint,
+  titleDrop,
+  victoryStar,
 } from "./hudFx";
 import { ONI_HP, Oni } from "./oni";
 import {
@@ -2067,7 +2070,14 @@ export class Game {
     // HUD'ga yetib kelgan tanga/yurak: hisob bir lahza "sakraydi" (hudFx — faqat ko'rinish)
     for (const kind of this.cfx.arrived) this.hud.arrive(kind);
     this.cfx.arrived.length = 0;
-    this.hud.update(dt, this.player.hp, this.runGold, this.banner.timer, this.banner.title);
+    this.hud.update(
+      dt,
+      this.player.hp,
+      this.runGold,
+      this.banner.timer,
+      this.banner.title,
+      this.phase,
+    );
     // kuch tanlash ekranida yutuq xabari navbatda kutadi (sarlavhani yopmaydi)
     if (this.toasts.length && !this.toastHeld) {
       this.toasts[0]!.timer -= dt;
@@ -4539,6 +4549,11 @@ export class Game {
     px(c, color, x + 3, y + 6, 2, 1);
   }
 
+  /** Yakun ekrani sarlavhasining siljishi (hudFx.ts: titleDrop); effektlar kamaytirilganda — 0. */
+  private endDrop() {
+    return this.fx.isReduced() ? 0 : titleDrop(this.hud.screenAge);
+  }
+
   /** Tanlangan karta sharpasi: oq chaqnab, o'z rangida porlab yuqoriga uchadi va so'nadi. */
   private renderPicked() {
     const k = this.hud.picked;
@@ -5128,7 +5143,7 @@ export class Game {
       // 2-/3-dunyoda o'lim: qayta boshlash yoki bosh menyu
       const ch = this.chapter;
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
-      this.text("YIQILDINGIZ", ROOM.w / 2, 46, 10, "#ff4d6d");
+      this.text("YIQILDINGIZ", ROOM.w / 2, 46 + this.endDrop(), 10, "#ff4d6d");
       this.text(`${ch}-DUNYO · Urinish №${this.attempt}`, ROOM.w / 2, 66, 8, WORLD_COLORS[ch]);
       this.text(`Ochko: ${this.score}   Rekord: ${this.best}`, ROOM.w / 2, 82, 6, "#e0d6ee");
       if (this.newBest) this.text("YANGI REKORD!", ROOM.w / 2, 94, 6, "#a6f08e");
@@ -5144,7 +5159,7 @@ export class Game {
       }
     } else if (this.phase === "attempt") {
       px(c, "rgba(0,0,0,0.75)", 0, 0, ROOM.w, ROOM.h);
-      this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30, 10, "#ff4d6d");
+      this.text("YIQILDINGIZ", ROOM.w / 2, ROOM.h / 2 - 30 + this.endDrop(), 10, "#ff4d6d");
       this.text(
         this.daily
           ? "KUNLIK SINOV TUGADI"
@@ -5176,8 +5191,24 @@ export class Game {
       // statistika sig'ishi uchun yozuvlar yuqoriroqda (tugmalar joyida qoladi)
       const ch = this.chapter;
       const later = ch > 1;
-      if (later) this.text(`${ch}-DUNYO TUGADI`, ROOM.w / 2, 54, 16, WORLD_COLORS[ch]);
-      else this.text("G'ALABA!", ROOM.w / 2, 56, 20, "#ffcc33");
+      // sarlavha yuqoridan tushadi, atrofida yulduzchalar miltillaydi (hudFx.ts) — faqat ko'rinish
+      const drop = this.endDrop();
+      if (later) this.text(`${ch}-DUNYO TUGADI`, ROOM.w / 2, 54 + drop, 16, WORLD_COLORS[ch]);
+      else this.text("G'ALABA!", ROOM.w / 2, 56 + drop, 20, "#ffcc33");
+      if (!this.fx.isReduced() && drop === 0)
+        for (let i = 0; i < VICTORY_STARS; i++) {
+          const st = victoryStar(i, this.time);
+          if (st.glow < 0.35) continue;
+          const sx = ROOM.w / 2 + st.x,
+            sy = 46 + st.y;
+          c.globalAlpha = st.glow;
+          px(c, "#fff2a8", sx, sy, 1, 1);
+          if (st.glow > 0.8) {
+            px(c, "#ffcc33", sx - 1, sy, 3, 1);
+            px(c, "#ffcc33", sx, sy - 1, 1, 3);
+          }
+          c.globalAlpha = 1;
+        }
       this.text(
         this.daily ? "Kunlik sinovni yutdingiz" : `${this.attempt}-urinishda yutdingiz`,
         ROOM.w / 2,

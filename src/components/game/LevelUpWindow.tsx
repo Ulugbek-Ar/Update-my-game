@@ -9,7 +9,11 @@ export function LevelUpWindow({ up, onClose }: { up: LevelUp; onClose: () => voi
   return (
     <PixelWindow label="Yangi daraja" title="YANGI DARAJA!" onClose={onClose} accent>
       <div role="status" className="flex flex-col items-center gap-3 text-center">
-        <span className="gift-pop inline-flex items-center gap-3 text-primary text-sm sm:text-base">
+        {/* daraja nishoni nurlar ichida paydo bo'ladi (styles.css: level-burst) */}
+        <span className="level-burst gift-pop inline-flex items-center gap-3 text-primary text-sm sm:text-base">
+          <span aria-hidden="true" className="level-rays">
+            <span />
+          </span>
           <LevelBadge level={level} className="px-2 py-1 text-xs sm:text-sm" />
           {level}-DARAJA
         </span>

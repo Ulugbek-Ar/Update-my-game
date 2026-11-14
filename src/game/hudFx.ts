@@ -25,6 +25,35 @@ export const PICK_RISE = 44;
 export const SHIMMER_SPEED = 110;
 export const SHIMMER_LEN = 16;
 
+/** Yakun ekrani (g'alaba / yiqilish) sarlavhasi shuncha vaqtda tushib joyiga o'tiradi */
+export const SCREEN_IN = 0.4;
+/** G'alaba ekranidagi yulduzchalar soni */
+export const VICTORY_STARS = 10;
+
+/**
+ * Yakun ekrani sarlavhasining siljishi (px): yuqoridan tushadi, biroz o'tib ketib, joyiga qaytadi.
+ * age — ekran ochilgandan beri o'tgan vaqt. 0 — joyida.
+ */
+export function titleDrop(age: number) {
+  const k = Math.min(1, Math.max(0, age) / SCREEN_IN);
+  const c1 = 1.70158,
+    c3 = c1 + 1;
+  const e = 1 + c3 * (k - 1) ** 3 + c1 * (k - 1) ** 2;
+  // (-0 emas, aniq 0)
+  return Math.round((1 - e) * -46) || 0;
+}
+
+/** G'alaba yulduzchasi i ning joyi (sarlavha atrofida) va yorqinligi (0..1) — vaqtdan hisoblanadi. */
+export function victoryStar(i: number, time: number) {
+  const a = (i / VICTORY_STARS) * Math.PI * 2 + 0.4;
+  const r = 0.75 + 0.25 * Math.sin(i * 2.3);
+  return {
+    x: Math.round(Math.cos(a) * 96 * r),
+    y: Math.round(Math.sin(a) * 20 * r),
+    glow: Math.max(0, Math.sin(time * 3.2 + i * 1.9)),
+  };
+}
+
 /** Tanlangan kartaning "sharpasi": joyi, rangi va nomi */
 export interface PickedCard {
   x: number;
@@ -90,11 +119,14 @@ export class HudFx {
   heartPop = 0;
   /** Banner paydo bo'lgandan beri o'tgan vaqt (sirpanib kirish uchun) */
   bannerAge = 9;
+  /** O'yin bosqichi (play / attempt / victory) almashgandan beri o'tgan vaqt — yakun ekranlari uchun */
+  screenAge = 9;
   /** Tanlangan karta sharpasi (porlab yuqoriga uchadi) */
   picked: PickedCard | null = null;
   private hp = -1;
   private bannerTimer = 0;
   private bannerTitle = "";
+  private phase = "";
   private goldTarget = 0;
   private goldRate = GOLD_ROLL_MIN;
 
@@ -122,8 +154,10 @@ export class HudFx {
   }
 
   /** Har kadr: joriy jon, oltin, banner taymeri va sarlavhasi (faqat o'qiladi). */
-  update(dt: number, hp: number, gold: number, banner = 0, title = "") {
+  update(dt: number, hp: number, gold: number, banner = 0, title = "", phase = "") {
     if (this.hp < 0) this.reset(hp, gold);
+    this.screenAge = phase !== this.phase ? 0 : this.screenAge + dt;
+    this.phase = phase;
     // yangi banner: taymeri oshdi yoki sarlavhasi almashdi — yoshi noldan
     const fresh = banner > 0 && (banner > this.bannerTimer + 1e-6 || title !== this.bannerTitle);
     this.bannerAge = fresh ? 0 : this.bannerAge + dt;
