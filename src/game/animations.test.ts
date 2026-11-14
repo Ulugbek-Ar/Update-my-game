@@ -29,6 +29,19 @@ import {
   renderChestRays,
 } from "./combatFx";
 import { setCritSource } from "./crit";
+import {
+  BANNER_SLIDE,
+  CARD_FLIP,
+  CARD_STAGGER,
+  HEART_BREAK,
+  HEART_SHAKE,
+  HudFx,
+  PICK_TIME,
+  cardFlip,
+  cardGlow,
+  cardsShownAt,
+  framePoint,
+} from "./hudFx";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { BOSS_WAVE, type World } from "./waves";
@@ -574,6 +587,106 @@ describe("Jang hissi: uchqun, kritik chaqnashi, HUD'ga uchish, sandiq", () => {
     expect(draws(-1)).toBe(0);
     expect(draws(0.2)).toBe(CHEST_RAYS);
     expect(draws(CHEST_RAY_TIME + 0.01)).toBe(0);
+  });
+});
+
+describe("HUD: yuraklar, oltin hisobi, banner, kuch kartalari", () => {
+  const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
+
+  it("losing a heart shakes the row and shatters that heart; the HUD only reads the numbers", () => {
+    const h = new HudFx();
+    h.update(DT, 5, 0);
+    expect(h.shake).toBe(0);
+    h.update(DT, 3, 0);
+    expect(h.shake).toBeGreaterThan(0);
+    expect(h.broken.map((b) => b.index)).toEqual([3, 4]);
+    const [ox] = h.heartOffset(0, 0.123);
+    expect(Math.abs(ox)).toBeLessThanOrEqual(2);
+    for (let t = 0; t < Math.max(HEART_SHAKE, HEART_BREAK) + 0.05; t += DT) h.update(DT, 3, 0);
+    expect(h.shake).toBe(0);
+    expect(h.broken).toHaveLength(0);
+    expect(h.heartOffset(0, 1)).toEqual([0, 0]);
+    // tiklangan yurak parchalanmaydi
+    h.update(DT, 4, 0);
+    expect(h.broken).toHaveLength(0);
+  });
+
+  it("the gold counter rolls up to the real value within half a second", () => {
+    const h = new HudFx();
+    h.update(DT, 5, 0);
+    h.update(DT, 5, 30);
+    expect(h.gold).toBeGreaterThan(0);
+    expect(h.gold).toBeLessThan(30);
+    for (let t = 0; t < 0.5; t += DT) h.update(DT, 5, 30);
+    expect(h.gold).toBe(30);
+    // kichik farq ham tez yetadi
+    h.update(DT, 5, 31);
+    for (let t = 0; t < 0.1; t += DT) h.update(DT, 5, 31);
+    expect(h.gold).toBe(31);
+  });
+
+  it("a new banner slides in; the same banner does not restart", () => {
+    const h = new HudFx();
+    h.update(DT, 5, 0, 0);
+    h.update(DT, 5, 0, 2.2);
+    expect(h.bannerAge).toBe(0);
+    expect(h.bannerIn).toBe(0);
+    let timer = 2.2;
+    for (let t = 0; t < BANNER_SLIDE + 0.02; t += DT) h.update(DT, 5, 0, (timer -= DT));
+    expect(h.bannerIn).toBe(1);
+    h.update(DT, 5, 0, 1.6 + timer);
+    expect(h.bannerAge).toBe(0);
+    // sarlavha almashsa ham (taymer kichikroq bo'lsa-da) yangi banner hisoblanadi
+    for (let t = 0; t < 0.3; t += DT) h.update(DT, 5, 0, 1.5, "BOSS: IBLIS");
+    expect(h.bannerAge).toBeGreaterThan(0.2);
+    h.update(DT, 5, 0, 1.2, "G'AZAB!");
+    expect(h.bannerAge).toBe(0);
+  });
+
+  it("upgrade cards flip in one by one and are all open before the 0.6 s entry lock ends", () => {
+    expect(cardFlip(0, 0)).toBe(0);
+    expect(cardFlip(0, CARD_FLIP)).toBe(1);
+    expect(cardFlip(2, CARD_STAGGER * 2)).toBe(0);
+    expect(cardFlip(1, CARD_STAGGER + CARD_FLIP / 2)).toBeGreaterThan(0.5);
+    expect(cardsShownAt(3)).toBeLessThan(0.6);
+    expect(cardFlip(2, 0.6)).toBe(1);
+    // qulf vaqti avvalgidek
+    const g = new Game(canvas as unknown as HTMLCanvasElement, "knight", { world: 2 });
+    expect((g as unknown as { upgradeLock: number }).upgradeLock).toBe(0.6);
+  });
+
+  it("card frames: hero-only cards shimmer, synergy-completing ones glow gold; the light runs the frame", () => {
+    expect(cardGlow(false, false)).toBe("none");
+    expect(cardGlow(true, false)).toBe("rare");
+    expect(cardGlow(false, true)).toBe("legend");
+    expect(cardGlow(true, true)).toBe("legend");
+    const w = 92,
+      h = 100;
+    expect(framePoint(w, h, 0)).toEqual([0, 0]);
+    expect(framePoint(w, h, w)).toEqual([w - 1, 0]);
+    expect(framePoint(w, h, w + h)).toEqual([w - 1, h - 1]);
+    expect(framePoint(w, h, 2 * (w + h))).toEqual([0, 0]);
+    for (let d = 0; d < 2 * (w + h); d += 7) {
+      const [x, y] = framePoint(w, h, d);
+      expect(x === 0 || y === 0 || x === w - 1 || y === h - 1).toBe(true);
+    }
+  });
+
+  it("the picked card glows and flies up, but the upgrade itself is applied at once", () => {
+    for (const reduce of [false, true]) {
+      const g = new Game(canvas as unknown as HTMLCanvasElement, "knight", { world: 2 });
+      g.fx.reduced = reduce;
+      const gi = g as unknown as { choose(i: number): void; choices: { name: string }[] };
+      const name = gi.choices[1]!.name;
+      gi.choose(1);
+      expect(g.stage).toBe("fight");
+      if (reduce) expect(g.hud.picked).toBeNull();
+      else {
+        expect(g.hud.picked).toMatchObject({ name, t: 0 });
+        for (let t = 0; t < PICK_TIME + 0.05; t += DT) g.update(DT);
+        expect(g.hud.picked).toBeNull();
+      }
+    }
   });
 });
 

@@ -18,7 +18,17 @@ import { INTRO_TIME, PHASE_GUARD, bossHpFor } from "./bossPower";
 import { introFrame, phasePulse } from "./mobAnim";
 import { renderAirAmbience, renderGroundAmbience } from "./ambience";
 import { CombatFx, chestPop, flyerPos, renderChestRays, renderSpark } from "./combatFx";
-import { HudFx } from "./hudFx";
+import {
+  HEART_BREAK,
+  HudFx,
+  PICK_RISE,
+  PICK_TIME,
+  SHIMMER_LEN,
+  SHIMMER_SPEED,
+  cardFlip,
+  cardGlow,
+  framePoint,
+} from "./hudFx";
 import { ONI_HP, Oni } from "./oni";
 import {
   PETALS,
@@ -1635,6 +1645,8 @@ export class Game {
   private choose(i: number) {
     const u = this.choices[i];
     if (!u) return;
+    // tanlangan karta porlab yuqoriga uchadi (hudFx.ts) — faqat ko'rinish
+    if (!this.fx.isReduced()) this.hud.pick({ ...this.cardRect(i), color: u.color, name: u.name });
     u.apply(this.player);
     sfx.upgrade();
     this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
@@ -2055,7 +2067,7 @@ export class Game {
     // HUD'ga yetib kelgan tanga/yurak: hisob bir lahza "sakraydi" (hudFx — faqat ko'rinish)
     for (const kind of this.cfx.arrived) this.hud.arrive(kind);
     this.cfx.arrived.length = 0;
-    this.hud.update(dt, this.player.hp, this.runGold);
+    this.hud.update(dt, this.player.hp, this.runGold, this.banner.timer, this.banner.title);
     // kuch tanlash ekranida yutuq xabari navbatda kutadi (sarlavhani yopmaydi)
     if (this.toasts.length && !this.toastHeld) {
       this.toasts[0]!.timer -= dt;
@@ -4167,6 +4179,7 @@ export class Game {
       this.renderHud();
       this.renderFlyers();
     }
+    this.renderPicked();
     this.renderOverlays();
     this.renderToast();
     c.restore();
@@ -4526,6 +4539,23 @@ export class Game {
     px(c, color, x + 3, y + 6, 2, 1);
   }
 
+  /** Tanlangan karta sharpasi: oq chaqnab, o'z rangida porlab yuqoriga uchadi va so'nadi. */
+  private renderPicked() {
+    const k = this.hud.picked;
+    if (!k) return;
+    const c = this.ctx;
+    const q = k.t / PICK_TIME;
+    const y = k.y - Math.round(q * q * PICK_RISE);
+    // yengil: tez so'nadi, jang ko'rinishini to'smaydi
+    c.globalAlpha = (1 - q) * 0.6;
+    px(c, q < 0.25 ? "#ffffff" : k.color, k.x, y, k.w, k.h);
+    c.globalAlpha = (1 - q) * 0.3;
+    px(c, "#ffffff", k.x + 2, y + 2, k.w - 4, k.h - 4);
+    c.globalAlpha = 1 - q;
+    this.text(k.name, k.x + k.w / 2, y + k.h / 2, 6, "#1f1730");
+    c.globalAlpha = 1;
+  }
+
   /** Terilgan tanga va yuraklar HUD'dagi joyiga uchib boradi (combatFx.ts) — faqat ko'rinish. */
   private renderFlyers() {
     const c = this.ctx;
@@ -4554,11 +4584,39 @@ export class Game {
   private renderHud() {
     const c = this.ctx;
     const p = this.player;
+    // yuraklar: zarba yeganda titraydi, yangi terilgani bir lahza sakraydi (hudFx.ts)
+    const lively = !this.fx.isReduced();
+    const hpop = lively ? Math.round(HudFx.pop(this.hud.heartPop) * 2) : 0;
     for (let i = 0; i < p.maxHp; i++) {
       const on = i < p.hp;
-      this.heart(c, 4 + i * 10, 4, on ? "#ff4d6d" : "#3b2a3a");
-      if (on) px(c, "#ffb3c1", 5 + i * 10, 5, 1, 1);
+      const [ox, oy] = lively ? this.hud.heartOffset(i, this.time) : [0, 0];
+      const up = on && i === p.hp - 1 ? hpop : 0;
+      this.heart(c, 4 + i * 10 + ox, 4 + oy - up, on ? (up ? "#ff8fa3" : "#ff4d6d") : "#3b2a3a");
+      if (on) px(c, "#ffb3c1", 5 + i * 10 + ox, 5 + oy - up, 1, 1);
     }
+    // yo'qolgan yurak ikkiga bo'linib, pastga tushib so'nadi
+    if (lively)
+      for (const b of this.hud.broken) {
+        const k = b.t / HEART_BREAK;
+        const x = 4 + b.index * 10,
+          dx = Math.round(k * 5),
+          dy = Math.round(k * k * 12);
+        c.globalAlpha = 1 - k;
+        const col = b.t < 0.06 ? "#ffffff" : "#ff4d6d";
+        // chap yarmi
+        px(c, col, x + 1 - dx, 4 + dy, 2, 1);
+        px(c, col, x - dx, 5 + dy, 4, 3);
+        px(c, col, x + 1 - dx, 8 + dy, 3, 1);
+        px(c, col, x + 2 - dx, 9 + dy, 2, 1);
+        px(c, col, x + 3 - dx, 10 + dy, 1, 1);
+        // o'ng yarmi
+        px(c, col, x + 5 + dx, 4 + dy, 2, 1);
+        px(c, col, x + 4 + dx, 5 + dy, 4, 3);
+        px(c, col, x + 4 + dx, 8 + dy, 3, 1);
+        px(c, col, x + 4 + dx, 9 + dy, 2, 1);
+        px(c, col, x + 4 + dx, 10 + dy, 1, 1);
+        c.globalAlpha = 1;
+      }
     // dash tayyorligi
     const k = Math.max(0, Math.min(1, 1 - p.dashCooldown / p.dashCd));
     px(c, "#000", 4, 13, 32, 3);
@@ -4677,8 +4735,18 @@ export class Game {
     );
     // terilgan oltin — o'ng pastki burchakda (yakun ekranlarida alohida ko'rsatiladi)
     if (this.phase === "play") {
-      this.coin(c, ROOM.w - 10, ROOM.h - 11);
-      this.text(String(this.runGold), ROOM.w - 13, ROOM.h - 5, 5, "#ffcc33", "right");
+      // hisob "aylanib" sanaladi, tanga yetib kelganda bir lahza sakraydi (hudFx.ts)
+      const roll = !this.fx.isReduced();
+      const gp = roll ? Math.round(HudFx.pop(this.hud.goldPop) * 2) : 0;
+      this.coin(c, ROOM.w - 10, ROOM.h - 11 - gp);
+      this.text(
+        String(roll ? Math.round(this.hud.gold) : this.runGold),
+        ROOM.w - 13,
+        ROOM.h - 5 - gp,
+        5,
+        gp ? "#fff2a8" : "#ffcc33",
+        "right",
+      );
     }
 
     const boss = this.boss;
@@ -4738,9 +4806,14 @@ export class Game {
       const a = Math.min(1, this.banner.timer * 2);
       c.globalAlpha = a;
       const sub = this.banner.hint ? this.dashHint() : this.banner.sub;
-      px(c, "rgba(0,0,0,0.55)", 0, 92, ROOM.w, sub ? 40 : 28);
-      this.text(this.banner.title, ROOM.w / 2, 112, 12, "#ffcc33");
-      if (sub) this.text(sub, ROOM.w / 2, 126, 6, "#e0d6ee");
+      // banner sirpanib kiradi: tasma o'rtadan ochiladi, sarlavha chapdan, izoh o'ngdan (hudFx.ts)
+      const bin = this.fx.isReduced() ? 1 : this.hud.bannerIn;
+      const bh = sub ? 40 : 28;
+      const open = Math.max(2, Math.round(bh * bin));
+      px(c, "rgba(0,0,0,0.55)", 0, 92 + Math.round((bh - open) / 2), ROOM.w, open);
+      const off = Math.round((1 - bin) * 200);
+      this.text(this.banner.title, ROOM.w / 2 - off, 112, 12, "#ffcc33");
+      if (sub) this.text(sub, ROOM.w / 2 + off, 126, 6, "#e0d6ee");
       c.globalAlpha = 1;
     }
   }
@@ -4922,6 +4995,12 @@ export class Game {
     const c = this.ctx;
     if (this.phase === "play" && this.stage === "upgrade" && !this.paused) {
       px(c, "rgba(8,4,16,0.78)", 0, 0, ROOM.w, ROOM.h);
+      // ekran yoshi: kirish qulfi (0.6 s) davomida sarlavha tushadi, kartalar birma-bir ochiladi
+      const calm = this.fx.isReduced();
+      const age = calm ? 9 : 0.6 - Math.max(0, this.upgradeLock);
+      const drop = Math.round((1 - Math.min(1, age / 0.2)) ** 2 * -34);
+      c.save();
+      c.translate(0, drop);
       this.text(
         this.bonusPick
           ? "XAZINA: BEPUL KUCH!"
@@ -4942,6 +5021,7 @@ export class Game {
         6,
         "#e0d6ee",
       );
+      c.restore();
       // Sehrgar kartalari qizil-qora, Ovchiniki yashil-jigarrang, Merganniki mis-kulrang:
       // ramka va fon binafsha emas
       // skin tanlangan bo'lsa — ramka skin rangida
@@ -4960,6 +5040,15 @@ export class Game {
         const sel = i === this.choiceIndex;
         const lift = sel ? -3 : 0;
         const ink = u.text ?? u.color;
+        // karta aylanib chiqadi: eni 0 dan to'liqgacha (o'rtasiga nisbatan)
+        const flip = cardFlip(i, age);
+        if (flip <= 0) return;
+        c.save();
+        if (flip < 1) {
+          c.translate(r.x + r.w / 2, 0);
+          c.scale(flip, 1);
+          c.translate(-(r.x + r.w / 2), 0);
+        }
         px(c, sel ? u.color : frame, r.x, r.y + lift, r.w, r.h);
         px(c, inner, r.x + 2, r.y + 2 + lift, r.w - 4, r.h - 4);
         renderUpgradeIcon(c, upgradeIcon(u), u.color, r.x + r.w / 2 - 10, r.y + 9 + lift, 20);
@@ -4988,6 +5077,24 @@ export class Game {
             "left",
           );
         }
+        // noyob (qahramonga xos) va afsonaviy (sinergiyani ochadigan) karta ramkasi yaltiraydi
+        const glow = calm
+          ? "none"
+          : cardGlow(!!u.hero, !!tag && (this.tagCounts[tag] ?? 0) + 1 === 3);
+        if (glow !== "none" && flip >= 1) {
+          const legend = glow === "legend";
+          for (let n = 0; n < (legend ? 2 : 1); n++) {
+            const head = this.time * SHIMMER_SPEED + i * 60 + n * (r.w + r.h);
+            for (let d = 0; d < SHIMMER_LEN; d++) {
+              const [fx, fy] = framePoint(r.w, r.h, head - d);
+              c.globalAlpha = 1 - d / SHIMMER_LEN;
+              px(c, legend ? "#ffe14d" : "#ffffff", r.x + fx, r.y + lift + fy, 1, 1);
+              px(c, legend ? "#ffe14d" : "#ffffff", r.x + (fx ? fx - 1 : 1), r.y + lift + fy, 1, 1);
+            }
+          }
+          c.globalAlpha = 1;
+        }
+        c.restore();
       });
       if (!this.touch) {
         const k = this.input.keyBinds;
