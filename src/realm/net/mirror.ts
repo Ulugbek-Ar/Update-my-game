@@ -268,6 +268,8 @@ export class RealmMirror {
       p.fx = a[7];
       p.fy = a[8];
       setAnim(p.anim, ANIMS[a[9]] ?? "idle", a[10], dt);
+      // vizual qatlam (burilish kadri, qadam changi) — boshqa o'yinchilar uchun ham, faqat klientda
+      p.vis.update(dt, p.fx, p.anim);
       p.dashTimer = a[11] & PF_DASH ? 1 : 0;
       p.guardAge = a[11] & PF_GUARD ? 0 : -1;
       p.hideT = a[11] & PF_HIDDEN ? 1 : 0;

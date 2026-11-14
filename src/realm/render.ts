@@ -34,6 +34,7 @@ import { touchLabels } from "@/game/touchLayout";
 import { PHRASES, ROOM_CAP, parseNetGuild } from "./net/protocol";
 import { MINI_W, drawEmblem, drawEmblemMini, emblemColors, shade } from "@/game/emblem";
 import { DUMMY_RESET } from "./mobs";
+import { bubbleLook, drawWaving, renderPortal } from "./realmFx";
 import type { RealmPlayer, RealmSim } from "./sim";
 import { SMOKE_R, SMOKE_TIME, tileCenter } from "./sim";
 import { CHUNK, CHUNK_PX, LAVA, SOLID, TILE, TILE_BY_ID, TILE_IDS, WATER } from "./tiles";
@@ -614,7 +615,19 @@ export class RealmRenderer {
       const level = v.levels?.get(rp.id) ?? 0;
       const guild = parseNetGuild(v.guilds?.get(rp.id));
       if (name || bubble)
-        labels.push(() => playerLabel(c, rp, x, y, name ?? null, bubble?.text, level, guild));
+        labels.push(() =>
+          playerLabel(
+            c,
+            rp,
+            x,
+            y,
+            name ?? null,
+            bubble?.text,
+            level,
+            guild,
+            bubble ? bubbleLook(bubble.t, v.fx.isReduced()) : undefined,
+          ),
+        );
     }
     for (const i of occluders) {
       const tx = i % sim.map.w,
@@ -920,6 +933,8 @@ export class RealmRenderer {
           px(c, col.dark, x - 6, y - 14, 12, 21);
           px(c, col.mid, x - 5, y - 12 + f, 10, 17 - f);
           px(c, col.light, x - 2, y - 8 + f, 4, 9);
+          // portal porlaydi, ichida uchqunlar aylanadi (realmFx.ts) — faqat ko'rinish
+          if (!v.fx.isReduced()) renderPortal(c, x, y - 4, v.time, col.light, col.mid);
         } else {
           px(c, "#1a1820", x - 6, y - 14, 12, 21);
           for (let k = -5; k <= 4; k += 3) px(c, "#6e6a72", x + k, y - 14, 1, 21);
@@ -1870,6 +1885,8 @@ function playerLabel(
   say: string | undefined,
   level = 0,
   guild: { tag: string; emblem: string } | null = null,
+  /** Pufakchaning yumshoq paydo bo'lishi/so'nishi (realmFx.ts: bubbleLook) */
+  look: { alpha: number; rise: number; scale: number } = { alpha: 1, rise: 0, scale: 1 },
 ) {
   const p = rp.p;
   let top = y - 20;
@@ -1919,6 +1936,14 @@ function playerLabel(
   if (say) {
     c.font = `5px ${FONT}`;
     const w = Math.ceil(c.measureText(say).width) + 6;
+    // yumshoq paydo bo'ladi: pastdan ko'tarilib kattalashadi, oxirida so'nadi
+    c.save();
+    c.globalAlpha = look.alpha;
+    if (look.scale !== 1 || look.rise) {
+      c.translate(Math.round(x), Math.round(top + 2 + look.rise));
+      c.scale(look.scale, look.scale);
+      c.translate(-Math.round(x), -Math.round(top + 2));
+    }
     px(c, "#000", x - w / 2 - 1, top - 9, w + 2, 11);
     px(c, "#f4efe6", x - w / 2, top - 8, w, 9);
     px(c, "#f4efe6", x - 1, top + 1, 2, 2);
@@ -1926,6 +1951,7 @@ function playerLabel(
     c.textAlign = "center";
     c.fillStyle = "#1f1730";
     c.fillText(say, Math.round(x), Math.round(top - 1));
+    c.restore();
   }
 }
 
@@ -2289,6 +2315,7 @@ function drawGuildObject(
       px(c, "#3a2a10", x - 6, y - 14, 12, 21);
       px(c, "#c9a25a", x - 5, y - 12 + f, 10, 17 - f);
       px(c, "#ffe08a", x - 2, y - 8 + f, 4, 9);
+      if (!v.fx.isReduced()) renderPortal(c, x, y - 4, v.time, "#fff2c0", "#c9a25a");
       if (v.myGuild) drawEmblem(c, v.myGuild.emblem, x - 8, y - 42, 1);
       else {
         px(c, "#1a1820", x - 6, y - 38, 12, 13);
@@ -2306,16 +2333,23 @@ function drawGuildObject(
       px(c, "#1a0f08", x - 6, y + 6, 13, 3);
       px(c, "#5a5662", x - 5, y + 6, 11, 1);
       if (champ) {
-        // shamolda hilpiraydi: bayroq va uchidagi soya tebranadi
-        const sway = Math.round(Math.sin(v.time * 2.4) * 1.5);
-        drawEmblem(c, champ.emblem.replace(/^\d+/, "1"), x + 2 + sway, y - 64, 2);
+        // shamolda hilpiraydi: bayroq to'lqinlanadi (xoda yonida tinch, uchida kuchliroq)
+        const emblem = champ.emblem.replace(/^\d+/, "1");
+        if (v.fx.isReduced()) drawEmblem(c, emblem, x + 2, y - 64, 2);
+        else
+          drawWaving(c, x + 2, y - 64, MINI_W * 2 + 14, 30, v.time, () =>
+            drawEmblem(c, emblem, x + 2, y - 64, 2),
+          );
         text(c, `[${champ.tag}]`, x + 18, y - 72, 5, "#ffd97a", "center");
         text(c, "HAFTA G'OLIBI", x + 18, y - 22, 4, "#c8c0d8", "center");
       } else {
-        const sway = Math.round(Math.sin(v.time * 2.4));
-        px(c, "#1a1820", x + 2 + sway, y - 64, 26, 20);
-        px(c, "#5c4a6e", x + 3 + sway, y - 63, 24, 18);
-        text(c, "?", x + 15 + sway, y - 50, 6, "#8a7a9a", "center");
+        const blank = () => {
+          px(c, "#1a1820", x + 2, y - 64, 26, 20);
+          px(c, "#5c4a6e", x + 3, y - 63, 24, 18);
+          text(c, "?", x + 15, y - 50, 6, "#8a7a9a", "center");
+        };
+        if (v.fx.isReduced()) blank();
+        else drawWaving(c, x + 2, y - 64, 26, 20, v.time, blank);
       }
       return;
     }

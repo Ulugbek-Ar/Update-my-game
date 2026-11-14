@@ -10,6 +10,7 @@
 import { DEFAULT_SKIN, selectedSkin, skinLook } from "@/game/skins";
 import { heroBurst, heroImpact, heroTrail, type SkinLook } from "@/game/skinFx";
 import { CUT_LIFE, MOON_LIFE, STREAK_LIFE } from "@/game/samuraiFx";
+import { BUBBLE_TIME } from "./realmFx";
 import { nearestLook } from "./render";
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
@@ -497,7 +498,7 @@ export class RealmClient {
   private onChat(pid: string, name: string, p: number) {
     const text = PHRASES[p];
     if (!text) return;
-    this.view.bubbles.set(pid, { text, t: 3 });
+    this.view.bubbles.set(pid, { text, t: BUBBLE_TIME });
     this.toast(`${pid === this.pid ? "Siz" : name}: ${text}`, "#9fd0ef");
     sfx.pickup();
   }
@@ -813,6 +814,13 @@ export class RealmClient {
       }
     } else this.acc = 0;
     this.mirror?.update(performance.now() / 1000, dt);
+    // qadam changi (faqat ko'rinish): o'zim va boshqa o'yinchilar oyog'i yerga tekkanda
+    for (const rp of this.sim.players.values()) {
+      const p = rp.p;
+      if (!p.vis.step) continue;
+      p.vis.step = false;
+      if (!p.dashing && !p.dead && !p.hidden) this.fx.dust(p.x, p.y + 12, "#8d8273");
+    }
     this.input.endFrame();
     this.fx.update(dt);
     for (const k of v.cracks) k.life -= dt;
