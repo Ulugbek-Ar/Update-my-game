@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.8.0";
+export const GAME_VERSION = "3.9.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.9.0",
+    date: "2026-11-15",
+    notes:
+      "Birinchi super keldi — Paladinning Ilohiy hukmi. Paladin qilichini osmonga ko'taradi va har bir dushmanga quyosh nuri tushiradi. Super shari zarba bergan sari to'lib boradi. Boshqa qahramonlarning superlari tez orada.",
+  },
   {
     version: "3.8.0",
     date: "2026-11-14",

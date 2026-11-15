@@ -27,6 +27,9 @@ import {
 import { ORB_DRAIN, SuperOrb, mixColor } from "./superFx";
 import { PORTRAIT_GRID, portraitPixels } from "./portrait";
 import { BOSS_WAVE, WAVES, WAVES2 } from "./waves";
+import { RealmSim } from "@/realm/sim";
+import { RealmClient } from "@/realm/client";
+import { loadRealmData } from "@/realm/data";
 
 type GI = {
   startWave(i: number): void;
@@ -693,6 +696,33 @@ describe("Superi yo'q qahramonlar", () => {
       expect(g.banner.title).not.toBe("SUPER TAYYOR!");
       expect(g.orb.level).toBe(0);
     });
+});
+
+describe("Onlayn olam: super hozircha yo'q", () => {
+  it("the realm has no super meter, orb or button — the Paladin there plays exactly as before", () => {
+    const sim = new RealmSim(loadRealmData());
+    const rp = sim.addPlayer("p1", "paladin");
+    // olamda zaryad ham, shar ham yo'q — telefon tugmasi (TouchControls) ularsiz chizilmaydi
+    for (const key of ["superMeter", "orb", "cast", "scene"]) {
+      expect(key in sim, key).toBe(false);
+      expect(key in rp, key).toBe(false);
+      expect(key in RealmClient.prototype, key).toBe(false);
+    }
+    expect("useSuper" in RealmClient.prototype).toBe(false);
+    // simulyatsiya ishlayveradi: Paladin hech qachon super holatiga kirmaydi
+    const hp = rp.p.hp;
+    for (let i = 0; i < 60; i++) sim.step([]);
+    expect(rp.p.casting).toBe(false);
+    expect(rp.p.superFrame).toBe(-1);
+    expect(rp.p.sunShield).toBe(0);
+    expect(rp.p.hp).toBe(hp);
+    // L / Q olamda bosilsa ham hech narsa bo'lmaydi: bosish shunchaki navbatda qoladi
+    const input = new Input();
+    input.setContext("realm");
+    input.pressSuper();
+    expect(input.consumeAttack()).toBe(false);
+    expect(input.consumeDash()).toBe(false);
+  });
 });
 
 describe("Super kartasi portreti", () => {

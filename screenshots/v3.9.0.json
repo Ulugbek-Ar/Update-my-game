@@ -1,0 +1,82 @@
+[
+  {
+    "title": "Paladin — birinchi super ILOHIY HUKM",
+    "text": "O'yindagi birinchi super. Dushmanga zarba bergan sari super shari oltin nur bilan to'lib boradi — to'lganda L yoki Q ni bosing (telefonda — hujum tugmasi yonidagi shar). Paladin ikki metrlik qilichini osmonga ko'taradi, bulutlar ochilib unga oltin nur ustuni tushadi, so'ng ekrandagi har bir dushmanga osmondan alohida quyosh nuri uriladi. Moblar yer tishlaydi va oltin changga aylanadi. Bossga bitta katta nur tushadi va u tiz cho'kadi. Super paytida Paladin daxlsiz, oxirida 1 yurak tiklaydi.",
+    "hero": true,
+    "video": 6,
+    "zoom": false,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.9.0",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["paladin"],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": ["first", "clean"]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
+      }
+    ]
+  },
+  {
+    "title": "Super shari to'ldi: TAYYOR! — L / Q yoki shar tugmasi",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.9.0",
+          "pixel-rpg-hero": "paladin",
+          "pixel-rpg-unlocked-heroes": ["paladin"]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 1
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 130,
+          "py": 150,
+          "dx": 80,
+          "dy": -10,
+          "count": 2,
+          "speed": 0.2
+        }
+      },
+      {
+        "eval": "g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 1500
+      }
+    ]
+  }
+]
