@@ -28,12 +28,16 @@ interface Squashy {
   dead: boolean;
   spawn: number;
   stun: number;
+  /** Tepaga qarab qolgan ("HI?" — super nuri oldidan): bo'yni cho'zilgandek */
+  gawk?: boolean;
   anim: { state: AnimState; frame: number; t: number };
 }
 
 /** Spraytning eni va bo'yi ko'paytuvchisi ([1, 1] — o'zgarishsiz). */
 export function mobScale(e: Squashy): readonly [number, number] {
   if (e.dead || e.spawn > 0) return [1, 1];
+  // "HI?": tepaga qarab cho'zilib turadi
+  if (e.gawk) return [0.92, 1.12];
   const a = e.anim;
   if (a.state === "hurt") {
     // zarba: yapaloqlanib, tezda tiklanadi

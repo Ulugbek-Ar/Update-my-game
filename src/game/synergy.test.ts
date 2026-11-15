@@ -63,7 +63,9 @@ describe("Kuch kartalari teglari", () => {
   });
 
   it("hero-only cards and UZUN TIG' variants carry the hero's own tag", () => {
-    for (const u of UPGRADES) if (u.hero) expect(u.tags).toEqual([HERO_TAG[u.hero]]);
+    // (SUPER kartalari — alohida: ular "super" tegini olib yuradi, v3.9)
+    for (const u of UPGRADES)
+      if (u.hero) expect(u.tags).toEqual([u.super ? "super" : HERO_TAG[u.hero]]);
     for (const hero of HEROES) {
       const c = cardFor(
         UPGRADES.find((u) => u.id === "reach")!,

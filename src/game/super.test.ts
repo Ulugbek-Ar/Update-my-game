@@ -532,7 +532,9 @@ describe("Super ijrosi (o'yinda)", () => {
     expect(p.attackTimer).toBe(0);
     expect(p.dashing).toBe(false);
     untilCastEnds(g);
-    tick(g, 0.3);
+    // super tugadi: boshqaruv qaytdi (to'lqin tugab, kuch tanlash ochilgan bo'lsa ham o'yinchi yura oladi)
+    expect(p.casting).toBe(false);
+    for (let i = 0; i < 12; i++) p.update(DT, g.input);
     expect(p.x).toBeGreaterThan(at.x);
   });
 

@@ -365,6 +365,8 @@ export class Enemy implements Body {
   foxWindup = 0;
   /** Shu kadrdagi voqea — Game ovoz va uchqun beradi, so'ng tozalaydi */
   cue: EnemyCue | null = null;
+  /** Tepaga qarab qolgan (super nuri tushishidan oldingi "HI?" hazili) — faqat ko'rinish */
+  gawk = false;
   markX = 0;
   markY = 0;
   private diveFrom = { x: 0, y: 0 };

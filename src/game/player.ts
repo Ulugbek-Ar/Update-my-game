@@ -161,6 +161,9 @@ export const DASH_GUARD_MAX = 0.35;
 /** Tezlashish (TEZLIK sinergiyasi, OLTIN SHAMOL artefakti): yurish tezligi shuncha baravar */
 export const BOOST_SPEED = 1.35;
 
+/** QUYOSH QALQONI (super kartasi): superdan keyin shuncha soniya zarba o'tmaydi */
+export const SUN_SHIELD_TIME = 2;
+
 /** Player o'qiydigan boshqaruv: klaviatura/sensor (Input) yoki olamdagi buyruqlar (RealmSim). */
 export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" | "attackHeld"> & {
   dashHeld?: () => boolean;
@@ -386,6 +389,17 @@ export class Player implements Body {
   parried: { x: number; y: number }[] = [];
   /** Parry pozasi (katana tik) qolgan vaqti — faqat ko'rinish */
   parryPose = 0;
+  /**
+   * SUPER kartalari: QUYOSH QALQONI (superdan keyin SUN_SHIELD_TIME soniya oltin qalqon) va
+   * IKKINCHI HUKM (yarim kuchli ikkinchi nur to'lqini).
+   */
+  sunShieldCard = false;
+  secondJudgment = false;
+  /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
+  sunShield = 0;
+  shieldHit = false;
+  /** Super shari to'lish tezligi (SUPER sinergiyasi oshiradi; asl 1) */
+  superRate = 1;
   /** Kartalar: QAYTGAN PO'LAT, GULBARG BO'RONI, SOVUQ QON */
   parryBoost = false;
   petalStorm = false;
@@ -575,6 +589,11 @@ export class Player implements Body {
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
     // super paytida daxlsiz (faqat super davomida — casting tugashi bilan zarba yana tegadi)
     if (this.invuln > 0 || this.dead || this.casting) return false;
+    if (this.sunShield > 0) {
+      // QUYOSH QALQONI: zarba oltin qalqonda so'nadi
+      this.shieldHit = true;
+      return false;
+    }
     if (this.evading) {
       // MUKAMMAL CHETLANISH: dash boshlanganidan dodgeWindow ichida tegishi kerak bo'lgan zarba
       if (
@@ -650,7 +669,7 @@ export class Player implements Body {
 
   /** Muz ichida qotadi (Qor Malikasining nuri); dash paytida ta'sir qilmaydi. */
   encase(taps: number) {
-    if (this.dead || this.evading || this.casting) return false;
+    if (this.dead || this.evading || this.casting || this.sunShield > 0) return false;
     this.ice = Math.max(this.ice, taps);
     this.iceT = ENCASE_MAX;
     this.charge = 0;
@@ -665,7 +684,7 @@ export class Player implements Body {
 
   /** To'r yoki ildiz ushlaydi; dash paytida (va himoya dumida) ta'sir qilmaydi. */
   ensnare(t: number) {
-    if (this.dead || this.evading || this.casting) return false;
+    if (this.dead || this.evading || this.casting || this.sunShield > 0) return false;
     this.snare = Math.max(this.snare, t);
     return true;
   }
@@ -797,6 +816,7 @@ export class Player implements Body {
     this.vowCooldown -= dt;
     if (this.vowT > 0) this.vowT -= dt;
     if (this.boost > 0) this.boost -= dt;
+    if (this.sunShield > 0) this.sunShield = Math.max(0, this.sunShield - dt);
     if (this.hideT > 0) this.hideT -= dt;
     if (this.gunner) this.updateGun(dt, input);
     if (this.samurai) this.tickSamurai(dt);

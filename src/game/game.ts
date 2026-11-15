@@ -91,6 +91,7 @@ import {
   SKY_RADIUS,
   SKY_STUN,
   SPIN_TIME,
+  SUN_SHIELD_TIME,
   VOW_RADIUS,
   type Bolt,
   type Target,
@@ -148,6 +149,7 @@ import {
   addTag,
   hasTag,
   synergies,
+  tagNeed,
   tagProgress,
   type Tag,
   type TagCounts,
@@ -164,6 +166,7 @@ import {
 import { SuperOrb, renderSuperCard, renderSuperOrb } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
 import { superPortrait } from "./portrait";
+import { renderSunShield } from "./divineFx";
 import { skinLook, skinPalette } from "./skins";
 import {
   defaultLook,
@@ -228,6 +231,9 @@ export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
 export const SAMURAI_TIPS_KEY = "pixel-rpg-samurai-tips-done";
 /** Super shari birinchi marta to'lganda chiqadigan maslahat ko'rsatilganmi (bir martalik) */
 export const SUPER_TIP_KEY = "pixel-rpg-super-tip-done";
+/** IKKINCHI HUKM kartasi: ikkinchi nur to'lqini kuchi va birinchisidan keyingi tanaffus (s) */
+export const SECOND_WAVE_POWER = 0.5;
+export const SECOND_WAVE_GAP = 0.12;
 /** HUD'dagi super shari: markazi va radiusi (xona koordinatalarida; telefonda — alohida tugma) */
 export const SUPER_ORB = { x: 21, y: 211, r: 12 } as const;
 /** Parry bilan qaytarilgan snaryad: tezligi va oddiy dushmanga zarari (o'yinchi zararidan) */
@@ -604,11 +610,15 @@ const POWER_KEYS = [
   "parryBoost",
   "petalStorm",
   "coldBlood",
+  // SUPER kartalari
+  "sunShieldCard",
+  "secondJudgment",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
   "strongMul",
   "fanPierce",
+  "superRate",
 ] as const;
 type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
 function savePowers(p: Player): Powers {
@@ -671,8 +681,8 @@ export class Game {
   cast: SuperCast | null = null;
   /** Super sahnasi (superScene.ts): super tugagach ham effektlari so'nguncha chiziladi */
   scene: SuperScene | null = null;
-  /** Joriy superning rejalashtirilgan zarbalari va allaqachon nishonga olinganlar */
-  private strikes: PlannedStrike<Enemy | Boss>[] = [];
+  /** Joriy superning rejalashtirilgan zarbalari (power — zarba kuchi) va allaqachon nishonga olinganlar */
+  private strikes: (PlannedStrike<Enemy | Boss> & { power?: number })[] = [];
   private struck = new Set<object>();
   /** Shar to'lgandagi "TAYYOR!" yozuvi qolgan vaqti (faqat ko'rinish) */
   private readyNote = 0;
@@ -680,6 +690,12 @@ export class Game {
   private orbMove = 0;
   /** Super tugmasi bosilganidan beri qolgan "eslab qolish" vaqti */
   private superBuf = 0;
+  /** Shu superda "HI?" deydigan mob tanlandi */
+  private gawked = false;
+  /** Shu zarbada zarar raqami chiqmaydi (super nuri) */
+  private quietHit = false;
+  /** QUYOSH QALQONI to'sish effekti orasidagi tanaffus */
+  private shieldFxT = 0;
   /** Super boshlangan joy: o'yinchi super tugaguncha shu yerda turadi */
   private castAt = { x: 0, y: 0 };
   /** Sozlamalar: super kartasini qisqartirish */
@@ -1733,7 +1749,7 @@ export class Game {
     if (!got) return;
     const def = TAGS[tag];
     if (got === "two") {
-      this.fx.text(p.x, p.y - 26, `${def.name} 2/3: ${def.two}`, def.color);
+      this.fx.text(p.x, p.y - 26, `${def.name} 2/${tagNeed(tag)}: ${def.two}`, def.color);
       return;
     }
     const theme = this.theme;
@@ -2055,7 +2071,8 @@ export class Game {
       this.fx.isReduced(),
     );
     // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
-    if (this.damageNumsOn)
+    // (super nuri mobni baribir o'ldiradi — u yerda raqam chiqmaydi, faqat ochko yozuvi)
+    if (this.damageNumsOn && !this.quietHit)
       this.fx.damage(t.x + 4, t.y - t.size / 2 - 10, hpBefore - Math.max(0, t.hp), crit);
     if (t.hp > 0) return;
     if (t instanceof Enemy) this.onKill(t);
@@ -2883,6 +2900,17 @@ export class Game {
       this.fx.burst(p.x, p.y - 4, TAGS.himoya.color, 10, 70, 1);
       this.fx.text(p.x, p.y - 18, "TO'SILDI", TAGS.himoya.color);
     }
+    if (p.shieldHit) {
+      // QUYOSH QALQONI zarbani so'ndirdi (bir necha zarba ketma-ket tegsa ham — bitta effekt)
+      p.shieldHit = false;
+      if (this.shieldFxT <= 0) {
+        this.shieldFxT = 0.25;
+        sfx.block();
+        this.fx.burst(p.x, p.y - 4, this.theme.glow, 8, 70, 1);
+        this.fx.text(p.x, p.y - 18, "TO'SILDI", this.theme.glow);
+      }
+    }
+    if (this.shieldFxT > 0) this.shieldFxT -= dt;
   }
 
   /**
@@ -2984,6 +3012,8 @@ export class Game {
   private updateOrb(raw: number) {
     const m = this.superMeter;
     if (!m.def) return;
+    // SUPER sinergiyasi: shar tezroq to'ladi
+    m.rate = this.player.superRate;
     if (this.readyNote > 0) this.readyNote -= raw;
     if (m.justFilled) {
       m.justFilled = false;
@@ -3033,6 +3063,7 @@ export class Game {
     this.scene = sceneFor(def.fx);
     this.strikes = [];
     this.struck.clear();
+    this.gawked = false;
     this.freeze = 0;
     this.focus = 0;
     // ekrandagi banner (masalan "SUPER TAYYOR!" maslahati) kartani to'smaydi
@@ -3057,6 +3088,9 @@ export class Game {
       fx: this.fx,
       // "Effektlarni kamaytirish": silkinish ancha yengil
       shake: (v) => this.fx.addShake(reduced ? v * 0.35 : v),
+      drawOwner: (c) => {
+        if (!p.dead) p.render(c);
+      },
       view: { x: 0, y: 0, w: ROOM.w, h: ROOM.h },
     };
   }
@@ -3064,8 +3098,17 @@ export class Game {
   /** Dushman/boss haqida sahnaga beriladigan ma'lumot (yerga yopishgan jasad uchun sprite ham). */
   private sceneTarget(t: Enemy | Boss): SceneTarget {
     if (t instanceof Enemy)
-      return { x: t.x, y: t.y, size: t.size, sprite: ENEMY_SPRITE[t.kind], flip: t.facingLeft };
-    return { x: t.x, y: t.y, size: t.size };
+      return {
+        x: t.x,
+        // uchib yurgan mob (boyo'g'li, tengu) — havodagi joyi
+        y: t.y - Math.round(t.alt),
+        size: t.size,
+        ref: t,
+        live: t,
+        sprite: ENEMY_SPRITE[t.kind],
+        flip: t.facingLeft,
+      };
+    return { x: t.x, y: t.y, size: t.size, ref: t, live: t };
   }
 
   /** Super vaqt chizig'i: bosqichlar, zarbalar va yakun. raw — haqiqiy vaqt (sekinlashmagan). */
@@ -3077,10 +3120,29 @@ export class Game {
     p.y = this.castAt.y;
     const ev = cast.update(raw);
     for (const s of ev.entered) this.onCastStage(s);
+    if (cast.stage === "prep" && !this.gawked && cast.t >= cast.def.stages.prep * 0.62)
+      this.pickGawker();
     if (cast.stage === "strike") this.runStrikes();
     p.castTick(raw);
     p.superFrame = this.scene?.pose(cast) ?? -1;
     if (ev.done) this.endCast();
+  }
+
+  /**
+   * Hazil: zarbadan oldin bitta tasodifiy mob tepaga qarab "HI?" deydi — keyin nur uni bosadi.
+   * Eng yaqin mob emas (uning nuri birinchi tushadi — pufakchani o'qib ulgurilmaydi).
+   */
+  private pickGawker() {
+    this.gawked = true;
+    const p = this.player;
+    const mobs = this.enemies
+      .filter((e) => !e.dead && e.spawn <= 0 && !e.hidden)
+      .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    if (!mobs.length || !this.scene?.gawk) return;
+    const pool = mobs.length > 1 ? mobs.slice(1) : mobs;
+    const e = pool[Math.floor(Math.random() * pool.length)]!;
+    e.gawk = true;
+    this.scene.gawk(this.sceneTarget(e));
   }
 
   /** Bosqich boshlandi: ovoz, zarbalar rejasi, oqibatdagi jon tiklash. */
@@ -3137,6 +3199,7 @@ export class Game {
         hitAt: at + def.strike.mark,
         marked: false,
         done: false,
+        power: cast.wave > 1 ? SECOND_WAVE_POWER : 1,
       });
     }
     let i = 0;
@@ -3152,8 +3215,17 @@ export class Game {
       }
       if (!st.done && cast.t >= st.hitAt) {
         st.done = true;
-        this.superHit(t, i - 1);
+        this.superHit(t, i - 1, st.power);
       }
+    }
+    // IKKINCHI HUKM (karta): birinchi to'lqin tugagach — yarim kuchli ikkinchi nur to'lqini, hammasi
+    // bir vaqtda. Bossga zarar baribir superning umumiy chegarasidan oshmaydi.
+    if (this.player.secondJudgment && cast.wave === 1 && this.strikes.every((st) => st.done)) {
+      const start = cast.t + SECOND_WAVE_GAP;
+      this.struck.clear();
+      const from = this.strikes.length;
+      this.planStrikeWave(start, start + def.strike.mark + def.strike.tail);
+      for (const st of this.strikes.slice(from)) st.power = SECOND_WAVE_POWER;
     }
   }
 
@@ -3182,7 +3254,10 @@ export class Game {
     } else {
       // hali yerdan chiqayotgan mob ham nurdan qutulmaydi (paydo bo'lishi shu zahoti tugaydi)
       t.spawn = 0;
+      t.gawk = false;
+      this.quietHit = def.dmg.kill;
       this.damageTarget(t, def.dmg.kill ? Math.max(t.hp, 1) : this.player.damage * power, false);
+      this.quietHit = false;
       if (t.dead) cast.kills++;
       sfx[def.sounds.hit](index);
       // sahna jasadni o'zi ko'rsatsa (yer tishlash) — mob darhol olib tashlanadi
@@ -3196,7 +3271,13 @@ export class Game {
     this.cast = null;
     this.strikes = [];
     this.struck.clear();
-    this.player.endCast();
+    const p = this.player;
+    p.endCast();
+    if (p.sunShieldCard) {
+      // QUYOSH QALQONI (karta): superdan keyin 2 s oltin qalqon
+      p.sunShield = SUN_SHIELD_TIME;
+      this.fx.text(p.x, p.y - 24, "QUYOSH QALQONI", this.theme.glow);
+    }
     this.input.clearQueued();
   }
 
@@ -4374,6 +4455,9 @@ export class Game {
           p.render(c);
           // afsonaviy skin: turgandagi harakat va hujum flourishi
           renderFlair(c, this.look, p, this.time, this.fx.isReduced());
+          // QUYOSH QALQONI: superdan keyingi oltin qalqon
+          if (p.sunShield > 0 && !p.dead)
+            renderSunShield(c, p.x, p.y, this.time, p.sunShield, this.theme, this.fx.isReduced());
           // sovuq nafasdan sekinlashgan
           if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);
           if (p.encased) this.renderIceBlock(c);
@@ -5436,7 +5520,7 @@ export class Game {
         const tag = u.tags[0];
         if (tag) {
           const label = tagProgress(this.tagCounts, tag);
-          const ready = (this.tagCounts[tag] ?? 0) + 1 === 3;
+          const ready = (this.tagCounts[tag] ?? 0) + 1 === tagNeed(tag);
           c.font = `5px "Press Start 2P", monospace`;
           const w = c.measureText(label).width + 9;
           const tx = r.x + (r.w - w) / 2;
@@ -5453,7 +5537,7 @@ export class Game {
         // noyob (qahramonga xos) va afsonaviy (sinergiyani ochadigan) karta ramkasi yaltiraydi
         const glow = calm
           ? "none"
-          : cardGlow(!!u.hero, !!tag && (this.tagCounts[tag] ?? 0) + 1 === 3);
+          : cardGlow(!!u.hero, !!tag && (this.tagCounts[tag] ?? 0) + 1 === tagNeed(tag));
         if (glow !== "none" && flip >= 1) {
           const legend = glow === "legend";
           for (let n = 0; n < (legend ? 2 : 1); n++) {

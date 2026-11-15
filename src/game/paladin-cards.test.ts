@@ -54,16 +54,18 @@ describe("Paladin kuch kartalari", () => {
     expect(p.attackCd).toBeCloseTo(cd * 0.75);
   });
 
-  it("Paladin has 11 cards, including ZARB TO'LQINI and MUQADDAS AURA", () => {
+  it("Paladin has 13 cards: 11 of his own plus the two rare SUPER cards (v3.9)", () => {
     const seen = new Map<string, string>();
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < 600; i++) {
       const p = new Player("paladin");
       p.hp = 1;
       for (const u of pickUpgrades(p)) seen.set(u.id, u.name);
     }
-    expect(seen.size).toBe(11);
+    expect(seen.size).toBe(13);
     expect(seen.get("shockwave")).toBe("ZARB TO'LQINI");
     expect(seen.get("aura")).toBe("MUQADDAS AURA");
+    expect(seen.get("sunshield")).toBe("QUYOSH QALQONI");
+    expect(seen.get("secondjudgment")).toBe("IKKINCHI HUKM");
   });
 
   it("ZARB TO'LQINI and MUQADDAS AURA only show up for the Paladin", () => {

@@ -2122,6 +2122,10 @@ interface Greatsword {
   hand: Point;
   tip: Point;
   glow?: boolean;
+  /** Porlash uchqunlarining ikkinchi holati (miltillash kadri) */
+  alt?: boolean;
+  /** Qilich boshi uzra: old qo'l dubulg'a ortidan o'tadi (yuz to'silmaydi) */
+  over?: boolean;
 }
 
 /**
@@ -2148,6 +2152,13 @@ export const PALADIN_SWORD: Record<"idle" | "walk" | "attack" | "hurt", readonly
     // 4, 5 — devor yonida: qilich tik tushib yerga sanchiladi (xona/ekran chetidan chiqmaydi)
     { hand: [24, 18], tip: [37, 34] },
     { hand: [23, 20], tip: [35, 35] },
+    // 6..10 — SUPER (ILOHIY HUKM): qilichni ikki qo'llab sekin osmonga ko'tarish (6, 7), boshi uzra
+    // tik ushlab turish — tig' porlaydi, ikki kadr miltillaydi (8, 9) va yerga sanchish (10)
+    { hand: [20, 12], tip: [34, -15] },
+    { hand: [18, 5], tip: [24, -21], glow: true, over: true },
+    { hand: [16, 1], tip: [16, -22], glow: true, over: true },
+    { hand: [16, 1], tip: [16, -22], glow: true, alt: true, over: true },
+    { hand: [22, 8], tip: [25, 31], glow: true },
   ],
   hurt: [{ hand: [20, 20], tip: [-5, 8] }],
 };
@@ -2168,9 +2179,28 @@ const paladinPoses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]>
     { ...poses.attack[2]!, bob: 1, lean: 1 },
     { ...poses.attack[1]!, bob: 2, lean: 2 },
     { ...poses.attack[2]!, bob: 1, lean: 1 },
+    // SUPER: ko'tarish (oyoqlar kengayadi), boshi uzra (oyoq uchida cho'zilgan), yerga sanchish (cho'kkan)
+    { ...poses.attack[0]!, bob: 0, lean: -1, leftFoot: [11, 28], rightFoot: [21, 28] },
+    { ...poses.attack[0]!, bob: -1, lean: -1, leftFoot: [10, 28], rightFoot: [22, 28] },
+    { ...poses.attack[0]!, bob: -2, lean: 0, leftFoot: [10, 28], rightFoot: [22, 28] },
+    { ...poses.attack[0]!, bob: -2, lean: 0, leftFoot: [10, 28], rightFoot: [22, 28] },
+    { ...poses.attack[1]!, bob: 3, lean: 1, leftFoot: [10, 28], rightFoot: [21, 28] },
   ],
   hurt: poses.hurt,
 };
+
+/** SUPER kadrlari ("attack" holatida): ko'tarish, boshi uzra (ikki miltillash kadri), yerga sanchish */
+export const PALADIN_SUPER_FRAME = { raise1: 6, raise2: 7, up: 8, upAlt: 9, plant: 10 } as const;
+
+/**
+ * SUPER kadrlarida qilich uchining joyi — sprite markaziga nisbatan (o'ngga qaraganda; chapga
+ * qaraganda x teskari). Effektlar (uchdagi quyosh, yerdagi yoriq) shu nuqtadan chiqadi.
+ */
+export function paladinSwordTip(frame: number): Point {
+  const s = PALADIN_SWORD.attack[frame] ?? PALADIN_SWORD.attack[0]!;
+  const b = paladinPoses.attack[frame]?.bob ?? 0;
+  return [s.tip[0] - 16, s.tip[1] - 16 + (frame === PALADIN_SUPER_FRAME.plant ? 0 : b)];
+}
 
 /**
  * Ikki qo'lli ulkan qilich: kumush tig' (o'rtasida oq yaltiroq; porlaganda — oq nur, oltin ariqcha),
@@ -2211,8 +2241,8 @@ function greatsword(p: Pixels, s: Greatsword) {
     2,
   );
   if (s.glow) {
-    // porlash: tig' atrofida oq-oltin uchqunlar (muqaddas nur)
-    for (const [i, k] of [0.35, 0.65, 0.95].entries()) {
+    // porlash: tig' atrofida oq-oltin uchqunlar (muqaddas nur); alt — miltillashning ikkinchi kadri
+    for (const [i, k] of (s.alt ? [0.2, 0.5, 0.8] : [0.35, 0.65, 0.95]).entries()) {
       const cx = Math.round(hx + dx * k),
         cy = Math.round(hy + dy * k);
       const c = i % 2 ? 3 : 5;
@@ -2273,6 +2303,8 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
   p.rect(5, 8 + l, 11 + b, 3, 1);
   // ulkan qilich (yelkada — tana va boshdan oldin, uchi orqada)
   greatsword(p, s);
+  // boshi uzra ko'tarilganda old qo'l ham dubulg'adan oldin chiziladi — yuz ochiq qoladi
+  if (s.over) p.line(3, [22 + l, 14 + b], grip, 4);
   // yopiq oltin dubulg'a: tepasi gumbaz, oldida ko'z tirqishi va nafas teshiklari, yaltiroq qirra
   p.polygon(3, [
     [12 + l, 4 + b],
@@ -2291,7 +2323,7 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
     p.rect(2, 11 + l, 5 + b, 2, 2);
   } else p.rect(2, 12 + l, 8 + b, 8, 2);
   // old qo'l va ikkala qo'lqop dastada
-  p.line(3, [22 + l, 14 + b], grip, 4);
+  if (!s.over) p.line(3, [22 + l, 14 + b], grip, 4);
   p.rect(2, grip[0] - 1, grip[1] - 1, 3, 3);
   p.rect(2, back2[0] - 1, back2[1] - 1, 3, 3);
   // old yelkalik
@@ -5602,6 +5634,35 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "....X...X...",
     "...X...X....",
     "......X.....",
+    "............",
+  ],
+  // SUPER kartalari: quyosh qalqoni va ikki nur
+  sunshield: [
+    "....UUUU....",
+    "..UUXXXXUU..",
+    ".UXXXXXXXXU.",
+    ".UXXAUUAXXU.",
+    ".UXAUVVUAXU.",
+    ".UXAUVVUAXU.",
+    ".UXXAUUAXXU.",
+    ".UXXXXXXXXU.",
+    "..UXXXXXXU..",
+    "...UXXXXU...",
+    "....UXXU....",
+    ".....UU.....",
+  ],
+  secondjudgment: [
+    "..UU....UU..",
+    "..XX....XX..",
+    "..XX....XX..",
+    "..XV....XV..",
+    "..XX....XX..",
+    "..XX....XX..",
+    "..XV....XV..",
+    "..XX....XX..",
+    ".AXXA..AXXA.",
+    "UXVVXUUXVVXU",
+    ".AXXA..AXXA.",
     "............",
   ],
   aura: [

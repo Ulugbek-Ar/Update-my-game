@@ -18,6 +18,7 @@ import { withAlpha } from "./hero";
 import type { SkinTheme } from "./skinFx";
 import type { SpriteKind, SpritePalette } from "./sprites";
 import type { SuperCast, SuperStage } from "./super";
+import { DivineScene } from "./divineFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -32,6 +33,11 @@ export interface SceneCtx {
   fx: Effects;
   /** Ekran silkinishi */
   shake(v: number): void;
+  /**
+   * Super egasini qayta chizish: yorqin effekt (nur ustuni) ustidan qahramon aniq ko'rinib tursin.
+   * Bo'lmasa — sahna egasini qayta chizmaydi.
+   */
+  drawOwner?: (c: CanvasRenderingContext2D) => void;
   /** Ko'rinadigan hudud (xonada 0,0,320,240; ochiq olamda — kamera) */
   view: { x: number; y: number; w: number; h: number };
 }
@@ -41,6 +47,9 @@ export interface SceneTarget {
   x: number;
   y: number;
   size: number;
+  /** Nishonning o'zi (bir xil nishonni tanish uchun) va jonli joyi (belgi va pufakcha unga ergashadi) */
+  ref?: object;
+  live?: { x: number; y: number };
   /** O'lgan mobni yerga yopishtirib ko'rsatish uchun (bo'lmasa — sahna jasadni chizmaydi) */
   sprite?: SpriteKind;
   flip?: boolean;
@@ -55,7 +64,7 @@ export interface SuperScene {
   /** Zarba tushdi. killed — nishon o'ldi. true — jasadni sahna o'zi ko'rsatadi (egasi mobni olib tashlaydi) */
   hit(t: SceneTarget, boss: boolean, killed: boolean, cast: SuperCast, ctx: SceneCtx): boolean;
   /** "HI?" hazili: shu nishon zarbadan oldin tepaga qarab pufakcha chiqaradi */
-  gawk?(t: SceneTarget, until: number): void;
+  gawk?(t: SceneTarget): void;
   /** Egasining super pozasi: "attack" holatining kadri (null — oddiy ko'rinish) */
   pose(cast: SuperCast): number | null;
   update(dt: number, cast: SuperCast | null, ctx: SceneCtx): void;
@@ -142,7 +151,9 @@ export class PlainScene implements SuperScene {
 }
 
 /** Sahnalar: SuperDef.fx nomi → sahna yaratuvchi */
-export const SUPER_SCENES: Record<string, () => SuperScene> = {};
+export const SUPER_SCENES: Record<string, () => SuperScene> = {
+  divine: () => new DivineScene(),
+};
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */
 export function sceneFor(fx: string): SuperScene {

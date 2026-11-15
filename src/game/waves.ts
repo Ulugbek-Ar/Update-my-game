@@ -1,3 +1,4 @@
+import { superFor } from "./super";
 import type { EnemyKind } from "./enemy";
 import { DODGE_WINDOW_CARD, IAI_RANGE_CARD, KATANA_TIME, type Player } from "./player";
 import type { Hero } from "./hero";
@@ -120,7 +121,18 @@ export function waveEnemies(i: number, rand = Math.random, world: World = 1): En
  * 3 ta — SINERGIYA (synergy.ts).
  */
 export type Tag =
-  "zarar" | "tezlik" | "himoya" | "hayot" | "polat" | "sehr" | "ov" | "porox" | "nur" | "gul";
+  | "zarar"
+  | "tezlik"
+  | "himoya"
+  | "hayot"
+  | "polat"
+  | "sehr"
+  | "ov"
+  | "porox"
+  | "nur"
+  | "gul"
+  // SUPER kartalari (v3.9): kam uchraydi, faqat superi bor qahramonda
+  | "super";
 
 /** Qahramonga xos karta: nom, tavsif, rang, ikonka va kerak bo'lsa alohida ta'sir. */
 export interface HeroCard {
@@ -162,6 +174,10 @@ export interface Upgrade {
   samurai?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
+  /** SUPER kartasi: faqat shu superi (super.ts: id) ochiq bo'lgan qahramonga chiqadi */
+  super?: string;
+  /** Kam uchraydigan karta: har tanlovda shu ehtimol bilan nomzodlar orasiga tushadi (yo'q — doim) */
+  rare?: number;
 }
 
 /** Tanlangan qahramonga mos karta (Sehrgar, Ovchi va Merganda alohida nom, ikonka va ta'sir). */
@@ -186,6 +202,9 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
 export function upgradeIcon(u: Upgrade) {
   return u.icon ?? u.id;
 }
+
+/** SUPER kartasining har tanlovda nomzodlar orasiga tushish ehtimoli ("kam uchraydigan") */
+export const SUPER_CARD_CHANCE = 0.4;
 
 export const UPGRADES: Upgrade[] = [
   {
@@ -759,13 +778,47 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.coldBlood = true),
     ok: (p) => !p.coldBlood,
   },
+  // ---- SUPER kartalari (ILOHIY HUKM — Paladin): kam uchraydi, "SUPER" tegli ----
+  {
+    id: "sunshield",
+    name: "QUYOSH QALQONI",
+    desc: "Superdan keyin 2 s oltin qalqon: zarba o'tmaydi",
+    color: "#fff2b0",
+    tags: ["super"],
+    icon: "sunshield",
+    hero: "paladin",
+    super: "divine-judgment",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.sunShieldCard = true),
+    ok: (p) => !p.sunShieldCard,
+  },
+  {
+    id: "secondjudgment",
+    name: "IKKINCHI HUKM",
+    desc: "Ikkinchi nur to'lqini: bossga yana yarim zarba",
+    color: "#fff2b0",
+    tags: ["super"],
+    icon: "secondjudgment",
+    hero: "paladin",
+    super: "divine-judgment",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.secondJudgment = true),
+    ok: (p) => !p.secondJudgment,
+  },
 ];
 
-/** n ta turli, hozir foydali bo'lgan kuchaytirishni tanlaydi. */
+/**
+ * n ta turli, hozir foydali bo'lgan kuchaytirishni tanlaydi. SUPER kartalari faqat shu superi bor
+ * qahramonga va kam (rare ehtimol bilan) chiqadi — boshqa qahramonlarda tasodif ketma-ketligi
+ * o'zgarmaydi (kunlik sinov seed'i).
+ */
 export function pickUpgrades(p: Player, n = 3, rand = Math.random): Upgrade[] {
+  const sup = superFor(p.hero)?.id;
   const pool = UPGRADES.filter((u) => !u.hero || u.hero === p.hero)
+    .filter((u) => !u.super || u.super === sup)
     .map((u) => cardFor(u, p))
-    .filter((u) => u.ok(p));
+    .filter((u) => u.ok(p))
+    .filter((u) => u.rare === undefined || rand() < u.rare);
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];

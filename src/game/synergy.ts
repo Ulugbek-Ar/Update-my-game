@@ -16,6 +16,8 @@ export type { Tag };
 
 /** Sinergiya uchun kerak bo'lgan bir xil teglar soni */
 export const SYNERGY_AT = 3;
+/** SUPER sinergiyasi: super shari shuncha baravar tez to'ladi */
+export const SUPER_RATE = 1.25;
 /** Kichik bonus */
 export const BONUS_AT = 2;
 
@@ -83,6 +85,13 @@ export const TAGS: Record<Tag, TagDef> = {
   porox: { name: "POROX", color: "#dba45a", two: "", three: HERO_THREE.gunner },
   nur: { name: "NUR", color: "#f2c14e", two: "", three: HERO_THREE.paladin },
   gul: { name: "SAKURA", color: "#ff8fb8", two: "", three: HERO_THREE.samurai },
+  // SUPER kartalari kam (har superda 2 ta) — ikkalasi yig'ilsa sinergiya ochiladi (TAG_NEED)
+  super: {
+    name: "SUPER",
+    color: "#ffe9a8",
+    two: "Super shari 25% tez to'ladi",
+    three: "Super shari 25% tez to'ladi",
+  },
 };
 // qahramon tegi 2: kuchli zarba zaryadi tezroq to'ladi
 for (const t of ["polat", "sehr", "ov", "porox", "nur", "gul"] as const)
@@ -100,6 +109,12 @@ export const HERO_TAG: Record<Hero, Tag> = {
 
 export const ALL_TAGS = Object.keys(TAGS) as Tag[];
 
+/** Sinergiya uchun kerakli teglar soni: odatda 3; SUPER — 2 (bunday kartalar atigi ikkita) */
+export const TAG_NEED: Partial<Record<Tag, number>> = { super: 2 };
+export function tagNeed(tag: Tag) {
+  return TAG_NEED[tag] ?? SYNERGY_AT;
+}
+
 export type TagCounts = Partial<Record<Tag, number>>;
 
 /** Teg ochilishi: "two" — kichik bonus, "three" — sinergiya, null — hech narsa */
@@ -112,13 +127,14 @@ export type TagUnlock = "two" | "three" | null;
 export function addTag(counts: TagCounts, tag: Tag, p: Player): TagUnlock {
   const n = (counts[tag] ?? 0) + 1;
   counts[tag] = n;
+  // sinergiya chegarasi tegga qarab (SUPER — 2): chegaraga yetsa — to'g'ridan-to'g'ri sinergiya
+  if (n === tagNeed(tag)) {
+    applyThree(tag, p);
+    return "three";
+  }
   if (n === BONUS_AT) {
     applyTwo(tag, p);
     return "two";
-  }
-  if (n === SYNERGY_AT) {
-    applyThree(tag, p);
-    return "three";
   }
   return null;
 }
@@ -131,6 +147,8 @@ function applyTwo(tag: Tag, p: Player) {
 }
 
 function applyThree(tag: Tag, p: Player) {
+  // SUPER: shar tezroq to'ladi (Game zaryad hisoblagichiga uzatadi)
+  if (tag === "super") p.superRate = SUPER_RATE;
   if (tag !== HERO_TAG[p.hero]) return;
   // qahramonning eng zo'r qobiliyati
   if (p.hero === "knight" || p.hero === "hunter" || p.hero === "samurai") p.strongMul = 3;
@@ -139,7 +157,7 @@ function applyThree(tag: Tag, p: Player) {
   // Sehrgar: teleport portlashi — Game
 }
 
-export function hasTag(counts: TagCounts, tag: Tag, n = SYNERGY_AT) {
+export function hasTag(counts: TagCounts, tag: Tag, n = tagNeed(tag)) {
   return (counts[tag] ?? 0) >= n;
 }
 
@@ -150,8 +168,9 @@ export function synergies(counts: TagCounts): Tag[] {
 
 /** Kartadagi yozuv: "ZARAR 2/3" — shu kartani olsa nechta bo'ladi (3 dan oshmaydi) */
 export function tagProgress(counts: TagCounts, tag: Tag) {
-  const next = Math.min(SYNERGY_AT, (counts[tag] ?? 0) + 1);
-  return `${TAGS[tag].name} ${next}/${SYNERGY_AT}`;
+  const need = tagNeed(tag);
+  const next = Math.min(need, (counts[tag] ?? 0) + 1);
+  return `${TAGS[tag].name} ${next}/${need}`;
 }
 
 /** Teg ikonkalari (7x7): X — teg rangi, k — to'q kontur, w — oq yaltiroq */
@@ -176,4 +195,6 @@ export const TAG_ICONS: Record<Tag, readonly string[]> = {
   nur: ["k..k..k", ".kkXkk.", ".kXwXk.", "kXXXXXk", ".kXXXk.", ".kkXkk.", "k..k..k"],
   // sakura guli
   gul: [".kk.kk.", "kXXkXXk", "kXXwXXk", ".kwkwk.", "kXXwXXk", "kXXkXXk", ".kk.kk."],
+  // super shari: shisha shar ichida suyuqlik
+  super: [".kkkkk.", "kw....k", "k.w...k", "kXXXXXk", "kXXwXXk", "kXXXXXk", ".kkkkk."],
 };
