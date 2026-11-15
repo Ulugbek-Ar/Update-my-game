@@ -20,6 +20,7 @@ import {
   type Placed,
   type Viewport,
 } from "@/game/touchLayout";
+import { SuperOrbButton, type SuperSource } from "./SuperOrbButton";
 import { TouchIconSvg } from "./TouchIcon";
 import { BTN_CLASS, buttonTheme, heroVars, placedStyle } from "./touchUi";
 import { useSettings } from "./useSettings";
@@ -31,6 +32,10 @@ export type TouchTarget = Pick<Game, "input" | "player" | "hero"> & {
   acceptsMove?(): boolean;
   /** Ekrandagi shu nuqtada o'yin tugmasi bormi (suzuvchi joystik u yerda paydo bo'lmaydi) */
   touchUiAt?(clientX: number, clientY: number): boolean;
+  /** Super (super.ts): zaryad, shar ko'rinishi va skin ranglari — superi bor qahramonda shar tugmasi */
+  superMeter?: SuperSource["superMeter"];
+  orb?: SuperSource["orb"];
+  theme?: SuperSource["theme"];
 };
 
 /** Olamdagi qo'shimcha tugmalar: gaplashish, jurnal, xarita */
@@ -259,6 +264,18 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
             glow={glow}
           />,
         )}
+      {game.superMeter?.def && game.orb && game.theme && (
+        // super shari: faqat superi bor qahramonda (boshqalarda tugma umuman yo'q)
+        <SuperOrbButton
+          game={{
+            input: game.input,
+            superMeter: game.superMeter,
+            orb: game.orb,
+            theme: game.theme,
+          }}
+          p={placeControl("super", ts, vp)}
+        />
+      )}
       {button(
         "pause",
         null,

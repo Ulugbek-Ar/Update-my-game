@@ -51,7 +51,7 @@ describe("Sensor boshqaruvi joylashuvi", () => {
   it("default buttons do not overlap each other", () => {
     for (const vp of [PIXEL7, SMALL, TABLET])
       for (const buttonSize of [80, 100, 150]) {
-        const ids = ["attack", "dash", "reload", "interact"] as const;
+        const ids = ["attack", "dash", "reload", "super", "interact"] as const;
         const ps = ids.map((id) => placeControl(id, ts({ buttonSize }), vp));
         for (let i = 0; i < ps.length; i++)
           for (let j = i + 1; j < ps.length; j++) {
@@ -61,6 +61,22 @@ describe("Sensor boshqaruvi joylashuvi", () => {
             );
           }
       }
+  });
+
+  it("the super orb button sits next to the attack button, bigger than dash, and stays on screen at 915x412", () => {
+    for (const leftHanded of [false, true]) {
+      const t = ts({ leftHanded });
+      const sup = placeControl("super", t, PIXEL7);
+      const atk = placeControl("attack", t, PIXEL7);
+      const dash = placeControl("dash", t, PIXEL7);
+      expect(inside(PIXEL7, sup)).toBe(true);
+      expect(sup.size).toBeGreaterThan(dash.size);
+      // hujum tugmasi yonida: ikki tugma kengligidan uzoq emas
+      expect(Math.hypot(sup.x - atk.x, sup.y - atk.y)).toBeLessThan(atk.size * 2);
+      // asl (o'ng qo'l) joylashuvda o'yin maydoni (4:3 xona, 915x412 da 183..732 px) ustiga tushmaydi
+      const roomR = 915 - (915 - (412 * 4) / 3) / 2;
+      if (!leftHanded) expect(sup.x - sup.size / 2).toBeGreaterThan(roomR);
+    }
   });
 
   it("saved positions are fractions of the safe area and fit a different screen", () => {

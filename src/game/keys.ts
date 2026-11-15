@@ -12,6 +12,7 @@ export type Action =
   | "attack"
   | "dash"
   | "reload"
+  | "super"
   | "pause"
   | "mute"
   | "interact"
@@ -29,6 +30,7 @@ export const SHARED_ACTIONS: readonly Action[] = [
   "attack",
   "dash",
   "reload",
+  "super",
   "pause",
 ];
 /** Faqat asosiy o'yinda */
@@ -46,6 +48,8 @@ export const DEFAULT_KEYS: KeyBinds = {
   attack: ["Space", "KeyJ"],
   dash: ["Shift", "KeyK"],
   reload: ["KeyR"],
+  // super (v3.9): L yoki Q — faqat superi bor qahramonda ishlaydi
+  super: ["KeyL", "KeyQ"],
   pause: ["Escape", "KeyP"],
   mute: ["KeyM"],
   interact: ["KeyE", "Enter"],
@@ -61,6 +65,7 @@ export const ACTION_LABELS: Record<Action, string> = {
   attack: "Hujum",
   dash: "Qobiliyat (dash)",
   reload: "Qayta o'qlash (Mergan)",
+  super: "Super (shar to'lganda)",
   pause: "Pauza",
   mute: "Ovoz",
   interact: "Gaplashish (olam)",

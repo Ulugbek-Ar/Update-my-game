@@ -2,6 +2,8 @@
  * SOZLAMALAR -> BOSHQARUV: telefon (joystik, tugmalar, joylashuv, tebranish) va kompyuter
  * (tugmalarni qayta belgilash). O'zgarish darhol saqlanadi va o'yinda qo'llanadi.
  */
+import { superFor } from "@/game/super";
+import { SuperOrbFace } from "./SuperOrbButton";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import { HERO_THEME, type Hero } from "@/game/hero";
@@ -155,6 +157,7 @@ export function ControlsPreview({ hero, ts }: { hero: Hero; ts: TouchSettings })
       return <ButtonFace label={REALM_LABELS[id]} size={size} glow={glow} />;
     if (id === "reload")
       return <TouchIconSvg id="bullet" size={Math.round(size * 0.5)} glow={glow} />;
+    if (id === "super") return <SuperOrbFace hero={hero} size={size} />;
     return <span style={{ fontSize: Math.max(6, Math.round(size / 4)) }}>II</span>;
   };
   const ids: ControlId[] = [
@@ -162,6 +165,8 @@ export function ControlsPreview({ hero, ts }: { hero: Hero; ts: TouchSettings })
     "dash",
     "pause",
     ...(hero === "gunner" ? ["reload" as const] : []),
+    // super shari — faqat superi bor qahramonda
+    ...(superFor(hero) ? ["super" as const] : []),
   ];
   return (
     <div

@@ -109,6 +109,11 @@ export class Boss implements Body {
   justPhased = false;
   /** Faza almashganda qisqa daxlsizlik */
   guard = 0;
+  /**
+   * Tiz cho'kkan (super zarbasidan keyin): shuncha soniya hujum qilmaydi va yurmaydi; o'z "tiz
+   * cho'kish" kadri bilan chiziladi (o'lim animatsiyasining 1-kadri). Zarar olishi mumkin.
+   */
+  kneel = 0;
   /** Jang vaqti (paydo bo'lgandan keyin); BERSERK_TIME dan keyin g'azab */
   fightT = 0;
   justBerserk = false;
@@ -198,6 +203,12 @@ export class Boss implements Body {
     if (!this.justBerserk && this.berserk && this.fightT - dt < BERSERK_TIME)
       this.justBerserk = true;
     if (this.guard > 0) this.guard -= dt;
+    if (this.kneel > 0) {
+      // tiz cho'kkan: xatti-harakat to'xtaydi (faza almashinuvi keyingi kadrlarda davom etadi)
+      this.kneel -= dt;
+      this.anim.update(dt);
+      return;
+    }
     const ph = this.phaseAt();
     if (ph > this.phase) {
       this.phase = ph;
@@ -213,6 +224,8 @@ export class Boss implements Body {
    * (mobAnim.ts: introFrame) — faqat ko'rinish, Animator holati o'zgarmaydi.
    */
   protected showFrame(): { state: AnimState; frame: number } {
+    // tiz cho'kkan boss: har bossning o'z "tiz cho'kdi" kadri (o'lim animatsiyasining boshi)
+    if (this.kneel > 0 && !this.dead) return { state: "death", frame: 0 };
     const f = introFrame(this.spawn, this.spawnMax);
     return f === null
       ? { state: this.anim.state, frame: this.anim.frame }

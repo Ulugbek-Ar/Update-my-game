@@ -37,6 +37,8 @@ export class Input {
   private pauseQueued = false;
   /** Mergan: R (telefonda o'q belgisi) — qayta o'qlash */
   private reloadQueued = false;
+  /** Super: L / Q (telefonda shar tugmasi) */
+  private superQueued = false;
   private touch = { x: 0, y: 0 };
   private touchAttack = false;
   private touchDash = false;
@@ -80,6 +82,7 @@ export class Input {
       if (e.code === "Enter" || e.code === "NumpadEnter") this.enterQueued = true;
       if (this.is("pause", key)) this.pauseQueued = true;
       if (this.is("reload", key)) this.reloadQueued = true;
+      if (this.is("super", key)) this.superQueued = true;
       this.pressed.add(e.code);
       this.pressed.add(key);
     }
@@ -148,6 +151,11 @@ export class Input {
     this.reloadQueued = true;
   }
 
+  /** Telefondagi super (shar) tugmasi. */
+  pressSuper() {
+    this.superQueued = true;
+  }
+
   /** Bir marta bosilgan hujum (iste'mol qilinadi). */
   consumeAttack() {
     const a = this.attackQueued;
@@ -168,6 +176,12 @@ export class Input {
   consumeReload() {
     const a = this.reloadQueued;
     this.reloadQueued = false;
+    return a;
+  }
+  /** Bir marta bosilgan super tugmasi (iste'mol qilinadi). */
+  consumeSuper() {
+    const a = this.superQueued;
+    this.superQueued = false;
     return a;
   }
   /** Bir marta bosilgan Escape (iste'mol qilinadi). */
@@ -194,6 +208,7 @@ export class Input {
   /** Navbatdagi barcha bir martalik bosishlarni bekor qilish. */
   clearQueued() {
     this.attackQueued = this.dashQueued = this.enterQueued = this.reloadQueued = false;
+    this.superQueued = false;
     this.pressed.clear();
   }
 }

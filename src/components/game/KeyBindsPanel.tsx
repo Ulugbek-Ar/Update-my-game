@@ -20,7 +20,7 @@ import { useSettings } from "./useSettings";
 
 const GROUPS: [title: string, actions: Action[]][] = [
   ["YURISH", ["up", "down", "left", "right"]],
-  ["JANG", ["attack", "dash", "reload"]],
+  ["JANG", ["attack", "dash", "reload", "super"]],
   ["O'YIN", ["pause", "mute"]],
   ["ABADIYAT OLAMI", ["interact", "journal", "map"]],
 ];

@@ -237,7 +237,7 @@ export const ENEMY_HP: Record<EnemyKind, number> = {
 };
 
 /** Dushman turi -> sprite turi */
-const SPRITE: Record<EnemyKind, SpriteKind> = {
+export const ENEMY_SPRITE: Record<EnemyKind, SpriteKind> = {
   blob: "slime",
   wisp: "bat",
   rammer: "skeleton",
@@ -256,6 +256,7 @@ const SPRITE: Record<EnemyKind, SpriteKind> = {
   tengu: "tengu",
   kitsune: "kitsune",
 };
+const SPRITE = ENEMY_SPRITE;
 
 export interface Arrow {
   x: number;

@@ -1,18 +1,55 @@
 /**
- * SUPER QOBILIYATLAR — v4.0 uchun tayyorgarlik. HOZIRCHA YOPIQ: o'yinda, menyuda va kuch kartalarida
- * ko'rinmaydi, hech qanday tugma yoki zaryad ishlamaydi (SUPERS_ENABLED = false).
+ * SUPER QOBILIYATLAR — umumiy tizim (v3.9 da ochildi; birinchi super — Paladinning ILOHIY HUKMI).
  *
- * Umumiy tizim (v4.0 da hamma qahramonga): har qahramonning bitta superi bor. Super zaryadi
- * (SuperMeter) o'yinchi bergan zarardan to'ladi; to'lganda alohida tugma bilan ishlatiladi va
- * zaryad nolga tushadi. Bu faylda — faqat ma'lumot (SuperDef) va zaryad hisoblagichi; superning
- * o'zi (animatsiya, zarba) v4.0 da Game ichida `useSuper()` orqali ulanadi.
+ * Har qahramonning bitta superi bo'lishi mumkin. Super zaryadi (SuperMeter) o'yinchi bergan
+ * zarardan (asosiy), kombodan va ozgina — yegan zarbadan to'ladi; to'lganda alohida tugma
+ * (L / Q, telefonda shar tugmasi) bilan ishlatiladi va zaryad nolga tushadi.
  *
- * Yangi super qo'shish: SUPERS ga yozuv. Yoqish: SUPERS_ENABLED = true (v4.0).
+ * Bu faylda — faqat ma'lumot va sof mantiq (DOM/canvas yo'q, onlayn olam va server ham ishlatadi):
+ *  - SuperDef: superning to'liq tavsifi — bosqichlar (tayyorlanish → zarba → oqibat), zarar,
+ *    boss chegarasi, jon tiklash, ovozlar va effekt nomi;
+ *  - SuperMeter: zaryad hisoblagichi;
+ *  - SuperCast: bitta super ijrosining vaqt chizig'i (karta → tayyorlanish → zarba → oqibat);
+ *  - planStrikes / bossDamage: zarbalar tartibi va bossga zarar chegarasi.
+ * Chizish — superFx.ts (shar, karta) va qahramonning o'z effekt fayli (masalan divineFx.ts).
+ *
+ * YANGI SUPER QO'SHISH: SUPERS ga yozuv (open: true) + effekt fayli. Shar, tugma, karta, daxlsizlik,
+ * sekin vaqt, boss chegarasi va onlayn xabari shu tizimdan o'z-o'zidan ishlaydi.
+ * Hamma superlarni o'chirish: SUPERS_ENABLED = false (superFor() null — hech qayerda ko'rinmaydi).
  */
 import type { Hero } from "./hero";
 
-/** v4.0 gacha yopiq: true bo'lmaguncha superFor() null qaytaradi, SuperMeter to'lmaydi */
-export const SUPERS_ENABLED: boolean = false;
+/** Umumiy kalit: false bo'lsa superFor() hamma qahramonga null qaytaradi */
+export const SUPERS_ENABLED: boolean = true;
+
+/** Super bosqichlari (kartadan keyin): tayyorlanish → zarba → oqibat */
+export type SuperStage = "prep" | "strike" | "after";
+export const SUPER_STAGES: readonly SuperStage[] = ["prep", "strike", "after"];
+
+/** Super ovozlari — audio.ts dagi `sfx` metodlari nomi (ma'lumotda satr bilan beriladi) */
+export type SuperSound =
+  "divineChoir" | "sunMark" | "sunBeam" | "sunBeamBig" | "divineEnd" | "superCard";
+
+/** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
+export interface SuperStrike {
+  /** Har zarba oldidan nishon ustidagi belgi shuncha soniya chaqnaydi */
+  mark: number;
+  /** Zarbalar orasi (s) — nishon ko'p bo'lsa bosqichga sig'ishi uchun qisqaradi */
+  gap: number;
+  /** Oxirgi zarbadan keyin bosqich tugashigacha (s) */
+  tail: number;
+  /** Bosqichning eng qisqa davomiyligi (nishon kam bo'lganda) */
+  min: number;
+}
+
+/** Superdan keyin dushmanga nima bo'ladi (chizish va onlayn uchun) */
+export interface SuperAftermath {
+  /** O'lgan mob shuncha soniya yerga yopishib yotadi ("yer tishlaydi"), so'ng changga aylanadi */
+  flat: number;
+  dust: number;
+  /** Boss shuncha soniya tiz cho'kadi (hujum qilmaydi) */
+  bossKneel: number;
+}
 
 export interface SuperDef {
   id: string;
@@ -21,18 +58,97 @@ export interface SuperDef {
   name: string;
   desc: string;
   color: string;
-  /** Zaryad: o'yinchi shuncha zarar berganda to'ladi */
+  /** Zaryad: shuncha birlik yig'ilganda to'ladi (1 birlik = dushmanga berilgan 1 zarar) */
   charge: number;
-  /** Super davomiyligi (soniya) */
+  /** Super davomiyligi (soniya): bosqichlar yig'indisi, karta kirmaydi */
   time: number;
-  /** Qahramonga xos sonlar (Game v4.0 da o'qiydi) */
+  /** Qahramonga xos sonlar */
   params: Readonly<Record<string, number>>;
+  /** Ochiqmi: false — keyingi versiyalar uchun tayyor ma'lumot, o'yinda ko'rinmaydi */
+  open: boolean;
+  /** Bosqichlar davomiyligi (s); zarba — eng ko'pi (nishon kam bo'lsa strike.min gacha qisqaradi) */
+  stages: Readonly<Record<SuperStage, number>>;
+  /** Bosqichlarda dunyo tezligi (1 — oddiy); o'yinchi va super effektlari sekinlashmaydi */
+  slow: Readonly<Record<SuperStage, number>>;
+  strike: SuperStrike;
+  /**
+   * Zarar: kill — oddiy mob o'ladi; boss — bitta zarba to'lqinida boss maksimal jonining ulushi;
+   * bossCap — BITTA superdan bossga jami zarar chegarasi (ulush) — kartalar ham oshira olmaydi.
+   */
+  dmg: { kill: boolean; boss: number; bossCap: number };
+  /** Oqibatda tiklanadigan jon va (onlayn) ittifoqchilarga yetadigan radius */
+  heal: number;
+  healRadius: number;
+  after: SuperAftermath;
+  /** Super kartasi (cut-in): to'liq va qisqartirilgan davomiylik, karta ostidagi qator */
+  card: { time: number; short: number; sub: string };
+  sounds: {
+    card: SuperSound;
+    prep: SuperSound;
+    mark: SuperSound;
+    hit: SuperSound;
+    bossHit: SuperSound;
+    end: SuperSound;
+  };
+  /** Effektlar to'plami nomi (superFx.ts: SUPER_FX) */
+  fx: string;
 }
 
 /**
- * MING KESIM (Samuray qiz): ekrandagi hamma dushman belgilanadi, Samuray ko'rinmay ketadi va
- * `cuts` ta kesik ularga ketma-ket tushadi (har biri `mul` × zarar), oxirida katana qinga qaytadi.
- * Shu vaqt davomida daxlsiz. Bossga har kesik `bossMul` × zarar (boss tez o'lib qolmasin).
+ * Zaryad manbalari (hamma superga umumiy): 1 zarar = 1 birlik (asosiy manba), kombo bilan
+ * o'ldirish — qo'shimcha, zarba yeganda — ozgina.
+ */
+export const GAIN_DMG = 1;
+/** Kombo x2 dan boshlab har o'ldirishda: (kombo − 1) × shuncha, ko'pi bilan GAIN_COMBO_MAX */
+export const GAIN_COMBO = 0.25;
+export const GAIN_COMBO_MAX = 1;
+/** Zarba yeganda (jon ketganda) */
+export const GAIN_HURT = 1;
+
+/**
+ * ILOHIY HUKM (Paladin) — o'yindagi birinchi super.
+ * Tayyorlanish: Paladin ikki metrlik qilichini ikki qo'llab osmonga ko'taradi, vaqt sekinlashadi,
+ * osmondan unga oltin nur ustuni tushadi. Zarba: ekrandagi HAR BIR mobga osmondan alohida quyosh
+ * nuri tushadi (yaqindan uzoqqa, tez ritmda). Oqibat: moblar yer tishlaydi va oltin changga
+ * aylanadi, Paladin qilichni yerga sanchadi — oltin halqa tarqaladi, ozgina jon tiklanadi.
+ *
+ * Zaryad 20: 1-dunyo to'lqinlaridagi dushmanlar joni 9, 10, 18, 32 — o'rtacha o'yinda super
+ * 1–2 to'lqinda bir marta to'ladi (super.test.ts hamma dunyoni tekshiradi).
+ * Bossga: bitta qalin nur — boss maksimal jonining 8% i; kartalar bilan ham jami 10% dan oshmaydi.
+ */
+const DIVINE_JUDGMENT: SuperDef = {
+  id: "divine-judgment",
+  hero: "paladin",
+  name: "ILOHIY HUKM",
+  desc: "Osmondan har bir dushmanga quyosh nuri tushadi",
+  color: "#f2c14e",
+  charge: 20,
+  time: 3.7,
+  params: {},
+  open: true,
+  stages: { prep: 1.2, strike: 1.5, after: 1 },
+  slow: { prep: 0.25, strike: 0.08, after: 0.5 },
+  strike: { mark: 0.15, gap: 0.13, tail: 0.4, min: 0.75 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 1,
+  healRadius: 90,
+  after: { flat: 0.55, dust: 0.45, bossKneel: 1 },
+  card: { time: 0.6, short: 0.25, sub: "PALADIN SUPERI" },
+  sounds: {
+    card: "superCard",
+    prep: "divineChoir",
+    mark: "sunMark",
+    hit: "sunBeam",
+    bossHit: "sunBeamBig",
+    end: "divineEnd",
+  },
+  fx: "divine",
+};
+
+/**
+ * MING KESIM (Samuray qiz) — keyingi versiya uchun tayyor ma'lumot (open: false): ekrandagi hamma
+ * dushman belgilanadi, Samuray ko'rinmay ketadi va `cuts` ta kesik ularga ketma-ket tushadi (har
+ * biri `mul` × zarar), oxirida katana qinga qaytadi. Bossga har kesik `bossMul` × zarar.
  */
 const THOUSAND_CUTS: SuperDef = {
   id: "thousand-cuts",
@@ -43,32 +159,79 @@ const THOUSAND_CUTS: SuperDef = {
   charge: 60,
   time: 1.6,
   params: { cuts: 12, gap: 0.1, mul: 1, bossMul: 0.5 },
+  open: false,
+  stages: { prep: 0.4, strike: 1, after: 0.2 },
+  slow: { prep: 0.3, strike: 0.1, after: 0.6 },
+  strike: { mark: 0.1, gap: 0.1, tail: 0.2, min: 0.5 },
+  dmg: { kill: false, boss: 0.06, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0, dust: 0.3, bossKneel: 0 },
+  card: { time: 0.6, short: 0.25, sub: "SAMURAY SUPERI" },
+  sounds: {
+    card: "superCard",
+    prep: "superCard",
+    mark: "sunMark",
+    hit: "sunBeam",
+    bossHit: "sunBeamBig",
+    end: "divineEnd",
+  },
+  fx: "cuts",
 };
 
-/** Hamma superlar (yopiq bo'lsa ham — sinov va v4.0 ishlanmasi uchun) */
+/** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
+  paladin: DIVINE_JUDGMENT,
   samurai: THOUSAND_CUTS,
 };
 
-/** Qahramonning superi; superlar yopiq bo'lsa (v4.0 gacha) — null: hech qayerda ko'rinmaydi. */
+/** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */
 export function superFor(hero: Hero): SuperDef | null {
-  return SUPERS_ENABLED ? (SUPERS[hero] ?? null) : null;
+  if (!SUPERS_ENABLED) return null;
+  const def = SUPERS[hero];
+  return def?.open ? def : null;
 }
 
-/** Super zaryadi hisoblagichi. Superlar yopiq yoki qahramonda super yo'q — hech qachon to'lmaydi. */
+/** Id bo'yicha ochiq super (onlayn xabarlarini tekshirish uchun) */
+export function superById(id: string): SuperDef | null {
+  if (!SUPERS_ENABLED) return null;
+  return Object.values(SUPERS).find((d) => d.id === id && d.open) ?? null;
+}
+
+/** Super zaryadi hisoblagichi. Qahramonda (ochiq) super yo'q — hech qachon to'lmaydi. */
 export class SuperMeter {
   /** Yig'ilgan zaryad (0..def.charge) */
   value = 0;
   readonly def: SuperDef | null;
+  /** To'lish tezligi ko'paytuvchisi (SUPER tegi bonusi; asl 1) */
+  rate = 1;
+  /** Shu kadrda to'ldi — Game "TAYYOR!" ovozi va uchqunlarini chiqaradi, so'ng o'chiradi */
+  justFilled = false;
 
   constructor(hero: Hero) {
     this.def = superFor(hero);
   }
 
-  /** O'yinchi zarar berdi */
+  private gain(n: number) {
+    const d = this.def;
+    if (!d || !(n > 0) || this.value >= d.charge) return;
+    this.value = Math.min(d.charge, this.value + n * this.rate);
+    if (this.value >= d.charge) this.justFilled = true;
+  }
+
+  /** O'yinchi zarar berdi (asosiy manba) */
   add(dmg: number) {
-    if (!this.def || !(dmg > 0)) return;
-    this.value = Math.min(this.def.charge, this.value + dmg);
+    this.gain(dmg * GAIN_DMG);
+  }
+
+  /** Dushman kombo bilan o'ldirildi (combo — shu o'ldirishdan keyingi kombo soni) */
+  addCombo(combo: number) {
+    if (combo >= 2) this.gain(Math.min(GAIN_COMBO_MAX, (combo - 1) * GAIN_COMBO));
+  }
+
+  /** O'yinchi zarba yedi */
+  addHurt() {
+    this.gain(GAIN_HURT);
   }
 
   /** To'lish ulushi 0..1 (HUD uchun) */
@@ -84,6 +247,155 @@ export class SuperMeter {
   use() {
     if (!this.ready) return false;
     this.value = 0;
+    this.justFilled = false;
     return true;
+  }
+}
+
+/** Zarba nishoni: joyi va boss ekani (Enemy/Boss/onlayn mob — hammasi mos keladi) */
+export interface StrikeTarget {
+  x: number;
+  y: number;
+}
+
+/** Rejalashtirilgan zarba: belgi `markAt` da chaqnaydi, zarba `hitAt` da tushadi (bosqich vaqti) */
+export interface PlannedStrike<T> {
+  target: T;
+  boss: boolean;
+  markAt: number;
+  hitAt: number;
+  /** Belgi ko'rsatildi / zarba tushdi */
+  marked: boolean;
+  done: boolean;
+}
+
+/**
+ * Zarbalar tartibi: moblar yaqindan uzoqqa, tez ritmda ketma-ket; bosslar — eng oxirida (bitta katta
+ * zarba). Nishon ko'p bo'lsa oraliq qisqaradi — hammasi bosqichning eng ko'p vaqtiga sig'adi.
+ * Qaytaradi: zarbalar va bosqichning haqiqiy davomiyligi.
+ */
+export function planStrikes<T extends StrikeTarget>(
+  def: SuperDef,
+  from: { x: number; y: number },
+  mobs: readonly T[],
+  bosses: readonly T[] = [],
+  /** Birinchi belgi vaqti va bosqichning eng ko'p davomiyligi (ikkinchi to'lqinda — kattaroq) */
+  start = 0,
+  max = def.stages.strike,
+): { strikes: PlannedStrike<T>[]; time: number } {
+  const s = def.strike;
+  const dist = (t: T) => Math.hypot(t.x - from.x, t.y - from.y);
+  const order: { target: T; boss: boolean }[] = [
+    ...[...mobs].sort((a, b) => dist(a) - dist(b)).map((target) => ({ target, boss: false })),
+    ...bosses.map((target) => ({ target, boss: true })),
+  ];
+  const n = order.length;
+  const room = Math.max(0, max - start - s.mark - s.tail);
+  const gap = n > 1 ? Math.min(s.gap, room / (n - 1)) : 0;
+  const strikes = order.map((o, i) => {
+    const at = start + i * gap;
+    return { ...o, markAt: at, hitAt: at + s.mark, marked: false, done: false };
+  });
+  const last = n ? strikes[n - 1]!.hitAt : start;
+  return { strikes, time: Math.min(max, Math.max(s.min, last + s.tail)) };
+}
+
+/**
+ * Bossga zarar: boss maksimal jonining `share` ulushi, lekin shu superda bossga allaqachon berilgan
+ * zarar (`dealt`) bilan birga `bossCap` ulushidan oshmaydi. Kartalar va ikkinchi to'lqin ham shu
+ * chegara ichida.
+ */
+export function bossDamage(def: SuperDef, maxHp: number, dealt: number, power = 1) {
+  const cap = def.dmg.bossCap * maxHp;
+  return Math.max(0, Math.min(def.dmg.boss * power * maxHp, cap - dealt));
+}
+
+export type CastStage = "card" | SuperStage;
+
+/**
+ * Bitta super ijrosining vaqt chizig'i. Faqat vaqt va bosqichlar — zarar va effektlarni egasi
+ * (Game yoki onlayn RealmSim) bosqich almashganda o'zi bajaradi:
+ *
+ *   const ev = cast.update(dt);   // ev: shu qadamda boshlangan bosqichlar va tugaganligi
+ *
+ * Karta paytida o'yin vaqti to'xtaydi (worldSpeed = 0), keyin bosqichga qarab sekin.
+ */
+export class SuperCast {
+  stage: CastStage = "card";
+  /** Joriy bosqichda o'tgan vaqt (haqiqiy soniya) */
+  t = 0;
+  /** Super boshlanganidan beri (kartasiz) o'tgan vaqt */
+  age = 0;
+  done = false;
+  /** Zarba bosqichining haqiqiy davomiyligi (planStrikes dan) */
+  strikeTime: number;
+  /** Shu superda har bossga berilgan zarar (chegara uchun) */
+  bossDealt = new Map<object, number>();
+  /** Shu superda o'ldirilgan dushmanlar ("Bitta super bilan 10 ta dushman") */
+  kills = 0;
+  /** Zarba to'lqini raqami (IKKINCHI HUKM kartasi bilan 2 ta) */
+  wave = 0;
+
+  constructor(
+    readonly def: SuperDef,
+    /** Karta davomiyligi (0 — kartasiz: onlayn kuzatuvchi yoki sinov) */
+    readonly cardTime: number = def.card.time,
+  ) {
+    this.strikeTime = def.stages.strike;
+    if (cardTime <= 0) this.stage = "prep";
+  }
+
+  /** Joriy bosqich davomiyligi */
+  get stageTime() {
+    return this.stage === "card"
+      ? this.cardTime
+      : this.stage === "strike"
+        ? this.strikeTime
+        : this.def.stages[this.stage];
+  }
+
+  /** Bosqichdagi ulush 0..1 */
+  get k() {
+    const d = this.stageTime;
+    return d > 0 ? Math.min(1, this.t / d) : 1;
+  }
+
+  /** Dunyo tezligi: kartada 0, tayyorlanish/zarbada sekin, oqibatda asta oddiy tezlikka qaytadi */
+  get worldSpeed() {
+    if (this.done) return 1;
+    if (this.stage === "card") return 0;
+    const s = this.def.slow[this.stage];
+    return this.stage === "after" ? s + (1 - s) * this.k * this.k : s;
+  }
+
+  /**
+   * Vaqtni suradi. Qaytaradi: shu qadamda boshlangan bosqichlar (tartib bilan) va tugadimi.
+   * Bitta qadamda bir nechta bosqich almashishi mumkin (katta dt).
+   */
+  update(dt: number): { entered: SuperStage[]; done: boolean } {
+    const entered: SuperStage[] = [];
+    if (this.done) return { entered, done: true };
+    this.t += dt;
+    if (this.stage !== "card") this.age += dt;
+    for (let guard = 0; guard < 4 && !this.done; guard++) {
+      const d = this.stageTime;
+      if (this.t < d) break;
+      const over = this.t - d;
+      if (this.stage === "card") {
+        // karta tugadi: ortiqcha vaqt superga o'tmaydi (o'yin vaqti to'xtab turgan edi)
+        this.stage = "prep";
+        this.t = 0;
+        entered.push("prep");
+        break;
+      }
+      if (this.stage === "after") {
+        this.done = true;
+        break;
+      }
+      this.stage = this.stage === "prep" ? "strike" : "after";
+      this.t = over;
+      entered.push(this.stage);
+    }
+    return { entered, done: this.done };
   }
 }

@@ -1,7 +1,15 @@
 import { ROOM, applyHit, clampToRoom, overlap, px, separate, type Body } from "./animation";
 import { Input } from "./input";
 import { Player } from "./player";
-import { Enemy, GOLEM_SPLIT, ICEBLOB_CHILL, OWL_ALT, TENGU_ALT, type EnemyKind } from "./enemy";
+import {
+  ENEMY_SPRITE,
+  Enemy,
+  GOLEM_SPLIT,
+  ICEBLOB_CHILL,
+  OWL_ALT,
+  TENGU_ALT,
+  type EnemyKind,
+} from "./enemy";
 import {
   Boss,
   ForestKing,
@@ -47,7 +55,7 @@ import {
 import { GAME_VERSION } from "./version";
 import { sfx } from "./audio";
 import { loadSettings, onSettingsChange } from "./settings";
-import { actionKey, moveLabel } from "./keys";
+import { actionKey, actionKeys, moveLabel } from "./keys";
 import { touchLabels } from "./touchLayout";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
 import { Effects } from "./effects";
@@ -145,7 +153,17 @@ import {
   type TagCounts,
 } from "./synergy";
 import { renderPixelIcon } from "./pixelIcon";
-import { SuperMeter } from "./super";
+import {
+  SuperCast,
+  SuperMeter,
+  bossDamage,
+  planStrikes,
+  type PlannedStrike,
+  type SuperStage,
+} from "./super";
+import { SuperOrb, renderSuperCard, renderSuperOrb } from "./superFx";
+import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
+import { superPortrait } from "./portrait";
 import { skinLook, skinPalette } from "./skins";
 import {
   defaultLook,
@@ -208,6 +226,10 @@ export const ENDLESS_BEST_KEY = bestKeys("knight").endless;
 export const TUTORIAL_KEY = "pixel-rpg-tutorial-done";
 /** Samuray bilan birinchi o'yindagi maslahatlar (IAI, chetlanish, parry) ko'rsatib bo'lingan */
 export const SAMURAI_TIPS_KEY = "pixel-rpg-samurai-tips-done";
+/** Super shari birinchi marta to'lganda chiqadigan maslahat ko'rsatilganmi (bir martalik) */
+export const SUPER_TIP_KEY = "pixel-rpg-super-tip-done";
+/** HUD'dagi super shari: markazi va radiusi (xona koordinatalarida; telefonda — alohida tugma) */
+export const SUPER_ORB = { x: 21, y: 211, r: 12 } as const;
 /** Parry bilan qaytarilgan snaryad: tezligi va oddiy dushmanga zarari (o'yinchi zararidan) */
 export const REFLECT_SPEED = 1.7;
 export const REFLECT_MUL = 2;
@@ -641,8 +663,27 @@ export class Game {
   private reflectBudget = { t: 0, dmg: 0 };
   /** Shu kadrda "SHIK!" yozuvi chiqdi (bir kadrda bir marta) */
   private parryNote = false;
-  /** Super zaryadi (super.ts). v4.0 gacha yopiq: to'lmaydi, HUD'da va boshqaruvda ko'rinmaydi */
+  /** Super zaryadi (super.ts). Superi yo'q qahramonda to'lmaydi, HUD'da va boshqaruvda ko'rinmaydi */
   superMeter = new SuperMeter("knight");
+  /** Super shari ko'rinishi (superFx.ts): suyuqlik, pufakchalar — faqat chizish */
+  orb = new SuperOrb();
+  /** Ijro etilayotgan super (karta → tayyorlanish → zarba → oqibat); null — yo'q */
+  cast: SuperCast | null = null;
+  /** Super sahnasi (superScene.ts): super tugagach ham effektlari so'nguncha chiziladi */
+  scene: SuperScene | null = null;
+  /** Joriy superning rejalashtirilgan zarbalari va allaqachon nishonga olinganlar */
+  private strikes: PlannedStrike<Enemy | Boss>[] = [];
+  private struck = new Set<object>();
+  /** Shar to'lgandagi "TAYYOR!" yozuvi qolgan vaqti (faqat ko'rinish) */
+  private readyNote = 0;
+  /** O'yinchining shu kadrdagi gorizontal harakati (−1..1) — shardagi suyuqlik chayqalishi uchun */
+  private orbMove = 0;
+  /** Super tugmasi bosilganidan beri qolgan "eslab qolish" vaqti */
+  private superBuf = 0;
+  /** Super boshlangan joy: o'yinchi super tugaguncha shu yerda turadi */
+  private castAt = { x: 0, y: 0 };
+  /** Sozlamalar: super kartasini qisqartirish */
+  superCardShort = false;
   /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
   private threat = new ThreatTable();
   /** Boss to'lqinida o'yinchi hali jon yo'qotmagan ("Qalqonsiz devor" yutug'i) */
@@ -819,6 +860,7 @@ export class Game {
     const settings = loadSettings();
     this.shakeOn = settings.shake;
     this.damageNumsOn = settings.damageNumbers;
+    this.superCardShort = settings.superCardShort;
     sfx.setVolumes(settings.music, settings.sfx);
     if (!load(TUTORIAL_KEY)) this.hints = [...HINTS];
     // Samuray bilan birinchi o'yin: IAI, chetlanish va parry maslahatlari (bir martalik)
@@ -861,6 +903,14 @@ export class Game {
   reset() {
     this.player = new Player(this.hero);
     this.superMeter = new SuperMeter(this.hero);
+    // har yangi o'yinda shar bo'sh
+    this.orb.reset();
+    this.cast = null;
+    this.scene = null;
+    this.strikes = [];
+    this.struck.clear();
+    this.readyNote = 0;
+    this.superBuf = 0;
     this.applySkin();
     const shop = loadShop();
     applyShop(this.player, shop);
@@ -1521,6 +1571,15 @@ export class Game {
       return;
     }
     if (this.intro > 0) return this.skipIntro();
+    // HUD'dagi super shari: bosilsa (to'lgan bo'lsa) super ishlaydi
+    if (
+      this.superMeter.def &&
+      !this.touch &&
+      Math.hypot(x - SUPER_ORB.x, y - SUPER_ORB.y) <= SUPER_ORB.r + 2
+    ) {
+      this.useSuper();
+      return;
+    }
     if (this.phase === "play" && this.stage === "fight") {
       // HUD'dagi artefakt ikonkasi: bosilsa tavsifi chiqadi
       const art = this.artifacts.findIndex((_, i) => hit(this.artRect(i)));
@@ -1544,6 +1603,7 @@ export class Game {
     this.offSettings = onSettingsChange((st) => {
       this.shakeOn = st.shake;
       this.damageNumsOn = st.damageNumbers;
+      this.superCardShort = st.superCardShort;
     });
     this.canvas.addEventListener("click", this.onClick);
     document.addEventListener("visibilitychange", this.onVisibility);
@@ -1726,6 +1786,8 @@ export class Game {
     if (this.combo >= 10) this.achieve("combo10");
     if (this.combo >= 50) this.achieve("combo50");
     this.comboTimer = COMBO_TIME;
+    // kombo bilan o'ldirish super sharini ham to'ldiradi (superning o'z zarbalari — yo'q)
+    if (!this.cast) this.superMeter.addCombo(this.combo);
     const mult = Math.min(5, 1 + Math.floor((this.combo - 1) / 2));
     const pts = KILL_POINTS[e.kind] * mult;
     this.score += pts;
@@ -1892,6 +1954,9 @@ export class Game {
 
   private onPlayerHurt() {
     const p = this.player;
+    // zarba yeganda shar ozgina to'ladi va ichidagi suyuqlik chayqaladi
+    this.superMeter.addHurt();
+    this.orb.kick();
     if (this.hasArtifact("revenge") && p.hp > 0) this.revengeReady = true;
     if (this.hasArtifact("lastbreath") && p.hp === 1 && !this.lastBreathUsed) {
       this.lastBreathUsed = true;
@@ -1978,7 +2043,8 @@ export class Game {
         return;
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
-    this.superMeter.add(hpBefore - Math.max(0, t.hp));
+    // superning o'z zarbalari sharni to'ldirmaydi
+    if (!this.cast) this.superMeter.add(hpBefore - Math.max(0, t.hp));
     // zarba nuqtasida kichik uchqun, kritikda — alohida oltin chaqnash (faqat ko'rinish)
     const hd = Math.hypot(t.x - p.x, t.y - p.y) || 1;
     const edge = Math.min(t.size / 2, 8);
@@ -2051,6 +2117,27 @@ export class Game {
   update(dt: number) {
     // haqiqiy vaqt: mukammal chetlanishda dunyo sekinlashadi, Samuray esa yo'q
     const raw = dt;
+    this.updateOrb(raw);
+    // super tugmasi (L / Q, telefonda — shar tugmasi): bosish qisqa vaqt "eslab qolinadi" — hit-stop
+    // kadriga to'g'ri kelsa ham yo'qolmaydi; kuch tanlash ekranida bosilgani esa jangga o'tmaydi
+    if (this.input.consumeSuper()) this.superBuf = 0.3;
+    else if (this.superBuf > 0) this.superBuf -= raw;
+    const cast = this.cast;
+    if (cast?.stage === "card") {
+      // super kartasi: o'yin vaqti to'xtaydi, faqat karta va HUD jonli
+      this.hud.update(
+        raw,
+        this.player.hp,
+        this.runGold,
+        this.banner.timer,
+        this.banner.title,
+        this.phase,
+      );
+      for (const s of cast.update(raw).entered) this.onCastStage(s);
+      return;
+    }
+    // super davomida dunyo sekin (o'yinchi va super effektlari — haqiqiy vaqtda)
+    if (cast) dt *= cast.worldSpeed;
     // boss o'ldi: 1 s sekin harakat (o'yin tezligi 0.3)
     if (this.slowmo > 0) {
       this.slowmo -= dt;
@@ -2065,8 +2152,13 @@ export class Game {
       this.coinRain = this.coinRain.filter((r) => r.life > 0 && r.y < ROOM.h + 8);
     }
     this.time += dt;
-    this.fx.update(dt);
-    this.cfx.update(dt);
+    // super paytida zarrachalar sekinlashmaydi (nur uchqunlari jonli qolsin)
+    this.fx.update(cast ? raw : dt);
+    this.cfx.update(cast ? raw : dt);
+    if (this.scene) {
+      this.scene.update(raw, cast, this.sceneCtx());
+      if (!cast && !this.scene.alive) this.scene = null;
+    }
     // HUD'ga yetib kelgan tanga/yurak: hisob bir lahza "sakraydi" (hudFx — faqat ko'rinish)
     for (const kind of this.cfx.arrived) this.hud.arrive(kind);
     this.cfx.arrived.length = 0;
@@ -2149,13 +2241,18 @@ export class Game {
     const px0 = p.x,
       py0 = p.y;
     this.parryNote = false;
-    p.update(this.focus > 0 ? raw : dt, this.input);
+    if (this.superBuf > 0 && this.useSuper()) this.superBuf = 0;
+    if (this.cast) this.updateCast(raw);
+    else p.update(this.focus > 0 ? raw : dt, this.input);
+    this.orbMove = dt > 0 ? Math.max(-1, Math.min(1, (p.x - px0) / (p.speed * dt))) : 0;
     // qadam changi (faqat ko'rinish): oyoq yerga tekkan kadrda
     if (p.vis.step) {
       p.vis.step = false;
       if (!p.dashing && !p.dead) this.fx.dust(p.x, p.y + 12, STEP_DUST[this.chapter]);
     }
-    this.applySlip(px0, py0, dt);
+    // super paytida o'yinchi joyida turadi (muzda ham sirpanmaydi)
+    if (this.cast) this.slip.on = false;
+    else this.applySlip(px0, py0, dt);
     this.updateSynergies(dt);
     this.updateArtifacts(dt);
     if (p.brokeIce) {
@@ -2648,6 +2745,8 @@ export class Game {
 
     // sandiq kartasi shu kadrda ochilgan bo'lsa, avval u tanlanadi
     if (this.bonusPick) return;
+    // super tugamaguncha to'lqin yakunlanmaydi (oqibat sahnasi uzilmasin)
+    if (this.cast) return;
     // to'lqin tugadi
     if (this.enemies.length === 0) {
       if (isBossWave(this.wave)) {
@@ -2881,12 +2980,224 @@ export class Game {
     }
   }
 
+  /** Super sharining har kadrdagi ko'rinishi va "TAYYOR!" lahzasi (faqat superli qahramonda). */
+  private updateOrb(raw: number) {
+    const m = this.superMeter;
+    if (!m.def) return;
+    if (this.readyNote > 0) this.readyNote -= raw;
+    if (m.justFilled) {
+      m.justFilled = false;
+      this.readyNote = 1.6;
+      sfx.superReady();
+      // birinchi marta to'lganda — bir martalik maslahat
+      if (!load(SUPER_TIP_KEY)) {
+        save(SUPER_TIP_KEY, 1);
+        this.banner = {
+          title: "SUPER TAYYOR!",
+          sub: `${actionKeys(this.input.keyBinds, "super")} yoki shar tugmasini bos.`,
+          timer: 3.2,
+        };
+      }
+    }
+    const playing = this.phase === "play" && this.stage === "fight" && !this.paused;
+    this.orb.update(raw, m.ratio, m.ready, playing ? this.orbMove : 0, this.fx.isReduced());
+    this.orbMove = 0;
+  }
+
+  /** Hozir superni ishlatish mumkinmi: shar to'lgan, jang payti, o'yinchi tirik, boshqa super yo'q. */
+  canSuper() {
+    return (
+      this.superMeter.ready &&
+      !this.cast &&
+      this.phase === "play" &&
+      this.stage === "fight" &&
+      this.intro <= 0 &&
+      !this.bonusPick &&
+      !this.paused &&
+      !this.player.dead
+    );
+  }
+
   /**
-   * Superni ishlatish (v4.0 uchun API joyi). Superlar yopiq (super.ts: SUPERS_ENABLED) — zaryad
-   * to'lmaydi va bu yerda hech narsa bo'lmaydi; hech qaysi tugma buni chaqirmaydi.
+   * Superni ishlatish: zaryad sarflanadi, shardagi suyuqlik bo'shaydi, karta (cut-in) chiqadi va
+   * super bosqichlari boshlanadi. Shar to'lmagan yoki hozir mumkin emas — false (hech narsa bo'lmaydi).
    */
   useSuper() {
-    return this.superMeter.use();
+    const def = this.superMeter.def;
+    if (!def || !this.canSuper() || !this.player.beginCast()) return false;
+    this.superMeter.use();
+    this.orb.drain();
+    this.readyNote = 0;
+    this.cast = new SuperCast(def, this.superCardShort ? def.card.short : def.card.time);
+    this.castAt = { x: this.player.x, y: this.player.y };
+    this.scene = sceneFor(def.fx);
+    this.strikes = [];
+    this.struck.clear();
+    this.freeze = 0;
+    this.focus = 0;
+    // ekrandagi banner (masalan "SUPER TAYYOR!" maslahati) kartani to'smaydi
+    this.banner.timer = 0;
+    sfx.superDrain();
+    sfx[def.sounds.card]();
+    // kartasiz (sinov) — tayyorlanish darhol boshlanadi
+    if (this.cast.stage === "prep") this.onCastStage("prep");
+    return true;
+  }
+
+  /** Sahnaga beriladigan muhit: egasi, skin ranglari, zarrachalar (superScene.ts). */
+  private sceneCtx(): SceneCtx {
+    const p = this.player;
+    const reduced = this.fx.isReduced();
+    return {
+      x: p.x,
+      y: p.y,
+      dir: p.fx < 0 ? -1 : 1,
+      theme: this.theme,
+      reduced,
+      fx: this.fx,
+      // "Effektlarni kamaytirish": silkinish ancha yengil
+      shake: (v) => this.fx.addShake(reduced ? v * 0.35 : v),
+      view: { x: 0, y: 0, w: ROOM.w, h: ROOM.h },
+    };
+  }
+
+  /** Dushman/boss haqida sahnaga beriladigan ma'lumot (yerga yopishgan jasad uchun sprite ham). */
+  private sceneTarget(t: Enemy | Boss): SceneTarget {
+    if (t instanceof Enemy)
+      return { x: t.x, y: t.y, size: t.size, sprite: ENEMY_SPRITE[t.kind], flip: t.facingLeft };
+    return { x: t.x, y: t.y, size: t.size };
+  }
+
+  /** Super vaqt chizig'i: bosqichlar, zarbalar va yakun. raw — haqiqiy vaqt (sekinlashmagan). */
+  private updateCast(raw: number) {
+    const cast = this.cast!;
+    const p = this.player;
+    // shamol yoki itarilish joyidan qo'zg'atmaydi
+    p.x = this.castAt.x;
+    p.y = this.castAt.y;
+    const ev = cast.update(raw);
+    for (const s of ev.entered) this.onCastStage(s);
+    if (cast.stage === "strike") this.runStrikes();
+    p.castTick(raw);
+    p.superFrame = this.scene?.pose(cast) ?? -1;
+    if (ev.done) this.endCast();
+  }
+
+  /** Bosqich boshlandi: ovoz, zarbalar rejasi, oqibatdagi jon tiklash. */
+  private onCastStage(s: SuperStage) {
+    const cast = this.cast!;
+    const def = cast.def;
+    const p = this.player;
+    if (s === "prep") sfx[def.sounds.prep](def.stages.prep);
+    if (s === "strike") this.planStrikeWave(0);
+    if (s === "after") {
+      sfx[def.sounds.end]();
+      // dushman snaryadlari so'nadi, o'yinchi ozgina jon tiklaydi
+      for (const sh of this.shots) this.fx.burst(sh.x, sh.y, this.theme.glow, 3, 40, 1);
+      this.shots = [];
+      if (def.heal > 0 && p.heal(def.heal)) {
+        this.fx.text(p.x, p.y - 22, `+${def.heal} YURAK`, this.theme.glow);
+        this.cfx.fly("heart", p.x, p.y - 8, 8 + (p.hp - 1) * 10, 7, this.fx.isReduced());
+      }
+    }
+    this.scene?.stage(s, cast, this.sceneCtx());
+  }
+
+  /**
+   * Zarba to'lqinini rejalashtiradi: hali nishonga olinmagan hamma tirik mob (yaqindan uzoqqa) va
+   * oxirida boss. start — birinchi belgi vaqti (bosqich ichida).
+   */
+  private planStrikeWave(start: number, max?: number) {
+    const cast = this.cast!;
+    const mobs = this.enemies.filter((e) => !e.dead && !this.struck.has(e));
+    const b = this.boss;
+    const bosses = b && !b.dead && b.spawn <= 0 && !this.struck.has(b) ? [b] : [];
+    const plan = planStrikes<Enemy | Boss>(cast.def, this.player, mobs, bosses, start, max);
+    for (const st of plan.strikes) this.struck.add(st.target);
+    this.strikes.push(...plan.strikes);
+    cast.strikeTime = Math.max(start, plan.time);
+    cast.wave++;
+    return plan.strikes.length;
+  }
+
+  /** Zarba bosqichi: belgilar chaqnaydi, zarbalar tushadi; kech paydo bo'lganlar ham navbatga qo'shiladi. */
+  private runStrikes() {
+    const cast = this.cast!;
+    const def = cast.def;
+    const ctx = this.sceneCtx();
+    // zarba paytida paydo bo'lgan mob (masalan bo'lingan Qor odam) ham nurdan qutulmaydi
+    for (const e of this.enemies) {
+      if (e.dead || this.struck.has(e)) continue;
+      this.struck.add(e);
+      const at = Math.min(cast.t, Math.max(0, cast.strikeTime - def.strike.mark));
+      this.strikes.push({
+        target: e,
+        boss: false,
+        markAt: at,
+        hitAt: at + def.strike.mark,
+        marked: false,
+        done: false,
+      });
+    }
+    let i = 0;
+    for (const st of this.strikes) {
+      i++;
+      const t = st.target;
+      if (!st.marked && cast.t >= st.markAt) {
+        st.marked = true;
+        if (!t.dead) {
+          this.scene?.mark(this.sceneTarget(t), st.boss, cast, ctx);
+          sfx[def.sounds.mark](i - 1);
+        }
+      }
+      if (!st.done && cast.t >= st.hitAt) {
+        st.done = true;
+        this.superHit(t, i - 1);
+      }
+    }
+  }
+
+  /**
+   * Super zarbasi nishonga tushdi. Oddiy mob o'ladi; bossga — maksimal jonining ulushi, bitta
+   * superdan jami bossCap dan oshmaydi (super.ts: bossDamage) va boss tiz cho'kadi.
+   */
+  private superHit(t: Enemy | Boss, index: number, power = 1) {
+    const cast = this.cast!;
+    const def = cast.def;
+    if (t.dead) return;
+    const info = this.sceneTarget(t);
+    const ctx = this.sceneCtx();
+    // super zarbasidan o'lganlar zanjir portlash/chaqmoq chiqarmaydi (har mobga o'z nuri tushadi)
+    const chained = this.blasting;
+    this.blasting = true;
+    if (t instanceof Boss) {
+      const dealt = cast.bossDealt.get(t) ?? 0;
+      const dmg = bossDamage(def, t.maxHp, dealt, power);
+      const before = t.hp;
+      if (dmg > 0) this.damageTarget(t, dmg, false);
+      cast.bossDealt.set(t, dealt + (before - Math.max(0, t.hp)));
+      if (!t.dead) t.kneel = Math.max(t.kneel, def.after.bossKneel);
+      sfx[def.sounds.bossHit]();
+      this.scene?.hit(info, true, t.dead, cast, ctx);
+    } else {
+      // hali yerdan chiqayotgan mob ham nurdan qutulmaydi (paydo bo'lishi shu zahoti tugaydi)
+      t.spawn = 0;
+      this.damageTarget(t, def.dmg.kill ? Math.max(t.hp, 1) : this.player.damage * power, false);
+      if (t.dead) cast.kills++;
+      sfx[def.sounds.hit](index);
+      // sahna jasadni o'zi ko'rsatsa (yer tishlash) — mob darhol olib tashlanadi
+      if (this.scene?.hit(info, false, t.dead, cast, ctx) && t.dead) t.removed = true;
+    }
+    this.blasting = chained;
+  }
+
+  /** Super tugadi: o'yinchining daxlsizligi shu kadrda tugaydi, boshqaruv qaytadi. */
+  private endCast() {
+    this.cast = null;
+    this.strikes = [];
+    this.struck.clear();
+    this.player.endCast();
+    this.input.clearQueued();
   }
 
   /** Samurayning o'tkinchi holati (belgilar, kesiklar, chizmalar) — to'lqin va o'yin boshida. */
@@ -3979,6 +4290,10 @@ export class Game {
     }
     if (this.player.paladin && this.player.vowing && !this.player.dead)
       renderVowAura(c, this.player, this.time, this.theme);
+    // super sahnasi: yerdagi belgilar va halqalar (personajlar ostida)
+    const scene = this.scene;
+    const sceneCtx = scene ? this.sceneCtx() : null;
+    if (scene && sceneCtx) scene.renderGround(c, this.cast, sceneCtx);
 
     // chuqurlik bo'yicha tartib
     const p = this.player;
@@ -4131,6 +4446,8 @@ export class Game {
     for (const w of this.webs) if (w.flying) this.renderWeb(c, w);
     for (const cl of this.clouds) this.renderCloud(c, cl);
     for (const sm of this.smokes) this.renderSmoke(c, sm);
+    // super sahnasi: qorayish va nurlar (personajlar ustidan; zarrachalar undan ham ustida)
+    if (scene && sceneCtx) scene.renderAir(c, this.cast, sceneCtx);
     this.fx.renderParticles(c);
     for (const sp of this.cfx.sparks) renderSpark(c, sp, this.fx.isReduced());
     if (this.darkness > 0) {
@@ -4189,6 +4506,7 @@ export class Game {
       this.renderHud();
       this.renderFlyers();
     }
+    if (this.cast?.stage === "card") this.renderCard();
     this.renderPicked();
     this.renderOverlays();
     this.renderToast();
@@ -4813,6 +5131,7 @@ export class Game {
         this.text("G'AZAB", bx - 4, by + 5, 5, "#ff4d4d", "right");
     }
 
+    this.renderOrbHud();
     if (this.hintsVisible()) this.renderHints();
     if (this.synNote && this.stage === "fight" && !this.paused) this.renderSynNote(this.synNote);
 
@@ -4831,6 +5150,45 @@ export class Game {
       if (sub) this.text(sub, ROOM.w / 2 + off, 126, 6, "#e0d6ee");
       c.globalAlpha = 1;
     }
+  }
+
+  /**
+   * SUPER SHARI (HUD): chap pastda dumaloq shisha shar — ichidagi suyuqlik zaryad bilan ko'tariladi.
+   * To'lganda ustida "TAYYOR!" va tugma nomi. Faqat superi bor qahramonda; telefonda shar o'yin
+   * maydonida chizilmaydi — u yerda hujum tugmasi yonidagi shar tugmasining o'zi shu (TouchControls).
+   */
+  private renderOrbHud() {
+    const m = this.superMeter;
+    if (!m.def || this.touch || this.phase !== "play") return;
+    const c = this.ctx;
+    const { x, y, r } = SUPER_ORB;
+    const reduced = this.fx.isReduced();
+    renderSuperOrb(c, this.orb, x, y, r, this.theme, reduced);
+    if (!m.ready || this.cast) return;
+    // "TAYYOR!": to'lgan lahzada sakrab chiqadi, so'ng sekin miltillaydi
+    const pop = this.readyNote > 1.35 && !reduced ? Math.round((this.readyNote - 1.35) * 16) : 0;
+    const blink = reduced || this.readyNote > 0 || Math.floor(this.time * 3) % 2 === 0;
+    this.text("TAYYOR!", x + 8, y - r - 6 - pop, 5, blink ? this.theme.glow : this.theme.accent);
+    // tugma nomi (qayta belgilangan bo'lsa — o'sha)
+    this.text(actionKey(this.input.keyBinds, "super"), x + r + 6, y + r - 1, 5, this.theme.uiText);
+  }
+
+  /** Super kartasi (cut-in): ekran qorayadi, portret va super nomi siljib kiradi (superFx.ts). */
+  private renderCard() {
+    const cast = this.cast;
+    if (!cast) return;
+    const c = this.ctx;
+    renderSuperCard(
+      c,
+      cast.def,
+      cast,
+      this.theme,
+      superPortrait(this.hero, this.player.skin),
+      (s, x, y, size, color, align) => this.text(s, x, y, size, color, align),
+      this.fx.isReduced(),
+    );
+    // shar karta ustida ko'rinib turadi: suyuqlik "vush" bilan bo'shaydi
+    if (!this.touch) renderSuperOrb(c, this.orb, SUPER_ORB.x, SUPER_ORB.y, SUPER_ORB.r, this.theme);
   }
 
   /**

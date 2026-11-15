@@ -20,7 +20,9 @@ import {
   touchLabels,
 } from "@/game/touchLayout";
 import { lockGameKeys } from "@/game/input";
+import { superFor } from "@/game/super";
 import { ButtonFace, StickView } from "./TouchControls";
+import { SuperOrbFace } from "./SuperOrbButton";
 import { BTN_CLASS, buttonTheme, heroVars, placedStyle } from "./touchUi";
 import { TouchIconSvg } from "./TouchIcon";
 import { useViewport } from "./useViewport";
@@ -30,6 +32,7 @@ const NAMES: Record<ControlId, string> = {
   attack: "HUJUM",
   dash: "QOBILIYAT",
   reload: "O'QLASH",
+  super: "SUPER",
   pause: "PAUZA",
   interact: "GAPLASH",
   journal: "JURNAL",
@@ -65,6 +68,7 @@ export function LayoutEditor({ hero, onClose }: { hero: Hero; onClose: () => voi
       return <ButtonFace label={REALM_LABELS[id]} size={size} glow={glow} />;
     if (id === "reload")
       return <TouchIconSvg id="bullet" size={Math.round(size * 0.5)} glow={glow} />;
+    if (id === "super") return <SuperOrbFace hero={hero} size={size} />;
     return <span style={{ fontSize: Math.max(6, Math.round(size / 4)) }}>II</span>;
   };
 
@@ -112,7 +116,7 @@ export function LayoutEditor({ hero, onClose }: { hero: Hero; onClose: () => voi
           O'QLASH — Mergan, GAPLASH/JURNAL/XARITA — olamda
         </p>
       </div>
-      {CONTROL_IDS.map((id) => {
+      {CONTROL_IDS.filter((id) => id !== "super" || superFor(hero)).map((id) => {
         const p = placeControl(id, draft, vp);
         const handlers = {
           onPointerDown: (e: RPointerEvent) => {

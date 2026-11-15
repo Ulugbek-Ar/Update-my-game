@@ -666,3 +666,23 @@ html.in-game body {
     display: none;
   }
 }
+
+/* Super shari tugmasi (telefon): "TAYYOR!" yozuvi sekin sakraydi */
+.super-ready {
+  font-family: var(--font-pixel);
+  text-shadow:
+    1px 1px 0 #000,
+    0 0 6px rgba(0, 0, 0, 0.8);
+  animation: super-ready 0.7s steps(2, end) infinite;
+}
+.reduce-fx .super-ready {
+  animation: none;
+}
+@keyframes super-ready {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}

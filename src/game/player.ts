@@ -395,6 +395,13 @@ export class Player implements Body {
    * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
    */
   flair: FlairKind | null = null;
+  /**
+   * SUPER ijro etilmoqda (super.ts): o'yinchi daxlsiz, boshqaruv ishlamaydi, joyida turadi. Super
+   * tugagan kadrdayoq false bo'ladi — daxlsizlik bir lahza ham ortiqcha qolmaydi (endCast).
+   */
+  casting = false;
+  /** Super pozasi: "attack" holatining shu kadri chiziladi (−1 — yo'q). Faqat ko'rinish */
+  superFrame = -1;
   /** Vizual qatlam holati (heroAnim.ts): burilish va qadam — faqat chizish uchun */
   vis = new HeroVisual();
   /** HAMLA paytida allaqachon itarilganlar */
@@ -566,7 +573,8 @@ export class Player implements Body {
 
   /** Zarba tegsa true qaytaradi. Dash paytida va himoya dumida daxlsiz. */
   takeHit(dmg: number, fromX: number, fromY: number, force: number) {
-    if (this.invuln > 0 || this.dead) return false;
+    // super paytida daxlsiz (faqat super davomida — casting tugashi bilan zarba yana tegadi)
+    if (this.invuln > 0 || this.dead || this.casting) return false;
     if (this.evading) {
       // MUKAMMAL CHETLANISH: dash boshlanganidan dodgeWindow ichida tegishi kerak bo'lgan zarba
       if (
@@ -642,7 +650,7 @@ export class Player implements Body {
 
   /** Muz ichida qotadi (Qor Malikasining nuri); dash paytida ta'sir qilmaydi. */
   encase(taps: number) {
-    if (this.dead || this.evading) return false;
+    if (this.dead || this.evading || this.casting) return false;
     this.ice = Math.max(this.ice, taps);
     this.iceT = ENCASE_MAX;
     this.charge = 0;
@@ -657,9 +665,76 @@ export class Player implements Body {
 
   /** To'r yoki ildiz ushlaydi; dash paytida (va himoya dumida) ta'sir qilmaydi. */
   ensnare(t: number) {
-    if (this.dead || this.evading) return false;
+    if (this.dead || this.evading || this.casting) return false;
     this.snare = Math.max(this.snare, t);
     return true;
+  }
+
+  /**
+   * Super boshlandi: joriy harakatlar (dash, hujum, zaryad) to'xtaydi, muz qamoq va to'r yechiladi,
+   * o'yinchi super tugaguncha daxlsiz va boshqaruvsiz turadi.
+   */
+  beginCast() {
+    if (this.dead) return false;
+    this.casting = true;
+    this.dashTimer = 0;
+    this.guardAge = -1;
+    this.dashAge = -1;
+    this.attackTimer = 0;
+    this.spinTimer = 0;
+    this.slamT = 0;
+    this.charge = 0;
+    this.hurtTimer = 0;
+    this.iai = null;
+    this.iaiLock = this.iaiPose = this.parryPose = this.parryT = 0;
+    this.fanLeft = 0;
+    this.shiftHold = -1;
+    this.snare = 0;
+    if (this.ice > 0) {
+      this.ice = this.iceT = 0;
+      this.brokeIce = true;
+    }
+    this.vx = this.vy = 0;
+    this.hitSet.clear();
+    this.anim.set("idle");
+    return true;
+  }
+
+  /**
+   * Super davomidagi kadr: boshqaruv va harakat yo'q, faqat taymerlar (qayta tiklanishlar davom
+   * etadi) va vizual holat. dt — haqiqiy vaqt (dunyo sekinlashgan bo'lsa ham).
+   */
+  castTick(dt: number) {
+    this.vis.update(dt, this.fx, this.anim);
+    this.anim.update(dt);
+    if (this.flash > 0) this.flash -= dt;
+    this.vx = this.vy = 0;
+    this.cooldown -= dt;
+    this.invuln -= dt;
+    this.hurtTimer -= dt;
+    this.dashCooldown -= dt;
+    this.spinCooldown -= dt;
+    this.trapCooldown -= dt;
+    this.smokeCooldown -= dt;
+    this.vowCooldown -= dt;
+    if (this.vowT > 0) this.vowT -= dt;
+    if (this.boost > 0) this.boost -= dt;
+    if (this.chill > 0) this.chill -= dt;
+    if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
+    this.charge = 0;
+    if (this.anim.state !== "idle") this.anim.set("idle");
+  }
+
+  /**
+   * Super tugadi: daxlsizlik SHU KADRDA tugaydi — na super bayrog'i, na eski invuln taymeri qoladi
+   * (dash himoya dumi xatosiga o'xshash "ortiqcha daxlsizlik" bo'lmasin; super.test.ts tekshiradi).
+   */
+  endCast() {
+    this.casting = false;
+    this.superFrame = -1;
+    this.invuln = 0;
+    this.guardAge = -1;
+    this.charge = 0;
   }
 
   heal(n: number) {
@@ -1335,6 +1410,11 @@ export class Player implements Body {
     if (this.paladin && !skyward && this.anim.state === "attack" && frame >= 2 && this.nearWall())
       frame += 2;
     let state = skyward ? "attack" : this.anim.state;
+    // super pozasi (qilichni osmonga ko'tarish, yerga sanchish...) — Game belgilaydi
+    if (this.casting && this.superFrame >= 0 && !this.dead) {
+      state = "attack";
+      frame = this.superFrame;
+    }
     if (this.samurai) {
       [state, frame] = this.samuraiFrame();
       if (this.iai) this.renderAfterimages(ctx, state, frame);

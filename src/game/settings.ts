@@ -8,12 +8,13 @@ export const SETTINGS_KEY = "pixel-rpg-settings";
 
 /** Sensor boshqaruvi elementlari (joystik va tugmalar) */
 export type ControlId =
-  "stick" | "attack" | "dash" | "reload" | "pause" | "interact" | "journal" | "map";
+  "stick" | "attack" | "dash" | "reload" | "super" | "pause" | "interact" | "journal" | "map";
 export const CONTROL_IDS: readonly ControlId[] = [
   "stick",
   "attack",
   "dash",
   "reload",
+  "super",
   "pause",
   "interact",
   "journal",
@@ -61,6 +62,8 @@ export interface Settings {
    * (sezgir odamlar va kuchsiz telefonlar uchun). O'yin mantig'i o'zgarmaydi.
    */
   reduceFx: boolean;
+  /** Super kartasini (cut-in) qisqartirish: 0.6 s o'rniga 0.25 s */
+  superCardShort: boolean;
   /** Telefon (sensor) boshqaruvi */
   touch: TouchSettings;
   /** Kompyuter klaviaturasi */
@@ -90,6 +93,7 @@ export const DEFAULT_SETTINGS: Settings = {
   shake: true,
   damageNumbers: true,
   reduceFx: false,
+  superCardShort: false,
   touch: DEFAULT_TOUCH,
   keys: DEFAULT_KEYS,
 };
@@ -155,6 +159,7 @@ export function loadSettings(): Settings {
       shake: bool(raw.shake, DEFAULT_SETTINGS.shake),
       damageNumbers: bool(raw.damageNumbers, DEFAULT_SETTINGS.damageNumbers),
       reduceFx: bool(raw.reduceFx, DEFAULT_SETTINGS.reduceFx),
+      superCardShort: bool(raw.superCardShort, DEFAULT_SETTINGS.superCardShort),
       touch: sanitizeTouch(raw.touch),
       keys: sanitizeKeys(raw.keys),
     };

@@ -45,6 +45,8 @@ const BASE: Record<ControlId, [normal: number, compact: number]> = {
   attack: [80, 64],
   dash: [56, 48],
   reload: [44, 40],
+  // super shari: dash tugmasidan biroz katta — ichidagi suyuqlik ko'rinsin
+  super: [60, 50],
   pause: [40, 32],
   interact: [56, 48],
   journal: [40, 32],
@@ -57,6 +59,7 @@ export const MIRRORED: ReadonlySet<ControlId> = new Set([
   "attack",
   "dash",
   "reload",
+  "super",
   "interact",
 ]);
 
@@ -108,6 +111,8 @@ export function defaultPos(id: ControlId, ts: TouchSettings, vp: Viewport) {
   if (id === "attack") return { x: ax, y: ay };
   if (id === "dash") return { x: ax + inward * 0.7 * A, y: ay - 1.15 * A };
   if (id === "reload") return { x: ax - inward * 0.2 * A, y: ay - 1.15 * A };
+  // super shari: hujum tugmasidan ichkariroqda, dash va (olamdagi) gaplashish tugmalari orasida
+  if (id === "super") return { x: ax + inward * 1.6 * A, y: ay - 0.78 * A };
   return { x: ax + inward * 1.05 * A, y: ay + 0.05 * A };
 }
 

@@ -106,6 +106,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 1,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     2,
@@ -241,6 +243,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 1,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     2,
@@ -376,6 +380,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 1,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     2,
@@ -511,6 +517,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 1,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     2,
@@ -646,6 +654,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 2,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     2,
@@ -781,6 +791,8 @@
   "coldBlood": false,
   "shiftHold": -1,
   "hitDamage": 0.75,
+  "casting": false,
+  "superFrame": -1,
   "anim": {
    "idle": [
     4,
@@ -2166,6 +2178,7 @@
   "spiralLeft": 0,
   "spiralT": 0,
   "spiralA": 0,
+  "kneel": 0,
   "anim": {
    "idle": [
     2,
@@ -2235,6 +2248,7 @@
   "iceTimer": 0,
   "justEncased": false,
   "swapT": 8,
+  "kneel": 0,
   "anim": {
    "idle": [
     2,
@@ -2299,6 +2313,7 @@
   "summonTimer": 4,
   "justRooted": false,
   "thornTimer": 0,
+  "kneel": 0,
   "anim": {
    "idle": [
     2,
@@ -2370,6 +2385,7 @@
   "blazeY": 0,
   "justIgnited": false,
   "meleeT": 0,
+  "kneel": 0,
   "anim": {
    "idle": [
     2,

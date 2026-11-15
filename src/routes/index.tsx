@@ -1877,6 +1877,14 @@ function SettingsWindow({
                 Zarrachalar va miltillash kamayadi — sezgir ko'zlar va kuchsiz telefonlar uchun.
                 O'yin o'zgarmaydi.
               </p>
+              <Toggle
+                label="Super kartasini qisqartirish"
+                on={s.superCardShort}
+                onChange={(v) => update({ superCardShort: v })}
+              />
+              <p className="-mt-3 text-[8px] leading-4 text-muted-foreground">
+                Super ishlatilganda chiqadigan karta qisqaroq ko'rinadi.
+              </p>
               <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
             </>
           ) : (

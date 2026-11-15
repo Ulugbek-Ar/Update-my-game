@@ -398,6 +398,106 @@ class SoundFX {
     this.tone(784, 0.3, "triangle", 0.05, undefined, 0.15);
   }
 
+  // ---------------- super (super.ts: SuperSound) ----------------
+
+  /**
+   * Asta o'sib boruvchi ovoz ("xor"): tone() dan farqi — ovoz bir zumda emas, dur ning ko'p qismida
+   * kuchayib boradi va oxirida tez so'nadi.
+   */
+  private swell(
+    freq: number,
+    dur: number,
+    type: OscillatorType,
+    vol: number,
+    slideTo?: number,
+    delay = 0,
+  ) {
+    if (this.muted || !this.ctx || !this.sfxGain || this.ctx.state !== "running") return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo !== undefined)
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+    gain.gain.setValueAtTime(0.001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.82);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain).connect(this.sfxGain);
+    osc.start(t0);
+    osc.stop(t0 + dur);
+  }
+
+  /** Super shari to'ldi: yoqimli qo'ng'iroq — toza kvinta va uzoq jarang */
+  superReady() {
+    this.tone(1568, 0.5, "triangle", 0.06);
+    this.tone(2349, 0.6, "sine", 0.035, undefined, 0.02);
+    this.tone(3136, 0.45, "sine", 0.02, undefined, 0.07);
+    this.tone(784, 0.5, "sine", 0.03);
+  }
+
+  /** Super ishlatildi: shardagi suyuqlik "vush" bilan pastga tortiladi */
+  superDrain() {
+    this.noise(0.38, 0.07, 2400);
+    this.tone(900, 0.4, "sine", 0.05, 130);
+  }
+
+  /** Super kartasi (cut-in): og'ir zarb va ko'tariluvchi yaltirash */
+  superCard() {
+    this.tone(90, 0.36, "square", 0.08, 40);
+    this.tone(600, 0.32, "triangle", 0.04, 1800);
+    this.noise(0.16, 0.06, 3000);
+  }
+
+  /**
+   * ILOHIY HUKM tayyorlanishi: xor ohangidagi ko'tariluvchi akkord — ovozlar navbat bilan qo'shilib
+   * (asos, tersiya, kvinta, oktava) dur soniya davomida o'sib boradi.
+   */
+  divineChoir(dur = 1.2) {
+    const d = Math.max(0.4, dur);
+    const notes = [220, 277.2, 329.6, 440];
+    notes.forEach((f, i) => {
+      const at = (i * d) / 5;
+      const len = d - at + 0.25;
+      // ikki ozgina farqli ovoz — "xor" kengligi
+      this.swell(f, len, "sine", 0.05, f * 1.06, at);
+      this.swell(f * 1.006, len, "triangle", 0.028, f * 1.066, at);
+    });
+    this.swell(880, d * 0.6, "sine", 0.03, 1320, d * 0.5);
+  }
+
+  /** Nur tushishi oldidan nishon ustidagi belgi: mayin "tik" */
+  sunMark(i = 0) {
+    this.tone(2200 + Math.min(8, i) * 90, 0.05, "triangle", 0.028);
+  }
+
+  /** Quyosh nuri tushdi: "VUM!" — har keyingi nur biroz balandroq (ritm) */
+  sunBeam(i = 0) {
+    const k = 1 + Math.min(10, i) * 0.045;
+    this.tone(190 * k, 0.24, "sine", 0.11, 58);
+    this.tone(380 * k, 0.18, "triangle", 0.05, 120);
+    this.noise(0.12, 0.05, 1500);
+    this.tone(1760 * k, 0.14, "triangle", 0.025, undefined, 0.03);
+  }
+
+  /** Bossga tushgan katta nur: chuqurroq va uzunroq "VUUM" */
+  sunBeamBig() {
+    this.tone(150, 0.55, "sine", 0.14, 36);
+    this.tone(300, 0.42, "square", 0.05, 70);
+    this.noise(0.42, 0.09, 1000);
+    this.tone(2093, 0.32, "triangle", 0.03, undefined, 0.04);
+  }
+
+  /** Qilich yerga sanchildi: jarangdor "TING" va past gumburlash */
+  divineEnd() {
+    this.tone(2637, 0.55, "triangle", 0.07);
+    this.tone(3951, 0.42, "sine", 0.035, undefined, 0.01);
+    this.tone(1318, 0.38, "sine", 0.04);
+    this.tone(72, 0.9, "sine", 0.12, 28);
+    this.noise(0.7, 0.08, 500);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;

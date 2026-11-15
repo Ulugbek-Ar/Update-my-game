@@ -4,6 +4,9 @@ import { Input } from "@/game/input";
 import type { Hero } from "@/game/hero";
 import { DEFAULT_SETTINGS, DEFAULT_TOUCH, saveSettings, type TouchSettings } from "@/game/settings";
 import { MIN_LABEL_FONT, fitLabel, touchLabels, REALM_LABELS } from "@/game/touchLayout";
+import { DEFAULT_THEME } from "@/game/skinFx";
+import { SuperMeter } from "@/game/super";
+import { SuperOrb } from "@/game/superFx";
 import { TouchControls, type TouchTarget } from "./TouchControls";
 
 /** Pixel 7 gorizontal */
@@ -121,6 +124,36 @@ describe("Telefon boshqaruvi (komponent)", () => {
     // Sehrgarning TELEPORT yozuvi telefondagi asl tugmaga (48px) sig'adi
     const tp = fitLabel(48, "TELEPORT")!;
     expect(tp.main * 8).toBeLessThanOrEqual(48 - 7);
+  });
+
+  it("the super orb button appears only for a hero that has a super and queues the super when pressed", () => {
+    setTouch({ stickMode: "fixed" });
+    // superi yo'q qahramon: tugma umuman yo'q
+    const plain = mount(target("knight"));
+    expect(plain.container.querySelector(".touch-super")).toBeNull();
+    cleanup();
+    const t = target("paladin");
+    const meter = new SuperMeter("paladin");
+    Object.assign(t, { superMeter: meter, orb: new SuperOrb(), theme: DEFAULT_THEME.paladin });
+    const { container } = mount(t);
+    const btn = container.querySelector(".touch-super") as HTMLElement;
+    expect(btn).not.toBeNull();
+    expect(btn.getAttribute("aria-label")).toBe("Super: ILOHIY HUKM");
+    // ekran ichida (915x412) va boshqa tugmalar ustiga tushmaydi
+    const b = box(btn);
+    expect(b.x + b.size / 2).toBeLessThanOrEqual(W);
+    expect(b.y + b.size / 2).toBeLessThanOrEqual(H);
+    for (const other of [".touch-attack", ".touch-dash"]) {
+      const o = box(container.querySelector(other)!);
+      expect(Math.hypot(o.x - b.x, o.y - b.y)).toBeGreaterThanOrEqual((o.size + b.size) / 2);
+    }
+    expect(t.input.consumeSuper()).toBe(false);
+    btn.setPointerCapture = () => {};
+    pointer(btn, "pointerdown", b.x, b.y);
+    expect(t.input.consumeSuper()).toBe(true);
+    // joystik va hujum tugmasi o'z ishida
+    expect(container.querySelector(".touch-stick")).not.toBeNull();
+    expect(container.querySelector(".touch-attack")).not.toBeNull();
   });
 
   it("mage button shows TELEPORT, small buttons fall back to a drawn icon", () => {

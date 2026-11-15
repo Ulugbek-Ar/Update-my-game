@@ -596,14 +596,16 @@ describe("Samuray: SOVUQ QON va kritik", () => {
 });
 
 describe("Super MING KESIM: tayyor, lekin yopiq", () => {
-  it("the data exists for v4.0 but the super is locked everywhere", () => {
-    expect(SUPERS_ENABLED).toBe(false);
+  it("the data exists for a later version but the Samurai's super is still locked", () => {
+    // v3.9: superlar ochildi (birinchisi — Paladinniki), Samurayniki hali yopiq
+    expect(SUPERS_ENABLED).toBe(true);
     expect(SUPERS.samurai?.name).toBe("MING KESIM");
+    expect(SUPERS.samurai?.open).toBe(false);
     expect(superFor("samurai")).toBeNull();
-    for (const h of HERO_LIST) expect(superFor(h.id)).toBeNull();
+    for (const h of HERO_LIST) if (h.id !== "paladin") expect(superFor(h.id)).toBeNull();
     // kartalarda va qahramon tavsifida yo'q
     const text = JSON.stringify(UPGRADES) + JSON.stringify(HERO_LIST);
-    expect(text).not.toMatch(/MING KESIM|super/i);
+    expect(text).not.toMatch(/MING KESIM/i);
   });
 
   it("the meter never charges and cannot be used while locked", () => {
