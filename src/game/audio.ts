@@ -570,6 +570,80 @@ class SoundFX {
     this.tone(2400, 0.2, "triangle", 0.03, 800);
   }
 
+  /**
+   * UFQ KESIMI tayyorlanishi: past "vuuum" — havo qilichga so'riladi (ohang pastdan ko'tariladi,
+   * shamol shovqini kuchayadi), musiqa bir lahzaga pasayadi.
+   */
+  horizonGather(dur = 0.5) {
+    const d = Math.max(0.3, dur);
+    const ctx = this.ctx;
+    const g = this.musicGain;
+    if (ctx && g && ctx.state === "running") {
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(this.musicVol * 0.15, now + 0.15);
+      g.gain.setValueAtTime(this.musicVol * 0.15, now + d + 1.4);
+      g.gain.linearRampToValueAtTime(this.musicVol, now + d + 2);
+    }
+    this.swell(48, d + 0.1, "sawtooth", 0.05, 96);
+    this.swell(96, d + 0.1, "sine", 0.06, 190);
+    this.swell(1800, d, "sine", 0.008, 3600);
+    this.noise(d, 0.03, 900);
+  }
+
+  /** Kesim to'lqini dushmandan o'tdi: qisqa "tsing" (har keyingisi biroz balandroq) */
+  horizonPass(i = 0) {
+    if (i > 6) return;
+    const f = 2400 + (i % 6) * 180;
+    this.noise(0.04, 0.035, 6800);
+    this.tone(f, 0.06, "triangle", 0.025, f * 1.3);
+  }
+
+  /** Zarba: keskin "SHAAANG" — po'lat chiyillashi, havo yorilishi va uzoq jarang */
+  horizonShaang(dur = 0.8) {
+    this.noise(0.12, 0.12, 5200);
+    this.noise(Math.max(0.3, dur * 0.7), 0.04, 2600, 0.04);
+    this.tone(3400, 0.5, "triangle", 0.05, 2600);
+    this.tone(5100, 0.35, "sine", 0.025, 4300, 0.01);
+    this.tone(1700, 0.7, "sine", 0.03, 1500, 0.02);
+    this.tone(140, 0.4, "sawtooth", 0.05, 45);
+  }
+
+  /** "SHING!" — kesilganlar birdan ikkiga bo'linadi; ortidan kechikkan ko'p "chik" */
+  horizonShing() {
+    this.tone(4200, 0.18, "triangle", 0.06, 3000);
+    this.tone(2100, 0.3, "sine", 0.04, 1900);
+    this.noise(0.1, 0.09, 7000);
+    this.tone(90, 0.35, "sine", 0.06, 45, 0.02);
+    for (let i = 0; i < 9; i++) {
+      // tasodif emas: har safar bir xil ritm (o'yin tasodifiga tegmaydi)
+      const at = 0.1 + i * 0.035 + ((i * 7) % 5) * 0.012;
+      const f = 3000 + ((i * 53) % 6) * 300;
+      this.tone(f, 0.03, "square", 0.018 - i * 0.0012, f * 0.8, at);
+    }
+  }
+
+  /** Dushman ikkiga bo'lindi: piksel bo'laklari sochilishi (birinchi bir nechtasi eshitiladi) */
+  horizonSplit(i = 0) {
+    if (i > 3) return;
+    this.noise(0.07, 0.04 - i * 0.008, 4200, 0.03 + i * 0.03);
+  }
+
+  /** Bossga tushgan kesim: og'ir "ShHANG" */
+  horizonBossCut() {
+    this.tone(180, 0.4, "sawtooth", 0.05, 55);
+    this.noise(0.3, 0.08, 2600);
+    this.tone(2800, 0.25, "triangle", 0.035, 1200);
+  }
+
+  /** Ritsar qilichni silkitib qayta tik turadi: "vush" va zirh shiqirlashi */
+  horizonRise() {
+    this.noise(0.14, 0.04, 2400, 0.32);
+    this.tone(700, 0.06, "square", 0.015, 500, 0.5);
+    this.tone(950, 0.05, "square", 0.012, 700, 0.56);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;

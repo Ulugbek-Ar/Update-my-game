@@ -387,6 +387,11 @@ export function renderSuperCard(
   portrait: HTMLCanvasElement | null,
   text: CardText,
   reduced = false,
+  /**
+   * Portretdagi yaltirash (bo'lmasa — ko'z tirqishida bir marta chaqnaydi): portret ekrandagi
+   * chap-yuqori nuqtasi, kattaligi va karta ulushi bilan chaqiriladi (UFQ KESIMI: tig' bo'ylab).
+   */
+  glint?: (c: CanvasRenderingContext2D, x: number, y: number, size: number, k: number) => void,
 ) {
   const d = Math.max(0.01, cast.cardTime);
   const k = Math.min(1, cast.t / d);
@@ -444,7 +449,7 @@ export function renderSuperCard(
 
   // portret: chapdan tasma bo'ylab siljib kiradi (2x)
   if (portrait) {
-    const size = portrait.width * 2;
+    const size = Math.round(portrait.width * (def.card.scale ?? 2));
     const tx = -size + (size + 6) * inK - out * 30;
     const cxp = tx + size / 2;
     const ty = yAt(cxp) - size / 2 - 6;
@@ -457,9 +462,10 @@ export function renderSuperCard(
       c.fill();
     }
     c.drawImage(portrait, Math.round(tx), Math.round(ty), size, size);
+    if (glint) glint(c, Math.round(tx), Math.round(ty), size, k);
     // ko'z tirqishidagi yaltirash: kirib bo'lgach bir marta chaqnaydi
     const gk = (k - 0.36) / 0.3;
-    if (gk > 0 && gk < 1) {
+    if (!glint && gk > 0 && gk < 1) {
       const gl = Math.sin(gk * Math.PI);
       const gx = Math.round(tx + size * 0.585),
         gy = Math.round(ty + size * 0.36);

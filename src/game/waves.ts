@@ -832,6 +832,33 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.petalVeil = true),
     ok: (p) => !p.petalVeil,
   },
+  // ---- SUPER kartalari (UFQ KESIMI — Ritsar) ----
+  {
+    id: "doublehorizon",
+    name: "QO'SH UFQ",
+    desc: "Super orqaga ham ikkinchi kesim otadi",
+    color: "#c5e4ec",
+    tags: ["super"],
+    icon: "doublehorizon",
+    hero: "knight",
+    super: "horizon-cut",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.doubleHorizon = true),
+    ok: (p) => !p.doubleHorizon,
+  },
+  {
+    id: "wideblade",
+    name: "KENG TIG'",
+    desc: "Super kesimi 60% balandroq",
+    color: "#c5e4ec",
+    tags: ["super"],
+    icon: "wideblade",
+    hero: "knight",
+    super: "horizon-cut",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.wideBlade = true),
+    ok: (p) => !p.wideBlade,
+  },
 ];
 
 /**

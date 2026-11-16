@@ -406,6 +406,12 @@ export class Player implements Body {
    */
   secondBreath = false;
   petalVeil = false;
+  /**
+   * SUPER kartalari (UFQ KESIMI — Ritsar): QO'SH UFQ (orqaga ham ikkinchi kesim to'lqini) va
+   * KENG TIG' (kesim to'lqini balandroq — SuperDef.path.wide).
+   */
+  doubleHorizon = false;
+  wideBlade = false;
   /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
   sunShield = 0;
   shieldHit = false;

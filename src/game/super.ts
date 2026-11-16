@@ -40,7 +40,14 @@ export type SuperSound =
   | "cutsSplit"
   | "cutsBossCut"
   | "cutsSheathe"
-  | "cutsChik";
+  | "cutsChik"
+  | "horizonGather"
+  | "horizonPass"
+  | "horizonShaang"
+  | "horizonSplit"
+  | "horizonBossCut"
+  | "horizonShing"
+  | "horizonRise";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -61,6 +68,34 @@ export interface SuperAftermath {
   dust: number;
   /** Boss shuncha soniya tiz cho'kadi (hujum qilmaydi) */
   bossKneel: number;
+}
+
+/** Kesim to'lqini tavsifi (SuperDef.path) */
+export interface SuperPathDef {
+  /** Uchish tezligi (px/s, haqiqiy vaqt — dunyo sekinlashuvi ta'sir qilmaydi) */
+  speed: number;
+  /** Yarim balandlik: boshida va xona chetida (px) — uchgan sari kattalashadi */
+  half0: number;
+  half1: number;
+  /** KENG TIG' kartasi: balandlik shuncha baravar */
+  wide: number;
+  /** QO'SH UFQ kartasi: orqaga ketuvchi ikkinchi kesim shuncha soniya keyin otiladi */
+  backDelay: number;
+}
+
+/** Bitta otilgan kesim to'lqini: boshlanish nuqtasi, yo'nalish (birlik vektor), uzunlik */
+export interface SuperPath {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  /** Zarba bosqichi boshidan kechikish (s) */
+  delay: number;
+  speed: number;
+  half0: number;
+  half1: number;
+  /** Xona chetigacha masofa (px) */
+  len: number;
 }
 
 export interface SuperDef {
@@ -100,10 +135,23 @@ export interface SuperDef {
   /** Oqibat boshida qahramon xona markazida paydo bo'ladi (bossdan chetroqda) */
   center?: boolean;
   /**
+   * Yo'nalishli kesim to'lqini (UFQ KESIMI): zarba hamma dushmanga emas, faqat to'lqin yo'lidagilarga
+   * tushadi. To'lqin qahramondan qarash (yoki joystik) yo'nalishida `speed` px/s tezlikda xona
+   * chetigacha uchadi; yarim balandligi `half0` dan `half1` gacha o'sadi. Yo'q — hamma nishon.
+   */
+  path?: SuperPathDef;
+  /**
    * Super kartasi (cut-in): to'liq va qisqartirilgan davomiylik, karta ostidagi qator.
    * anime — anime uslubidagi diagonal kadr (faqat Samuray superida ruxsat).
    */
-  card: { time: number; short: number; sub: string; anime?: boolean };
+  card: {
+    time: number;
+    short: number;
+    sub: string;
+    anime?: boolean;
+    /** Portret kattalashtirish (asl 2; Ritsarning 96 px portreti — 1.5) */
+    scale?: number;
+  };
   sounds: {
     card: SuperSound;
     prep: SuperSound;
@@ -217,10 +265,57 @@ const THOUSAND_CUTS: SuperDef = {
   fx: "cuts",
 };
 
+/**
+ * UFQ KESIMI (Ritsar) — v4.0 da ochildi.
+ * Tayyorlanish (0.5 s): Ritsar bir tizzasiga cho'kadi, qilichni beliga tortadi, tig' oqarib
+ * porlaydi, havo zarrachalari qilichga so'riladi. Zarba (0.8 s): bir urishda qarash (yoki joystik)
+ * yo'nalishida ulkan yarim oy KESIM to'lqini otiladi (`path`) — xona chetigacha uchib kattalashadi,
+ * yo'lidagi har dushmandan o'tadi (dushman qotadi, ustida oq kesik chizig'i qoladi). Oqibat
+ * (0.8 s): `release` lahzasida — "SHING!" — kesilganlar birdan ikkiga bo'linib piksel bo'laklarga
+ * sochiladi, Ritsar qilichni silkitib qayta tik turadi.
+ *
+ * Zaryad 20 (Paladin va Samuray kabi). Bossga: yo'lda bo'lsa — maksimal jonining 8% i, jami 10% dan
+ * oshmaydi. Kartalar: QO'SH UFQ (orqaga ikkinchi kesim), KENG TIG' (kesim balandroq).
+ */
+const HORIZON_CUT: SuperDef = {
+  id: "horizon-cut",
+  hero: "knight",
+  name: "UFQ KESIMI",
+  desc: "Ulkan kesim to'lqini yo'lidagi hamma dushmanni ikkiga bo'ladi",
+  color: "#9fd8f0",
+  charge: 20,
+  time: 2.1,
+  params: { motes: 44, motesReduced: 8, bits: 18, bitsReduced: 4 },
+  open: true,
+  stages: { prep: 0.5, strike: 0.8, after: 0.8 },
+  // kesilganlar "qotadi": zarbadan "SHING!" gacha dunyo deyarli to'xtaydi
+  slow: { prep: 0.25, strike: 0.04, after: 0.04 },
+  strike: { mark: 0, gap: 0, tail: 0, min: 0.8 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0.3, dust: 0.5, bossKneel: 0.8 },
+  release: 0.28,
+  path: { speed: 520, half0: 18, half1: 48, wide: 1.6, backDelay: 0.14 },
+  card: { time: 0.7, short: 0.25, sub: "RITSAR SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "horizonGather",
+    mark: "horizonPass",
+    hit: "horizonSplit",
+    bossHit: "horizonBossCut",
+    end: "horizonRise",
+    strike: "horizonShaang",
+    release: "horizonShing",
+  },
+  fx: "horizon",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
   samurai: THOUSAND_CUTS,
+  knight: HORIZON_CUT,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */
@@ -356,6 +451,75 @@ export function bossDamage(def: SuperDef, maxHp: number, dealt: number, power = 
   return Math.max(0, Math.min(def.dmg.boss * power * maxHp, cap - dealt));
 }
 
+/**
+ * Kesim to'lqinlari (SuperDef.path): qarash yo'nalishida bittasi; `double` (QO'SH UFQ) — orqaga
+ * ikkinchisi; `wide` (KENG TIG') — balandroq. Uzunlik — boshlanish nuqtasidan xona chetigacha.
+ */
+export function superPaths(
+  def: SuperDef,
+  from: { x: number; y: number },
+  aim: { x: number; y: number },
+  room: { w: number; h: number },
+  opts: { double?: boolean; wide?: boolean } = {},
+): SuperPath[] {
+  const P = def.path;
+  if (!P) return [];
+  const m = Math.hypot(aim.x, aim.y);
+  const dx = m > 1e-6 ? aim.x / m : 1,
+    dy = m > 1e-6 ? aim.y / m : 0;
+  const tall = opts.wide ? P.wide : 1;
+  const make = (sx: number, sy: number, delay: number): SuperPath => {
+    // xona chetigacha (to'g'ri to'rtburchakdan chiqish nuqtasi)
+    const tx = sx > 1e-6 ? (room.w - from.x) / sx : sx < -1e-6 ? -from.x / sx : Infinity;
+    const ty = sy > 1e-6 ? (room.h - from.y) / sy : sy < -1e-6 ? -from.y / sy : Infinity;
+    return {
+      x: from.x,
+      y: from.y,
+      dx: sx,
+      dy: sy,
+      delay,
+      speed: P.speed,
+      half0: P.half0 * tall,
+      half1: P.half1 * tall,
+      len: Math.max(0, Math.min(tx, ty)),
+    };
+  };
+  const out = [make(dx, dy, 0)];
+  if (opts.double) out.push(make(-dx, -dy, P.backDelay));
+  return out;
+}
+
+/** Kesim to'lqinining `along` px masofadagi yarim balandligi (uchgan sari kattalashadi) */
+export function pathHalf(p: SuperPath, along: number) {
+  const k = p.len > 0 ? Math.max(0, Math.min(1, along / p.len)) : 1;
+  return p.half0 + (p.half1 - p.half0) * k;
+}
+
+/**
+ * To'lqin nishonga qachon yetadi (zarba bosqichi boshidan, s); yo'lida bo'lmasa — null.
+ * size — nishon o'lchami (yarmi chetga qo'shiladi: to'lqin tanasiga tegsa yetarli).
+ */
+export function pathHit(p: SuperPath, t: { x: number; y: number; size?: number }): number | null {
+  const rx = t.x - p.x,
+    ry = t.y - p.y;
+  const r = (t.size ?? 0) / 2;
+  const along = rx * p.dx + ry * p.dy;
+  const perp = Math.abs(rx * -p.dy + ry * p.dx);
+  if (along < -r || along > p.len + r) return null;
+  if (perp > pathHalf(p, along) + r) return null;
+  return p.delay + Math.max(0, along) / p.speed;
+}
+
+/** Bir nechta to'lqindan eng birinchi yetadiganining vaqti (hech biri yetmasa — null) */
+export function pathsHit(paths: readonly SuperPath[], t: { x: number; y: number; size?: number }) {
+  let best: number | null = null;
+  for (const p of paths) {
+    const at = pathHit(p, t);
+    if (at !== null && (best === null || at < best)) best = at;
+  }
+  return best;
+}
+
 export type CastStage = "card" | SuperStage;
 
 /**
@@ -383,6 +547,10 @@ export class SuperCast {
   wave = 0;
   /** `release` lahzasi o'tdi (MING KESIM: zarbalar birdan tushdi) */
   released = false;
+  /** Super yo'nalishi (birlik vektor): qarash yoki joystik — UFQ KESIMI to'lqini shu tomonga */
+  aim = { x: 1, y: 0 };
+  /** Otilgan kesim to'lqinlari (SuperDef.path; zarba bosqichida egasi to'ldiradi) */
+  paths: SuperPath[] = [];
 
   constructor(
     readonly def: SuperDef,

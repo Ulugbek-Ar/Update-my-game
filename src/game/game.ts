@@ -161,15 +161,18 @@ import {
   SuperCast,
   SuperMeter,
   bossDamage,
+  pathsHit,
   planStrikes,
+  superPaths,
   type PlannedStrike,
   type SuperStage,
 } from "./super";
 import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
-import { superPortrait } from "./portrait";
+import { KNIGHT_PORTRAIT_VARIANTS, superPortrait } from "./portrait";
 import { renderSunShield } from "./divineFx";
 import { renderAnimeCard, renderPetalVeil } from "./cutsFx";
+import { renderHorizonCard } from "./horizonFx";
 import { skinLook, skinPalette } from "./skins";
 import {
   defaultLook,
@@ -618,6 +621,8 @@ const POWER_KEYS = [
   "secondJudgment",
   "secondBreath",
   "petalVeil",
+  "doubleHorizon",
+  "wideBlade",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -3065,6 +3070,7 @@ export class Game {
     this.readyNote = 0;
     this.cast = new SuperCast(def, this.superCardShort ? def.card.short : def.card.time);
     this.castAt = { x: this.player.x, y: this.player.y };
+    if (def.path) this.aimSuper(this.cast);
     this.scene = sceneFor(def.fx);
     this.strikes = [];
     this.struck.clear();
@@ -3078,6 +3084,40 @@ export class Game {
     // kartasiz (sinov) — tayyorlanish darhol boshlanadi
     if (this.cast.stage === "prep") this.onCastStage("prep");
     return true;
+  }
+
+  /**
+   * UFQ KESIMI yo'nalishi: joystik/klavisha bosilgan bo'lsa — o'sha tomon, aks holda qarab turgan
+   * tomon. Ritsar shu tomonga buriladi (sprayt kesim bilan bir tomonga qarasin).
+   */
+  private aimSuper(cast: SuperCast) {
+    const p = this.player;
+    const a = this.input.axis();
+    let x = a.x,
+      y = a.y;
+    if (Math.hypot(x, y) < 0.3) {
+      x = p.fx;
+      y = p.fy;
+    }
+    const m = Math.hypot(x, y);
+    if (m < 1e-6) {
+      x = 1;
+      y = 0;
+    }
+    cast.aim = { x: m < 1e-6 ? 1 : x / m, y: m < 1e-6 ? 0 : y / m };
+    p.fx = Math.abs(cast.aim.x) > 0.38 ? Math.sign(cast.aim.x) : 0;
+    p.fy = Math.abs(cast.aim.y) > 0.38 ? Math.sign(cast.aim.y) : 0;
+  }
+
+  /** Nishon superning kesim to'lqini yo'lidami (path yo'q super — hamma nishon yo'lda) */
+  private onPath(t: Enemy | Boss) {
+    const cast = this.cast;
+    if (!cast?.def.path) return true;
+    return pathsHit(cast.paths, this.pathTarget(t)) !== null;
+  }
+
+  private pathTarget(t: Enemy | Boss) {
+    return { x: t.x, y: t instanceof Enemy ? t.y - Math.round(t.alt) : t.y, size: t.size };
   }
 
   /** Sahnaga beriladigan muhit: egasi, skin ranglari, zarrachalar (superScene.ts). */
@@ -3163,6 +3203,12 @@ export class Game {
     const p = this.player;
     if (s === "prep") sfx[def.sounds.prep](def.stages.prep);
     if (s === "strike") {
+      // UFQ KESIMI: kesim to'lqinlari otiladi (QO'SH UFQ — orqaga ham, KENG TIG' — balandroq)
+      if (def.path)
+        cast.paths = superPaths(def, this.castAt, cast.aim, ROOM, {
+          double: p.doubleHorizon,
+          wide: p.wideBlade,
+        });
       this.planStrikeWave(0);
       if (def.sounds.strike) sfx[def.sounds.strike](cast.strikeTime);
     }
@@ -3194,6 +3240,26 @@ export class Game {
     const mobs = this.enemies.filter((e) => !e.dead && !this.struck.has(e));
     const b = this.boss;
     const bosses = b && !b.dead && b.spawn <= 0 && !this.struck.has(b) ? [b] : [];
+    if (cast.def.path) {
+      // kesim to'lqini: faqat yo'lidagilar, har biri to'lqin yetib kelgan lahzada belgilanadi
+      const last = cast.strikeTime - 0.02;
+      const strikes: PlannedStrike<Enemy | Boss>[] = [];
+      for (const [list, boss] of [
+        [mobs, false],
+        [bosses, true],
+      ] as const)
+        for (const target of list) {
+          const at = pathsHit(cast.paths, this.pathTarget(target));
+          if (at === null) continue;
+          const t = Math.min(last, at);
+          strikes.push({ target, boss, markAt: t, hitAt: t, marked: false, done: false });
+        }
+      strikes.sort((a, b2) => a.markAt - b2.markAt);
+      for (const st of strikes) this.struck.add(st.target);
+      this.strikes.push(...strikes);
+      cast.wave++;
+      return strikes.length;
+    }
     const plan = planStrikes<Enemy | Boss>(cast.def, this.player, mobs, bosses, start, max);
     for (const st of plan.strikes) this.struck.add(st.target);
     this.strikes.push(...plan.strikes);
@@ -3210,8 +3276,15 @@ export class Game {
     // zarba paytida paydo bo'lgan mob (masalan bo'lingan Qor odam) ham nurdan qutulmaydi
     for (const e of this.enemies) {
       if (e.dead || this.struck.has(e)) continue;
+      // UFQ KESIMI: yo'ldan tashqaridagi mob kesimdan chetda qoladi
+      if (!this.onPath(e)) continue;
       this.struck.add(e);
-      const at = Math.min(cast.t, Math.max(0, cast.strikeTime - def.strike.mark));
+      const at = def.path
+        ? Math.max(
+            cast.t,
+            Math.min(cast.strikeTime - 0.02, pathsHit(cast.paths, this.pathTarget(e)) ?? 0),
+          )
+        : Math.min(cast.t, Math.max(0, cast.strikeTime - def.strike.mark));
       this.strikes.push({
         target: e,
         boss: false,
@@ -3296,7 +3369,7 @@ export class Game {
     const def = cast.def;
     cast.released = true;
     for (const e of this.enemies) {
-      if (e.dead || this.struck.has(e)) continue;
+      if (e.dead || this.struck.has(e) || !this.onPath(e)) continue;
       this.struck.add(e);
       this.strikes.push({ target: e, boss: false, markAt: 0, hitAt: 0, marked: true, done: false });
     }
@@ -3311,7 +3384,7 @@ export class Game {
         st.done = true;
         this.superHit(st.target, i - 1, st.power);
       }
-      const born = this.enemies.filter((e) => !e.dead && !this.struck.has(e));
+      const born = this.enemies.filter((e) => !e.dead && !this.struck.has(e) && this.onPath(e));
       if (!born.length) break;
       for (const e of born) {
         this.struck.add(e);
@@ -5364,7 +5437,18 @@ export class Game {
     if (!cast) return;
     const c = this.ctx;
     const text: CardText = (s, x, y, size, color, align) => this.text(s, x, y, size, color, align);
-    if (cast.def.card.anime)
+    if (cast.def.fx === "horizon")
+      // UFQ KESIMI: Ritsar portreti — plash va pat hilpiraydi, tig' bo'ylab yaltirash
+      renderHorizonCard(
+        c,
+        cast.def,
+        cast,
+        this.theme,
+        KNIGHT_PORTRAIT_VARIANTS.map((v) => superPortrait(this.hero, this.player.skin, v)),
+        text,
+        this.fx.isReduced(),
+      );
+    else if (cast.def.card.anime)
       // MING KESIM: anime uslubidagi kadr — yaqin plan yuz, ko'zlar keskin ochiladi
       renderAnimeCard(
         c,

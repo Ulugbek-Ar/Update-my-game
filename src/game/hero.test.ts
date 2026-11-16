@@ -151,6 +151,8 @@ describe("Kuch kartalari ikkala qahramonda", () => {
     for (let i = 0; i < 200; i++) {
       for (const u of pickUpgrades(new Player("knight"))) {
         expect(["triple", "pierce"]).not.toContain(u.id);
+        // v4.0: Ritsarning o'z SUPER kartalari (UFQ KESIMI) — alohida tekshiriladi (horizon.test.ts)
+        if (u.super === "horizon-cut") continue;
         expect(u.name).toBe(expected[u.id]![0]);
       }
     }

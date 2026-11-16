@@ -8,6 +8,11 @@
  */
 import type { Hero } from "./hero";
 import { PALETTES, Pixels, type SpritePalette } from "./sprites";
+import {
+  KNIGHT_PORTRAIT_COLORS,
+  KNIGHT_PORTRAIT_GRID,
+  knightPortraitPixels,
+} from "./knightPortrait";
 
 /** Portret to'ri (kvadrat). Kartada 2 baravar kattalashtirib chiziladi */
 export const PORTRAIT_GRID = 64;
@@ -285,11 +290,56 @@ const PORTRAITS: Partial<Record<Hero, (p: Pixels, variant: string) => void>> = {
   samurai: samuraiPortrait,
 };
 
+/** Portret to'ri: Ritsarda 96 (katta, batafsil), qolganlarda PORTRAIT_GRID */
+export function portraitGrid(hero: Hero) {
+  return hero === "knight" ? KNIGHT_PORTRAIT_GRID : PORTRAIT_GRID;
+}
+
+/** Ritsar portreti kadrlari (variant nomi → kadr): past, shamolda, tig' yaltirashi */
+export const KNIGHT_PORTRAIT_VARIANTS = ["", "wind", "glint"] as const;
+
+const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+/** a va b ranglar aralashmasi (k — b ulushi) */
+function mix(a: string, b: string, k: number) {
+  const n = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16) || 0;
+  return `#${[0, 1, 2].map((i) => hex2(n(a, i) + (n(b, i) - n(a, i)) * k)).join("")}`;
+}
+
+/**
+ * Portret ranglari (indeks − 1). Oddiy qahramonda — 5 rangli palitra. Ritsarda — o'z 16 rangi
+ * (knightPortrait.ts); skin bilan siyoh va nur skin palitrasidan olinadi, kumush va mato skin
+ * rangiga bo'yaladi (Oltin Ritsar — oltinroq, Muz Ritsar — muzdek), charm jigarrang qoladi.
+ */
+export function portraitColors(hero: Hero, palette?: SpritePalette): string[] {
+  if (hero !== "knight") return [...(palette?.colors ?? PALETTES[hero])];
+  const base: string[] = [...KNIGHT_PORTRAIT_COLORS];
+  const pc = palette?.colors;
+  if (!pc) return base;
+  const at = (i: number) => pc[i] ?? base[i] ?? "#808080";
+  return base.map((c, i) => {
+    const idx = i + 1;
+    if (idx === 1) return at(0);
+    if (idx >= 2 && idx <= 6) return mix(c, at(3), 0.3);
+    if (idx >= 7 && idx <= 10) return mix(c, at(idx <= 8 ? 1 : 2), 0.55);
+    if (idx === 14) return at(3);
+    if (idx === 15) return mix(c, at(4), 0.5);
+    if (idx === 16) return mix(c, at(4), 0.5);
+    return c;
+  });
+}
+
 /**
  * Portret piksellari (0 — bo'sh, 1..5 — palitra ranglari), siyoh kontur bilan; yo'q — null.
  * variant — qahramonga xos holat (Samuray: "closed" — ko'zlar yumuq).
  */
 export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
+  if (hero === "knight")
+    return knightPortraitPixels(
+      Math.max(
+        0,
+        KNIGHT_PORTRAIT_VARIANTS.indexOf(variant as (typeof KNIGHT_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
   const draw = PORTRAITS[hero];
   if (!draw) return null;
   const p = new Pixels(PORTRAIT_GRID);
@@ -300,7 +350,7 @@ export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
 const cache = new Map<string, HTMLCanvasElement>();
 
 /**
- * Tayyor portret kanvasi (PORTRAIT_GRID × PORTRAIT_GRID), skin palitrasi bilan. Kesh kaliti —
+ * Tayyor portret kanvasi (portraitGrid × portraitGrid), skin palitrasi bilan. Kesh kaliti —
  * qahramon va skin id. Portreti yo'q qahramon yoki kanvassiz muhit (sinov) — null.
  */
 export function superPortrait(
@@ -314,11 +364,11 @@ export function superPortrait(
   const data = portraitPixels(hero, variant);
   if (!data || typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
-  const n = PORTRAIT_GRID;
+  const n = portraitGrid(hero);
   canvas.width = canvas.height = n;
   const raster = canvas.getContext("2d");
   if (!raster) return null;
-  const colors = palette?.colors ?? PALETTES[hero];
+  const colors = portraitColors(hero, palette);
   for (let y = 0; y < n; y++)
     for (let x = 0; x < n; x++) {
       const color = data[y * n + x];

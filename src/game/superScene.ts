@@ -20,6 +20,7 @@ import type { SpriteKind, SpritePalette } from "./sprites";
 import type { SuperCast, SuperStage } from "./super";
 import { DivineScene } from "./divineFx";
 import { CutsScene } from "./cutsFx";
+import { HorizonScene } from "./horizonFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -41,7 +42,10 @@ export interface SceneCtx {
   drawOwner?: (c: CanvasRenderingContext2D) => void;
   /** Ko'rinadigan hudud (xonada 0,0,320,240; ochiq olamda — kamera) */
   view: { x: number; y: number; w: number; h: number };
-  /** Afsonaviy skin bezagi (skinFx.ts: FlairKind) — "moon" (Qizil oy): kesiklar qizil yarim oy */
+  /**
+   * Afsonaviy skin bezagi (skinFx.ts: FlairKind) — "moon" (Qizil oy): kesiklar qizil yarim oy;
+   * "frost" (Muz Ritsar): UFQ KESIMI ortida muz kristallari
+   */
   flair?: string | null;
 }
 
@@ -161,6 +165,7 @@ export class PlainScene implements SuperScene {
 export const SUPER_SCENES: Record<string, () => SuperScene> = {
   divine: () => new DivineScene(),
   cuts: () => new CutsScene(),
+  horizon: () => new HorizonScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

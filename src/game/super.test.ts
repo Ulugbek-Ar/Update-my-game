@@ -90,16 +90,19 @@ beforeEach(() => {
 });
 
 describe("Super tizimi: ma'lumot", () => {
-  it("is open: the Paladin and the Samurai have supers, every other hero has none", () => {
+  it("is open: the Paladin, the Samurai and the Knight have supers, every other hero has none", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(superFor("paladin")?.name).toBe("ILOHIY HUKM");
     // v4.0: ikkinchi super — Samurayning MING KESIMI
     expect(superFor("samurai")?.name).toBe("MING KESIM");
+    // v4.0: uchinchi super — Ritsarning UFQ KESIMI
+    expect(superFor("knight")?.name).toBe("UFQ KESIMI");
     for (const h of HEROES)
-      if (h !== "paladin" && h !== "samurai") expect(superFor(h), h).toBeNull();
+      if (!["paladin", "samurai", "knight"].includes(h)) expect(superFor(h), h).toBeNull();
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superById("divine-judgment")).toBe(superFor("paladin"));
     expect(superById("thousand-cuts")).toBe(superFor("samurai"));
+    expect(superById("horizon-cut")).toBe(superFor("knight"));
     expect(superById("yo'q")).toBeNull();
   });
 
@@ -675,7 +678,7 @@ describe("Super ijrosi (o'yinda)", () => {
 });
 
 describe("Superi yo'q qahramonlar", () => {
-  for (const hero of HEROES.filter((h) => h !== "paladin" && h !== "samurai"))
+  for (const hero of HEROES.filter((h) => !["paladin", "samurai", "knight"].includes(h)))
     it(`${hero}: no meter, no orb, no super — and the game runs as before`, () => {
       const { g, gi } = makeGame(hero);
       expect(g.superMeter.def).toBeNull();
@@ -738,6 +741,6 @@ describe("Super kartasi portreti", () => {
     // rasm to'rni to'ldiradi: kamida yarmi bo'yalgan
     expect(data.filter((c) => c > 0).length).toBeGreaterThan(data.length * 0.5);
     // superi yo'q qahramonda portret yo'q
-    expect(portraitPixels("knight")).toBeNull();
+    expect(portraitPixels("mage")).toBeNull();
   });
 });

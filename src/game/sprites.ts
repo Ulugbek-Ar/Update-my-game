@@ -157,6 +157,82 @@ const poses: Record<"idle" | "walk" | "attack" | "hurt", readonly Pose[]> = {
   ],
 };
 
+/**
+ * UFQ KESIMI super kadrlari (Ritsar, "attack" holatida — Player.superFrame): bir tizzaga cho'kib
+ * qilichni beliga tortish (ikki kadr: tig' titraydi), keng gorizontal kesish, kesishdan keyingi
+ * tig' baland, qilichni silkitish va qayta tik turish. Oddiy hujum kadrlari (0..2) o'zgarmaydi.
+ */
+export const KNIGHT_SUPER_FRAME = {
+  kneel: 3,
+  kneelGlow: 4,
+  slash: 5,
+  follow: 6,
+  flick: 7,
+  rise: 8,
+} as const;
+
+const KNIGHT_SUPER_POSES: readonly Pose[] = [
+  // tizzada: orqa tizza yerda, qilich belda — tig' orqaga, pastga
+  {
+    bob: 3,
+    lean: -1,
+    leftFoot: [8, 28],
+    rightFoot: [21, 27],
+    hand: [11, 22],
+    tip: [1, 25],
+    otherHand: [14, 22],
+  },
+  {
+    bob: 3,
+    lean: -1,
+    leftFoot: [8, 28],
+    rightFoot: [21, 27],
+    hand: [11, 23],
+    tip: [1, 27],
+    otherHand: [14, 23],
+  },
+  // keng kesish: oldinga hamla, qilich gorizontal cho'zilgan
+  {
+    bob: 2,
+    lean: 3,
+    leftFoot: [6, 28],
+    rightFoot: [25, 27],
+    hand: [24, 17],
+    tip: [31, 15],
+    otherHand: [18, 17],
+  },
+  // kesishdan keyin: tig' yuqorida, gavda oldinga egilgan
+  {
+    bob: 1,
+    lean: 2,
+    leftFoot: [7, 28],
+    rightFoot: [24, 27],
+    hand: [22, 12],
+    tip: [28, 3],
+    otherHand: [10, 19],
+  },
+  // qilichni silkitish: tig' pastga-oldinga keskin
+  {
+    bob: 1,
+    lean: 1,
+    leftFoot: [10, 28],
+    rightFoot: [22, 27],
+    hand: [24, 19],
+    tip: [31, 25],
+    otherHand: [9, 19],
+  },
+  // qayta tik turish
+  {
+    bob: 0,
+    lean: 0,
+    leftFoot: [12, 27],
+    rightFoot: [20, 27],
+    hand: [23, 19],
+    tip: [27, 29],
+    otherHand: [9, 19],
+  },
+];
+
 // Five colors each, including the ink outline. White is only a damage effect.
 export const PALETTES: Record<SpriteKind, readonly string[]> = {
   knight: ["#080e19", "#183b62", "#287faf", "#68cde4", "#c5e4ec"],
@@ -5187,7 +5263,14 @@ export function spritePixels(
   else {
     const pose = poses[state][frame] ?? poses[state][0];
     if (pose) {
-      if (kind === "knight") knight(p, heroPose(poses, state, frame, sub), back);
+      if (kind === "knight")
+        knight(
+          p,
+          state === "attack" && frame >= KNIGHT_SUPER_FRAME.kneel
+            ? (KNIGHT_SUPER_POSES[frame - KNIGHT_SUPER_FRAME.kneel] ?? pose)
+            : heroPose(poses, state, frame, sub),
+          back,
+        );
       else if (kind === "mage") {
         const tops = staffTops[state];
         let top = tops[frame] ?? tops[0]!;
@@ -5756,6 +5839,34 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     ".XAAAVAAAAX.",
     "..XXAAAAXX..",
     "....XXXX....",
+  ],
+  doublehorizon: [
+    "....X..X....",
+    "..XU....UX..",
+    ".XU......UX.",
+    "XU...XX...UX",
+    "XA...XX...AX",
+    "XA..XVVX..AX",
+    "XA..XVVX..AX",
+    "XA...XX...AX",
+    "XU...XX...UX",
+    ".XU..XX..UX.",
+    "..XU....UX..",
+    "....X..X....",
+  ],
+  wideblade: [
+    ".X..XX......",
+    "XVX..XUX....",
+    ".V....XUX...",
+    ".V.....XUX..",
+    ".V......XUX.",
+    ".V......XVAX",
+    ".V......XVAX",
+    ".V......XUX.",
+    ".V.....XUX..",
+    ".V....XUX...",
+    "XVX..XUX....",
+    ".X..XX......",
   ],
   petalveil: [
     "....U..U....",

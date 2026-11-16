@@ -595,13 +595,13 @@ describe("Samuray: SOVUQ QON va kritik", () => {
 });
 
 describe("Super MING KESIM: ochiq (v4.0)", () => {
-  it("the Samurai's super is open; heroes other than her and the Paladin still have none", () => {
+  it("the Samurai's super is open; heroes without one (all but her, Paladin, Knight) have none", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(SUPERS.samurai?.name).toBe("MING KESIM");
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superFor("samurai")?.id).toBe("thousand-cuts");
     for (const h of HERO_LIST)
-      if (h.id !== "paladin" && h.id !== "samurai") expect(superFor(h.id)).toBeNull();
+      if (!["paladin", "samurai", "knight"].includes(h.id)) expect(superFor(h.id)).toBeNull();
   });
 
   it("her meter charges from damage and the super can be used when full", () => {
