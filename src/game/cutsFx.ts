@@ -20,6 +20,7 @@ import { withAlpha } from "./hero";
 import type { SkinTheme } from "./skinFx";
 import { SAMURAI_SUPER_FRAME, renderSprite, spriteSize } from "./sprites";
 import type { SuperCast, SuperDef, SuperStage } from "./super";
+import { SAMURAI_PORTRAIT_EYE, SAMURAI_PORTRAIT_FAR_EYE } from "./samuraiPortrait";
 import type { CardText } from "./superFx";
 import type { SceneCtx, SceneTarget, SuperScene } from "./superScene";
 
@@ -694,16 +695,22 @@ const W = 320,
   H = 240;
 /** Ko'zlar keskin ochiladigan lahza (karta ulushi) */
 export const CARD_SNAP = 0.42;
-/** Portret kattalashtirish va undagi ko'z markazi (portrait.ts: samurai) */
-export const CARD_SCALE = 3;
-export const CARD_EYE: readonly [number, number] = [31, 37];
+/** Portret kattalashtirish va undagi ko'z markazi (samuraiPortrait.ts, 96x96 to'r) */
+export const CARD_SCALE = 2;
+export const CARD_EYE = SAMURAI_PORTRAIT_EYE;
+/** Ko'z ochilgandan keyin chaqnash kadriga o'tish (s) */
+export const CARD_FLASH = 0.12;
+/** Ko'z markazi tasma o'rtasidan shuncha yuqorida — iyak tasma ichida, boshi tepadan chiqib turadi */
+const CARD_EYE_LIFT = 10;
 
 /**
  * ANIME CUT-IN (faqat Samuray superida — SuperDef.card.anime): ekran qorayadi, diagonal kadr
- * chapdan "kesib" ochiladi, ichida Samurayning yaqin plandagi yuzi (3x), ko'zdan tarqaluvchi tezlik
- * chiziqlari, shamolda hilpiragan soch tutamlari va uchayotgan gulbarglar. CARD_SNAP lahzasida
- * ko'zlar keskin ochiladi (yaltirash, "zarb" kattalashishi, qisqa chaqnash), so'ng "MING KESIM"
- * yozuvi o'ngdan kirib keladi. "Effektlarni kamaytirish": chaqnash, silkinish va chiziqlar
+ * chapdan "kesib" ochiladi, ichida Samurayning yaqin plandagi portreti (2x), ko'zdan tarqaluvchi
+ * tezlik chiziqlari, shamolda hilpiragan soch tutamlari va uchayotgan gulbarglar. Portret tasmaning
+ * pastki chetida kesiladi, tepada esa kadrdan "chiqib turadi" — boshi to'liq ko'rinadi. frames —
+ * portret kadrlari (SAMURAI_PORTRAIT_VARIANTS): CARD_SNAP gacha ko'zlar yumuq, so'ng keskin
+ * ochiladi (yaltirash, "zarb" kattalashishi, qisqa chaqnash), CARD_FLASH dan keyin ko'zlarda
+ * chaqnash va gulbarglar; so'ng "MING KESIM" yozuvi o'ngdan kirib keladi. "Effektlarni kamaytirish": chaqnash, silkinish va chiziqlar
  * miltillashi yo'q.
  */
 export function renderAnimeCard(
@@ -711,8 +718,7 @@ export function renderAnimeCard(
   def: SuperDef,
   cast: Pick<SuperCast, "t" | "cardTime">,
   T: SkinTheme,
-  closed: HTMLCanvasElement | null,
-  open: HTMLCanvasElement | null,
+  frames: readonly (HTMLCanvasElement | null)[],
   hair: string,
   text: CardText,
   reduced = false,
@@ -765,7 +771,7 @@ export function renderAnimeCard(
   // ko'z markazi (ekranda): sekin "kamera surilishi"
   const S = CARD_SCALE * (1 + 0.07 * punch);
   const fx = 104 + inK * 8 + k * 10 + ox,
-    fy = yAt(fx) + 2;
+    fy = yAt(fx) - CARD_EYE_LIFT;
   // tezlik chiziqlari: ko'zdan tarqaladi; ochilganda yorqinroq
   const lines = reduced ? 10 : 26;
   const frameSeed = reduced ? 0 : Math.floor(cast.t * 24) * 131;
@@ -787,36 +793,24 @@ export function renderAnimeCard(
   }
 
   // shamolda hilpiragan soch tutamlari (portret ortida, chapga oqadi)
-  const img = snapped ? (open ?? closed) : (closed ?? open);
+  const frame = !snapped ? 0 : sk < CARD_FLASH ? 1 : 2;
+  const img = frames[frame] ?? frames[0] ?? null;
   const x0 = fx - CARD_EYE[0] * S,
     y0 = fy - CARD_EYE[1] * S;
   const wt = reduced ? 0 : cast.t;
   for (let j = 0; j < 6; j++) {
     for (let i = 0; i < 26; i++) {
       // ortga (chapga) oqadi va yelpig'ichdek yoyiladi; uchiga qarab to'lqin kuchayadi
-      const sx = x0 + 16 * S - i * 6 - j * 3;
+      const sx = x0 + 24 * S - i * 6 - j * 3;
       const sy =
         y0 +
-        (24 + j * 5) * S +
+        (36 + j * 7.5) * S +
         Math.sin(wt * 15 + j * 1.3 + i * 0.45) * (1 + i * 0.5) +
         i * (j - 2.5) * 0.45;
       const h = i > 18 ? 3 : 5;
       px(c, hair, Math.round(sx), Math.round(sy), 7, h);
       // pushti chekka — qorong'i fonda ham ko'rinsin
       px(c, withAlpha(T.accent, 0.85), Math.round(sx), Math.round(sy) - 1, 7, 1);
-    }
-  }
-  // portret: ko'zlar yumuq → CARD_SNAP da keskin ochiladi
-  if (img) {
-    c.imageSmoothingEnabled = false;
-    c.drawImage(img, Math.round(x0), Math.round(y0), Math.round(64 * S), Math.round(64 * S));
-  }
-  // ko'z yaltirashi: ochilgan lahzada
-  if (snapped) {
-    const gl = Math.sin(clamp01(sk / 0.16) * Math.PI);
-    if (gl > 0.01) {
-      star(c, x0 + 30.5 * S, y0 + 35.5 * S, 3 + gl * 12, withAlpha("#ffffff", gl));
-      star(c, x0 + 48.5 * S, y0 + 35.5 * S, 2 + gl * 6, withAlpha(T.edge, gl));
     }
   }
   // kadr bo'ylab uchayotgan gulbarglar
@@ -839,6 +833,32 @@ export function renderAnimeCard(
   if (k < 0.22) {
     const ex = Math.round(wipe + ox);
     px(c, "#ffffff", ex - 1, Math.round(yAt(wipe) - hh - 4), 2, Math.round(hh * 2 + 8));
+  }
+
+  // portret: tasma pastki chetida kesiladi, tepada kadr chizig'i ustidan chiqib turadi (boshi to'liq)
+  if (img) {
+    const size = Math.round(img.width * S);
+    c.save();
+    c.beginPath();
+    c.moveTo(-10 + ox, 0);
+    c.lineTo(wipe + ox, 0);
+    c.lineTo(wipe + ox, yAt(wipe) + hh);
+    c.lineTo(-10 + ox, yAt(-10) + hh);
+    c.closePath();
+    c.clip();
+    c.imageSmoothingEnabled = false;
+    c.drawImage(img, Math.round(x0), Math.round(y0), size, size);
+    c.restore();
+  }
+  // ko'z yaltirashi: ochilgan lahzada
+  if (snapped) {
+    const gl = Math.sin(clamp01(sk / 0.16) * Math.PI);
+    const [ex, ey] = CARD_EYE;
+    const [fx2] = SAMURAI_PORTRAIT_FAR_EYE;
+    if (gl > 0.01) {
+      star(c, x0 + (ex - 1.5) * S, y0 + (ey - 1.5) * S, 3 + gl * 12, withAlpha("#ffffff", gl));
+      star(c, x0 + (fx2 - 0.5) * S, y0 + (ey - 1.5) * S, 2 + gl * 6, withAlpha(T.edge, gl));
+    }
   }
 
   // super nomi: ko'z ochilgach o'ngdan keladi, orqasida qiya pushti tasma

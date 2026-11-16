@@ -172,7 +172,12 @@ import {
 } from "./super";
 import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
-import { KNIGHT_PORTRAIT_VARIANTS, PALADIN_PORTRAIT_VARIANTS, superPortrait } from "./portrait";
+import {
+  KNIGHT_PORTRAIT_VARIANTS,
+  PALADIN_PORTRAIT_VARIANTS,
+  SAMURAI_PORTRAIT_VARIANTS,
+  superPortrait,
+} from "./portrait";
 import { renderSunShield } from "./divineFx";
 import { renderAnimeCard, renderPetalVeil } from "./cutsFx";
 import { renderHorizonCard } from "./horizonFx";
@@ -5636,14 +5641,13 @@ export class Game {
         this.fx.isReduced(),
       );
     else if (cast.def.card.anime)
-      // MING KESIM: anime uslubidagi kadr — yaqin plan yuz, ko'zlar keskin ochiladi
+      // MING KESIM: anime uslubidagi kadr — yaqin plan portret, ko'zlar keskin ochiladi, chaqnaydi
       renderAnimeCard(
         c,
         cast.def,
         cast,
         this.theme,
-        superPortrait(this.hero, this.player.skin, "closed"),
-        superPortrait(this.hero, this.player.skin),
+        SAMURAI_PORTRAIT_VARIANTS.map((v) => superPortrait(this.hero, this.player.skin, v)),
         (this.player.skin?.colors ?? PALETTES[this.hero])[1] ?? this.theme.ink,
         text,
         this.fx.isReduced(),

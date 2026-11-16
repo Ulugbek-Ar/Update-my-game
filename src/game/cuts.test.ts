@@ -15,6 +15,7 @@ import { sfx } from "./audio";
 import { SUPERS, SuperCast, superFor } from "./super";
 import { sceneFor, type SceneCtx } from "./superScene";
 import {
+  CARD_EYE,
   CARD_SNAP,
   CutsScene,
   MAX_PETALS,
@@ -24,7 +25,12 @@ import {
   renderAnimeCard,
   renderPetalVeil,
 } from "./cutsFx";
-import { PORTRAIT_GRID, portraitPixels } from "./portrait";
+import {
+  SAMURAI_PORTRAIT_VARIANTS,
+  portraitColors,
+  portraitGrid,
+  portraitPixels,
+} from "./portrait";
 import { SAMURAI_FRAME, SAMURAI_SUPER_FRAME, UPGRADE_ICONS, spritePixels } from "./sprites";
 import { SUPER_CARD_CHANCE, UPGRADES, WAVES, WAVES2, BOSS_WAVE, pickUpgrades } from "./waves";
 import { RealmSim } from "@/realm/sim";
@@ -321,15 +327,41 @@ describe("MING KESIM: ko'rinish", () => {
     expect(white(F.sheatheHalf)).toBeGreaterThan(white(F.focus));
   });
 
-  it("the anime cut-in face: code-drawn, five colours, eyes snap from closed to open", () => {
-    const open = portraitPixels("samurai")!;
-    const closed = portraitPixels("samurai", "closed")!;
-    expect(open.length).toBe(PORTRAIT_GRID * PORTRAIT_GRID);
-    for (const c of [1, 2, 3, 4, 5]) expect(open.includes(c)).toBe(true);
-    expect(open.join(",")).not.toBe(closed.join(","));
-    // ochiq ko'zda pushti qorachiq ko'proq
-    const pink = (d: Uint8Array) => d.filter((c) => c === 3).length;
-    expect(pink(open)).toBeGreaterThan(pink(closed));
+  it("the anime cut-in portrait: 96 px, head fully in frame, many tones, 3 distinct frames", () => {
+    const n = portraitGrid("samurai");
+    expect(n).toBeGreaterThanOrEqual(96);
+    const frames = SAMURAI_PORTRAIT_VARIANTS.map((v) => portraitPixels("samurai", v)!);
+    const cols = portraitColors("samurai");
+    for (const d of frames) {
+      expect(d.length).toBe(n * n);
+      expect(Math.max(...d)).toBeLessThanOrEqual(cols.length);
+      // har material 4–5 tonda: kamida 20 xil rang ishlatilgan
+      expect(new Set(d).size).toBeGreaterThan(20);
+      // boshning tepasi kesilmagan: soch (2..6) yuqori chetdan pastda boshlanadi
+      const hairRows = [...d.keys()]
+        .filter((i) => d[i]! >= 2 && d[i]! <= 6)
+        .map((i) => (i / n) | 0);
+      expect(Math.min(...hairRows)).toBeGreaterThan(2);
+    }
+    // uchala kadr farqli
+    expect(new Set(frames.map((f) => f.join(","))).size).toBe(3);
+    const count = (d: Uint8Array, c: number) => d.filter((x) => x === c).length;
+    // ochilganda ko'zda qorachiq va pushti yaltirash paydo bo'ladi (12..15 — qorachiq, 26 — pushti)
+    const iris = (d: Uint8Array) => [12, 13, 14, 15].reduce((s, c) => s + count(d, c), 0);
+    expect(iris(frames[1]!)).toBeGreaterThan(iris(frames[0]!));
+    expect(count(frames[1]!, 26)).toBeGreaterThan(count(frames[0]!, 26));
+    // 3-kadr: chaqnash, tezlik chiziqlari va gulbarglar — oq va pushti ko'proq
+    expect(count(frames[2]!, 19)).toBeGreaterThan(count(frames[1]!, 19) + 20);
+    // pushti rim light bor (o'ng chetda)
+    expect(count(frames[0]!, 26)).toBeGreaterThan(30);
+    // skinlar: Qizil oy — oq soch, qizil ko'zlar
+    const moon = SKINS.samurai.find((k) => k.id === "samurai-moon")!;
+    const mc = portraitColors("samurai", moon);
+    expect(mc[3]).toBe(moon.colors[1]);
+    expect(mc[13]).toBe(moon.colors[2]);
+    // ko'z — portret to'rida ko'z markazi qorachiq ichida
+    const [ex, ey] = CARD_EYE;
+    expect([12, 13, 14, 15, 1, 19, 26]).toContain(frames[1]![ey * n + ex]);
     // to'liq ekranli oq chaqnash: kirishda va ko'z ochilganda (kamaytirilganda — yo'q)
     const flashes = (k: number, reduced: boolean) => {
       let fill = "";
@@ -356,8 +388,7 @@ describe("MING KESIM: ko'rinish", () => {
         def(),
         { t: k * def().card.time, cardTime: def().card.time },
         DEFAULT_THEME.samurai,
-        null,
-        null,
+        [],
         "#2a1e3c",
         () => {},
         reduced,
