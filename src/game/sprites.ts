@@ -2291,8 +2291,8 @@ export const PALADIN_SWORD: Record<"idle" | "walk" | "attack" | "hurt", readonly
     { hand: [21, 19], tip: [-6, 6] },
   ],
   attack: [
-    { hand: [17, 7], tip: [-4, -14], glow: true },
-    { hand: [16, 4], tip: [19, -19], glow: true },
+    { hand: [20, 8], tip: [-4, -14], glow: true },
+    { hand: [20, -1], tip: [19, -19], glow: true },
     { hand: [25, 19], tip: [52, 27] },
     { hand: [24, 21], tip: [49, 30] },
     // 4, 5 — devor yonida: qilich tik tushib yerga sanchiladi (xona/ekran chetidan chiqmaydi)
@@ -2301,9 +2301,9 @@ export const PALADIN_SWORD: Record<"idle" | "walk" | "attack" | "hurt", readonly
     // 6..10 — SUPER (ILOHIY HUKM): qilichni ikki qo'llab sekin osmonga ko'tarish (6, 7), boshi uzra
     // tik ushlab turish — tig' porlaydi, ikki kadr miltillaydi (8, 9) va yerga sanchish (10)
     { hand: [20, 12], tip: [34, -15] },
-    { hand: [18, 5], tip: [24, -21], glow: true, over: true },
-    { hand: [16, 1], tip: [16, -22], glow: true, over: true },
-    { hand: [16, 1], tip: [16, -22], glow: true, alt: true, over: true },
+    { hand: [21, 0], tip: [24, -21], glow: true, over: true },
+    { hand: [16, -4], tip: [16, -22], glow: true, over: true },
+    { hand: [16, -4], tip: [16, -22], glow: true, alt: true, over: true },
     { hand: [22, 8], tip: [25, 31], glow: true },
   ],
   hurt: [{ hand: [20, 20], tip: [-5, 8] }],
@@ -2451,7 +2451,8 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
   greatsword(p, s);
   // boshi uzra ko'tarilganda old qo'l ham dubulg'adan oldin chiziladi — yuz ochiq qoladi
   if (s.over) p.line(3, [22 + l, 14 + b], grip, 4);
-  paladinHelm(p, 11 + l, 3 + b, back);
+  // dubulg'a bosh o'rnida: tana bilan birga siljiydi (lean, bob), kuchli egilishda o'zi ham egiladi
+  paladinHelm(p, 12 + l, 1 + b, back, l >= 2 ? 1 : l <= -2 ? -1 : 0);
   // old qo'l va ikkala qo'lqop dastada
   if (!s.over) p.line(3, [22 + l, 14 + b], grip, 4);
   p.rect(2, grip[0] - 1, grip[1] - 1, 3, 3);
@@ -2462,41 +2463,53 @@ function paladin(p: Pixels, pose: Pose, back: boolean, s: Greatsword) {
 }
 
 /**
- * Paladin dubulg'asi — tekis tepali silindr "chelak" (great helm): x..x+10, y..y+9, o'rtasi x+5.
- * Yuqorida tekis qopqoq (yorug') va choki, yuzda qalin qorong'i "T" tirqish, peshonada uch tishli
- * toj, yonoqlarda nafas teshikchalari; yorug'lik chapdan, o'ng cheti soyada. Orqadan — tirqishsiz.
+ * Paladin dubulg'asi — tekis tepali silindr "chelak" (great helm), BOSH o'lchamida: 9x9 (boshqa
+ * qahramonlarning boshi kabi), x..x+8, y..y+8, o'rtasi x+4. Yuqorida tekis qopqoq (yorug') va
+ * choki, peshonada uch tishli toj, yuzda qalin qorong'i "T" tirqish, yonoqlarda nafas teshikchalari;
+ * yorug'lik chapdan, o'ng cheti soyada. Ostida ingichka bo'yin halqasi (gorjet) — dubulg'a yelka
+ * zirhiga shu orqali tutashadi, yelkalar ochiq qoladi. tilt — tana egilganda dubulg'a ham egiladi:
+ * yuqori yarmi 1 px oldinga (+1) yoki orqaga (−1) siljiydi. Orqadan — tirqishsiz, tik chok.
  */
-function paladinHelm(p: Pixels, x: number, y: number, back: boolean) {
-  // silindr: chapda yaltiroq tasma, o'ngda soya; tepada tekis qopqoq va chok, pastda hoshiya
-  p.rect(3, x, y, 11, 10);
-  p.rect(5, x + 1, y + 2, 1, 7);
-  p.rect(2, x + 9, y + 2, 2, 7);
-  p.rect(5, x, y, 8, 1);
-  p.rect(2, x, y + 1, 11, 1);
-  p.rect(2, x, y + 9, 11, 1);
+function paladinHelm(p: Pixels, x: number, y: number, back: boolean, tilt = 0) {
+  // r-qatorda x+a..x+b (yuqori 4 qator egilish bo'yicha siljiydi)
+  const row = (c: number, a: number, b: number, r: number, h = 1) => {
+    for (let i = r; i < r + h; i++) p.rect(c, x + a + (i < 4 ? tilt : 0), y + i, b - a + 1, 1);
+  };
+  // bo'yin halqasi (gorjet): dubulg'a ostida ingichka, yoqa bo'lib ko'krak zirhiga yoyiladi
+  p.rect(2, x + 2, y + 9, 5, 1);
+  p.rect(3, x + 3, y + 9, 1, 1);
+  p.rect(3, x + 1, y + 10, 7, 1);
+  p.rect(5, x + 2, y + 10, 2, 1);
+  // silindr: tekis qopqoq (yorug'), choki, chapda yaltiroq tasma, o'ngda soya, pastda hoshiya
+  row(3, 0, 8, 0, 9);
+  row(5, 0, 6, 0);
+  row(2, 0, 8, 1);
+  row(5, 1, 1, 2, 6);
+  row(2, 8, 8, 1, 7);
+  row(2, 0, 8, 8);
   if (back) {
     // orqa: tirqishsiz, o'rtada parchinli tik chok
-    p.rect(2, x + 5, y + 2, 1, 7);
-    p.rect(5, x + 5, y + 4, 1, 1);
+    row(2, 4, 4, 2, 6);
+    row(5, 4, 4, 3);
     return;
   }
-  // qalin "T" tirqish: ikki qatorli ko'z tirqishi va o'rtadan pastga tik tirqish (qorong'i)
-  p.rect(1, x + 1, y + 4, 9, 2);
-  p.rect(1, x + 5, y + 5, 1, 4);
-  p.rect(1, x + 4, y + 6, 3, 3);
   // uch tishli toj (peshonada, tirqish ustida)
-  p.rect(5, x + 4, y + 3, 3, 1);
-  p.rect(5, x + 3, y + 2, 1, 1);
-  p.rect(5, x + 5, y + 2, 1, 1);
-  p.rect(5, x + 7, y + 2, 1, 1);
+  row(5, 2, 2, 2);
+  row(5, 4, 4, 2);
+  row(5, 6, 6, 2);
+  row(5, 2, 6, 3);
+  // qalin "T" tirqish: ikki qatorli ko'z tirqishi va o'rtadan pastga 3 px kenglikdagi tirqish
+  row(1, 1, 7, 4, 2);
+  row(1, 3, 5, 6, 2);
   // nafas teshikchalari: ikki yonoqda
-  p.rect(2, x + 2, y + 7, 1, 1);
-  p.rect(1, x + 8, y + 7, 1, 1);
+  row(2, 1, 1, 7);
+  row(1, 7, 7, 7);
 }
 
 /**
  * Yiqilgan dubulg'a: yonboshlab yotgan silindr — tekis tepasi chapda (x), yuzi tomoshabinga,
- * "T" tirqish 90° burilgan (ko'z tirqishi tik, ostki tirqish o'ngga — bo'yin tomonga).
+ * "T" tirqish 90° burilgan (ko'z tirqishi tik, ostki tirqish o'ngga — bo'yin tomonga), o'ngida
+ * bo'yin halqasi.
  */
 function paladinHelmLying(p: Pixels, x: number, y: number, w: number, h: number) {
   p.rect(3, x, y, w, h);
@@ -2508,6 +2521,8 @@ function paladinHelmLying(p: Pixels, x: number, y: number, w: number, h: number)
   const mid = y + Math.floor(h / 2);
   p.rect(1, x + 3, y + 1, 2, h - 2);
   p.rect(1, x + 5, mid - 1, w - 6, 3);
+  // bo'yin halqasi: dubulg'a ostida (o'ngda), tanaga tutashadi
+  p.rect(2, x + w, mid - 1, 1, 3);
 }
 
 /** Paladinning yiqilishi: tiz cho'kadi va qilich qo'ldan tushadi, so'ng yerda yotadi, qilich yonida. */
@@ -2541,16 +2556,18 @@ function paladinFallen(p: Pixels, frame: number) {
     p.ellipse(3, 13.5, 21.5, 1.8, 1.8);
     p.line(3, [17, 25], [27, 28], 4);
     p.rect(2, 26, 27, 3, 2);
-    paladinHelmLying(p, 2, 9, 9, 8);
+    // dubulg'a bo'yin halqasi va yoqa orqali yelkaga tutashgan
+    p.rect(3, 11, 11, 2, 5);
+    paladinHelmLying(p, 1, 7, 9, 8);
     return;
   }
   // yerda yotibdi: zirh va tabard yoyilgan, dubulg'a chetda
-  p.rect(3, 6, 23, 18, 6);
+  p.rect(3, 8, 23, 16, 6);
   p.rect(5, 9, 23, 11, 5);
   p.ellipse(3, 14.5, 25.5, 1.8, 1.8);
-  p.rect(5, 6, 23, 18, 1);
+  p.rect(5, 8, 23, 16, 1);
   p.rect(2, 22, 27, 4, 2);
-  paladinHelmLying(p, 1, 22, 7, 7);
+  paladinHelmLying(p, 0, 22, 7, 7);
 }
 
 /** Paladin kadri: tana 32x32 da chiziladi, PALADIN_GRID to'rning o'rtasiga siljitiladi. */
