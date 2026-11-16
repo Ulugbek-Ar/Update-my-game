@@ -256,7 +256,7 @@ const DIVINE_JUDGMENT: SuperDef = {
   heal: 1,
   healRadius: 90,
   after: { flat: 0.55, dust: 0.45, bossKneel: 1 },
-  card: { time: 0.6, short: 0.25, sub: "PALADIN SUPERI" },
+  card: { time: 0.6, short: 0.25, sub: "PALADIN SUPERI", scale: 1.5 },
   sounds: {
     card: "superCard",
     prep: "divineChoir",

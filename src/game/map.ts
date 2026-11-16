@@ -452,11 +452,12 @@ export function heroBadge(
     px(c, hi, x + 3, y + 3, 1, 1);
     px(c, dark, x + 3, y + 1, 1, 1);
   } else if (hero === "paladin") {
-    // yopiq dubulg'a: ko'z tirqishi va oltin toj-chiziq
-    px(c, main, x + 1, y, 5, 7);
-    px(c, main, x, y + 1, 7, 5);
-    px(c, dark, x + 1, y + 3, 5, 1);
-    px(c, hi, x + 3, y, 1, 7);
+    // tekis tepali "chelak" dubulg'a: yorug' qopqoq, o'ng cheti soyada, qorong'i "T" tirqish
+    px(c, main, x, y, 7, 7);
+    px(c, hi, x, y, 6, 1);
+    px(c, dark, x + 6, y + 1, 1, 6);
+    px(c, "#000", x + 1, y + 2, 5, 2);
+    px(c, "#000", x + 3, y + 4, 1, 3);
   } else if (hero === "samurai") {
     // qora soch (baland dum), oqish yuz va pushti kimono yoqasi
     px(c, dark, x + 1, y, 5, 3);

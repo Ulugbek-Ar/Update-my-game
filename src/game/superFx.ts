@@ -463,12 +463,12 @@ export function renderSuperCard(
     }
     c.drawImage(portrait, Math.round(tx), Math.round(ty), size, size);
     if (glint) glint(c, Math.round(tx), Math.round(ty), size, k);
-    // ko'z tirqishidagi yaltirash: kirib bo'lgach bir marta chaqnaydi
+    // "T" tirqish markazidagi yaltirash: kirib bo'lgach bir marta chaqnaydi
     const gk = (k - 0.36) / 0.3;
     if (!glint && gk > 0 && gk < 1) {
       const gl = Math.sin(gk * Math.PI);
-      const gx = Math.round(tx + size * 0.585),
-        gy = Math.round(ty + size * 0.36);
+      const gx = Math.round(tx + size * 0.505),
+        gy = Math.round(ty + size * 0.28);
       const len = Math.round(3 + gl * 9);
       px(c, withAlpha(T.edge, gl), gx - len, gy, len * 2 + 1, 1);
       px(c, withAlpha(T.edge, gl), gx, gy - Math.round(len * 0.7), 1, Math.round(len * 1.4) + 1);

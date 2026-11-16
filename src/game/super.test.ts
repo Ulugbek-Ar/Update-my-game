@@ -25,7 +25,12 @@ import {
   superFor,
 } from "./super";
 import { ORB_DRAIN, SuperOrb, mixColor } from "./superFx";
-import { PORTRAIT_GRID, portraitPixels } from "./portrait";
+import {
+  PALADIN_PORTRAIT_VARIANTS,
+  portraitColors,
+  portraitGrid,
+  portraitPixels,
+} from "./portrait";
 import { BOSS_WAVE, WAVES, WAVES2 } from "./waves";
 import { RealmSim } from "@/realm/sim";
 import { RealmClient } from "@/realm/client";
@@ -734,15 +739,42 @@ describe("Onlayn olam: super hozircha yo'q", () => {
 });
 
 describe("Super kartasi portreti", () => {
-  it("the Paladin portrait is code-drawn with the hero's five colours and an ink outline", () => {
-    const data = portraitPixels("paladin")!;
-    expect(data.length).toBe(PORTRAIT_GRID * PORTRAIT_GRID);
-    expect(Math.max(...data)).toBeLessThanOrEqual(5);
-    const used = new Set(data);
-    // besh rangning hammasi ishlatilgan (kontur, bronza, oltin, kumush tig', oq nur)
-    for (const c of [1, 2, 3, 4, 5]) expect(used.has(c)).toBe(true);
-    // rasm to'rni to'ldiradi: kamida yarmi bo'yalgan
-    expect(data.filter((c) => c > 0).length).toBeGreaterThan(data.length * 0.5);
+  it("the Paladin portrait: 96x96 front-facing great helm with a dark T slit, 3 distinct frames", () => {
+    const n = portraitGrid("paladin");
+    expect(n).toBeGreaterThanOrEqual(96);
+    const frames = PALADIN_PORTRAIT_VARIANTS.map((v) => portraitPixels("paladin", v)!);
+    for (const data of frames) {
+      expect(data.length).toBe(n * n);
+      // 16 ton: siyoh, 5 oltin, 4 mato, 3 kumush, 2 nur, rim light
+      expect(Math.max(...data)).toBeLessThanOrEqual(16);
+      expect(data.filter((c) => c > 0).length).toBeGreaterThan(data.length * 0.5);
+    }
+    // uchala kadr farqli, nur (14, 15) kadr sayin ko'payadi
+    expect(new Set(frames.map((f) => f.join(","))).size).toBe(3);
+    const glow = frames.map((f) => f.filter((c) => c === 14 || c === 15).length);
+    expect(glow[1]).toBeGreaterThan(glow[0]!);
+    expect(glow[2]).toBeGreaterThan(glow[1]!);
+    // "T" tirqish: ko'z tirqishi qatori va o'rta ustun pastida qorong'i (siyoh) piksellar
+    const at = (x: number, y: number) => frames[0]![y * n + x];
+    expect(at(36, 24)).toBe(1);
+    expect(at(60, 24)).toBe(1);
+    expect(at(46, 40)).toBe(1);
+    // simmetriya: dubulg'a (tepa 50 qator) chap-o'ng shakli bir xil
+    let same = 0,
+      all = 0;
+    for (let y = 0; y < 50; y++)
+      for (let x = 0; x < 48; x++) {
+        all++;
+        if (!at(x, y) === !at(96 - x, y)) same++;
+      }
+    expect(same / all).toBeGreaterThan(0.97);
+    // skin ranglari: Qora Paladin portreti boshqa rangda
+    expect(
+      portraitColors("paladin", {
+        id: "x",
+        colors: ["#050307", "#2a1a30", "#4a3a5a", "#aab4c4", "#b02a2a"],
+      })[4],
+    ).toBe("#4a3a5a");
     // superi yo'q qahramonda portret yo'q
     expect(portraitPixels("mage")).toBeNull();
   });
