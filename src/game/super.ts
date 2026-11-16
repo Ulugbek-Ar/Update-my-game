@@ -28,7 +28,19 @@ export const SUPER_STAGES: readonly SuperStage[] = ["prep", "strike", "after"];
 
 /** Super ovozlari — audio.ts dagi `sfx` metodlari nomi (ma'lumotda satr bilan beriladi) */
 export type SuperSound =
-  "divineChoir" | "sunMark" | "sunBeam" | "sunBeamBig" | "divineEnd" | "superCard";
+  | "divineChoir"
+  | "sunMark"
+  | "sunBeam"
+  | "sunBeamBig"
+  | "divineEnd"
+  | "superCard"
+  | "cutsHush"
+  | "cutsStorm"
+  | "cutsShing"
+  | "cutsSplit"
+  | "cutsBossCut"
+  | "cutsSheathe"
+  | "cutsChik";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -80,8 +92,18 @@ export interface SuperDef {
   heal: number;
   healRadius: number;
   after: SuperAftermath;
-  /** Super kartasi (cut-in): to'liq va qisqartirilgan davomiylik, karta ostidagi qator */
-  card: { time: number; short: number; sub: string };
+  /**
+   * Zarbalar oqibat bosqichining shu soniyasida BIRDAN tushadi (MING KESIM: katana qinga qaytgan
+   * "chik" lahzasi). Yo'q bo'lsa — har zarba o'z vaqtida, zarba bosqichida (ILOHIY HUKM).
+   */
+  release?: number;
+  /** Oqibat boshida qahramon xona markazida paydo bo'ladi (bossdan chetroqda) */
+  center?: boolean;
+  /**
+   * Super kartasi (cut-in): to'liq va qisqartirilgan davomiylik, karta ostidagi qator.
+   * anime — anime uslubidagi diagonal kadr (faqat Samuray superida ruxsat).
+   */
+  card: { time: number; short: number; sub: string; anime?: boolean };
   sounds: {
     card: SuperSound;
     prep: SuperSound;
@@ -89,6 +111,10 @@ export interface SuperDef {
     hit: SuperSound;
     bossHit: SuperSound;
     end: SuperSound;
+    /** Zarba bosqichi boshida (bosqich davomiyligi bilan): masalan ko'p "shing-shing" */
+    strike?: SuperSound;
+    /** `release` lahzasida (aniq "chik" va gulbarglar shitirlashi) */
+    release?: SuperSound;
   };
   /** Effektlar to'plami nomi (superFx.ts: SUPER_FX) */
   fx: string;
@@ -146,35 +172,47 @@ const DIVINE_JUDGMENT: SuperDef = {
 };
 
 /**
- * MING KESIM (Samuray qiz) — keyingi versiya uchun tayyor ma'lumot (open: false): ekrandagi hamma
- * dushman belgilanadi, Samuray ko'rinmay ketadi va `cuts` ta kesik ularga ketma-ket tushadi (har
- * biri `mul` × zarar), oxirida katana qinga qaytadi. Bossga har kesik `bossMul` × zarar.
+ * MING KESIM (Samuray qiz) — v4.0 da ochildi.
+ * Tayyorlanish (0.8 s): Samuray ko'zlarini yumadi, qo'li katana dastasida; dunyo oq-qora bo'ladi,
+ * faqat sakura pushti qoladi. Zarba (1.2 s): Samuray ko'zdan yo'qoladi, ekran bo'ylab o'nlab kesik
+ * chaqnaydi, gulbarg bo'roni aylanadi, dushmanlar qotib qoladi (har biriga kesik belgisi tushadi).
+ * Oqibat (1 s): Samuray xona markazida paydo bo'lib katanani SEKIN qinga qaytaradi — "chik"
+ * (`release`) lahzasida hamma dushman birdan ikkiga bo'linib gulbargga aylanadi, ranglar qaytadi.
+ *
+ * Zaryad 20 (Paladin kabi): zaryad — berilgan zarar, to'lqindagi jami jon qahramonga bog'liq emas,
+ * shuning uchun super ham 1–2 to'lqinda bir marta to'ladi. Bossga: maksimal jonining 8% i, jami
+ * 10% dan oshmaydi. params: slashes — ekran bo'ylab kesiklar soni (kamaytirilganda — slashesReduced).
  */
 const THOUSAND_CUTS: SuperDef = {
   id: "thousand-cuts",
   hero: "samurai",
   name: "MING KESIM",
-  desc: "Ekrandagi hamma dushmanga chaqmoqdek kesiklar yog'iladi",
+  desc: "Ekran kesiklarga to'ladi — katana qinga qaytgach hamma dushman ikkiga bo'linadi",
   color: "#ff8fb8",
-  charge: 60,
-  time: 1.6,
-  params: { cuts: 12, gap: 0.1, mul: 1, bossMul: 0.5 },
-  open: false,
-  stages: { prep: 0.4, strike: 1, after: 0.2 },
-  slow: { prep: 0.3, strike: 0.1, after: 0.6 },
-  strike: { mark: 0.1, gap: 0.1, tail: 0.2, min: 0.5 },
-  dmg: { kill: false, boss: 0.06, bossCap: 0.1 },
+  charge: 20,
+  time: 3,
+  params: { slashes: 46, slashesReduced: 10 },
+  open: true,
+  stages: { prep: 0.8, strike: 1.2, after: 1 },
+  // zarbada dushmanlar deyarli to'xtaydi ("qotib qoladi") va "chik" gacha shunday qoladi
+  slow: { prep: 0.2, strike: 0.02, after: 0.02 },
+  strike: { mark: 0.12, gap: 0.08, tail: 0.25, min: 1.2 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
   heal: 0,
   healRadius: 0,
-  after: { flat: 0, dust: 0.3, bossKneel: 0 },
-  card: { time: 0.6, short: 0.25, sub: "SAMURAY SUPERI" },
+  after: { flat: 0.34, dust: 0.6, bossKneel: 0.8 },
+  release: 0.45,
+  center: true,
+  card: { time: 0.7, short: 0.25, sub: "SAMURAY SUPERI", anime: true },
   sounds: {
     card: "superCard",
-    prep: "superCard",
-    mark: "sunMark",
-    hit: "sunBeam",
-    bossHit: "sunBeamBig",
-    end: "divineEnd",
+    prep: "cutsHush",
+    mark: "cutsShing",
+    hit: "cutsSplit",
+    bossHit: "cutsBossCut",
+    end: "cutsSheathe",
+    strike: "cutsStorm",
+    release: "cutsChik",
   },
   fx: "cuts",
 };
@@ -241,6 +279,14 @@ export class SuperMeter {
 
   get ready() {
     return !!this.def && this.value >= this.def.charge;
+  }
+
+  /** Zaryadning `share` ulushini qaytarish (IKKINCHI NAFAS kartasi: superdan keyin 25%) */
+  refund(share: number) {
+    const d = this.def;
+    if (!d || !(share > 0)) return;
+    this.value = Math.min(d.charge, this.value + d.charge * share);
+    if (this.value >= d.charge) this.justFilled = true;
   }
 
   /** Superni ishlatish: tayyor bo'lsa zaryadni nollaydi va true qaytaradi */
@@ -335,6 +381,8 @@ export class SuperCast {
   kills = 0;
   /** Zarba to'lqini raqami (IKKINCHI HUKM kartasi bilan 2 ta) */
   wave = 0;
+  /** `release` lahzasi o'tdi (MING KESIM: zarbalar birdan tushdi) */
+  released = false;
 
   constructor(
     readonly def: SuperDef,

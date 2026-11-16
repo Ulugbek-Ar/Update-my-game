@@ -498,6 +498,78 @@ class SoundFX {
     this.noise(0.7, 0.08, 500);
   }
 
+  /**
+   * MING KESIM tayyorlanishi — CHUQUR SUKUNAT: fon musiqasi deyarli o'chadi (super "chik"
+   * lahzasigacha: tayyorlanish + 1.2 s zarba + 0.45 s qinga qaytarish), past nafas va juda mayin
+   * jaranglash qoladi. So'ng musiqa asta qaytadi ("ranglar qaytadi").
+   */
+  cutsHush(dur = 0.8) {
+    const ctx = this.ctx;
+    const g = this.musicGain;
+    if (ctx && g && ctx.state === "running") {
+      const now = ctx.currentTime;
+      const hold = Math.max(0.4, dur) + 1.65;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(this.musicVol * 0.04, now + 0.22);
+      g.gain.setValueAtTime(this.musicVol * 0.04, now + hold);
+      g.gain.linearRampToValueAtTime(this.musicVol, now + hold + 0.7);
+    }
+    const d = Math.max(0.4, dur);
+    this.swell(55, d + 0.6, "sine", 0.06, 48);
+    this.swell(3520, d, "sine", 0.006, 3600, 0.1);
+    this.noise(d, 0.012, 600);
+  }
+
+  /** MING KESIM zarbasi: dur soniya davomida ko'p "shing-shing" (har kesikka bittadan, ritm bilan) */
+  cutsStorm(dur = 1.2) {
+    const d = Math.max(0.3, dur) - 0.15;
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      // tasodif emas: o'yin tasodifiga tegmaydi, har safar bir xil ritm
+      const at = (d * (i + ((i * 37) % 10) / 20)) / n;
+      const f = 2600 + ((i * 53) % 7) * 230;
+      this.noise(0.05, 0.045, 7000, at);
+      this.tone(f, 0.08, "triangle", 0.03, f * 1.35, at);
+    }
+  }
+
+  /** Dushmanga kesik belgisi tushdi: aniq "shing" (har keyingisi biroz boshqa ohangda) */
+  cutsShing(i = 0) {
+    const f = 3000 + (i % 5) * 260;
+    this.noise(0.06, 0.06, 6500);
+    this.tone(f, 0.09, "triangle", 0.04, f * 1.4);
+  }
+
+  /** Katana SEKIN qinga qaytmoqda: mayin po'lat sirpanishi */
+  cutsSheathe() {
+    this.noise(0.42, 0.035, 3800);
+    this.tone(900, 0.42, "sine", 0.012, 1500);
+  }
+
+  /** "CHIK" — katana qinga kirdi; ortidan gulbarglar shitirlashi va past "vum" (ranglar qaytadi) */
+  cutsChik() {
+    this.tone(1500, 0.035, "square", 0.07, 1000);
+    this.tone(2800, 0.06, "triangle", 0.045, 2400, 0.02);
+    this.tone(110, 0.5, "sine", 0.06, 55, 0.05);
+    this.noise(0.5, 0.03, 5000, 0.08);
+    this.noise(0.6, 0.024, 7200, 0.18);
+    this.noise(0.5, 0.02, 4000, 0.3);
+  }
+
+  /** Dushman ikkiga bo'lindi: mayin "fsh" (hammasi birdan — faqat birinchi bir nechtasi eshitiladi) */
+  cutsSplit(i = 0) {
+    if (i > 3) return;
+    this.noise(0.08, 0.04 - i * 0.008, 3000, 0.04 + i * 0.03);
+  }
+
+  /** Bossga tushgan katta kesik: og'ir "ShHUK" */
+  cutsBossCut() {
+    this.tone(160, 0.4, "sawtooth", 0.04, 50);
+    this.noise(0.3, 0.08, 2200);
+    this.tone(2400, 0.2, "triangle", 0.03, 800);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;

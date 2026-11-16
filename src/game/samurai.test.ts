@@ -42,7 +42,6 @@ import { CRIT_MUL, SLOWMO_SPEED } from "./crit";
 import { unlockHero } from "./save";
 import { loadAchievements } from "./achievements";
 import { SUPERS, SUPERS_ENABLED, SuperMeter, superFor } from "./super";
-import { UPGRADES } from "./waves";
 import { HERO_LIST } from "./hero";
 import type { Input } from "./input";
 
@@ -595,30 +594,25 @@ describe("Samuray: SOVUQ QON va kritik", () => {
   });
 });
 
-describe("Super MING KESIM: tayyor, lekin yopiq", () => {
-  it("the data exists for a later version but the Samurai's super is still locked", () => {
-    // v3.9: superlar ochildi (birinchisi — Paladinniki), Samurayniki hali yopiq
+describe("Super MING KESIM: ochiq (v4.0)", () => {
+  it("the Samurai's super is open; heroes other than her and the Paladin still have none", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(SUPERS.samurai?.name).toBe("MING KESIM");
-    expect(SUPERS.samurai?.open).toBe(false);
-    expect(superFor("samurai")).toBeNull();
-    for (const h of HERO_LIST) if (h.id !== "paladin") expect(superFor(h.id)).toBeNull();
-    // kartalarda va qahramon tavsifida yo'q
-    const text = JSON.stringify(UPGRADES) + JSON.stringify(HERO_LIST);
-    expect(text).not.toMatch(/MING KESIM/i);
+    expect(SUPERS.samurai?.open).toBe(true);
+    expect(superFor("samurai")?.id).toBe("thousand-cuts");
+    for (const h of HERO_LIST)
+      if (h.id !== "paladin" && h.id !== "samurai") expect(superFor(h.id)).toBeNull();
   });
 
-  it("the meter never charges and cannot be used while locked", () => {
+  it("her meter charges from damage and the super can be used when full", () => {
     const m = new SuperMeter("samurai");
     m.add(9999);
-    expect(m.value).toBe(0);
-    expect(m.ratio).toBe(0);
-    expect(m.ready).toBe(false);
-    expect(m.use()).toBe(false);
+    expect(m.ratio).toBe(1);
+    expect(m.ready).toBe(true);
+    expect(m.use()).toBe(true);
     const { g, gi } = makeGame();
     const foe = dummy(g, "rammer", 200, 120);
     gi.damageTarget(foe, 30);
-    expect(g.superMeter.value).toBe(0);
-    expect(g.useSuper()).toBe(false);
+    expect(g.superMeter.value).toBeGreaterThan(0);
   });
 });

@@ -19,6 +19,7 @@ import type { SkinTheme } from "./skinFx";
 import type { SpriteKind, SpritePalette } from "./sprites";
 import type { SuperCast, SuperStage } from "./super";
 import { DivineScene } from "./divineFx";
+import { CutsScene } from "./cutsFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -40,6 +41,8 @@ export interface SceneCtx {
   drawOwner?: (c: CanvasRenderingContext2D) => void;
   /** Ko'rinadigan hudud (xonada 0,0,320,240; ochiq olamda — kamera) */
   view: { x: number; y: number; w: number; h: number };
+  /** Afsonaviy skin bezagi (skinFx.ts: FlairKind) — "moon" (Qizil oy): kesiklar qizil yarim oy */
+  flair?: string | null;
 }
 
 /** Zarba nishoni haqida sahnaga beriladigan ma'lumot */
@@ -67,6 +70,10 @@ export interface SuperScene {
   gawk?(t: SceneTarget): void;
   /** Egasining super pozasi: "attack" holatining kadri (null — oddiy ko'rinish) */
   pose(cast: SuperCast): number | null;
+  /** Egasi hozir ko'rinmaydi (MING KESIM zarbasi: Samuray ko'zdan yo'qoladi) */
+  hidden?(cast: SuperCast): boolean;
+  /** SuperDef.release lahzasi: zarbalar birdan tushishidan OLDIN chaqiriladi ("chik") */
+  release?(cast: SuperCast, ctx: SceneCtx): void;
   update(dt: number, cast: SuperCast | null, ctx: SceneCtx): void;
   /** Personajlardan oldin: yerdagi belgilar va halqalar */
   renderGround(c: CanvasRenderingContext2D, cast: SuperCast | null, ctx: SceneCtx): void;
@@ -153,6 +160,7 @@ export class PlainScene implements SuperScene {
 /** Sahnalar: SuperDef.fx nomi → sahna yaratuvchi */
 export const SUPER_SCENES: Record<string, () => SuperScene> = {
   divine: () => new DivineScene(),
+  cuts: () => new CutsScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

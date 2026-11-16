@@ -90,14 +90,16 @@ beforeEach(() => {
 });
 
 describe("Super tizimi: ma'lumot", () => {
-  it("is open, the Paladin has the first super and every other hero has none", () => {
+  it("is open: the Paladin and the Samurai have supers, every other hero has none", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(superFor("paladin")?.name).toBe("ILOHIY HUKM");
-    for (const h of HEROES) if (h !== "paladin") expect(superFor(h), h).toBeNull();
-    // keyingi versiya uchun tayyor ma'lumot — yopiq
-    expect(SUPERS.samurai?.open).toBe(false);
+    // v4.0: ikkinchi super — Samurayning MING KESIMI
+    expect(superFor("samurai")?.name).toBe("MING KESIM");
+    for (const h of HEROES)
+      if (h !== "paladin" && h !== "samurai") expect(superFor(h), h).toBeNull();
+    expect(SUPERS.samurai?.open).toBe(true);
     expect(superById("divine-judgment")).toBe(superFor("paladin"));
-    expect(superById("thousand-cuts")).toBeNull();
+    expect(superById("thousand-cuts")).toBe(superFor("samurai"));
     expect(superById("yo'q")).toBeNull();
   });
 
@@ -673,7 +675,7 @@ describe("Super ijrosi (o'yinda)", () => {
 });
 
 describe("Superi yo'q qahramonlar", () => {
-  for (const hero of HEROES.filter((h) => h !== "paladin"))
+  for (const hero of HEROES.filter((h) => h !== "paladin" && h !== "samurai"))
     it(`${hero}: no meter, no orb, no super — and the game runs as before`, () => {
       const { g, gi } = makeGame(hero);
       expect(g.superMeter.def).toBeNull();

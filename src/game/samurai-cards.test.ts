@@ -96,7 +96,7 @@ describe("Samuray kuch kartalari", () => {
     }
   });
 
-  it("Samurai has 12 cards: 9 shared variants + IKKI KESIM, GULBARG BO'RONI, SOVUQ QON", () => {
+  it("Samurai has 14 cards: 9 shared variants + IKKI KESIM, GULBARG BO'RONI, SOVUQ QON and two SUPER cards", () => {
     const seen = new Set<string>();
     for (let i = 0; i < 400; i++) {
       const p = new Player("samurai");
@@ -109,6 +109,9 @@ describe("Samuray kuch kartalari", () => {
         "IKKI KESIM",
         "GULBARG BO'RONI",
         "SOVUQ QON",
+        // MING KESIM super kartalari (kam uchraydi)
+        "IKKINCHI NAFAS",
+        "GULBARG PARDASI",
       ].sort(),
     );
     // boshqa qahramonga Samuray kartalari chiqmaydi

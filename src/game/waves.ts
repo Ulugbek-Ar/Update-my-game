@@ -805,6 +805,33 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.secondJudgment = true),
     ok: (p) => !p.secondJudgment,
   },
+  // ---- SUPER kartalari (MING KESIM — Samuray) ----
+  {
+    id: "secondbreath",
+    name: "IKKINCHI NAFAS",
+    desc: "Superdan keyin super sharining 25% i qaytadi",
+    color: "#ffd6e6",
+    tags: ["super"],
+    icon: "secondbreath",
+    hero: "samurai",
+    super: "thousand-cuts",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.secondBreath = true),
+    ok: (p) => !p.secondBreath,
+  },
+  {
+    id: "petalveil",
+    name: "GULBARG PARDASI",
+    desc: "Superdan keyin 2 s gulbarg pardasi: zarba o'tmaydi",
+    color: "#ffd6e6",
+    tags: ["super"],
+    icon: "petalveil",
+    hero: "samurai",
+    super: "thousand-cuts",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.petalVeil = true),
+    ok: (p) => !p.petalVeil,
+  },
 ];
 
 /**

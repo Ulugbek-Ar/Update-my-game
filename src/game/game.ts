@@ -59,7 +59,7 @@ import { actionKey, actionKeys, moveLabel } from "./keys";
 import { touchLabels } from "./touchLayout";
 import { BOSS_BUZZ, HIT_BUZZ, vibrate } from "./haptics";
 import { Effects } from "./effects";
-import { renderUpgradeIcon } from "./sprites";
+import { PALETTES, renderUpgradeIcon } from "./sprites";
 import {
   WAVES,
   BOSS_WAVE,
@@ -92,6 +92,8 @@ import {
   SKY_STUN,
   SPIN_TIME,
   SUN_SHIELD_TIME,
+  PETAL_VEIL_TIME,
+  SECOND_BREATH,
   VOW_RADIUS,
   type Bolt,
   type Target,
@@ -163,10 +165,11 @@ import {
   type PlannedStrike,
   type SuperStage,
 } from "./super";
-import { SuperOrb, renderSuperCard, renderSuperOrb } from "./superFx";
+import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
 import { superPortrait } from "./portrait";
 import { renderSunShield } from "./divineFx";
+import { renderAnimeCard, renderPetalVeil } from "./cutsFx";
 import { skinLook, skinPalette } from "./skins";
 import {
   defaultLook,
@@ -613,6 +616,8 @@ const POWER_KEYS = [
   // SUPER kartalari
   "sunShieldCard",
   "secondJudgment",
+  "secondBreath",
+  "petalVeil",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -3092,6 +3097,7 @@ export class Game {
         if (!p.dead) p.render(c);
       },
       view: { x: 0, y: 0, w: ROOM.w, h: ROOM.h },
+      flair: p.flair,
     };
   }
 
@@ -3120,11 +3126,16 @@ export class Game {
     p.y = this.castAt.y;
     const ev = cast.update(raw);
     for (const s of ev.entered) this.onCastStage(s);
+    // MING KESIM: zarbalar oqibatning `release` lahzasida birdan tushadi (katana qinga qaytdi)
+    const rel = cast.def.release;
+    if (rel !== undefined && !cast.released && cast.stage === "after" && cast.t >= rel)
+      this.releaseStrikes();
     if (cast.stage === "prep" && !this.gawked && cast.t >= cast.def.stages.prep * 0.62)
       this.pickGawker();
     if (cast.stage === "strike") this.runStrikes();
     p.castTick(raw);
     p.superFrame = this.scene?.pose(cast) ?? -1;
+    p.superHidden = this.scene?.hidden?.(cast) ?? false;
     if (ev.done) this.endCast();
   }
 
@@ -3151,7 +3162,16 @@ export class Game {
     const def = cast.def;
     const p = this.player;
     if (s === "prep") sfx[def.sounds.prep](def.stages.prep);
-    if (s === "strike") this.planStrikeWave(0);
+    if (s === "strike") {
+      this.planStrikeWave(0);
+      if (def.sounds.strike) sfx[def.sounds.strike](cast.strikeTime);
+    }
+    if (s === "after" && def.center) {
+      // MING KESIM: Samuray xona markazida paydo bo'ladi
+      this.castAt = this.centerSpot();
+      p.x = this.castAt.x;
+      p.y = this.castAt.y;
+    }
     if (s === "after") {
       sfx[def.sounds.end]();
       // dushman snaryadlari so'nadi, o'yinchi ozgina jon tiklaydi
@@ -3213,7 +3233,8 @@ export class Game {
           sfx[def.sounds.mark](i - 1);
         }
       }
-      if (!st.done && cast.t >= st.hitAt) {
+      // `release` bo'lsa (MING KESIM) zarbalar keyin, oqibatda birdan tushadi
+      if (!st.done && cast.t >= st.hitAt && def.release === undefined) {
         st.done = true;
         this.superHit(t, i - 1, st.power);
       }
@@ -3266,6 +3287,70 @@ export class Game {
     this.blasting = chained;
   }
 
+  /**
+   * MING KESIM "chik" lahzasi (SuperDef.release): rejalashtirilgan hamma zarba BIRDAN tushadi —
+   * zarbadan keyin paydo bo'lgan moblar ham kesikdan qutulmaydi.
+   */
+  private releaseStrikes() {
+    const cast = this.cast!;
+    const def = cast.def;
+    cast.released = true;
+    for (const e of this.enemies) {
+      if (e.dead || this.struck.has(e)) continue;
+      this.struck.add(e);
+      this.strikes.push({ target: e, boss: false, markAt: 0, hitAt: 0, marked: true, done: false });
+    }
+    this.scene?.release?.(cast, this.sceneCtx());
+    if (def.sounds.release) sfx[def.sounds.release]();
+    // bo'linib ko'payadigan mob (Qor odam) bolalari ham shu "chik" da kesiladi
+    for (let pass = 0; pass < 4; pass++) {
+      let i = 0;
+      for (const st of this.strikes) {
+        i++;
+        if (st.done) continue;
+        st.done = true;
+        this.superHit(st.target, i - 1, st.power);
+      }
+      const born = this.enemies.filter((e) => !e.dead && !this.struck.has(e));
+      if (!born.length) break;
+      for (const e of born) {
+        this.struck.add(e);
+        this.strikes.push({
+          target: e,
+          boss: false,
+          markAt: 0,
+          hitAt: 0,
+          marked: true,
+          done: false,
+        });
+      }
+    }
+  }
+
+  /** Xona markazi; tirik boss u yerda tursa — undan chetroqda (devorlar ichida). */
+  private centerSpot() {
+    let x = ROOM.w / 2,
+      y = ROOM.h / 2;
+    const b = this.boss;
+    if (b && !b.dead) {
+      const R = b.size / 2 + 28;
+      const dx = x - b.x,
+        dy = y - b.y;
+      const d = Math.hypot(dx, dy);
+      if (d < R) {
+        const ux = d > 0.5 ? dx / d : 0,
+          uy = d > 0.5 ? dy / d : 1;
+        x = b.x + ux * R;
+        y = b.y + uy * R;
+      }
+    }
+    const h = this.player.size / 2 + ROOM.wall;
+    return {
+      x: Math.max(h, Math.min(ROOM.w - h, x)),
+      y: Math.max(h, Math.min(ROOM.h - h, y)),
+    };
+  }
+
   /** Super tugadi: o'yinchining daxlsizligi shu kadrda tugaydi, boshqaruv qaytadi. */
   private endCast() {
     this.cast = null;
@@ -3277,6 +3362,16 @@ export class Game {
       // QUYOSH QALQONI (karta): superdan keyin 2 s oltin qalqon
       p.sunShield = SUN_SHIELD_TIME;
       this.fx.text(p.x, p.y - 24, "QUYOSH QALQONI", this.theme.glow);
+    }
+    if (p.petalVeil) {
+      // GULBARG PARDASI (karta): superdan keyin 2 s gulbarg pardasi — zarba o'tmaydi
+      p.sunShield = PETAL_VEIL_TIME;
+      this.fx.text(p.x, p.y - 24, "GULBARG PARDASI", this.theme.glow);
+    }
+    if (p.secondBreath) {
+      // IKKINCHI NAFAS (karta): sharning 25% i qaytadi
+      this.superMeter.refund(SECOND_BREATH);
+      this.fx.text(p.x, p.y - 32, "IKKINCHI NAFAS", this.theme.accent);
     }
     this.input.clearQueued();
   }
@@ -4451,13 +4546,19 @@ export class Game {
       all.push({
         y: p.y,
         r: () => {
-          if (!p.dead) this.shadow(c, p.x, p.y + 12, 12);
+          // MING KESIM zarbasi: Samuray ko'zdan yo'qolgan — soyasi va bezagi ham yo'q
+          const gone = p.casting && p.superHidden;
+          if (!p.dead && !gone) this.shadow(c, p.x, p.y + 12, 12);
           p.render(c);
           // afsonaviy skin: turgandagi harakat va hujum flourishi
-          renderFlair(c, this.look, p, this.time, this.fx.isReduced());
-          // QUYOSH QALQONI: superdan keyingi oltin qalqon
-          if (p.sunShield > 0 && !p.dead)
-            renderSunShield(c, p.x, p.y, this.time, p.sunShield, this.theme, this.fx.isReduced());
+          if (!gone) renderFlair(c, this.look, p, this.time, this.fx.isReduced());
+          // superdan keyingi qalqon: Paladinda oltin, Samurayda gulbarg pardasi
+          if (p.sunShield > 0 && !p.dead) {
+            if (p.samurai)
+              renderPetalVeil(c, p.x, p.y, this.time, p.sunShield, this.theme, this.fx.isReduced());
+            else
+              renderSunShield(c, p.x, p.y, this.time, p.sunShield, this.theme, this.fx.isReduced());
+          }
           // sovuq nafasdan sekinlashgan
           if (p.chill > 0 && !p.dead) this.frost(c, p.x, p.y, p.size);
           if (p.encased) this.renderIceBlock(c);
@@ -5262,15 +5363,30 @@ export class Game {
     const cast = this.cast;
     if (!cast) return;
     const c = this.ctx;
-    renderSuperCard(
-      c,
-      cast.def,
-      cast,
-      this.theme,
-      superPortrait(this.hero, this.player.skin),
-      (s, x, y, size, color, align) => this.text(s, x, y, size, color, align),
-      this.fx.isReduced(),
-    );
+    const text: CardText = (s, x, y, size, color, align) => this.text(s, x, y, size, color, align);
+    if (cast.def.card.anime)
+      // MING KESIM: anime uslubidagi kadr — yaqin plan yuz, ko'zlar keskin ochiladi
+      renderAnimeCard(
+        c,
+        cast.def,
+        cast,
+        this.theme,
+        superPortrait(this.hero, this.player.skin, "closed"),
+        superPortrait(this.hero, this.player.skin),
+        (this.player.skin?.colors ?? PALETTES[this.hero])[1] ?? this.theme.ink,
+        text,
+        this.fx.isReduced(),
+      );
+    else
+      renderSuperCard(
+        c,
+        cast.def,
+        cast,
+        this.theme,
+        superPortrait(this.hero, this.player.skin),
+        text,
+        this.fx.isReduced(),
+      );
     // shar karta ustida ko'rinib turadi: suyuqlik "vush" bilan bo'shaydi
     if (!this.touch) renderSuperOrb(c, this.orb, SUPER_ORB.x, SUPER_ORB.y, SUPER_ORB.r, this.theme);
   }

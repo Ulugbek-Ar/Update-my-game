@@ -163,6 +163,10 @@ export const BOOST_SPEED = 1.35;
 
 /** QUYOSH QALQONI (super kartasi): superdan keyin shuncha soniya zarba o'tmaydi */
 export const SUN_SHIELD_TIME = 2;
+/** GULBARG PARDASI (Samuray super kartasi): superdan keyingi daxlsizlik (s) */
+export const PETAL_VEIL_TIME = 2;
+/** IKKINCHI NAFAS: superdan keyin qaytadigan zaryad ulushi */
+export const SECOND_BREATH = 0.25;
 
 /** Player o'qiydigan boshqaruv: klaviatura/sensor (Input) yoki olamdagi buyruqlar (RealmSim). */
 export type PlayerInput = Pick<Input, "consumeAttack" | "consumeDash" | "axis" | "attackHeld"> & {
@@ -395,6 +399,13 @@ export class Player implements Body {
    */
   sunShieldCard = false;
   secondJudgment = false;
+  /**
+   * SUPER kartalari (MING KESIM): IKKINCHI NAFAS (superdan keyin sharning SECOND_BREATH ulushi
+   * qaytadi) va GULBARG PARDASI (superdan keyin PETAL_VEIL_TIME soniya daxlsizlik — `sunShield`
+   * taymeri bilan, ko'rinishi — gulbarg pardasi).
+   */
+  secondBreath = false;
+  petalVeil = false;
   /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
   sunShield = 0;
   shieldHit = false;
@@ -416,6 +427,8 @@ export class Player implements Body {
   casting = false;
   /** Super pozasi: "attack" holatining shu kadri chiziladi (−1 — yo'q). Faqat ko'rinish */
   superFrame = -1;
+  /** Super paytida ko'rinmaydi (MING KESIM zarbasi: Samuray ko'zdan yo'qoladi) — Game belgilaydi */
+  superHidden = false;
   /** Vizual qatlam holati (heroAnim.ts): burilish va qadam — faqat chizish uchun */
   vis = new HeroVisual();
   /** HAMLA paytida allaqachon itarilganlar */
@@ -751,6 +764,7 @@ export class Player implements Body {
   endCast() {
     this.casting = false;
     this.superFrame = -1;
+    this.superHidden = false;
     this.invuln = 0;
     this.guardAge = -1;
     this.charge = 0;
@@ -1417,6 +1431,8 @@ export class Player implements Body {
   render(ctx: CanvasRenderingContext2D) {
     // teleport paytida sehrgar ko'rinmaydi
     if (this.dashing && this.mage) return;
+    // MING KESIM: zarba paytida Samuray ko'zdan yo'qolgan
+    if (this.casting && this.superHidden && !this.dead) return;
     if (this.dashing) ctx.globalAlpha = 0.7;
     // himoya dumi: biroz shaffof
     else if (this.guarded) ctx.globalAlpha = 0.6;
@@ -1477,6 +1493,8 @@ export class Player implements Body {
   samuraiFrame(): [AnimState, number] {
     const F = SAMURAI_FRAME;
     const a = this.anim;
+    // super pozasi (MING KESIM: diqqat, qinga qaytarish) — Game belgilaydi
+    if (this.casting && this.superFrame >= 0 && !this.dead) return ["attack", this.superFrame];
     if (this.dead || a.state === "hurt") return [a.state, a.frame];
     if (this.iai) return ["attack", F.iai];
     if (this.dashing) return ["attack", F.dash];

@@ -567,7 +567,8 @@ describe("SUPER kartalari", () => {
       };
       return { r, calls: () => calls };
     };
-    for (const h of HEROES.filter((x) => x !== "paladin")) {
+    // superli qahramonlarda (Paladin, Samuray) SUPER kartalari tasodifni o'zgartiradi
+    for (const h of HEROES.filter((x) => !superFor(x))) {
       const a = seq();
       const picked = pickUpgrades(new Player(h), 3, a.r);
       // tanlov faqat aralashtirish uchun tasodif oladi: nomzodlar soni − 1 marta

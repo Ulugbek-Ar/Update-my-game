@@ -2422,6 +2422,19 @@ export const SAMURAI_FRAME = {
   dash: 10,
 } as const;
 
+/**
+ * MING KESIM super kadrlari ("attack" holatida): diqqat (ko'zlar yumuq, qo'l dastada, katana qinda),
+ * shamolda (soch va obi hilpiraydi), so'ng katanani SEKIN qinga qaytarish: tig' uzun → yarmi →
+ * deyarli kirdi (8) → "chik" (yana diqqat kadri).
+ */
+export const SAMURAI_SUPER_FRAME = {
+  focus: 11,
+  focusWind: 12,
+  sheatheLong: 13,
+  sheatheHalf: 14,
+  sheatheEnd: 8,
+} as const;
+
 /** Bitta kadr pozasi (tana koordinatalarida) */
 interface SamuraiFrame {
   bob: number;
@@ -2768,6 +2781,70 @@ const SAM_ATTACK: readonly SamuraiFrame[] = [
       [-13, 1],
     ],
     sash: -3,
+  },
+  // 11 — MING KESIM diqqati: tik, ko'zlar yumuq, qo'l katana dastasida, katana qinda
+  {
+    bob: 0,
+    lean: 0,
+    low: 1,
+    lf: [11, 27],
+    rf: [21, 27],
+    hand: [16, 19],
+    off: [12, 21],
+    blade: null,
+    tail: [
+      [-4, 5],
+      [-5, 11],
+    ],
+    sash: 0,
+    bow: true,
+  },
+  // 12 — diqqat, shamolda: soch dumi va obi orqaga hilpiraydi
+  {
+    bob: 0,
+    lean: 0,
+    low: 1,
+    lf: [11, 27],
+    rf: [21, 27],
+    hand: [16, 19],
+    off: [12, 21],
+    blade: null,
+    tail: [
+      [-6, 3],
+      [-11, 6],
+    ],
+    sash: -2,
+    bow: true,
+  },
+  // 13 — sekin qinga qaytarish: qo'l oldinda, tig'ning orqasi qin og'zida (uzun tig')
+  {
+    bob: 0,
+    lean: 0,
+    lf: [12, 27],
+    rf: [20, 27],
+    hand: [27, 17],
+    off: [12, 20],
+    blade: [13, 20],
+    tail: [
+      [-4, 5],
+      [-6, 10],
+    ],
+    sash: 1,
+  },
+  // 14 — tig'ning yarmi qinga kirdi
+  {
+    bob: 0,
+    lean: 0,
+    lf: [12, 27],
+    rf: [20, 27],
+    hand: [22, 18],
+    off: [12, 20],
+    blade: [13, 20],
+    tail: [
+      [-4, 5],
+      [-5, 11],
+    ],
+    sash: 0,
   },
 ];
 
@@ -5664,6 +5741,35 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "UXVVXUUXVVXU",
     ".AXXA..AXXA.",
     "............",
+  ],
+  // SUPER kartalari (MING KESIM): ikkinchi nafas (yarim to'lgan shar) va gulbarg pardasi
+  secondbreath: [
+    "....XXXX....",
+    "..XX....XX..",
+    ".X........X.",
+    ".X........X.",
+    "X..........X",
+    "XUUUUUUUUUUX",
+    "XAAAAAAAAAAX",
+    "XAAVAAAAVAAX",
+    ".XAAAAAAAAX.",
+    ".XAAAVAAAAX.",
+    "..XXAAAAXX..",
+    "....XXXX....",
+  ],
+  petalveil: [
+    "....U..U....",
+    "...UAUUAU...",
+    "....UAAU....",
+    ".U...UU...U.",
+    "UAU......UAU",
+    ".UAU....UAU.",
+    "..U..XX..U..",
+    ".....XX.....",
+    ".U..XXXX..U.",
+    "UAU.XXXX.UAU",
+    ".UAU.XX.UAU.",
+    "..U......U..",
   ],
   aura: [
     ".....UU.....",
