@@ -2,13 +2,16 @@
  * SUPER TIZIMI CHIZMALARI (hamma superga umumiy; faqat ko'rinish — mantiq super.ts da):
  *  - SuperOrb: SUPER SHARI — dumaloq shisha shar, ichida jonli suyuqlik: sath silliq ko'tariladi,
  *    yuzasi sinus to'lqin bilan tebranadi, o'yinchi yurganda yoki zarba yeganda chayqaladi, ichida
- *    pufakchalar ko'tariladi. To'lganda yorqinlashadi, pulsatsiya qiladi va uchqun sochadi;
- *    ishlatilganda suyuqlik pastga tortilib bo'shaydi. HUD'da ham, telefon tugmasida ham shu chiziladi.
+ *    pufakchalar ko'tariladi. To'lganda yorqinlashadi, pulsatsiya qiladi va uchqun sochadi: uchqunlar
+ *    tepasidan favvoradek otilib chiqib, yorqin boshi va xira dumi bilan shar yelkasidan oshib
+ *    tushadi, gardishida yulduzchalar miltillaydi; hammasi so'nishdan oldin kichrayadi.
+ *    Ishlatilganda suyuqlik pastga tortilib bo'shaydi. HUD'da ham, telefon tugmasida ham shu chiziladi.
  *  - renderSuperCard: CUT-IN KARTA — ekran qorayadi, diagonal tasma bo'ylab qahramon portreti
  *    siljib kiradi, super nomi katta piksel harflarda.
  * Ranglar faol skin theme'dan (skinFx.ts): suyuqlik — accent, chuqur qismi — accentDark, yuzasi —
- * glow. Xavf ranglari (danger.ts) va "qon" qizili ishlatilmaydi. Math.random ishlatilmaydi —
- * o'yin tasodifiga ta'sir qilmaydi (o'z kichik generatori bor).
+ * glow; uchqunlar — glint (yadro), glow, accent (dum). Xavf ranglari (danger.ts) va "qon" qizili
+ * ishlatilmaydi. Math.random ishlatilmaydi — o'yin tasodifiga ta'sir qilmaydi (o'z kichik
+ * generatori bor).
  */
 import { px } from "./animation";
 import { withAlpha } from "./hero";
@@ -34,6 +37,25 @@ interface Bubble {
   big: boolean;
 }
 
+/**
+ * Uchqun turlari: CHANG — mayda xira zarra (faqat nuqta va dum), UCHQUN — yorqin boshli: tug'ilganda
+ * "+" bo'lib chaqnaydi, YULDUZCHA — gardish ustida deyarli joyida turib bir marta katta "+" bo'lib
+ * miltillaydi.
+ */
+const DUST = 0,
+  EMBER = 1,
+  STAR = 2;
+/**
+ * Uchqun uchadigan halqa (markazdan, r = 12 shar uchun): SPARK_RIM — chiqadigan gardish (bundan
+ * ichkariga — shisha ustiga tushmaydi, sirtidan sirg'anadi), SPARK_FAR — eng chet koordinata
+ * (kvadrat chegara, ORB_PAD ichida — uchqun bufer chetida kesilib qolmaydi).
+ */
+const SPARK_RIM = 13.2;
+const SPARK_FAR = 16.6;
+/** Tortishish (favvoradek yoy chizib tushadi) va havo qarshiligi (1/s) */
+const SPARK_FALL = 38;
+const SPARK_DRAG = 1.6;
+
 interface OrbSpark {
   x: number;
   y: number;
@@ -41,8 +63,11 @@ interface OrbSpark {
   vy: number;
   life: number;
   max: number;
-  bright: boolean;
+  kind: typeof DUST | typeof EMBER | typeof STAR;
 }
+
+/** To'lgan shar pulsi: true — shar 1 px ga kattalashgan (t — to'lgandan beri o'tgan vaqt) */
+const orbPulse = (t: number) => Math.sin(t * 7) > 0.2;
 
 const hex = (c: string) => {
   const n = parseInt(c.slice(1, 7), 16);
@@ -75,6 +100,8 @@ export class SuperOrb {
   bubbles: Bubble[] = [];
   sparks: OrbSpark[] = [];
   private sparkT = 0;
+  /** Oldingi kadrda puls "kattalashgan" holatda edimi (puls boshida uchqun otiladi) */
+  private beat = false;
   private seed = 20261114;
 
   /** Kichik tasodif generatori (Math.random emas — o'yin tasodifiga tegmaydi) */
@@ -90,6 +117,40 @@ export class SuperOrb {
       v: 0.35 + this.rnd() * 0.4,
       phase: this.rnd() * 6.28,
       big: this.rnd() < 0.25,
+    };
+  }
+
+  /**
+   * Yangi uchqun: sharning tepasidan otilib chiqadi. side — tomoni (−1 chap, 1 o'ng): puls uchquni,
+   * doim yorqin; 0 — tasodifiy tomon va tur. calm — "Effektlarni kamaytirish": yulduzchasiz.
+   */
+  private spark(calm: boolean, side = 0): OrbSpark {
+    const dir = side || (this.rnd() < 0.5 ? -1 : 1);
+    const pick = this.rnd();
+    const kind = side ? EMBER : !calm && pick < 0.3 ? STAR : pick < 0.5 ? EMBER : DUST;
+    const life = 0.6 + this.rnd() * 0.35;
+    if (kind === STAR) {
+      // yulduzcha: yuqori yoyda, gardishdan sal narida paydo bo'ladi va deyarli joyida turadi
+      const a = dir * this.rnd() * 1.3;
+      const rho = SPARK_RIM + this.rnd() * 1.2;
+      const v = 1.5 + this.rnd() * 1.5;
+      const nx = Math.sin(a),
+        ny = -Math.cos(a);
+      return { x: nx * rho, y: ny * rho, vx: nx * v, vy: ny * v, life, max: life, kind };
+    }
+    // tepadan a burchakdagi (6°..52°) nuqtadan chiqadi va radiusdan ko'ra yonroqqa otiladi (b):
+    // yelka ustidan yoy chizib o'tib, shar yonidan pastga tushadi
+    const a = dir * (0.1 + this.rnd() * 0.8);
+    const b = a + dir * (0.25 + this.rnd() * 0.5);
+    const v = (14 + this.rnd() * 10) * (kind === DUST ? 0.75 : 1);
+    return {
+      x: Math.sin(a) * SPARK_RIM,
+      y: -Math.cos(a) * SPARK_RIM,
+      vx: Math.sin(b) * v,
+      vy: -Math.cos(b) * v,
+      life,
+      max: life,
+      kind,
     };
   }
 
@@ -162,32 +223,66 @@ export class SuperOrb {
       if (b.y >= 1) Object.assign(b, this.bubble(true));
     }
 
-    for (const s of this.sparks) {
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 26 * dt;
-      s.life -= dt;
-    }
-    if (this.sparks.length) this.sparks = this.sparks.filter((s) => s.life > 0);
-    if (this.readyT >= 0) {
-      // to'lgan shardan uchqunlar toshib chiqadi
-      this.sparkT -= dt;
-      const cap = reduced ? ORB_SPARKS_REDUCED : ORB_SPARKS;
-      if (this.sparkT <= 0 && this.sparks.length < cap) {
-        this.sparkT = reduced ? 0.5 : 0.09 + this.rnd() * 0.08;
-        const a = -Math.PI / 2 + (this.rnd() - 0.5) * 2.2;
-        const life = 0.5 + this.rnd() * 0.4;
-        this.sparks.push({
-          x: Math.cos(a) * 9,
-          y: Math.sin(a) * 9,
-          vx: Math.cos(a) * (10 + this.rnd() * 14),
-          vy: Math.sin(a) * (16 + this.rnd() * 16),
-          life,
-          max: life,
-          bright: this.rnd() < 0.5,
-        });
+    // uchqunlar: tepadan otilib chiqib, favvoradek yoy chizadi va shar yonidan pastga tushadi.
+    // Shisha ustiga tushmaydi (sirtidan sirg'anadi) va chetdan chiqmaydi — bufer chetida kesilmaydi.
+    if (this.sparks.length) {
+      const damp = Math.exp(-SPARK_DRAG * dt);
+      let alive = 0;
+      for (let i = 0; i < this.sparks.length; i++) {
+        const s = this.sparks[i]!;
+        s.life -= dt;
+        if (s.life <= 0) continue;
+        s.vx *= damp;
+        s.vy *= damp;
+        // yulduzcha tortilmaydi — joyida miltillaydi
+        if (s.kind !== STAR) s.vy += SPARK_FALL * dt;
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        const d2 = s.x * s.x + s.y * s.y;
+        if (d2 < SPARK_RIM * SPARK_RIM && d2 > 0.01) {
+          // shisha: ichkariga kirmaydi — tezlikning ichkariga qismi yo'qolib, sirt bo'ylab sirg'anadi
+          const d = Math.sqrt(d2);
+          const nx = s.x / d,
+            ny = s.y / d;
+          const vn = s.vx * nx + s.vy * ny;
+          if (vn < 0) {
+            s.vx -= vn * nx;
+            s.vy -= vn * ny;
+          }
+          s.x = nx * SPARK_RIM;
+          s.y = ny * SPARK_RIM;
+        }
+        // chet: undan nariga o'tmaydi (katta "+" bo'ladigan yulduzchaga bir piksel ko'proq joy)
+        const far = s.kind === STAR ? SPARK_FAR - 1 : SPARK_FAR;
+        if (s.x > far || s.x < -far) {
+          s.x = s.x > 0 ? far : -far;
+          s.vx = 0;
+        }
+        if (s.y > far || s.y < -far) {
+          s.y = s.y > 0 ? far : -far;
+          s.vy = 0;
+        }
+        // so'nganlari joyida siqib chiqariladi (har kadr yangi massiv yaratilmaydi)
+        this.sparks[alive++] = s;
       }
+      this.sparks.length = alive;
     }
+    if (this.readyT >= 0) {
+      // to'lgan shardan uchqunlar toshib chiqadi: har pulsda (shar kattalashgan lahzada) ikki
+      // tomonga bittadan otiladi, orada bittadan sizib turadi
+      const cap = reduced ? ORB_SPARKS_REDUCED : ORB_SPARKS;
+      const beat = !reduced && orbPulse(this.readyT);
+      if (beat && !this.beat) {
+        if (this.sparks.length < cap) this.sparks.push(this.spark(false, -1));
+        if (this.sparks.length < cap) this.sparks.push(this.spark(false, 1));
+      }
+      this.beat = beat;
+      this.sparkT -= dt;
+      if (this.sparkT <= 0 && this.sparks.length < cap) {
+        this.sparkT = reduced ? 0.5 : 0.12 + this.rnd() * 0.08;
+        this.sparks.push(this.spark(reduced));
+      }
+    } else this.beat = false;
   }
 }
 
@@ -204,6 +299,14 @@ function disk(c: CanvasRenderingContext2D, color: string, cx: number, cy: number
     const h = halfWidth(r, dy);
     if (h >= 0) c.fillRect(cx - h, cy + dy, h * 2 + 1, 1);
   }
+}
+
+/** "+" qo'llari: markazdan d piksel naridagi to'rt nuqta (markazning o'zi chizilmaydi) */
+function plus(c: CanvasRenderingContext2D, x: number, y: number, d: number) {
+  c.fillRect(x - d, y, 1, 1);
+  c.fillRect(x + d, y, 1, 1);
+  c.fillRect(x, y - d, 1, 1);
+  c.fillRect(x, y + d, 1, 1);
 }
 
 /** Shar atrofidagi chet (porlash va uchqunlar uchun), mantiqiy pikselda */
@@ -252,7 +355,7 @@ export function renderSuperOrb(
     cy = r + ORB_PAD;
   const ready = orb.readyT >= 0;
   // to'lganda shar pulsatsiya qiladi (1 px ga kattalashib-kichrayadi)
-  const pulse = ready && !reduced ? (Math.sin(orb.readyT * 7) > 0.2 ? 1 : 0) : 0;
+  const pulse = ready && !reduced && orbPulse(orb.readyT) ? 1 : 0;
   const R = r + pulse;
   const ri = R - 2;
   const k = r / 12;
@@ -339,19 +442,79 @@ export function renderSuperOrb(
   c.fillRect(cx - g + 2, cy - g + 2, 1, 1);
   c.fillRect(cx + g - 2, cy + g - 1, 1, 1);
 
-  // toshib chiqayotgan uchqunlar
+  // toshib chiqayotgan uchqunlar. Uch rang: glint — qaynoq yadro, glow — tana, accent — dum va
+  // so'nayotgan zarra. So'nish globalAlpha pog'onalari bilan (har kadr rang satri yaratilmaydi).
   for (const s of orb.sparks) {
-    const a = Math.max(0, s.life / s.max);
-    const sx = Math.round(cx + s.x * k),
-      sy = Math.round(cy + s.y * k);
-    if (s.bright && a > 0.5) {
-      c.fillStyle = withAlpha(T.edge, a * 0.8);
-      c.fillRect(sx - 1, sy, 3, 1);
-      c.fillRect(sx, sy - 1, 1, 3);
+    // yoshi: 0 — hozir chiqdi, 1 — so'ndi
+    const age = 1 - Math.max(0, s.life / s.max);
+    // joyi r = 12 shar uchun hisoblangan; boshqa o'lchamda radius bo'ylab (r − 12) px suriladi:
+    // gardishdan masofasi pikselda saqlanadi, ya'ni har qanday sharda ORB_PAD ichida qoladi
+    const grow = r === 12 ? 1 : 1 + (r - 12) / Math.max(1, Math.sqrt(s.x * s.x + s.y * s.y));
+    const hx = cx + s.x * grow,
+      hy = cy + s.y * grow;
+    const sx = Math.round(hx),
+      sy = Math.round(hy);
+    if (reduced) {
+      // "Effektlarni kamaytirish": dumsiz va miltillamaydigan, silliq so'nuvchi oddiy nuqta
+      if (s.kind === EMBER && age < 0.5) {
+        c.globalAlpha = (1 - age) * 0.8;
+        c.fillStyle = T.glint;
+        plus(c, sx, sy, 1);
+      }
+      c.globalAlpha = 1 - age;
+      c.fillStyle = s.kind === EMBER ? T.glow : T.accent;
+      c.fillRect(sx, sy, 1, 1);
+      continue;
     }
-    c.fillStyle = withAlpha(s.bright ? T.glow : T.accent, a);
+    if (s.kind === STAR) {
+      // yulduzcha: nuqta → "+" → katta "+" → "+" → nuqta (bir marta chaqnab, kichrayib so'nadi)
+      const mid = age > 0.14 && age < 0.78;
+      const big = age > 0.34 && age < 0.58;
+      if (big) {
+        c.globalAlpha = 0.7;
+        c.fillStyle = T.accent;
+        plus(c, sx, sy, 2);
+      }
+      if (mid) {
+        c.globalAlpha = big ? 1 : 0.8;
+        c.fillStyle = T.glow;
+        plus(c, sx, sy, 1);
+      }
+      const hot = mid || age <= 0.14;
+      c.globalAlpha = hot ? 1 : age < 0.9 ? 0.65 : 0.35;
+      c.fillStyle = hot ? T.glint : T.glow;
+      c.fillRect(sx, sy, 1, 1);
+      continue;
+    }
+    // hayoti oxirida pog'onalab xiralashadi; uchib borayotganda sal miltillaydi
+    const fade = age < 0.72 ? 1 : age < 0.88 ? 0.6 : 0.3;
+    const flick = age > 0.3 && (Math.floor(s.life * 16) & 1) === 1 ? 0.75 : 1;
+    // dum: tezligiga qarab orqasida 1–2 piksel (sekinlashganda boshiga yig'ilib yo'qoladi)
+    const tx = Math.round(hx - s.vx * 0.05),
+      ty = Math.round(hy - s.vy * 0.05);
+    if (tx !== sx || ty !== sy) {
+      const ux = Math.round(hx - s.vx * 0.1),
+        uy = Math.round(hy - s.vy * 0.1);
+      c.fillStyle = T.accent;
+      if (ux !== tx || uy !== ty) {
+        c.globalAlpha = 0.35 * fade;
+        c.fillRect(ux, uy, 1, 1);
+      }
+      c.globalAlpha = 0.7 * fade;
+      c.fillRect(tx, ty, 1, 1);
+    }
+    // bosh: uchqun tug'ilganda "+" bo'lib chaqnaydi, so'ng bitta pikselga kichrayadi
+    const hot = s.kind === EMBER && age < 0.3;
+    if (hot) {
+      c.globalAlpha = 0.85;
+      c.fillStyle = T.glow;
+      plus(c, sx, sy, 1);
+    }
+    c.globalAlpha = fade * flick;
+    c.fillStyle = hot ? T.glint : age < 0.65 ? T.glow : T.accent;
     c.fillRect(sx, sy, 1, 1);
   }
+  c.globalAlpha = 1;
 
   out.imageSmoothingEnabled = false;
   out.drawImage(buf, Math.round(x) - cx, Math.round(y) - cy);
