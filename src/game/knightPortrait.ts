@@ -46,15 +46,15 @@ const L = (() => {
 })();
 
 type P = Pixels;
-export const put = (p: P, c: number, x: number, y: number) => p.rect(c, x, y, 1, 1);
+const put = (p: P, c: number, x: number, y: number) => p.rect(c, x, y, 1, 1);
 
 /** Yorug'lik bo'yicha kumush toni (5 ton) */
-export function silver(lum: number) {
+function silver(lum: number) {
   return lum > 0.9 ? 6 : lum > 0.66 ? 5 : lum > 0.36 ? 4 : lum > 0.08 ? 3 : 2;
 }
 
 /** Ellipsoid (dubulg'a, yelka, boldoq): normal bo'yicha soyalash, o'ngda sovuq rim */
-export function sphere(
+function sphere(
   p: P,
   cx: number,
   cy: number,
@@ -79,7 +79,7 @@ export function sphere(
 }
 
 /** Gorizontal silindr/bochka (ko'krak, bilak): faqat x bo'yicha normal */
-export function barrel(
+function barrel(
   p: P,
   inside: (x: number, y: number) => boolean,
   cx: number,
@@ -113,7 +113,7 @@ export function inPoly(pts: readonly (readonly [number, number])[]) {
 }
 
 /** Mato (plash, pat): burmalar bo'yicha 4 ton, chapdan yorug' */
-export function cloth(
+function cloth(
   p: P,
   inside: (x: number, y: number) => boolean,
   box: [number, number, number, number],

@@ -172,7 +172,7 @@ import {
 } from "./super";
 import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
-import { KNIGHT_PORTRAIT_VARIANTS, PALADIN_PORTRAIT_VARIANTS, superPortrait } from "./portrait";
+import { KNIGHT_PORTRAIT_VARIANTS, superPortrait } from "./portrait";
 import { renderSunShield } from "./divineFx";
 import { renderAnimeCard, renderPetalVeil } from "./cutsFx";
 import { renderHorizonCard } from "./horizonFx";
@@ -5649,21 +5649,12 @@ export class Game {
         this.fx.isReduced(),
       );
     else
-      // ILOHIY HUKM: Paladin portreti — tirqishdagi nur kuchayib boradi, toj yaltiraydi
       renderSuperCard(
         c,
         cast.def,
         cast,
         this.theme,
-        superPortrait(
-          this.hero,
-          this.player.skin,
-          this.hero === "paladin"
-            ? PALADIN_PORTRAIT_VARIANTS[
-                Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
-              ]
-            : "",
-        ),
+        superPortrait(this.hero, this.player.skin),
         text,
         this.fx.isReduced(),
       );
