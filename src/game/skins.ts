@@ -113,11 +113,13 @@ const THEMES: Record<string, ThemeRow> = {
   // Muz Ritsar: muz kristallari, qor izi
   "knight-ice": ["#9fe6ff", "#2f7f8f", "#eafaff", "#9fe6ff", "#16303a", "#ffffff", "#9fe6ff", "#dff6ff", "#c6ecff", "#2f7f8f", "#c6ecff", "#ffffff", "#0a1420", "#16303a", "#f4fbff"],
   // Qor Sehrgar: muzli halqa va qor shari
-  "mage-frost": ["#8fd8ff", "#2f7f9a", "#e6f6ff", "#8fd8ff", "#1c2a3a", "#c6ecff", "#e6f6ff", "#bfefff", "#8fd8ff", "#2f7f9a", "#c6ecff", "#ffffff", "#05070d", "#1c2a4a", "#3a5a7a"],
+  // Muzlagan Lich: sovuq ko'k-oq zarba, to'q ko'k-qora tutun
+  "mage-frost": ["#8fd8ff", "#2f7f9a", "#e6f6ff", "#8fd8ff", "#1c2a3a", "#c6ecff", "#e6f6ff", "#bfefff", "#8fd8ff", "#2f7f9a", "#c6ecff", "#ffffff", "#03050c", "#0e1a30", "#3a5a7a"],
   // Zahar Sehrgar: yashil zahar tomchilari va tutun
   "mage-venom": ["#7fd04a", "#3f7a1f", "#d0f0a0", "#9fe060", "#1f3a14", "#9fe060", "#c9f07a", "#b8f070", "#6fbf3a", "#2a5a14", "#8fd050", "#e8ffc0", "#050805", "#1f2a1a", "#34402a"],
   // Quyosh Sehrgar: oltin-sariq quyosh nuri
-  "mage-sun": ["#ffd23c", "#c8820f", "#fff6c8", "#ffd23c", "#3a2a0a", "#fff0a0", "#ffd23c", "#ffe680", "#ffc850", "#b06a10", "#ffe08a", "#ffffff", "#0a0603", "#5a2a10", "#8a5a20"],
+  // Tutilgan oy: qora-binafsha olov, qora yadro, binafsha toj nuri
+  "mage-sun": ["#9a5cff", "#3a1a6a", "#d8b8ff", "#e0d0ff", "#120a1e", "#b07aff", "#e6d0ff", "#c8a0ff", "#7a3ad0", "#1a0a2a", "#9a5cff", "#f0e4ff", "#030205", "#0c0614", "#3a2a5a"],
   // Qish Ovchisi: oq qayin o'qi, ayozli nur
   "hunter-winter": ["#c9e8ff", "#5a7a96", "#f0f8ff", "#c9e8ff", "#24303c", "#e0f0ff", "#c9e8ff", "#dfe8f0", "#c9d4de", "#b8c4d0", "#c9d4de", "#ffffff", "#0a0d12", "#5a6372", "#f4fbff"],
   // Cho'l Ovchisi: qum va issiq shamol
@@ -153,9 +155,10 @@ const DEFS: Record<Hero, readonly Def[]> = {
   ],
   // Sehrgar: kontur, to'n, bezak (astar, kamar, kristall), soqol, teri
   mage: [
-    ["frost", "QOR SEHRGAR", ["#05070d", "#1c2a4a", "#3f86c2", "#e6f6ff", "#e8c39e"]],
+    // v4.0: yovuz sehrgarga moslandi (id o'zgarmagan — sotib olganlarda saqlanadi)
+    ["frost", "MUZLAGAN LICH", ["#03050c", "#0e1a30", "#6ac8f0", "#c8d8e4", "#aab6c2"]],
     ["venom", "ZAHAR SEHRGAR", ["#050805", "#1f2a1a", "#6fbf3a", "#c9d4c0", "#e8c39e"]],
-    ["sun", "QUYOSH SEHRGAR", ["#0a0603", "#5a2a10", "#ff9a3c", "#ffe2a0", "#e8c39e"]],
+    ["sun", "TUTILGAN OY SEHRGARI", ["#020104", "#100a1a", "#7a3ad0", "#b8a8d8", "#b4acc4"]],
   ],
   // Ovchi: kontur, kapyushon ichi, plash, charm, teri
   hunter: [
@@ -213,14 +216,24 @@ const FX: Record<string, SkinFx> = {
     trail: "smoke",
     bits: ["#c9f07a", "#3f7a1f"],
   },
-  // AFSONAVIY: quyosh nurlari, cho'g' izi, quyosh chaqnashi, halo, yorug' akkord
+  // AFSONAVIY (Tutilgan oy): qorong'i runalar, soya izi, qora oy yorilishi, tutilgan oy halqasi
+  // va porlovchi ko'zlar, qorong'i tritonus
   "mage-sun": {
-    particle: "star",
-    trail: "ember",
-    bits: ["#fff6c8", "#ffe680"],
-    impact: "flare",
-    flair: "halo",
-    tone: "sun",
+    particle: "rune",
+    trail: "shadow",
+    bits: ["#d8b8ff", "#1a0a2a"],
+    impact: "eclipse",
+    flair: "eclipse",
+    tone: "eclipse",
+  },
+  // ODDIY, lekin istisno (v4.0): Muzlagan Lich — muz bo'laklari va kichik muz bosh suyaklari
+  // (afsonaviy narsalar — zarba shakli, animatsiya, ovoz — yo'q)
+  "mage-frost": {
+    ...PLAIN_FX,
+    particle: "shard",
+    trail: "snow",
+    bits: ["#e6f6ff", "#8fd8ff"],
+    bitParticle: "skull",
   },
   // NOYOB: qum zarralari va issiq shamol izi
   "hunter-desert": {

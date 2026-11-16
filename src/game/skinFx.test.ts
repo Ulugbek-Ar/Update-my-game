@@ -155,8 +155,12 @@ describe("Skin darajalari", () => {
       const [, common, rare, legend] = SKINS[h];
       expect([common!.tier, rare!.tier, legend!.tier]).toEqual(["common", "rare", "legendary"]);
       expect([common!.price, rare!.price, legend!.price]).toEqual([80, 150, 250]);
-      // ODDIY: faqat ranglar
-      expect(common!.fx).toEqual(PLAIN_FX);
+      // ODDIY: faqat ranglar. Istisno (v4.0): Muzlagan Lich — muz bo'laklari va bosh suyaklari
+      // zarrachasi, lekin afsonaviy narsalar (zarba shakli, animatsiya, ovoz) yo'q
+      if (common!.id === "mage-frost") {
+        expect(common!.fx.bitParticle).toBe("skull");
+        expect([common!.fx.impact, common!.fx.flair, common!.fx.tone]).toEqual([null, null, null]);
+      } else expect(common!.fx).toEqual(PLAIN_FX);
       expect(common!.theme).not.toEqual(DEFAULT_THEME[h]);
       // NOYOB: o'z zarrachasi, izi va qo'shimcha ranglari; afsonaviy narsalar yo'q
       expect(rare!.fx.particle).not.toBe("square");

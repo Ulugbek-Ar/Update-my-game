@@ -77,22 +77,34 @@ export const FX_SLOTS = [
 
 /** Zarracha shakli: square — oddiy kvadrat (default) */
 export type ParticleShape =
-  "square" | "shard" | "star" | "puff" | "ember" | "drop" | "streak" | "cross" | "leaf";
+  | "square"
+  | "shard"
+  | "star"
+  | "puff"
+  | "ember"
+  | "drop"
+  | "streak"
+  | "cross"
+  | "leaf"
+  | "skull"
+  | "rune";
 /** Harakat izi (dash, sakrash, sirpanish, hamla): square — oddiy (default) */
 export type TrailKind =
   "square" | "snow" | "smoke" | "sparkle" | "ember" | "sand" | "shadow" | "leaf";
 /** Afsonaviy: zarba tekkanda ekranda kichik shakl */
-export type ImpactKind = "crystal" | "flare" | "crescent" | "gust" | "phoenix" | "moon";
+export type ImpactKind = "crystal" | "flare" | "crescent" | "gust" | "phoenix" | "moon" | "eclipse";
 /** Afsonaviy: turganda o'ziga xos harakat (ko'z porlashi, aura...) va hujumdagi "flourish" */
-export type FlairKind = "frost" | "halo" | "eyes" | "scarf" | "embers" | "moon";
+export type FlairKind = "frost" | "halo" | "eyes" | "scarf" | "embers" | "moon" | "eclipse";
 /** Afsonaviy: hujum ovoziga qo'shiladigan o'z ohangi (Web Audio) */
-export type ToneKind = "chime" | "sun" | "night" | "steppe" | "flame" | "moon";
+export type ToneKind = "chime" | "sun" | "night" | "steppe" | "flame" | "moon" | "eclipse";
 
 export interface SkinFx {
   particle: ParticleShape;
   trail: TrailKind;
   /** Qo'shimcha zarracha ranglari (noyob va afsonaviy): har portlashga aralashadi */
   bits: readonly string[];
+  /** Qo'shimcha zarrachalar shakli (bo'lmasa — particle): Muzlagan Lich — muz bosh suyaklari */
+  bitParticle?: ParticleShape;
   impact: ImpactKind | null;
   flair: FlairKind | null;
   tone: ToneKind | null;
@@ -263,8 +275,8 @@ export function heroBurst(
       bits[Math.floor(Math.random() * bits.length)]!,
       Math.ceil(n / 3),
       speed * 0.8,
-      1,
-      look.fx.particle,
+      look.fx.bitParticle ? 2 : 1,
+      look.fx.bitParticle ?? look.fx.particle,
     );
 }
 
@@ -336,6 +348,48 @@ export function renderFlair(
     px(c, withAlpha(t.glow, 0.85), x - Math.floor(w / 2), hy - 7, w, 1);
     px(c, withAlpha(t.accent, 0.7), x - Math.floor(w / 2) - 1, hy - 6, 1, 1);
     px(c, withAlpha(t.accent, 0.7), x + Math.ceil(w / 2), hy - 6, 1, 1);
+  } else if (kind === "eclipse") {
+    // tutilgan oy: bosh uzra qora disk va sekin aylanuvchi ingichka binafsha toj nuri
+    const cx = x,
+      cy = hy - 9;
+    px(c, "#05030a", cx - 2, cy - 1, 5, 3);
+    px(c, "#05030a", cx - 1, cy - 2, 3, 5);
+    for (let i = 0; i < 10; i++) {
+      const a = time * 0.9 + (i / 10) * Math.PI * 2;
+      const bright = i === 0 || i === 5;
+      px(
+        c,
+        withAlpha(bright ? t.glint : t.glow, bright ? 0.95 : 0.5),
+        Math.round(cx + Math.cos(a) * 3.6),
+        Math.round(cy + Math.sin(a) * 3.6),
+        1,
+        1,
+      );
+    }
+    // turganda ko'zlar binafsha porlaydi (2 kadr)
+    if (idle) {
+      px(c, t.glint, x + dir * 1 - (dir < 0 ? 1 : 0), hy + 1, 1, 1);
+      px(c, t.glint, x + dir * 4 - (dir < 0 ? 1 : 0), hy + 1, 1, 1);
+      if (f && !reduced) {
+        px(c, withAlpha(t.accent, 0.5), x + dir * 1 - 1, hy, 3, 3);
+        px(c, withAlpha(t.accent, 0.5), x + dir * 4 - 1, hy, 3, 3);
+      }
+    }
+    // atrofida suzib yuruvchi qorong'i runalar
+    if (!reduced)
+      for (let i = 0; i < 3; i++) {
+        const a = -time * 0.7 + (i / 3) * Math.PI * 2;
+        const rx = Math.round(x + Math.cos(a) * 12),
+          ry = Math.round(y + 2 + Math.sin(a) * 5);
+        const col = withAlpha(i % 2 ? t.accent : t.hot, 0.75);
+        px(c, col, rx, ry - 1, 1, 3);
+        if (i === 0) px(c, col, rx - 1, ry - 1, 3, 1);
+        else if (i === 1) px(c, col, rx - 1, ry + 1, 3, 1);
+        else {
+          px(c, col, rx - 1, ry, 1, 1);
+          px(c, col, rx + 1, ry, 1, 1);
+        }
+      }
   } else if (kind === "eyes") {
     // tungi ovchi: kapyushon ichida ko'zlar porlaydi (har 2.4s da qisqa chaqnash)
     const blink = time % 2.4 < 0.5;
@@ -416,6 +470,12 @@ export const TONES: Record<ToneKind, readonly [number, number, OscillatorType, n
   flame: [
     [330, 0.14, "sawtooth", 0],
     [1760, 0.1, "triangle", 0.04],
+  ],
+  // tutilgan oy: past qorong'i tritonus va uzoq, sovuq "ting"
+  eclipse: [
+    [110, 0.2, "sawtooth", 0],
+    [155.6, 0.18, "triangle", 0.03],
+    [1244.5, 0.2, "sine", 0.08],
   ],
   // qizil oy: past "koto" chertishi va uzoq, sovuq jarang (pentatonika)
   moon: [

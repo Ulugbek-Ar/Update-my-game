@@ -228,3 +228,62 @@ describe("Onlayn: skin maydoni", () => {
     expect(t[16]).toBe("mage-frost");
   });
 });
+
+describe("Yovuz Sehrgar skinlari (v4.0): nom va ko'rinish o'zgardi, id saqlanadi", () => {
+  it("renamed in place: same ids, prices and tiers; owners keep them everywhere", () => {
+    const [def, frost, venom, sun] = SKINS.mage;
+    expect([def!.name, frost!.name, venom!.name, sun!.name]).toEqual([
+      "ODDIY SEHRGAR",
+      "MUZLAGAN LICH",
+      "ZAHAR SEHRGAR",
+      "TUTILGAN OY SEHRGARI",
+    ]);
+    expect([frost!.id, venom!.id, sun!.id]).toEqual(["mage-frost", "mage-venom", "mage-sun"]);
+    expect([frost!.price, venom!.price, sun!.price]).toEqual([80, 150, 250]);
+    expect([frost!.tier, venom!.tier, sun!.tier]).toEqual(["common", "rare", "legendary"]);
+    // eski saqlangan o'yin: sotib olingan va tanlangan skin joyida qoladi
+    localStorage.setItem(
+      SKINS_KEY,
+      JSON.stringify({ owned: ["mage-frost", "mage-sun"], sel: { mage: "mage-sun" } }),
+    );
+    expect(ownsSkin(frost!)).toBe(true);
+    expect(selectedSkin("mage").name).toBe("TUTILGAN OY SEHRGARI");
+    // transfer kodi / bulut
+    expect(parseSkins(collectProgress()[SKINS_KEY]).owned).toEqual(["mage-frost", "mage-sun"]);
+    // onlayn: id o'zgarmagan, server qabul qiladi
+    expect(isSkinId("mage", "mage-sun")).toBe(true);
+    expect(isSkinId("mage", "mage-frost")).toBe(true);
+    const rp = new RealmPlayer("p1", "mage", 100, 100, 16);
+    expect(netPlayer(rp, "A", 1, "", "mage-sun")[16]).toBe("mage-sun");
+  });
+
+  it("Frozen Lich: dark blue-black robe, pale dead face, ice shards and tiny ice skulls", () => {
+    const lich = SKINS.mage[1]!;
+    const pal = skinPalette("mage", "mage-frost")!.colors;
+    expect(lum(pal[1]!)).toBeLessThan(40);
+    expect(lum(pal[4]!)).toBeGreaterThan(150);
+    expect(lich.fx.particle).toBe("shard");
+    expect(lich.fx.bitParticle).toBe("skull");
+    // Oddiy Sehrgar va Zahar Sehrgar o'zgarmagan
+    expect(SKINS.mage[2]!.fx.bitParticle).toBeUndefined();
+    expect(skinPalette("mage", "mage-venom")!.colors).toEqual([
+      "#050805",
+      "#1f2a1a",
+      "#6fbf3a",
+      "#c9d4c0",
+      "#e8c39e",
+    ]);
+  });
+
+  it("Eclipse Moon: black-purple robe, its own runes, impact, halo animation and sound", () => {
+    const moon = SKINS.mage[3]!;
+    expect(lum(skinPalette("mage", "mage-sun")!.colors[1]!)).toBeLessThan(25);
+    expect(moon.fx).toMatchObject({
+      particle: "rune",
+      trail: "shadow",
+      impact: "eclipse",
+      flair: "eclipse",
+      tone: "eclipse",
+    });
+  });
+});

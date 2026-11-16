@@ -390,6 +390,33 @@ export class Effects {
           if (Math.floor(p.life * 12) % 2) c.fillRect(x, y, 2, 1);
           else c.fillRect(x, y, 1, 2);
           break;
+        case "skull":
+          // kichik muz bosh suyagi: kalla, ikki ko'z kosasi, jag'
+          c.fillRect(x - 1, y - 1, 3, 1);
+          c.fillRect(x - 1, y, 1, 1);
+          c.fillRect(x + 1, y, 1, 1);
+          c.fillRect(x, y + 1, 1, 1);
+          if (s > 1) {
+            c.fillRect(x - 2, y, 1, 1);
+            c.fillRect(x + 2, y, 1, 1);
+            c.fillRect(x - 1, y + 1, 1, 1);
+            c.fillRect(x + 1, y + 1, 1, 1);
+          }
+          break;
+        case "rune": {
+          // qorong'i runa: uch belgidan biri, yashashi davomida almashadi
+          const g = Math.floor(p.life * 7) % 3;
+          c.fillRect(x, y - 1, 1, 3);
+          if (g === 0) c.fillRect(x - 1, y - 1, 3, 1);
+          else if (g === 1) {
+            c.fillRect(x - 1, y, 1, 1);
+            c.fillRect(x + 1, y, 1, 1);
+          } else {
+            c.fillRect(x + 1, y - 1, 1, 1);
+            c.fillRect(x - 1, y + 1, 1, 1);
+          }
+          break;
+        }
       }
     }
     c.globalAlpha = 1;
@@ -458,6 +485,26 @@ export class Effects {
           2,
           2,
         );
+      } else if (m.kind === "eclipse") {
+        // tutilgan oy yorilishi: qora disk, ingichka toj nuri va disk chetidan 4 ta yoriq
+        const d = Math.max(2, Math.round(r * 0.55));
+        c.arc(m.x, m.y, d + 1, 0, Math.PI * 2);
+        c.stroke();
+        c.fillStyle = "#05030a";
+        c.beginPath();
+        c.arc(m.x, m.y, d, 0, Math.PI * 2);
+        c.fill();
+        c.beginPath();
+        c.strokeStyle = m.b;
+        for (let i = 0; i < 4; i++) {
+          const an = m.rot + (i * Math.PI) / 2;
+          const mx = m.x + Math.cos(an + 0.25) * (d + r * 0.3),
+            my = m.y + Math.sin(an + 0.25) * (d + r * 0.3);
+          c.moveTo(m.x + Math.cos(an) * (d + 1), m.y + Math.sin(an) * (d + 1));
+          c.lineTo(mx, my);
+          c.lineTo(m.x + Math.cos(an) * (d + r * 0.7), m.y + Math.sin(an) * (d + r * 0.7));
+        }
+        c.stroke();
       } else if (m.kind === "gust") {
         // dasht shamoli: uchta burama yoy
         for (let i = 0; i < 3; i++) {
