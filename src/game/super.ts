@@ -47,7 +47,15 @@ export type SuperSound =
   | "horizonSplit"
   | "horizonBossCut"
   | "horizonShing"
-  | "horizonRise";
+  | "horizonRise"
+  | "meteorRumble"
+  | "meteorLock"
+  | "meteorFall"
+  | "meteorBoom"
+  | "meteorBossHit"
+  | "meteorCrush"
+  | "meteorSettle"
+  | "meteorSmall";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -98,6 +106,40 @@ export interface SuperPath {
   len: number;
 }
 
+/**
+ * Meteorit zarbasi tavsifi (SuperDef.impact — OSMON TOSHI): bitta nuqtaga tushadi. Markazdagilar
+ * (`core`) o'ladi; chetdagilar (`ring`) uloqtiriladi va `stun` soniya toshda qotadi; urilgan joyda
+ * krater qoladi — unga kirgan dushmanga oz zarar beradi.
+ */
+export interface SuperImpactDef {
+  /** Zarba bosqichining shu soniyasida meteorit yerga uriladi */
+  at: number;
+  /** Markaz radiusi (px): oddiy mob o'ladi */
+  core: number;
+  /** Chet radiusi (px): uloqtiriladi va toshda qotadi */
+  ring: number;
+  /** Uloqtirish tezligi (px/s; jism tezligi 10/s bilan so'nadi — masofa ≈ knock/10) */
+  knock: number;
+  /** Toshda qotish (s) */
+  stun: number;
+  /** Chetdagilarga zarar (o'yinchi zarbasi ulushi) */
+  ringPower: number;
+  /** Joystik bo'yicha nishon masofasi (px) */
+  range: number;
+  /** Krater: radius, yashash (s; ABADIY KRATER kartasi bilan — long), zarar oralig'i va zarari */
+  crater: { r: number; time: number; long: number; tick: number; dmg: number };
+  /** METEOR YOMG'IRI kartasi: n ta kichik meteor oqibat bosqichida (first, gap), radiusi, boss ulushi */
+  rain: { n: number; first: number; gap: number; r: number; power: number };
+}
+
+/** Kichik meteor (METEOR YOMG'IRI): joyi va oqibat bosqichidagi urilish vaqti */
+export interface SuperRainDrop {
+  x: number;
+  y: number;
+  at: number;
+  done: boolean;
+}
+
 export interface SuperDef {
   id: string;
   hero: Hero;
@@ -140,6 +182,13 @@ export interface SuperDef {
    * chetigacha uchadi; yarim balandligi `half0` dan `half1` gacha o'sadi. Yo'q — hamma nishon.
    */
   path?: SuperPathDef;
+  /** Meteorit zarbasi (OSMON TOSHI): bitta nuqta, markaz/chet zonalari va krater. Yo'q — oddiy */
+  impact?: SuperImpactDef;
+  /**
+   * Super shari suyuqligi rangi — faqat ODDIY skinda (skin bo'lsa — skin theme'i). Yo'q — theme'ning
+   * accent/accentDark/glow ranglari.
+   */
+  orb?: { accent: string; accentDark: string; glow: string };
   /**
    * Super kartasi (cut-in): to'liq va qisqartirilgan davomiylik, karta ostidagi qator.
    * anime — anime uslubidagi diagonal kadr (faqat Samuray superida ruxsat).
@@ -311,11 +360,69 @@ const HORIZON_CUT: SuperDef = {
   fx: "horizon",
 };
 
+/**
+ * OSMON TOSHI (Sehrgar) — v4.0 da ochildi.
+ * Tayyorlanish (0.8 s): Sehrgar tayog'ini osmonga ko'taradi, ekran qorayadi, xona tepasida
+ * binafsha-olov darz ochiladi; dushmanlar eng zich to'plangan joyda (yoki joystik yo'nalishida)
+ * sehrli runali nishon doirasi paydo bo'lib kichrayadi. Zarba (0.7 s): ulkan yonayotgan meteorit
+ * olov dumi bilan qiya tushadi (`impact.at` da urilish) — oq chaqnash, zarba to'lqini, krater,
+ * tosh bo'laklari. Oqibat (1 s): markazdagilar o'ladi, chetdagilar uloqtirilib 2.5 s toshda qotadi,
+ * krater cho'g'lanib turadi.
+ *
+ * Zaryad 20 (boshqa superlar kabi). Bossga: nishon zonasida bo'lsa — maksimal jonining 8% i, jami
+ * 10% dan oshmaydi; boss 1 s qotadi. Kartalar: METEOR YOMG'IRI (3 ta kichik meteor), ABADIY KRATER
+ * (cho'g' uzoqroq turadi).
+ */
+const SKY_STONE: SuperDef = {
+  id: "sky-stone",
+  hero: "mage",
+  name: "OSMON TOSHI",
+  desc: "Ulkan meteorit dushmanlar to'dasiga qulaydi",
+  color: "#c070ff",
+  charge: 20,
+  time: 2.5,
+  params: { rocks: 34, rocksReduced: 8, embers: 40, embersReduced: 8 },
+  open: true,
+  stages: { prep: 0.8, strike: 0.7, after: 1 },
+  slow: { prep: 0.25, strike: 0.05, after: 0.35 },
+  strike: { mark: 0, gap: 0, tail: 0, min: 0.7 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0.3, dust: 0.5, bossKneel: 1 },
+  // super shari: binafsha-qizil sehr suyuqligi
+  orb: { accent: "#b0307e", accentDark: "#4e1252", glow: "#ec98ff" },
+  impact: {
+    at: 0.42,
+    core: 34,
+    ring: 74,
+    knock: 420,
+    stun: 2.5,
+    ringPower: 1,
+    range: 96,
+    crater: { r: 26, time: 4, long: 9, tick: 0.5, dmg: 1 },
+    rain: { n: 3, first: 0.18, gap: 0.24, r: 16, power: 0.25 },
+  },
+  card: { time: 0.7, short: 0.25, sub: "SEHRGAR SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "meteorRumble",
+    mark: "meteorLock",
+    hit: "meteorCrush",
+    bossHit: "meteorBossHit",
+    end: "meteorSettle",
+    strike: "meteorFall",
+    release: "meteorBoom",
+  },
+  fx: "meteor",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
   samurai: THOUSAND_CUTS,
   knight: HORIZON_CUT,
+  mage: SKY_STONE,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */
@@ -520,6 +627,99 @@ export function pathsHit(paths: readonly SuperPath[], t: { x: number; y: number;
   return best;
 }
 
+/** Nishon atrofidagi chekka (px): meteorit devorga yopishib tushmasin */
+const IMPACT_MARGIN = 26;
+
+const clampRoom = (x: number, y: number, room: { w: number; h: number }) => ({
+  x: Math.max(IMPACT_MARGIN, Math.min(room.w - IMPACT_MARGIN, x)),
+  y: Math.max(IMPACT_MARGIN, Math.min(room.h - IMPACT_MARGIN, y)),
+});
+
+/**
+ * Meteorit nuqtasi (SuperDef.impact). Joystik bosilgan bo'lsa (`stick`) — qahramondan o'sha tomonga
+ * `range` px. Aks holda — dushmanlar eng zich to'plangan joy: har nishon atrofida markaz zonasidagilar
+ * 2, chetdagilar 1 ochko (boss — 3 baravar); teng bo'lsa qahramonga yaqini. Nishon yo'q — qarash
+ * tomoniga `range` px.
+ */
+export function impactPoint(
+  def: SuperDef,
+  from: { x: number; y: number },
+  face: { x: number; y: number },
+  targets: readonly { x: number; y: number; boss?: boolean }[],
+  room: { w: number; h: number },
+  stick?: { x: number; y: number } | null,
+) {
+  const I = def.impact;
+  const range = I?.range ?? 90;
+  const toward = (v: { x: number; y: number }) => {
+    const m = Math.hypot(v.x, v.y);
+    const ux = m > 1e-6 ? v.x / m : 1,
+      uy = m > 1e-6 ? v.y / m : 0;
+    return clampRoom(from.x + ux * range, from.y + uy * range, room);
+  };
+  if (stick && Math.hypot(stick.x, stick.y) >= 0.3) return toward(stick);
+  if (!I || !targets.length) return toward(face);
+  let best: { x: number; y: number } | null = null;
+  let bestScore = -1,
+    bestDist = Infinity;
+  for (const c of targets) {
+    let score = 0;
+    for (const t of targets) {
+      const d = Math.hypot(t.x - c.x, t.y - c.y);
+      const w = t.boss ? 3 : 1;
+      if (d <= I.core) score += 2 * w;
+      else if (d <= I.ring) score += w;
+    }
+    const dist = Math.hypot(c.x - from.x, c.y - from.y);
+    if (score > bestScore || (score === bestScore && dist < bestDist)) {
+      best = c;
+      bestScore = score;
+      bestDist = dist;
+    }
+  }
+  return clampRoom(best!.x, best!.y, room);
+}
+
+/** Nishon meteorit zonasida qayerda: markaz (o'ladi), chet (qotadi) yoki tashqarida (null) */
+export function impactZone(
+  def: SuperDef,
+  spot: { x: number; y: number },
+  t: { x: number; y: number; size?: number },
+): "core" | "ring" | null {
+  const I = def.impact;
+  if (!I) return null;
+  const d = Math.hypot(t.x - spot.x, t.y - spot.y) - (t.size ?? 0) / 2;
+  return d <= I.core ? "core" : d <= I.ring ? "ring" : null;
+}
+
+/**
+ * METEOR YOMG'IRI nuqtalari: avval asosiy zarbadan omon qolgan (chetdagi) eng yaqin nishonlar,
+ * yetmasa — chet zonasi bo'ylab teng burchaklarda. Vaqtlari oqibat bosqichi ichida.
+ */
+export function rainDrops(
+  def: SuperDef,
+  spot: { x: number; y: number },
+  survivors: readonly { x: number; y: number }[],
+  room: { w: number; h: number },
+): SuperRainDrop[] {
+  const I = def.impact;
+  if (!I) return [];
+  const R = I.rain;
+  const near = [...survivors]
+    .sort((a, b) => Math.hypot(a.x - spot.x, a.y - spot.y) - Math.hypot(b.x - spot.x, b.y - spot.y))
+    .slice(0, R.n);
+  const out: SuperRainDrop[] = [];
+  for (let i = 0; i < R.n; i++) {
+    const t = near[i];
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / R.n + 0.4;
+    const p = t
+      ? clampRoom(t.x, t.y, room)
+      : clampRoom(spot.x + Math.cos(a) * I.ring * 0.7, spot.y + Math.sin(a) * I.ring * 0.7, room);
+    out.push({ ...p, at: R.first + i * R.gap, done: false });
+  }
+  return out;
+}
+
 export type CastStage = "card" | SuperStage;
 
 /**
@@ -551,6 +751,14 @@ export class SuperCast {
   aim = { x: 1, y: 0 };
   /** Otilgan kesim to'lqinlari (SuperDef.path; zarba bosqichida egasi to'ldiradi) */
   paths: SuperPath[] = [];
+  /** Meteorit nuqtasi (SuperDef.impact; egasi super boshida tanlaydi) */
+  spot: { x: number; y: number } | null = null;
+  /** Meteorit urildi (zarba bosqichida `impact.at` lahzasi) */
+  landed = false;
+  /** METEOR YOMG'IRI: kichik meteorlar (urilishda egasi to'ldiradi) */
+  rain: SuperRainDrop[] = [];
+  /** Krater yashash vaqti (s; ABADIY KRATER kartasi bilan uzunroq) */
+  craterTime = 0;
 
   constructor(
     readonly def: SuperDef,

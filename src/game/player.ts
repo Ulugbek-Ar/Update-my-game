@@ -412,6 +412,12 @@ export class Player implements Body {
    */
   doubleHorizon = false;
   wideBlade = false;
+  /**
+   * SUPER kartalari (OSMON TOSHI — Sehrgar): METEOR YOMG'IRI (asosiy meteordan keyin 3 ta kichik
+   * meteor) va ABADIY KRATER (cho'g' uzoqroq turadi).
+   */
+  meteorRain = false;
+  eternalCrater = false;
   /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
   sunShield = 0;
   shieldHit = false;

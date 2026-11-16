@@ -36,6 +36,8 @@ export type TouchTarget = Pick<Game, "input" | "player" | "hero"> & {
   superMeter?: SuperSource["superMeter"];
   orb?: SuperSource["orb"];
   theme?: SuperSource["theme"];
+  /** Super shari ranglari (oddiy skinda superning o'z suyuqligi) */
+  orbTheme?: SuperSource["theme"];
 };
 
 /** Olamdagi qo'shimcha tugmalar: gaplashish, jurnal, xarita */
@@ -271,7 +273,7 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
             input: game.input,
             superMeter: game.superMeter,
             orb: game.orb,
-            theme: game.theme,
+            theme: game.orbTheme ?? game.theme,
           }}
           p={placeControl("super", ts, vp)}
         />

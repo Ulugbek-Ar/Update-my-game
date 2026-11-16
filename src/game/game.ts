@@ -161,7 +161,10 @@ import {
   SuperCast,
   SuperMeter,
   bossDamage,
+  impactPoint,
+  impactZone,
   pathsHit,
+  rainDrops,
   planStrikes,
   superPaths,
   type PlannedStrike,
@@ -623,6 +626,8 @@ const POWER_KEYS = [
   "petalVeil",
   "doubleHorizon",
   "wideBlade",
+  "meteorRain",
+  "eternalCrater",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -708,6 +713,23 @@ export class Game {
   private shieldFxT = 0;
   /** Super boshlangan joy: o'yinchi super tugaguncha shu yerda turadi */
   private castAt = { x: 0, y: 0 };
+  /**
+   * OSMON TOSHI kraterlari: cho'g'langan joy — kirgan dushmanga har `tick` soniyada `dmg` zarar
+   * (bossga emas). Super tugagach ham `life` tugaguncha turadi (dunyo vaqti).
+   */
+  craters: {
+    x: number;
+    y: number;
+    r: number;
+    life: number;
+    tick: number;
+    every: number;
+    dmg: number;
+  }[] = [];
+  /** Toshda qotgan dushmanlar (qolgan vaqt, dunyo vaqti): tegib zarar bermaydi */
+  stoned = new Map<Enemy, number>();
+  /** Krater zarari: zarar raqami chiqadi, lekin sharni to'ldirmaydi */
+  private craterHit = false;
   /** Sozlamalar: super kartasini qisqartirish */
   superCardShort = false;
   /** Xavf jadvali (onlayn bilan bir xil mantiq; bir kishilik o'yinda nishon bitta — o'yinchi) */
@@ -910,6 +932,12 @@ export class Game {
     return this.look.theme;
   }
 
+  /** Super shari ranglari: oddiy skinda superning o'z suyuqligi (SuperDef.orb), aks holda skin */
+  get orbTheme() {
+    const o = this.superMeter.def?.orb;
+    return o && this.look.tier === "default" ? { ...this.look.theme, ...o } : this.look.theme;
+  }
+
   /** Qahramon effekti portlashi — skin zarrachalari bilan (skinFx.ts) */
   private hb(x: number, y: number, color: string, n: number, speed = 60, size = 2) {
     heroBurst(this.fx, this.look, x, y, color, n, speed, size);
@@ -935,6 +963,8 @@ export class Game {
     this.scene = null;
     this.strikes = [];
     this.struck.clear();
+    this.craters = [];
+    this.stoned.clear();
     this.readyNote = 0;
     this.superBuf = 0;
     this.applySkin();
@@ -1162,6 +1192,8 @@ export class Game {
     this.traps = [];
     this.smokes = [];
     this.clearSamurai();
+    this.craters = [];
+    this.stoned.clear();
     this.darkness = 0;
     this.chest = null;
     if (isChestWave(i) && this.spawnRand() < CHEST_CHANCE) this.spawnChest(...this.spawnPoint());
@@ -2070,7 +2102,7 @@ export class Game {
       }
     } else applyHit(t, dmg, p.x, p.y, typeof knock === "number" ? knock : knock ? 220 : 0);
     // superning o'z zarbalari sharni to'ldirmaydi
-    if (!this.cast) this.superMeter.add(hpBefore - Math.max(0, t.hp));
+    if (!this.cast && !this.craterHit) this.superMeter.add(hpBefore - Math.max(0, t.hp));
     // zarba nuqtasida kichik uchqun, kritikda — alohida oltin chaqnash (faqat ko'rinish)
     const hd = Math.hypot(t.x - p.x, t.y - p.y) || 1;
     const edge = Math.min(t.size / 2, 8);
@@ -2690,6 +2722,7 @@ export class Game {
       if (this.shots.length < before) this.score += 5 * (before - this.shots.length);
     }
 
+    this.updateCraters(dt);
     // dash oxirida dushman ichida qolsa himoya dumi chiqquncha uzayadi
     p.inFoe =
       this.enemies.some((e) => e.active && overlap(p, e)) || !!(boss?.active && overlap(p, boss));
@@ -2700,6 +2733,8 @@ export class Game {
           e.active &&
           // IAI bilan belgilangan (kesilishini kutayotgan) dushman tegib zarar bermaydi
           !this.iaiMarks.includes(e) &&
+          // OSMON TOSHI: toshda qotgan dushman tegib zarar bermaydi
+          !this.stoned.has(e) &&
           overlap(p, e) &&
           p.takeHit(1, e.x, e.y, 180) &&
           e.kind === "iceblob"
@@ -3071,6 +3106,7 @@ export class Game {
     this.cast = new SuperCast(def, this.superCardShort ? def.card.short : def.card.time);
     this.castAt = { x: this.player.x, y: this.player.y };
     if (def.path) this.aimSuper(this.cast);
+    if (def.impact) this.aimImpact(this.cast);
     this.scene = sceneFor(def.fx);
     this.strikes = [];
     this.struck.clear();
@@ -3107,6 +3143,144 @@ export class Game {
     cast.aim = { x: m < 1e-6 ? 1 : x / m, y: m < 1e-6 ? 0 : y / m };
     p.fx = Math.abs(cast.aim.x) > 0.38 ? Math.sign(cast.aim.x) : 0;
     p.fy = Math.abs(cast.aim.y) > 0.38 ? Math.sign(cast.aim.y) : 0;
+  }
+
+  /**
+   * OSMON TOSHI nishoni: joystik bosilgan bo'lsa — o'sha tomonga, aks holda dushmanlar eng zich
+   * to'plangan joy (super.ts: impactPoint). Sehrgar nishonga qarab buriladi; krater vaqti kartaga
+   * qarab (ABADIY KRATER — uzunroq).
+   */
+  private aimImpact(cast: SuperCast) {
+    const p = this.player;
+    const I = cast.def.impact!;
+    const targets: { x: number; y: number; boss?: boolean }[] = this.enemies
+      .filter((e) => !e.dead && !e.hidden)
+      .map((e) => this.pathTarget(e));
+    const b = this.boss;
+    if (b && !b.dead && b.spawn <= 0) targets.push({ x: b.x, y: b.y, boss: true });
+    cast.spot = impactPoint(
+      cast.def,
+      p,
+      { x: p.fx || (p.fy ? 0 : 1), y: p.fy },
+      targets,
+      ROOM,
+      this.input.axis(),
+    );
+    cast.craterTime = p.eternalCrater ? I.crater.long : I.crater.time;
+    if (Math.abs(cast.spot.x - p.x) > 4) p.fx = Math.sign(cast.spot.x - p.x);
+  }
+
+  /** Meteorit urilishi: markazdagilar o'ladi, chetdagilar uloqtirilib toshda qotadi, krater qoladi. */
+  private landMeteor() {
+    const cast = this.cast!;
+    const def = cast.def;
+    const I = def.impact!;
+    const spot = cast.spot ?? { x: this.player.x, y: this.player.y };
+    const p = this.player;
+    cast.landed = true;
+    if (def.sounds.release) sfx[def.sounds.release]();
+    const ctx = this.sceneCtx();
+    const survivors: { x: number; y: number }[] = [];
+    let index = 0;
+    let stoned = 0;
+    const chained = this.blasting;
+    this.blasting = true;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      const zone = impactZone(def, spot, this.pathTarget(e));
+      if (!zone) continue;
+      this.struck.add(e);
+      if (zone === "core") {
+        this.superHit(e, index++);
+        continue;
+      }
+      // chet: uloqtiriladi, oz zarar oladi va toshda qotadi
+      e.spawn = 0;
+      e.gawk = false;
+      this.damageTarget(e, p.damage * I.ringPower, false);
+      if (e.dead) {
+        cast.kills++;
+        continue;
+      }
+      const dx = e.x - spot.x,
+        dy = e.y - spot.y;
+      const m = Math.hypot(dx, dy) || 1;
+      e.vx = (dx / m) * I.knock;
+      e.vy = (dy / m) * I.knock;
+      e.stun = Math.max(e.stun, I.stun);
+      this.stoned.set(e, Math.max(this.stoned.get(e) ?? 0, I.stun));
+      stoned++;
+      survivors.push(e);
+      const info = { ...this.sceneTarget(e), hold: () => (e.dead ? 0 : (this.stoned.get(e) ?? 0)) };
+      this.scene?.hit(info, false, false, cast, ctx);
+    }
+    const b = this.boss;
+    if (b && !b.dead && b.spawn <= 0 && impactZone(def, spot, b)) {
+      this.struck.add(b);
+      this.superHit(b, index++);
+      if (!b.dead) survivors.push(b);
+    }
+    this.blasting = chained;
+    if (stoned) sfx.meteorPetrify(stoned);
+    this.craters.push({
+      x: spot.x,
+      y: spot.y,
+      r: I.crater.r,
+      life: cast.craterTime || I.crater.time,
+      tick: I.crater.tick,
+      every: I.crater.tick,
+      dmg: I.crater.dmg,
+    });
+    // METEOR YOMG'IRI (karta): oqibatda yana 3 ta kichik meteor
+    if (p.meteorRain) cast.rain = rainDrops(def, spot, survivors, ROOM);
+  }
+
+  /** METEOR YOMG'IRI: kichik meteor tushdi — atrofidagi mob o'ladi, bossga ulush (chegara ichida) */
+  private smallMeteor(drop: { x: number; y: number; done: boolean }) {
+    const cast = this.cast!;
+    const def = cast.def;
+    const R = def.impact!.rain;
+    drop.done = true;
+    sfx.meteorSmall();
+    const chained = this.blasting;
+    this.blasting = true;
+    let i = 0;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      const t = this.pathTarget(e);
+      if (Math.hypot(t.x - drop.x, t.y - drop.y) - t.size / 2 > R.r) continue;
+      this.stoned.delete(e);
+      this.superHit(e, i++);
+    }
+    const b = this.boss;
+    if (b && !b.dead && Math.hypot(b.x - drop.x, b.y - drop.y) - b.size / 2 <= R.r)
+      this.superHit(b, i++, R.power);
+    this.blasting = chained;
+  }
+
+  /** Kraterlar (dunyo vaqti): cho'g'ga kirgan mobga oz zarar; toshda qotish vaqti kamayadi. */
+  private updateCraters(dt: number) {
+    for (const [e, left] of this.stoned) {
+      const t = left - dt;
+      if (t <= 0 || e.dead || e.removed) this.stoned.delete(e);
+      else this.stoned.set(e, t);
+    }
+    if (!this.craters.length) return;
+    for (const k of this.craters) {
+      k.life -= dt;
+      k.tick -= dt;
+      if (k.tick > 0) continue;
+      k.tick += k.every;
+      this.craterHit = true;
+      for (const e of this.enemies) {
+        if (!e.active || e.dead || e.alt > 4) continue;
+        if (Math.hypot(e.x - k.x, e.y - k.y) - e.size / 2 > k.r) continue;
+        this.damageTarget(e, k.dmg, false);
+        this.fx.burst(e.x, e.y + 4, this.theme.hot, 3, 40, 1);
+      }
+      this.craterHit = false;
+    }
+    this.craters = this.craters.filter((k) => k.life > 0);
   }
 
   /** Nishon superning kesim to'lqini yo'lidami (path yo'q super — hamma nishon yo'lda) */
@@ -3172,7 +3346,18 @@ export class Game {
       this.releaseStrikes();
     if (cast.stage === "prep" && !this.gawked && cast.t >= cast.def.stages.prep * 0.62)
       this.pickGawker();
-    if (cast.stage === "strike") this.runStrikes();
+    if (cast.def.impact) {
+      // nishon doirasi "qulflanadi" (bir marta)
+      if (cast.stage === "prep" && cast.wave === 0 && cast.t >= cast.def.stages.prep * 0.55) {
+        cast.wave = 1;
+        sfx[cast.def.sounds.mark](0);
+      }
+      // OSMON TOSHI: zarba bosqichida meteorit urilishi, oqibatda kichik meteorlar
+      if (cast.stage === "strike" && !cast.landed && cast.t >= cast.def.impact.at)
+        this.landMeteor();
+      if (cast.stage === "after")
+        for (const d of cast.rain) if (!d.done && cast.t >= d.at) this.smallMeteor(d);
+    } else if (cast.stage === "strike") this.runStrikes();
     p.castTick(raw);
     p.superFrame = this.scene?.pose(cast) ?? -1;
     p.superHidden = this.scene?.hidden?.(cast) ?? false;
@@ -3209,7 +3394,7 @@ export class Game {
           double: p.doubleHorizon,
           wide: p.wideBlade,
         });
-      this.planStrikeWave(0);
+      if (!def.impact) this.planStrikeWave(0);
       if (def.sounds.strike) sfx[def.sounds.strike](cast.strikeTime);
     }
     if (s === "after" && def.center) {
@@ -3218,6 +3403,8 @@ export class Game {
       p.x = this.castAt.x;
       p.y = this.castAt.y;
     }
+    // katta qadamda zarba bosqichi o'tib ketsa ham meteorit albatta urilishi kerak
+    if (s === "after" && def.impact && !cast.landed) this.landMeteor();
     if (s === "after") {
       sfx[def.sounds.end]();
       // dushman snaryadlari so'nadi, o'yinchi ozgina jon tiklaydi
@@ -5421,7 +5608,7 @@ export class Game {
     const c = this.ctx;
     const { x, y, r } = SUPER_ORB;
     const reduced = this.fx.isReduced();
-    renderSuperOrb(c, this.orb, x, y, r, this.theme, reduced);
+    renderSuperOrb(c, this.orb, x, y, r, this.orbTheme, reduced);
     if (!m.ready || this.cast) return;
     // "TAYYOR!": to'lgan lahzada sakrab chiqadi, so'ng sekin miltillaydi
     const pop = this.readyNote > 1.35 && !reduced ? Math.round((this.readyNote - 1.35) * 16) : 0;
@@ -5481,7 +5668,8 @@ export class Game {
         this.fx.isReduced(),
       );
     // shar karta ustida ko'rinib turadi: suyuqlik "vush" bilan bo'shaydi
-    if (!this.touch) renderSuperOrb(c, this.orb, SUPER_ORB.x, SUPER_ORB.y, SUPER_ORB.r, this.theme);
+    if (!this.touch)
+      renderSuperOrb(c, this.orb, SUPER_ORB.x, SUPER_ORB.y, SUPER_ORB.r, this.orbTheme);
   }
 
   /**

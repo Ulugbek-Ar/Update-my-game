@@ -30,7 +30,8 @@ describe("Sehrgar kartalari qizil-qora uslubda", () => {
   });
 
   it("no mage card uses a blue or purple card or text color", () => {
-    expect(mageCards.length).toBe(11);
+    // v4.0: +2 SUPER kartasi (OSMON TOSHI) — ular ham qizil-qora uslubda
+    expect(mageCards.length).toBe(13);
     for (const u of mageCards) {
       expect(bluish(u.color), `${u.name} ${u.color}`).toBe(false);
       if (u.text) expect(bluish(u.text), `${u.name} ${u.text}`).toBe(false);

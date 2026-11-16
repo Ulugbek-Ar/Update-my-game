@@ -21,6 +21,7 @@ import type { SuperCast, SuperStage } from "./super";
 import { DivineScene } from "./divineFx";
 import { CutsScene } from "./cutsFx";
 import { HorizonScene } from "./horizonFx";
+import { MeteorScene } from "./meteorFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -61,6 +62,11 @@ export interface SceneTarget {
   sprite?: SpriteKind;
   flip?: boolean;
   palette?: SpritePalette;
+  /**
+   * Nishon qotib turgan qolgan vaqt (OSMON TOSHI: toshda qotgan dushman) — sahna qobiqni shu vaqt
+   * > 0 ekan chizadi. Yo'q — qotish ko'rsatilmaydi.
+   */
+  hold?: () => number;
 }
 
 export interface SuperScene {
@@ -166,6 +172,7 @@ export const SUPER_SCENES: Record<string, () => SuperScene> = {
   divine: () => new DivineScene(),
   cuts: () => new CutsScene(),
   horizon: () => new HorizonScene(),
+  meteor: () => new MeteorScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

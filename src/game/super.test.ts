@@ -95,19 +95,22 @@ beforeEach(() => {
 });
 
 describe("Super tizimi: ma'lumot", () => {
-  it("is open: the Paladin, the Samurai and the Knight have supers, every other hero has none", () => {
+  it("is open: the Paladin, the Samurai, the Knight and the Mage have supers, others have none", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(superFor("paladin")?.name).toBe("ILOHIY HUKM");
     // v4.0: ikkinchi super — Samurayning MING KESIMI
     expect(superFor("samurai")?.name).toBe("MING KESIM");
     // v4.0: uchinchi super — Ritsarning UFQ KESIMI
     expect(superFor("knight")?.name).toBe("UFQ KESIMI");
+    // v4.0: to'rtinchi super — Sehrgarning OSMON TOSHI
+    expect(superFor("mage")?.name).toBe("OSMON TOSHI");
     for (const h of HEROES)
-      if (!["paladin", "samurai", "knight"].includes(h)) expect(superFor(h), h).toBeNull();
+      if (!["paladin", "samurai", "knight", "mage"].includes(h)) expect(superFor(h), h).toBeNull();
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superById("divine-judgment")).toBe(superFor("paladin"));
     expect(superById("thousand-cuts")).toBe(superFor("samurai"));
     expect(superById("horizon-cut")).toBe(superFor("knight"));
+    expect(superById("sky-stone")).toBe(superFor("mage"));
     expect(superById("yo'q")).toBeNull();
   });
 
@@ -683,7 +686,7 @@ describe("Super ijrosi (o'yinda)", () => {
 });
 
 describe("Superi yo'q qahramonlar", () => {
-  for (const hero of HEROES.filter((h) => !["paladin", "samurai", "knight"].includes(h)))
+  for (const hero of HEROES.filter((h) => !["paladin", "samurai", "knight", "mage"].includes(h)))
     it(`${hero}: no meter, no orb, no super — and the game runs as before`, () => {
       const { g, gi } = makeGame(hero);
       expect(g.superMeter.def).toBeNull();

@@ -644,6 +644,88 @@ class SoundFX {
     this.tone(950, 0.05, "square", 0.012, 700, 0.56);
   }
 
+  // ---------------- OSMON TOSHI (Sehrgar superi) ----------------
+
+  /** Tayyorlanish: past guvillash o'sib boradi (osmon darzi ochiladi), musiqa pasayadi */
+  meteorRumble(dur = 0.8) {
+    const d = Math.max(0.3, dur);
+    const ctx = this.ctx;
+    const g = this.musicGain;
+    if (ctx && g && ctx.state === "running") {
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(this.musicVol * 0.12, now + 0.2);
+      g.gain.setValueAtTime(this.musicVol * 0.12, now + d + 2);
+      g.gain.linearRampToValueAtTime(this.musicVol, now + d + 2.8);
+    }
+    this.swell(38, d + 0.7, "sawtooth", 0.06, 62);
+    this.swell(55, d + 0.7, "sine", 0.08, 90);
+    this.swell(330, d, "triangle", 0.012, 520);
+    this.noise(d + 0.5, 0.025, 260);
+  }
+
+  /** Nishon doirasi "qulflandi": sehrli jarang */
+  meteorLock() {
+    this.tone(880, 0.25, "triangle", 0.03, 1320);
+    this.tone(1320, 0.3, "sine", 0.02, 1760, 0.05);
+  }
+
+  /** Meteorit tushmoqda: olov shovqini va pasayib boruvchi hushtak */
+  meteorFall(dur = 0.7) {
+    const d = Math.max(0.3, dur * 0.65);
+    this.noise(d, 0.05, 700);
+    this.noise(d * 0.8, 0.03, 2400, 0.05);
+    this.tone(1900, d, "sine", 0.025, 300);
+    this.swell(70, d, "sawtooth", 0.04, 40);
+  }
+
+  /** "BUMMM": yer silkinadi, ortidan tosh bo'laklari sochiladi */
+  meteorBoom() {
+    this.tone(70, 0.9, "sine", 0.16, 28);
+    this.tone(120, 0.5, "sawtooth", 0.08, 34);
+    this.noise(0.55, 0.16, 520);
+    this.noise(0.3, 0.08, 3200, 0.02);
+    for (let i = 0; i < 8; i++) {
+      // tasodif emas: bir xil ritmda tosh "tak-tuk"lari
+      const at = 0.18 + i * 0.07 + ((i * 7) % 5) * 0.02;
+      const f = 300 + ((i * 53) % 6) * 90;
+      this.tone(f, 0.05, "square", 0.022 - i * 0.002, f * 0.6, at);
+    }
+  }
+
+  /** Markazdagi dushman ezildi (birinchi bir nechtasi eshitiladi) */
+  meteorCrush(i = 0) {
+    if (i > 3) return;
+    this.noise(0.08, 0.045 - i * 0.008, 1400, 0.03 + i * 0.03);
+  }
+
+  /** Bossga urildi: og'ir zarba */
+  meteorBossHit() {
+    this.tone(55, 0.6, "sawtooth", 0.08, 30);
+    this.noise(0.35, 0.09, 900);
+  }
+
+  /** Chetdagilar toshga aylandi: qirsillash */
+  meteorPetrify(n = 1) {
+    const k = Math.min(4, Math.max(1, n));
+    for (let i = 0; i < k; i++) this.noise(0.05, 0.03, 2600, 0.12 + i * 0.05);
+    this.tone(1500, 0.12, "square", 0.012, 900, 0.15);
+  }
+
+  /** Oqibat: krater cho'g'i vishillaydi */
+  meteorSettle() {
+    this.noise(0.8, 0.025, 1800, 0.1);
+    this.tone(160, 0.5, "sine", 0.03, 80, 0.1);
+  }
+
+  /** Kichik meteor (METEOR YOMG'IRI) */
+  meteorSmall() {
+    this.tone(90, 0.35, "sine", 0.08, 36);
+    this.noise(0.22, 0.08, 800);
+    this.tone(420, 0.05, "square", 0.015, 260, 0.1);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;

@@ -554,6 +554,76 @@ const staffTops: Record<"idle" | "walk" | "attack" | "hurt", readonly Point[]> =
   hurt: [[4, -9]],
 };
 
+/**
+ * OSMON TOSHI super kadrlari (Sehrgar, "attack" holatida — Player.superFrame): tayoqni osmonga
+ * ko'tarish (ikki kadr: kristall yonib-o'chadi), meteorit urilgach tayoq bilan nishonga ishora va
+ * qayta turish. Oddiy hujum kadrlari (0..2) o'zgarmaydi.
+ */
+export const MAGE_SUPER_FRAME = {
+  raise: 3,
+  raiseGlow: 4,
+  point: 5,
+  rest: 6,
+} as const;
+
+const MAGE_SUPER_POSES: readonly { pose: Pose; top: Point; glow: boolean }[] = [
+  // tayoq osmonga: qo'l bosh tepasida, gavda biroz orqaga
+  {
+    pose: {
+      bob: 0,
+      lean: -1,
+      leftFoot: [11, 27],
+      rightFoot: [21, 27],
+      hand: [21, 11],
+      tip: [25, 28],
+      otherHand: [8, 17],
+    },
+    top: [1, -10],
+    glow: false,
+  },
+  {
+    pose: {
+      bob: -1,
+      lean: -1,
+      leftFoot: [11, 27],
+      rightFoot: [21, 27],
+      hand: [22, 9],
+      tip: [25, 28],
+      otherHand: [7, 16],
+    },
+    top: [1, -9],
+    glow: true,
+  },
+  // urilishdan keyin: tayoq oldinga-pastga, nishonga ishora
+  {
+    pose: {
+      bob: 1,
+      lean: 1,
+      leftFoot: [10, 28],
+      rightFoot: [22, 27],
+      hand: [24, 16],
+      tip: [28, 26],
+      otherHand: [9, 19],
+    },
+    top: [6, -5],
+    glow: true,
+  },
+  // qayta tik turish
+  {
+    pose: {
+      bob: 0,
+      lean: 0,
+      leftFoot: [12, 27],
+      rightFoot: [20, 27],
+      hand: [23, 18],
+      tip: [27, 28],
+      otherHand: [9, 19],
+    },
+    top: [2, -10],
+    glow: false,
+  },
+];
+
 /** Soqol uchining chayqalishi (px): yurish va hujumda kadrdan kadrga o'zgaradi. */
 export const BEARD_SWAY: Record<"idle" | "walk" | "attack" | "hurt", readonly number[]> = {
   idle: [0, 0],
@@ -5300,7 +5370,10 @@ export function spritePixels(
             : heroPose(poses, state, frame, sub),
           back,
         );
-      else if (kind === "mage") {
+      else if (kind === "mage" && state === "attack" && frame >= MAGE_SUPER_FRAME.raise) {
+        const sp = MAGE_SUPER_POSES[frame - MAGE_SUPER_FRAME.raise] ?? MAGE_SUPER_POSES[0]!;
+        mage(p, sp.pose, back, sp.top, sp.glow, frame === MAGE_SUPER_FRAME.point ? 1 : 0);
+      } else if (kind === "mage") {
         const tops = staffTops[state];
         let top = tops[frame] ?? tops[0]!;
         if (sub) top = midPoint(top, tops[(frame + 1) % tops.length]!);
@@ -5896,6 +5969,35 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     ".V....XUX...",
     "XVX..XUX....",
     ".X..XX......",
+  ],
+  // OSMON TOSHI kartalari: uchta kichik meteor dumi / cho'g'langan krater
+  meteorrain: [
+    "......X...F.",
+    ".....XF..FL.",
+    "X...XF..XLR.",
+    ".F.XF..XLRX.",
+    "FLRX..XLRX..",
+    "LRRX.XLRX..X",
+    "RRX..LRX..XF",
+    "XX..XRX..XFL",
+    "...XRX..XLR.",
+    "..XLRX.XLRX.",
+    "..LRX..LRRX.",
+    "..XX...XXX..",
+  ],
+  eternalcrater: [
+    "....F..F....",
+    "...F.FF.F...",
+    "....FLLF....",
+    "...F.LL.F...",
+    "............",
+    "..XKKKKKKX..",
+    ".XKRFLLFRKX.",
+    "XKRFLLLLFRKX",
+    "XKRRFLLFRRKX",
+    ".XKRRFFRRKX.",
+    "..XKKKKKKX..",
+    "...XXXXXX...",
   ],
   petalveil: [
     "....U..U....",

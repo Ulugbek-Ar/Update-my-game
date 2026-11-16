@@ -859,6 +859,33 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.wideBlade = true),
     ok: (p) => !p.wideBlade,
   },
+  // ---- SUPER kartalari (OSMON TOSHI — Sehrgar) ----
+  {
+    id: "meteorrain",
+    name: "METEOR YOMG'IRI",
+    desc: "Superdan keyin yana 3 ta kichik meteor tushadi",
+    color: "#ff9a3c",
+    tags: ["super"],
+    icon: "meteorrain",
+    hero: "mage",
+    super: "sky-stone",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.meteorRain = true),
+    ok: (p) => !p.meteorRain,
+  },
+  {
+    id: "eternalcrater",
+    name: "ABADIY KRATER",
+    desc: "Krater cho'g'i ikki baravardan ko'p turadi",
+    color: "#ff9a3c",
+    tags: ["super"],
+    icon: "eternalcrater",
+    hero: "mage",
+    super: "sky-stone",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.eternalCrater = true),
+    ok: (p) => !p.eternalCrater,
+  },
 ];
 
 /**
