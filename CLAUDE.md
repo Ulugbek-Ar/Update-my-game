@@ -10,3 +10,11 @@ Har bir yangi versiyada (`src/game/version.ts` dagi `GAME_VERSION` o'zgarganda) 
 4. **Yangi qahramon (o'ynaladigan personaj) qo'shilgan bo'lsa** — alohida sahna: `"hero": true`, `"video": 6`, `"text"` (hujumi, kuchlari, o'ziga xosligi), qadamlar: qahramonni tanlash (`click`/`eval`) → `start` → `wave` → `spawn` (bir nechta oddiy dushman). Videoda qahramon o'zi jang qiladi. Format: `screenshots/README.md`.
 5. **APK:** `GAME_VERSION` x.y.0 bo'lsa (masalan 2.4.0) post bilan birga imzolangan APK ham kanalga yuboriladi; x.y.z (z>0) — faqat post. Tafsilotlar va imzo secrets: `docs/apk.md`. APK'dan keyin kompyuter fayllari (PikselQala-Windows.zip, PikselQala-portable.zip) ham yuboriladi va Windows workflow ularni Release'ga qo'shadi: `docs/windows.md`. Android build'ga tegishli o'zgarishlar `npm run build:app` va `npx cap sync android` bilan tekshirilsin.
 6. Sinash: `bun run dev` dan keyin `PW_DIR=<playwright o'rnatilgan papka> node scripts/screenshot.mjs` — rasmlar `shots/` ga tushadi.
+
+## Modellar va agentlar
+
+- Asosiy sessiya Opus'da ishlaydi: mexanika, balans, kartalar, onlayn/server, testlar, buglar, reliz.
+- Vizual ish (sprite, animatsiya, super effekti, cut-in, boss kirishi) — `piksel-rassom` agentiga (`.claude/agents/piksel-rassom.md`, Fable) topshiriladi. Unga aniq vazifa, kerakli fayllar ro'yxati va qabul mezonlarini ber.
+- Rassom tugatgach: asosiy sessiya natijani ko'rib chiqadi, testlarni ishga tushiradi, commit va push qiladi.
+- Agar rassom agent ishlamasa (Fable limiti tugagan bo'lsa) — vizual ishni o'zing soddaroq qil yoki `docs/progress.md` ga "rassom kutilmoqda" deb yozib, boshqa ishga o't.
+- Har versiya yangi sessiyada boshlanadi (uzun sessiya qimmat).
