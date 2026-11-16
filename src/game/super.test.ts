@@ -775,7 +775,9 @@ describe("Super kartasi portreti", () => {
         colors: ["#050307", "#2a1a30", "#4a3a5a", "#aab4c4", "#b02a2a"],
       })[4],
     ).toBe("#4a3a5a");
-    // superi yo'q qahramonda portret yo'q
-    expect(portraitPixels("mage")).toBeNull();
+    // superi yo'q qahramonda portret yo'q; Sehrgarda — yovuz sehrgar portreti (96x96)
+    expect(portraitPixels("hunter")).toBeNull();
+    expect(portraitPixels("gunner")).toBeNull();
+    expect(portraitPixels("mage")?.length).toBe(portraitGrid("mage") ** 2);
   });
 });

@@ -18,6 +18,7 @@ import {
   paladinPortraitColors,
   paladinPortraitPixels,
 } from "./paladinPortrait";
+import { MAGE_PORTRAIT_COLORS, MAGE_PORTRAIT_GRID, magePortraitPixels } from "./magePortrait";
 import {
   SAMURAI_PORTRAIT_GRID,
   samuraiPortraitColors,
@@ -30,7 +31,9 @@ export function portraitGrid(hero: Hero) {
     ? KNIGHT_PORTRAIT_GRID
     : hero === "samurai"
       ? SAMURAI_PORTRAIT_GRID
-      : PALADIN_PORTRAIT_GRID;
+      : hero === "mage"
+        ? MAGE_PORTRAIT_GRID
+        : PALADIN_PORTRAIT_GRID;
 }
 
 /** Paladin portreti kadrlari: tirqishdagi nur kuchayib boradi, toj yaltiraydi */
@@ -40,6 +43,9 @@ export const PALADIN_PORTRAIT_VARIANTS = ["", "bright", "blaze"] as const;
 export const SAMURAI_PORTRAIT_VARIANTS = ["closed", "open", "flash"] as const;
 
 /** Ritsar portreti kadrlari (variant nomi → kadr): past, shamolda, tig' yaltirashi */
+/** Sehrgar portreti kadrlari: tayoq ko'tariladi, kristall yorishadi, ko'zlar chaqnaydi */
+export const MAGE_PORTRAIT_VARIANTS = ["", "raised", "flash"] as const;
+
 export const KNIGHT_PORTRAIT_VARIANTS = ["", "wind", "glint"] as const;
 
 const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, "0");
@@ -58,6 +64,8 @@ function mix(a: string, b: string, k: number) {
 export function portraitColors(hero: Hero, palette?: SpritePalette): string[] {
   if (hero === "paladin") return paladinPortraitColors(palette?.colors ?? PALETTES.paladin);
   if (hero === "samurai") return samuraiPortraitColors(palette?.colors ?? PALETTES.samurai);
+  // Sehrgar: yovuz sehrgarning o'z rang to'plami (skin palitrasi hozircha portretga ta'sir qilmaydi)
+  if (hero === "mage") return [...MAGE_PORTRAIT_COLORS];
   if (hero !== "knight") return [...(palette?.colors ?? PALETTES[hero])];
   const base: string[] = [...KNIGHT_PORTRAIT_COLORS];
   const pc = palette?.colors;
@@ -94,6 +102,14 @@ export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
         PALADIN_PORTRAIT_VARIANTS.indexOf(variant as (typeof PALADIN_PORTRAIT_VARIANTS)[number]),
       ),
     );
+  if (hero === "mage") {
+    return magePortraitPixels(
+      Math.max(
+        0,
+        MAGE_PORTRAIT_VARIANTS.indexOf(variant as (typeof MAGE_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
+  }
   if (hero === "samurai")
     return samuraiPortraitPixels(
       Math.max(

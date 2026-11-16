@@ -174,6 +174,7 @@ import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./supe
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
 import {
   KNIGHT_PORTRAIT_VARIANTS,
+  MAGE_PORTRAIT_VARIANTS,
   PALADIN_PORTRAIT_VARIANTS,
   SAMURAI_PORTRAIT_VARIANTS,
   superPortrait,
@@ -5662,11 +5663,15 @@ export class Game {
         superPortrait(
           this.hero,
           this.player.skin,
-          this.hero === "paladin"
-            ? PALADIN_PORTRAIT_VARIANTS[
+          this.hero === "mage"
+            ? MAGE_PORTRAIT_VARIANTS[
                 Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
               ]
-            : "",
+            : this.hero === "paladin"
+              ? PALADIN_PORTRAIT_VARIANTS[
+                  Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
+                ]
+              : "",
         ),
         text,
         this.fx.isReduced(),

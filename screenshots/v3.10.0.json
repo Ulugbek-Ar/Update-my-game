@@ -1,0 +1,187 @@
+[
+  {
+    "title": "Ritsar — UFQ KESIMI",
+    "text": "Ritsar bir tizzasiga cho'kib qilichiga kuch yig'adi va ulkan yarim oy kesimni xonaning oxirigacha uchiradi. Yo'lidagi hamma dushman bir lahza qotadi, so'ng SHING! bilan ikkiga bo'linadi. Super shari zarba bergan sari to'ladi — L yoki Q (telefonda shar tugmasi).",
+    "hero": true,
+    "video": 6,
+    "zoom": false,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.10.0",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
+      }
+    ]
+  },
+  {
+    "title": "Sehrgar — OSMON TOSHI",
+    "text": "Yovuz Sehrgar tayog'ini osmonga ko'taradi, osmonda qora-qizil darz ochiladi va dushmanlar to'dasiga ulkan meteorit tushadi. Markazdagilar o'ladi, chetdagilari uloqtirilib tosh qobiqda qotib qoladi, krater esa cho'g'lanib turadi.",
+    "hero": true,
+    "video": 6,
+    "zoom": false,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.10.0",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
+      }
+    ]
+  },
+  {
+    "title": "Samuray qiz — MING KESIM",
+    "text": "Samuray ko'zlarini yumadi, dunyo oq-qora bo'ladi — u g'oyib bo'lib ekran bo'ylab o'nlab kesik chaqnaydi. Katanani sekin qinga qaytargan lahzada hamma dushman gulbargga aylanib sochiladi.",
+    "hero": true,
+    "video": 6,
+    "zoom": false,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.10.0",
+          "pixel-rpg-hero": "samurai",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
+      }
+    ]
+  },
+  {
+    "title": "Sehrgarning yangi yovuz skinlari",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.10.0",
+          "pixel-rpg-hero": "mage",
+          "pixel-rpg-gold": "420"
+        }
+      },
+      {
+        "click": "DO'KON"
+      },
+      {
+        "wait": 300
+      },
+      {
+        "eval": "[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'SKINLAR').click();"
+      },
+      {
+        "wait": 400
+      },
+      {
+        "eval": "[...document.querySelectorAll('[aria-label=\"Skin qahramoni\"] [role=tab]')].find((b) => b.textContent.trim() === 'SEHRGAR')?.click();"
+      },
+      {
+        "wait": 2300
+      }
+    ]
+  }
+]
