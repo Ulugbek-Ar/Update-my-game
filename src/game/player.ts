@@ -73,8 +73,10 @@ export const PALADIN_KNOCK = 0.5;
 export const SHANG_WINDUP = 0.4;
 export const SHANG_CD = 0.9;
 export const SHANG_TIME = 0.22;
-/** Zarba yo'lagi: uzunligi reach × 2 (Ritsarniki reach + reach/4 ≈ 20 px — Paladinda 40 px), eni */
+/** Zarba yo'lagi: uzunligi reach × 2 + SHANG_EXTRA (Ritsarniki reach + reach/4 ≈ 22 px — Paladinda 42 px
+ *  yo'lak, tanadan uchigacha 44 px = Ritsarnikidan kamida 2x), eni */
 export const PALADIN_REACH = 20;
+export const SHANG_EXTRA = 2;
 export const SHANG_W = 18;
 /** OSMON HUKMI: 1s zaryad, 360° oltin zarb to'lqini (3x zarar), dushmanlar 1s gangiydi */
 export const SKY_CHARGE = 1;
@@ -793,6 +795,11 @@ export class Player implements Body {
   }
 
   /** Hujum zonasi (faqat hujum vaqtida). */
+  /** Paladin SHANG yo'lagi uzunligi (zarba maydoni, effekt va yoriq shu bilan chiziladi) */
+  get shangLen() {
+    return this.reach * 2 + SHANG_EXTRA;
+  }
+
   attackBox(): Body | null {
     if (this.paladin) return this.paladinBox();
     // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
@@ -809,12 +816,12 @@ export class Player implements Body {
 
   /**
    * Paladin zarba maydoni: OSMON HUKMI — atrofdagi keng doira (kvadrat), SHANG — qarab turgan tomonga
-   * uzun yo'lak (uzunligi reach × 2, eni SHANG_W): tanadan boshlab qilich uchigacha.
+   * uzun yo'lak (uzunligi shangLen, eni SHANG_W): tanadan boshlab qilich uchigacha.
    */
   private paladinBox(): Body | null {
     if (this.spinning) return { x: this.x, y: this.y, size: SKY_RADIUS * 2 } as Body;
     if (this.attackTimer <= 0) return null;
-    const len = this.reach * 2;
+    const len = this.shangLen;
     const c = len / 2 + 2;
     const horiz = this.fx !== 0;
     return {
@@ -1360,7 +1367,7 @@ export class Player implements Body {
 
   /** ZARB TO'LQINI: qilich tushgan joydan oldinga uchadi, yo'lidagi hamma dushmanga zarar beradi. */
   private launchWave() {
-    const off = this.reach * 2;
+    const off = this.shangLen;
     this.bolts.push({
       x: this.x + this.fx * off,
       y: this.y + this.fy * off + 2,

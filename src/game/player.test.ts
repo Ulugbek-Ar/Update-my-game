@@ -25,7 +25,7 @@ describe("Kuchli (aylana) zarba", () => {
     hold(p, input, CHARGE_TIME + 0.06);
     expect(p.spinning).toBe(true);
     expect(p.spinCooldown).toBeCloseTo(SPIN_CD, 1);
-    expect(p.hitDamage).toBe(p.damage * 2);
+    expect(p.hitDamage).toBe(p.damage * 2.5);
     const box = p.attackBox()!;
     expect(box.x).toBe(p.x);
     expect(box.y).toBe(p.y);

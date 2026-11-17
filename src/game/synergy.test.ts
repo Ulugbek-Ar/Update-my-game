@@ -146,7 +146,8 @@ describe("Sinergiyalar", () => {
       expect(g.fx.texts.some((t) => t.s === "SINERGIYA!")).toBe(true);
       expect(g.synNote?.tag).toBe(tag);
       // qahramonning eng zo'r qobiliyati kuchaydi
-      if (hero === "knight" || hero === "hunter") expect(p.strongMul).toBe(3);
+      if (hero === "knight") expect(p.strongMul).toBe(3.5);
+      if (hero === "hunter") expect(p.strongMul).toBe(3);
       if (hero === "paladin") expect(p.strongMul).toBe(4);
       if (hero === "gunner") expect(p.fanPierce).toBe(true);
       if (hero !== "mage" && hero !== "gunner") expect(heroDps(p)).toBeGreaterThan(dps);
