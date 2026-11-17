@@ -201,7 +201,7 @@ export function renderWindupSparks(
   }
   if (p.attackTimer <= 0 || p.spinning) return;
   const k = p.attackTimer / SHANG_TIME;
-  const len = p.reach * 2;
+  const len = p.shangLen;
   const horiz = p.fx !== 0;
   const w = horiz ? len : SHANG_W,
     h = horiz ? SHANG_W : len;

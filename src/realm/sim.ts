@@ -1753,7 +1753,7 @@ export class RealmSim {
         y: p.y,
         fx: p.fx,
         fy: p.fy,
-        len: p.reach * 2,
+        len: p.shangLen,
       });
     }
     if (p.judged) {

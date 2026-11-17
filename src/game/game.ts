@@ -2984,7 +2984,7 @@ export class Game {
     if (p.slammed) {
       p.slammed = false;
       this.slamKills = { id: this.slamKills.id + 1, kills: 0 };
-      const len = p.reach * 2;
+      const len = p.shangLen;
       const tx = p.x + p.fx * (len + 2),
         ty = p.y + p.fy * (len + 2) + 6;
       this.cracks.push({

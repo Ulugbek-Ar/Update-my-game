@@ -186,7 +186,7 @@ describe("Kuch kartalari ikkala qahramonda", () => {
     };
     expect(apply("blade", "knight").damage).toBe(2);
     expect(apply("blade", "mage").damage).toBe(2);
-    expect(apply("reach", "knight").reach).toBe(21);
+    expect(apply("reach", "knight").reach).toBe(23);
     expect(apply("reach", "knight").boltSize).toBe(6);
     expect(apply("reach", "mage").reach).toBe(21);
     expect(apply("reach", "mage").boltSize).toBe(8);

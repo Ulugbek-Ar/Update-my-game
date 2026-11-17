@@ -151,7 +151,8 @@ function applyThree(tag: Tag, p: Player) {
   if (tag === "super") p.superRate = SUPER_RATE;
   if (tag !== HERO_TAG[p.hero]) return;
   // qahramonning eng zo'r qobiliyati
-  if (p.hero === "knight" || p.hero === "hunter" || p.hero === "samurai") p.strongMul = 3;
+  if (p.hero === "knight") p.strongMul = 3.5;
+  else if (p.hero === "hunter" || p.hero === "samurai") p.strongMul = 3;
   else if (p.hero === "paladin") p.strongMul = 4;
   else if (p.hero === "gunner") p.fanPierce = true;
   // Sehrgar: teleport portlashi — Game
