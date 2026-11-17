@@ -479,6 +479,10 @@ export class Player implements Body {
       this.boltSpeed = 210;
       this.boltSize = 5;
     }
+    if (hero === "knight") {
+      this.strongMul = 2.5;
+      this.reach = 18;
+    }
     if (hero === "paladin") {
       this.hp = this.maxHp = PALADIN_MAX_HP;
       this.speed = PALADIN_SPEED;
