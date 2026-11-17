@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Ritsar kuchaydi",
+    "text": "Ritsarning kuchli aylana zarbasi endi 2.5 barobar uradi, qilichi uzoqroqqa yetadi. Paladinning SHANG yo'lagi ham uzaydi — u Ritsarnikidan baribir ikki barobar uzun.",
+    "hero": true,
+    "video": 6,
+    "zoom": false,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.11.0",
+          "pixel-rpg-hero": "knight",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ]
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0;"
+      },
+      {
+        "wait": 700
+      }
+    ]
+  }
+]

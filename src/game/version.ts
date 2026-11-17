@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.10.0";
+export const GAME_VERSION = "3.11.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.11.0",
+    date: "2026-11-17",
+    notes:
+      "Ritsar kuchaydi — test qiluvchilar fikri bo'yicha. Kuchli aylana zarba endi 2.5 barobar uradi. Qilich uzoqroqqa yetadi. Uchta Ritsar kartasi sinergiyasi 3.5 barobar. Paladinning SHANG yo'lagi ham uzaydi — u baribir Ritsarnikidan ikki barobar uzun.",
+  },
   {
     version: "3.10.0",
     date: "2026-11-16",
