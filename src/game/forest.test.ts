@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { bossHpFor } from "./bossPower";
+import { WORLD_BOSS_MUL, bossHpFor } from "./bossPower";
 import { CLOUD_LIFE, CLOUD_TICK, Game, WEB_SNARE } from "./game";
 import {
   Enemy,
@@ -104,7 +104,9 @@ describe("3-dunyo: faqat o'z moblari", () => {
       for (const e of g.enemies) expect(W3.has(e.kind)).toBe(true);
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP, 0, g.powerFactor()));
+    expect(g.boss!.maxHp).toBe(
+      bossHpFor(g.player, KING_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.forest),
+    );
     expect(KING_HP).toBe(50);
     expect(g.fx.snowOn).toBe(false);
   });
@@ -124,7 +126,9 @@ describe("3-dunyo: faqat o'z moblari", () => {
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
     // cheksizda har qaytishda kuchliroq: asosiy jon +15 va moslashuv +10%
-    expect(g.boss!.maxHp).toBe(bossHpFor(g.player, KING_HP + 15, 1, g.powerFactor()));
+    expect(g.boss!.maxHp).toBe(
+      bossHpFor(g.player, KING_HP + 15, 1, g.powerFactor() * WORLD_BOSS_MUL.forest),
+    );
     expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(g.player, KING_HP, 0, g.powerFactor()));
   });
 

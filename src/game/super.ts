@@ -340,7 +340,7 @@ const HORIZON_CUT: SuperDef = {
   // kesilganlar "qotadi": zarbadan "SHING!" gacha dunyo deyarli to'xtaydi
   slow: { prep: 0.25, strike: 0.04, after: 0.04 },
   strike: { mark: 0, gap: 0, tail: 0, min: 0.8 },
-  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  dmg: { kill: true, boss: 0.1, bossCap: 0.1 },
   heal: 0,
   healRadius: 0,
   after: { flat: 0.3, dust: 0.5, bossKneel: 0.8 },

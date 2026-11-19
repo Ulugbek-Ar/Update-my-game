@@ -22,7 +22,7 @@ import {
   spiderSummonCount,
   summonCount,
 } from "./boss";
-import { INTRO_TIME, PHASE_GUARD, bossHpFor } from "./bossPower";
+import { INTRO_TIME, PHASE_GUARD, WORLD_BOSS_MUL, bossHpFor } from "./bossPower";
 import { introFrame, phasePulse } from "./mobAnim";
 import { renderAirAmbience, renderGroundAmbience } from "./ambience";
 import { CombatFx, chestPop, flyerPos, renderChestRays, renderSpark } from "./combatFx";
@@ -1212,9 +1212,13 @@ export class Game {
       this.boss = sakura
         ? new Oni(bossHpFor(p, bossHp(i, ONI_HP), cycle, this.powerFactor()))
         : forest
-          ? new ForestKing(bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor()))
+          ? new ForestKing(
+              bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor() * WORLD_BOSS_MUL.forest),
+            )
           : ice
-            ? new Queen(bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor()))
+            ? new Queen(
+                bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor() * WORLD_BOSS_MUL.ice),
+              )
             : new Boss(bossHpFor(p, bossHp(i), cycle, this.powerFactor()));
       // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
       this.intro = INTRO_TIME;

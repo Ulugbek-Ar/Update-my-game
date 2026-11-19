@@ -23,6 +23,7 @@ import {
   phaseFloor,
   phaseFor,
   type BossPhase,
+  WORLD_BOSS_CD,
 } from "./bossPower";
 
 export const BOSS_MAX_HP = 30;
@@ -861,7 +862,7 @@ export class Queen extends Boss {
         this.castAnim = BEAM_WARN + 0.2;
         this.justWarned = true;
       }
-      this.castTimer = (this.enraged ? 2.6 : 3.4) + Math.random();
+      this.castTimer = ((this.enraged ? 2.6 : 3.4) + Math.random()) * WORLD_BOSS_CD;
       this.anim.set("attack", true);
     }
   }
@@ -1297,7 +1298,7 @@ export class ForestKing extends Boss {
           life: KING_ROOT_SHOW,
         });
       }
-      this.castTimer = (this.enraged ? 2.4 : 3.2) + Math.random() * 0.8;
+      this.castTimer = ((this.enraged ? 2.4 : 3.2) + Math.random() * 0.8) * WORLD_BOSS_CD;
       this.castAnim = 0.6;
       this.justSlammed = true;
       this.justWarned = true;
