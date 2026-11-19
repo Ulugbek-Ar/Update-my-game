@@ -11,8 +11,10 @@ export const WINDOWS_ZIP = "PikselQala-Windows.zip";
 export const PORTABLE_ZIP = "PikselQala-portable.zip";
 
 /** PC fayllari APK bilan bir xil: faqat x.y.0 versiyalarda (x.y.z, z > 0 — faqat post). */
+/** Kompyuter fayllari APK bilan bir xil qoida: x.y.0, y — 10 ga karrali (src/lib/apk.ts). */
 export function isPcRelease(version: string) {
-  return /^\d+\.\d+\.0$/.test(version);
+  const m = /^(\d+)\.(\d+)\.0$/.exec(version);
+  return !!m && Number(m[2]) % 10 === 0;
 }
 
 export function releaseUrl(repo: string, version: string) {

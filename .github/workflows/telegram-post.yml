@@ -162,8 +162,8 @@ jobs:
           HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
         run: |
           V="${{ steps.check.outputs.version }}"
-          if [ "$HAS_KEYSTORE" = "true" ] && echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.0$'; then export APK_COMING=true; fi
-          if echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.0$'; then export PC_COMING=true; fi
+          if [ "$HAS_KEYSTORE" = "true" ] && [ "$(node --experimental-strip-types -e "import('./src/lib/apk.ts').then((m) => console.log(m.isApkRelease(process.argv[1])))" "$V")" = "true" ]; then export APK_COMING=true; fi
+          if [ "$(node --experimental-strip-types -e "import('./src/lib/pcfiles.ts').then((m) => console.log(m.isPcRelease(process.argv[1])))" "$V")" = "true" ]; then export PC_COMING=true; fi
           node --experimental-strip-types scripts/telegram-post.mjs
 
       - name: Versiyani "chiqdi" deb belgilash
@@ -212,7 +212,7 @@ jobs:
           if [ "$MANUAL" = "true" ]; then
             SEND=true
           elif [ "$POST_RESULT" = "success" ] && [ "$POSTED" = "true" ] && [ "$POST_VERSION" = "$V" ]; then
-            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=APK::v$V — kichik tuzatish (x.y.z), APK yuborilmaydi"; fi
+            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=APK::v$V — APK faqat har 10 ta versiyada (x.y.0, y — 10 ga karrali), bu safar faqat post"; fi
           fi
           if [ "$SEND" = "true" ] && [ "$HAS_KEYSTORE" != "true" ]; then
             echo "::warning title=APK::Imzo secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) topilmadi — APK kanalga yuborilmaydi. docs/apk.md ga qarang."
@@ -287,7 +287,7 @@ jobs:
           if [ "$MANUAL" = "true" ]; then
             SEND=true
           elif [ "$POST_RESULT" = "success" ] && [ "$POSTED" = "true" ] && [ "$POST_VERSION" = "$V" ]; then
-            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=PC::v$V — kichik tuzatish (x.y.z), PC fayllari yuborilmaydi"; fi
+            if [ "$RELEASE" = "true" ]; then SEND=true; else echo "::notice title=PC::v$V — PC fayllari faqat har 10 ta versiyada, bu safar yuborilmaydi"; fi
           fi
           echo "send=$SEND" >> "$GITHUB_OUTPUT"
           echo "PC fayllari v$V yuboriladi: $SEND"

@@ -6,7 +6,7 @@ Play Market'ga chiqqunga qadar Android ilova Telegram kanalda APK fayl sifatida 
 
 | Holat                                                                  | Kanalga                                                   |
 | ---------------------------------------------------------------------- | --------------------------------------------------------- |
-| `GAME_VERSION` **x.y.0** (masalan 2.3.0, 2.4.0) main'ga push qilindi   | post + `PikselQala-v<versiya>.apk`                        |
+| `GAME_VERSION` **x.y.0, y — 10 ga karrali** (masalan 3.20.0, 4.0.0) main'ga push qilindi   | post + `PikselQala-v<versiya>.apk`                        |
 | `GAME_VERSION` **x.y.z**, z > 0 (masalan 2.3.1) — kichik tuzatish      | faqat post, APK yo'q                                      |
 | **Actions → Telegram post → Run workflow**, "APK yuborish" belgilangan | joriy (eng oxirgi) versiya APK'si, post yuborilmaydi      |
 | Imzo secrets yo'q                                                      | APK **yuborilmaydi**, workflow faqat ogohlantirish yozadi |

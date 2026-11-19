@@ -3,8 +3,11 @@ import { apkCaption, apkFileName, isApkRelease } from "./apk";
 
 describe("Telegram kanalga APK", () => {
   it("faqat x.y.0 versiyalarda yuboriladi", () => {
-    expect(isApkRelease("2.3.0")).toBe(true);
-    expect(isApkRelease("2.4.0")).toBe(true);
+    expect(isApkRelease("2.3.0")).toBe(false);
+    expect(isApkRelease("3.13.0")).toBe(false);
+    expect(isApkRelease("3.20.0")).toBe(true);
+    expect(isApkRelease("4.0.0")).toBe(true);
+    expect(isApkRelease("4.10.0")).toBe(true);
     expect(isApkRelease("10.0.0")).toBe(true);
     expect(isApkRelease("2.3.1")).toBe(false);
     expect(isApkRelease("2.2.10")).toBe(false);

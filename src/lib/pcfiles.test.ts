@@ -11,7 +11,8 @@ import {
 
 describe("PC fayllarini Telegram'ga yuborish", () => {
   it("faqat x.y.0 versiyalarda", () => {
-    expect(isPcRelease("2.8.0")).toBe(true);
+    expect(isPcRelease("2.8.0")).toBe(false);
+    expect(isPcRelease("3.20.0")).toBe(true);
     expect(isPcRelease("3.0.0")).toBe(true);
     expect(isPcRelease("2.8.1")).toBe(false);
   });

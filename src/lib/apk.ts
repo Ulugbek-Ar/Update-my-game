@@ -4,9 +4,13 @@
  * Node `--experimental-strip-types` bilan to'g'ridan-to'g'ri import qilinadi.
  */
 
-/** APK faqat x.y.0 versiyalarda yuboriladi; x.y.z (z > 0) kichik tuzatishlarda — faqat post. */
+/**
+ * APK har 10 ta versiyada bir marta yuboriladi: x.y.0, y — 10 ga karrali (3.20.0, 4.0.0, 4.10.0).
+ * Qolgan versiyalarda (3.13.0, 3.12.1) — faqat post. Qo'lda "APK yuborish" har doim ishlaydi.
+ */
 export function isApkRelease(version: string) {
-  return /^\d+\.\d+\.0$/.test(version);
+  const m = /^(\d+)\.(\d+)\.0$/.exec(version);
+  return !!m && Number(m[2]) % 10 === 0;
 }
 
 export function apkFileName(version: string) {
