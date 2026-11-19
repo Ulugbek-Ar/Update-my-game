@@ -51,9 +51,9 @@ export const BERSERK_SPEED = 1.35;
 /** Katta zarbalar (urib-tushirish, hamla, nur) — 2 yurak */
 export const BIG_HIT = 2;
 /** 2- va 3-dunyo bosslari kuchliroq: jon ko'paytmasi (1-dunyo Iblisi va Oni — 1) */
-export const WORLD_BOSS_MUL = { ice: 1.3, forest: 1.6 } as const;
-/** Qor Malikasi va O'rmon Shohi hujumlari orasidagi kutish ko'paytmasi (~15% qisqa) */
-export const WORLD_BOSS_CD = 0.85;
+export const WORLD_BOSS_MUL = { ice: 1.3, forest: 1.05 } as const;
+/** Qor Malikasi va O'rmon Shohi hujumlari orasidagi kutish ko'paytmasi (~25% qisqa) */
+export const WORLD_BOSS_CD = 0.75;
 /** Boss kirish sahnasi (namoyish) davomiyligi */
 export const INTRO_TIME = 2.6;
 
