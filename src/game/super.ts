@@ -61,7 +61,11 @@ export type SuperSound =
   | "volleyLoose"
   | "volleyHit"
   | "volleyBossHit"
-  | "volleyEnd";
+  | "volleyEnd"
+  | "frenzySpin"
+  | "frenzyGo"
+  | "frenzyClick"
+  | "frenzyHolster";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -541,6 +545,70 @@ const TEN_ARROWS: SuperDef = {
   fx: "arrows",
 };
 
+/**
+ * CHEKSIZ O'Q (Mergan) — v3.14 da ochildi.
+ * Tayyorlanish (0.5 s): Mergan to'pponchani tepaga ko'tarib barabanni aylantiradi, boshi ustida ∞
+ * belgisi chaqnaydi (daxlsiz, joyida). Zarba (3.5 s; UZUN DASHT kartasi bilan 5 s): boshqaruv
+ * qaytadi — baraban tugamaydi, qayta o'qlash yo'q (GUN_AMMO / RELOAD_TIME o'chadi), otish ~3 baravar
+ * tez; quroli qizib boradi, har o'qdan gilza yerga sakraydi. Oqibat (0.5 s): gilzalar "puf" bo'lib
+ * tutunga aylanadi, Mergan to'pponchani g'ilofga soladi — baraban to'la.
+ *
+ * Zaryad 20. Bossga: tez otishning QO'SHIMCHA zarari bitta superda boss maksimal jonining 10% idan
+ * oshmaydi (oddiy tezlikdagi ulush — har o'qning `rate` qismi — odatdagidek). Kartalar: QIZIGAN
+ * PO'LAT (o'qlar 1.5x va 2 dushmandan teshib o'tadi), UZUN DASHT (5 s).
+ */
+const ENDLESS_LEAD: SuperDef = {
+  id: "endless-lead",
+  hero: "gunner",
+  name: "CHEKSIZ O'Q",
+  desc: "Uch yarim soniya baraban tugamaydi — o'qlashsiz tez otish",
+  color: "#ff9a3c",
+  charge: 20,
+  time: 4.5,
+  params: { shells: 28, shellsReduced: 6 },
+  open: true,
+  stages: { prep: 0.5, strike: 3.5, after: 0.5 },
+  // faqat tayyorlanishda dunyo sekin; tez otish paytida o'yin odatdagi tezlikda
+  slow: { prep: 0.25, strike: 1, after: 1 },
+  strike: { mark: 0, gap: 0, tail: 0, min: 3.5 },
+  dmg: { kill: false, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0, dust: 0, bossKneel: 0 },
+  // super shari: qizigan mis — to'q sariq
+  orb: { accent: "#c8641a", accentDark: "#4a2a08", glow: "#ffbe6a" },
+  frenzy: { time: 3.5, long: 5, rate: 0.35, hot: { dmg: 1.5, pierce: 2 }, bossPower: 1 },
+  card: { time: 0.7, short: 0.25, sub: "MERGAN SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "frenzySpin",
+    mark: "frenzyClick",
+    hit: "frenzyClick",
+    bossHit: "frenzyClick",
+    end: "frenzyHolster",
+    strike: "frenzyGo",
+  },
+  fx: "frenzy",
+};
+
+/**
+ * Tez otishda bossga o'q zarari: oddiy tezlikdagi ulush (dmg × rate) har doim, qo'shimcha qism
+ * (dmg × (1 − rate)) — shu superda bossga berilgan qo'shimcha zarar (`extra`) bilan birga bossCap
+ * ulushidan oshmaydi. Qaytaradi: jami zarar va uning qo'shimcha qismi.
+ */
+export function frenzyBossDamage(def: SuperDef, maxHp: number, extra: number, dmg: number) {
+  const rate = def.frenzy?.rate ?? 1;
+  const base = dmg * rate;
+  const add = Math.max(0, Math.min(dmg - base, def.dmg.bossCap * maxHp - extra));
+  return { dmg: base + add, extra: add };
+}
+
+/** Tez otish davomiyligi (UZUN DASHT kartasi bilan — uzunroq) */
+export function frenzyTime(def: SuperDef, long = false) {
+  const F = def.frenzy;
+  return F ? (long ? F.long : F.time) : def.stages.strike;
+}
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
@@ -548,6 +616,7 @@ export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   knight: HORIZON_CUT,
   mage: SKY_STONE,
   hunter: TEN_ARROWS,
+  gunner: ENDLESS_LEAD,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */
@@ -986,6 +1055,8 @@ export class SuperCast {
   craterTime = 0;
   /** O'N O'Q OVI: uchayotgan o'qlar (zarba bosqichida egasi to'ldiradi) */
   arrows: SuperArrow[] = [];
+  /** CHEKSIZ O'Q: tez otishda bossga berilgan qo'shimcha zarar (chegara uchun) */
+  frenzyExtra = new Map<object, number>();
 
   constructor(
     readonly def: SuperDef,
@@ -994,6 +1065,11 @@ export class SuperCast {
   ) {
     this.strikeTime = def.stages.strike;
     if (cardTime <= 0) this.stage = "prep";
+  }
+
+  /** Egasi boshqaruvni qaytargan bosqich (CHEKSIZ O'Q: tez otish va g'ilofga solish) */
+  get free() {
+    return !!this.def.frenzy && (this.stage === "strike" || this.stage === "after") && !this.done;
   }
 
   /** Joriy bosqich davomiyligi */

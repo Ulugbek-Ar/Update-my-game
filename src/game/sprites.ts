@@ -2161,7 +2161,13 @@ const gunnerShots: readonly {
   { hand: [24, 15], dir: [1, 0], flash: false, smoke: false, other: [11, 19] },
   { hand: [23, 14], dir: [3, -1], flash: true, smoke: false, other: [11, 19] },
   { hand: [24, 17], dir: [3, 1], flash: false, smoke: true, other: [10, 19] },
+  // CHEKSIZ O'Q super kadrlari (GUNNER_SUPER_FRAME): to'pponcha tepaga, ikkinchi qo'l barabanni aylantiradi
+  { hand: [22, 7], dir: [1, -3], flash: false, smoke: false, other: [12, 18] },
+  { hand: [22, 7], dir: [1, -3], flash: false, smoke: false, other: [20, 9] },
 ];
+
+/** CHEKSIZ O'Q super kadrlari ("attack" holatida — Player.superFrame) */
+export const GUNNER_SUPER_FRAME = { up: 3, spin: 4 } as const;
 
 /** Plash etagining chayqalishi (px): yurishda kadrdan kadrga o'zgaradi. */
 const COAT_SWAY: Record<"idle" | "walk" | "attack" | "hurt", readonly number[]> = {
@@ -6088,6 +6094,35 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "....G.......",
     "...GDG......",
     "....G.......",
+  ],
+  // CHEKSIZ O'Q kartalari: qizigan stvol / quyosh botayotgan dasht va uzun soya
+  hotsteel: [
+    "...Y..Y.....",
+    "....Y..Y....",
+    "...Y..Y.....",
+    "............",
+    "XXXXXXXXXX..",
+    "XFFFLLLLFMX.",
+    "XXXXXXXXMMX.",
+    "......XHHX..",
+    ".....XHHX...",
+    "....XHHX....",
+    "....XXX.....",
+    "............",
+  ],
+  longprairie: [
+    "............",
+    "....JJJJ....",
+    "...JYYYYJ...",
+    "..JYYYYYYJ..",
+    "MMMMMMMMMMMM",
+    "HHHHHHHHHHHH",
+    "HHH.HHHHHHHH",
+    "HH...HHHHHHH",
+    "HHHN..HHHHHH",
+    "HHHNN...HHHH",
+    "HHHHNNN....H",
+    "HHHHHHHNNN..",
   ],
   petalveil: [
     "....U..U....",

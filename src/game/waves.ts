@@ -913,6 +913,33 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.chainBlast = true),
     ok: (p) => !p.chainBlast,
   },
+  // ---- SUPER kartalari (CHEKSIZ O'Q — Mergan) ----
+  {
+    id: "hotsteel",
+    name: "QIZIGAN PO'LAT",
+    desc: "Super o'qlari 1.5x kuchli va 2 dushmandan teshib o'tadi",
+    color: "#ff9a3c",
+    tags: ["super"],
+    icon: "hotsteel",
+    hero: "gunner",
+    super: "endless-lead",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.hotSteel = true),
+    ok: (p) => !p.hotSteel,
+  },
+  {
+    id: "longprairie",
+    name: "UZUN DASHT",
+    desc: "Cheksiz o'q 3.5 emas, 5 soniya davom etadi",
+    color: "#ff9a3c",
+    tags: ["super"],
+    icon: "longprairie",
+    hero: "gunner",
+    super: "endless-lead",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.longPrairie = true),
+    ok: (p) => !p.longPrairie,
+  },
 ];
 
 /**

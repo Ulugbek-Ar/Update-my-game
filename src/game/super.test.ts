@@ -45,7 +45,7 @@ type GI = {
 const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
 const DT = 1 / 60;
 /** Superi ochiq qahramonlar (har versiyada qo'shiladi) */
-const SUPER_HEROES: Hero[] = ["paladin", "samurai", "knight", "mage", "hunter"];
+const SUPER_HEROES: Hero[] = ["paladin", "samurai", "knight", "mage", "hunter", "gunner"];
 
 function makeGame(hero: Hero = "paladin") {
   if (hero !== "knight" && hero !== "mage" && hero !== "hunter") unlockHero(hero);
@@ -97,7 +97,7 @@ beforeEach(() => {
 });
 
 describe("Super tizimi: ma'lumot", () => {
-  it("is open: the Paladin, the Samurai, the Knight, the Mage and the Hunter have supers", () => {
+  it("is open: every hero has a super (v3.14: the Hunter and the Gunner too)", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(superFor("paladin")?.name).toBe("ILOHIY HUKM");
     // v4.0: ikkinchi super — Samurayning MING KESIMI
@@ -108,6 +108,9 @@ describe("Super tizimi: ma'lumot", () => {
     expect(superFor("mage")?.name).toBe("OSMON TOSHI");
     // v3.14: beshinchi super — Ovchining O'N O'Q OVI
     expect(superFor("hunter")?.name).toBe("O'N O'Q OVI");
+    // v3.14: oltinchi super — Merganning CHEKSIZ O'Q
+    expect(superFor("gunner")?.name).toBe("CHEKSIZ O'Q");
+    expect(SUPER_HEROES.length).toBe(HEROES.length);
     for (const h of HEROES) if (!SUPER_HEROES.includes(h)) expect(superFor(h), h).toBeNull();
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superById("divine-judgment")).toBe(superFor("paladin"));
@@ -115,6 +118,7 @@ describe("Super tizimi: ma'lumot", () => {
     expect(superById("horizon-cut")).toBe(superFor("knight"));
     expect(superById("sky-stone")).toBe(superFor("mage"));
     expect(superById("ten-arrows")).toBe(superFor("hunter"));
+    expect(superById("endless-lead")).toBe(superFor("gunner"));
     expect(superById("yo'q")).toBeNull();
   });
 
@@ -690,6 +694,10 @@ describe("Super ijrosi (o'yinda)", () => {
 });
 
 describe("Superi yo'q qahramonlar", () => {
+  // v3.14 dan hamma qahramonda super bor — ro'yxat bo'sh, lekin superi yopiq qahramon qaytsa ishlaydi
+  it("every hero now has an open super", () => {
+    expect(HEROES.filter((h) => !SUPER_HEROES.includes(h))).toEqual([]);
+  });
   for (const hero of HEROES.filter((h) => !SUPER_HEROES.includes(h)))
     it(`${hero}: no meter, no orb, no super — and the game runs as before`, () => {
       const { g, gi } = makeGame(hero);
@@ -781,8 +789,6 @@ describe("Super kartasi portreti", () => {
     ).toBe("#4a3a5a");
     // superli har qahramonda portret bor (96x96): Sehrgar — yovuz sehrgar, Ovchi — yashil qalpoq
     for (const h of SUPER_HEROES) expect(portraitPixels(h)?.length, h).toBe(portraitGrid(h) ** 2);
-    // Merganning portreti superidan oldin tayyorlangan
-    for (const h of HEROES)
-      if (!SUPER_HEROES.includes(h) && h !== "gunner") expect(portraitPixels(h), h).toBeNull();
+    for (const h of HEROES) if (!SUPER_HEROES.includes(h)) expect(portraitPixels(h), h).toBeNull();
   });
 });

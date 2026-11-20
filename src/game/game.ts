@@ -167,6 +167,8 @@ import {
   impactZone,
   pathsHit,
   rainDrops,
+  frenzyBossDamage,
+  frenzyTime,
   launchVolley,
   nearestTarget,
   planStrikes,
@@ -645,6 +647,8 @@ const POWER_KEYS = [
   "eternalCrater",
   "fifteenArrows",
   "chainBlast",
+  "hotSteel",
+  "longPrairie",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -655,6 +659,23 @@ const POWER_KEYS = [
 type Powers = Pick<Player, (typeof POWER_KEYS)[number]>;
 function savePowers(p: Player): Powers {
   return Object.fromEntries(POWER_KEYS.map((k) => [k, p[k]])) as Powers;
+}
+
+/** Kichik piksel ∞ belgisi (13x6): Merganning CHEKSIZ O'Q superi paytida baraban o'rnida */
+function drawInfinity(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  ink: string,
+) {
+  const rows = [".XXX...XXX.", "X...X.X...X", "X....X....X", "X...X.X...X", ".XXX...XXX."];
+  rows.forEach((r, j) => {
+    for (let i = 0; i < r.length; i++) if (r[i] === "X") px(c, ink, x + i + 1, y + j + 1, 1, 1);
+  });
+  rows.forEach((r, j) => {
+    for (let i = 0; i < r.length; i++) if (r[i] === "X") px(c, color, x + i, y + j, 1, 1);
+  });
 }
 
 /** Butun o'yin holati shu obyektda — React state'da emas. */
@@ -2348,8 +2369,16 @@ export class Game {
       py0 = p.y;
     this.parryNote = false;
     if (this.superBuf > 0 && this.useSuper()) this.superBuf = 0;
-    if (this.cast) this.updateCast(raw);
-    else p.update(this.focus > 0 ? raw : dt, this.input);
+    // CHEKSIZ O'Q: tez otish paytida super davom etadi, lekin o'yinchi erkin harakat qiladi
+    const casting = !!this.cast;
+    if (casting) this.updateCast(raw);
+    const free = !!this.cast?.free;
+    if (!casting || free) p.update(this.focus > 0 ? raw : dt, this.input);
+    if (p.shells > 0) {
+      const ctx = this.scene ? this.sceneCtx() : null;
+      for (let i = 0; i < p.shells; i++) if (ctx) this.scene?.shot?.(ctx);
+      p.shells = 0;
+    }
     this.orbMove = dt > 0 ? Math.max(-1, Math.min(1, (p.x - px0) / (p.speed * dt))) : 0;
     // qadam changi (faqat ko'rinish): oyoq yerga tekkan kadrda
     if (p.vis.step) {
@@ -2357,7 +2386,7 @@ export class Game {
       if (!p.dashing && !p.dead) this.fx.dust(p.x, p.y + 12, STEP_DUST[this.chapter]);
     }
     // super paytida o'yinchi joyida turadi (muzda ham sirpanmaydi)
-    if (this.cast) this.slip.on = false;
+    if (this.cast && !free) this.slip.on = false;
     else this.applySlip(px0, py0, dt);
     this.updateSynergies(dt);
     this.updateArtifacts(dt);
@@ -2683,7 +2712,18 @@ export class Game {
             this.fx.burst(t.x, t.y, "#a6f08e", 5, 40, 1);
           }
           if (b.reflect) this.reflectHit(t);
-          else this.strike(t, p.damage * (b.power ?? 1));
+          else if (b.frenzy && t instanceof Boss && this.cast?.def.frenzy) {
+            // CHEKSIZ O'Q: tez otishning qo'shimcha zarari bossga chegaralangan (super.ts)
+            const cast = this.cast;
+            const r = frenzyBossDamage(
+              cast.def,
+              t.maxHp,
+              cast.frenzyExtra.get(t) ?? 0,
+              p.damage * (b.power ?? 1),
+            );
+            cast.frenzyExtra.set(t, (cast.frenzyExtra.get(t) ?? 0) + r.extra);
+            this.strike(t, r.dmg);
+          } else this.strike(t, p.damage * (b.power ?? 1));
           if (b.bullet && t instanceof Enemy && t.dead) this.drumKill(b.load ?? 0);
           // teshuvchi shar keyingi dushmangacha uchishda davom etadi
           b.hit.push(t);
@@ -3360,6 +3400,7 @@ export class Game {
       },
       view: { x: 0, y: 0, w: ROOM.w, h: ROOM.h },
       flair: p.flair,
+      orb: this.orbTheme,
     };
   }
 
@@ -3383,11 +3424,23 @@ export class Game {
   private updateCast(raw: number) {
     const cast = this.cast!;
     const p = this.player;
+    if (cast.free) {
+      // CHEKSIZ O'Q: o'yinchi o'zi yuradi va otadi — faqat vaqt chizig'i
+      const ev = cast.update(raw);
+      for (const s of ev.entered) this.onCastStage(s);
+      if (ev.done) this.endCast();
+      return;
+    }
     // shamol yoki itarilish joyidan qo'zg'atmaydi
     p.x = this.castAt.x;
     p.y = this.castAt.y;
     const ev = cast.update(raw);
     for (const s of ev.entered) this.onCastStage(s);
+    if (cast.free) {
+      // tayyorlanish tugadi: boshqaruv qaytdi (shu kadrda pozasi ham tozalanadi)
+      if (ev.done) this.endCast();
+      return;
+    }
     // MING KESIM: zarbalar oqibatning `release` lahzasida birdan tushadi (katana qinga qaytdi)
     const rel = cast.def.release;
     if (rel !== undefined && !cast.released && cast.stage === "after" && cast.t >= rel)
@@ -3444,6 +3497,7 @@ export class Game {
           wide: p.wideBlade,
         });
       if (def.volley) this.launchArrows(cast);
+      else if (def.frenzy) this.startFrenzy(cast);
       else if (!def.impact) this.planStrikeWave(0);
       if (def.sounds.strike) sfx[def.sounds.strike](cast.strikeTime);
     }
@@ -3465,7 +3519,8 @@ export class Game {
       });
     // katta qadamda zarba bosqichi o'tib ketsa ham meteorit albatta urilishi kerak
     if (s === "after" && def.impact && !cast.landed) this.landMeteor();
-    if (s === "after") {
+    if (s === "after" && def.frenzy) this.stopFrenzy();
+    if (s === "after" && !def.frenzy) {
       sfx[def.sounds.end]();
       // dushman snaryadlari so'nadi, o'yinchi ozgina jon tiklaydi
       for (const sh of this.shots) this.fx.burst(sh.x, sh.y, this.theme.glow, 3, 40, 1);
@@ -3780,6 +3835,39 @@ export class Game {
       this.superHit(b, i, V.chain.bossPower);
     this.blasting = chained;
     this.fx.burst(a.x, a.y, this.theme.hot, this.fx.isReduced() ? 3 : 8, 70, 1);
+  }
+
+  /**
+   * CHEKSIZ O'Q boshlandi: boshqaruv qaytadi (daxlsizlik shu kadrda tugaydi), baraban tugamaydi,
+   * qayta o'qlash to'xtaydi, otish tezlashadi; QIZIGAN PO'LAT — kuchli teshuvchi o'qlar, UZUN DASHT —
+   * uzunroq.
+   */
+  private startFrenzy(cast: SuperCast) {
+    const F = cast.def.frenzy!;
+    const p = this.player;
+    p.endCast();
+    p.frenzy = true;
+    p.frenzyRate = F.rate;
+    p.frenzyPower = p.hotSteel ? F.hot.dmg : 1;
+    p.frenzyPierce = p.hotSteel ? F.hot.pierce : 0;
+    p.reloadT = 0;
+    p.cooldown = 0;
+    cast.strikeTime = frenzyTime(cast.def, p.longPrairie);
+    if (p.hotSteel) this.fx.text(p.x, p.y - 30, "QIZIGAN PO'LAT", this.orbTheme.glow);
+  }
+
+  /** Tez otish tugadi: to'pponcha g'ilofga, baraban to'la */
+  private stopFrenzy() {
+    const p = this.player;
+    p.frenzy = false;
+    p.frenzyRate = 1;
+    p.frenzyPower = 1;
+    p.frenzyPierce = 0;
+    p.ammo = p.ammoMax;
+    p.reloadT = 0;
+    p.loadId++;
+    sfx[this.cast!.def.sounds.end]();
+    this.fx.text(p.x, p.y - 24, "BARABAN TO'LA", this.theme.glint);
   }
 
   /** Super tugadi: o'yinchining daxlsizligi shu kadrda tugaydi, boshqaruv qaytadi. */
@@ -5869,6 +5957,19 @@ export class Game {
     const sk = Math.max(0, Math.min(1, 1 - p.smokeCooldown / p.smokeCd));
     px(c, "#000", 4, 21, 32, 3);
     px(c, sk >= 1 ? "#c8c0b4" : "#5a544c", 5, 22, 30 * sk, 1);
+    if (p.frenzy) {
+      // CHEKSIZ O'Q: o'q o'rnida ∞ belgisi, qolgan vaqt chizig'i
+      const o = this.orbTheme;
+      const blink = this.fx.isReduced() || Math.floor(this.time * 6) % 2 === 0;
+      drawInfinity(c, 5, 27, blink ? o.glow : o.accent, theme.ink);
+      const cast = this.cast;
+      if (cast?.stage === "strike") {
+        const k = Math.max(0, 1 - cast.t / Math.max(0.01, cast.strikeTime));
+        px(c, "#000", 4, 34, 32, 3);
+        px(c, o.accent, 5, 35, 30 * k, 1);
+      }
+      return;
+    }
     for (let i = 0; i < p.ammoMax; i++) {
       const full = i < p.ammo;
       const x = 4 + i * 5,

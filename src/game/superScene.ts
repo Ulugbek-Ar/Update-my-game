@@ -23,6 +23,7 @@ import { CutsScene } from "./cutsFx";
 import { HorizonScene } from "./horizonFx";
 import { MeteorScene } from "./meteorFx";
 import { ArrowScene } from "./arrowsFx";
+import { FrenzyScene } from "./frenzyFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -49,6 +50,11 @@ export interface SceneCtx {
    * "frost" (Muz Ritsar): UFQ KESIMI ortida muz kristallari
    */
   flair?: string | null;
+  /**
+   * Super shari ranglari (oddiy skinda — superning o'z suyuqligi, skin bilan — skin theme'i):
+   * CHEKSIZ O'Q qizigan quroli shu ranglarda.
+   */
+  orb?: { accent: string; accentDark: string; glow: string };
 }
 
 /** Zarba nishoni haqida sahnaga beriladigan ma'lumot */
@@ -83,6 +89,8 @@ export interface SuperScene {
   pose(cast: SuperCast): number | null;
   /** Egasi hozir ko'rinmaydi (MING KESIM zarbasi: Samuray ko'zdan yo'qoladi) */
   hidden?(cast: SuperCast): boolean;
+  /** CHEKSIZ O'Q: o'yinchi o'q uzdi — gilza otilib chiqadi */
+  shot?(ctx: SceneCtx): void;
   /** SuperDef.release lahzasi: zarbalar birdan tushishidan OLDIN chaqiriladi ("chik") */
   release?(cast: SuperCast, ctx: SceneCtx): void;
   update(dt: number, cast: SuperCast | null, ctx: SceneCtx): void;
@@ -175,6 +183,7 @@ export const SUPER_SCENES: Record<string, () => SuperScene> = {
   horizon: () => new HorizonScene(),
   meteor: () => new MeteorScene(),
   arrows: () => new ArrowScene(),
+  frenzy: () => new FrenzyScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

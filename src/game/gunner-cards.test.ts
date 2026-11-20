@@ -41,7 +41,7 @@ describe("Mergan kuch kartalari", () => {
     }
   });
 
-  it("Mergan has 11 cards of its own, including KATTA BARABAN and RIKOSHET", () => {
+  it("Mergan has 13 cards of its own (2 of them super cards), including KATTA BARABAN and RIKOSHET", () => {
     const seen = new Map<string, string>();
     for (let i = 0; i < 400; i++) {
       // jon kam — DORI SHISHASI ham chiqa oladi
@@ -49,7 +49,8 @@ describe("Mergan kuch kartalari", () => {
       p.hp = 1;
       for (const u of pickUpgrades(p)) seen.set(u.id, u.name);
     }
-    expect(seen.size).toBe(11);
+    // v3.14: +2 SUPER kartasi (CHEKSIZ O'Q) — QIZIGAN PO'LAT va UZUN DASHT
+    expect(seen.size).toBe(13);
     expect(seen.get("drum")).toBe("KATTA BARABAN");
     expect(seen.get("ricochet")).toBe("RIKOSHET");
     // Sehrgar va Ovchining maxsus kartalari chiqmaydi

@@ -213,6 +213,8 @@ export interface Bolt {
   load?: number;
   /** Paladinning ZARB TO'LQINI (hamma dushmandan o'tadi) */
   wave?: boolean;
+  /** Merganning CHEKSIZ O'Q superi paytida otilgan o'q (bossga zarar chegarasi — super.ts) */
+  frenzy?: boolean;
   /** Samuray parry bilan qaytargan dushman snaryadi: o'q yoki olov shari (rangi — ko'k olov) */
   reflect?: "arrow" | "fire" | "blue";
 }
@@ -426,6 +428,22 @@ export class Player implements Body {
    */
   fifteenArrows = false;
   chainBlast = false;
+  /**
+   * SUPER kartalari (CHEKSIZ O'Q — Mergan): QIZIGAN PO'LAT (super o'qlari kuchliroq va teshib o'tadi)
+   * va UZUN DASHT (tez otish uzunroq).
+   */
+  hotSteel = false;
+  longPrairie = false;
+  /**
+   * CHEKSIZ O'Q: tez otish yoqilgan (Game super bosqichi bilan yoqadi/o'chiradi) — baraban tugamaydi,
+   * qayta o'qlash yo'q, otish oralig'i `frenzyRate` baravar; o'q kuchi va qo'shimcha teshish.
+   */
+  frenzy = false;
+  frenzyRate = 1;
+  frenzyPower = 1;
+  frenzyPierce = 0;
+  /** Shu kadrda tez otishda chiqqan gilzalar (Game sahnaga beradi va nollaydi) */
+  shells = 0;
   /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
   sunShield = 0;
   shieldHit = false;
@@ -786,6 +804,7 @@ export class Player implements Body {
    * (dash himoya dumi xatosiga o'xshash "ortiqcha daxlsizlik" bo'lmasin; super.test.ts tekshiradi).
    */
   endCast() {
+    this.frenzy = false;
     this.casting = false;
     this.superFrame = -1;
     this.superHidden = false;
@@ -891,7 +910,8 @@ export class Player implements Body {
       return;
     }
 
-    const wantAttack = input.consumeAttack();
+    // CHEKSIZ O'Q: tepkini bosib turish — uzluksiz otish
+    const wantAttack = input.consumeAttack() || (this.frenzy && this.gunner && input.attackHeld());
     const wantDash = input.consumeDash();
     const { x, y } = input.axis();
     if (wantAttack && this.snare > 0) {
@@ -984,10 +1004,16 @@ export class Player implements Body {
     }
 
     // Mergan faqat barabanda o'q bo'lsa va qayta o'qlamayotganda otadi
-    const loaded = !this.gunner || (this.ammo > 0 && !this.reloading);
+    const loaded = !this.gunner || this.frenzy || (this.ammo > 0 && !this.reloading);
     // bosib turish -> qo'yib yuborilganda aylana zarba
     if (input.attackHeld()) {
-      if (this.spinCooldown <= 0 && this.hurtTimer <= 0 && !this.spinning && loaded) {
+      if (
+        this.spinCooldown <= 0 &&
+        this.hurtTimer <= 0 &&
+        !this.spinning &&
+        loaded &&
+        !(this.frenzy && this.gunner)
+      ) {
         const before = this.charge;
         this.charge += dt;
         if (this.samurai) {
@@ -1044,6 +1070,11 @@ export class Player implements Body {
     ) {
       this.attackTimer = this.attackTime;
       this.cooldown = this.attackCd;
+      if (this.frenzy && this.gunner) {
+        // tez otish: oraliq qisqa, otish harakatni to'xtatmaydi (yurib otadi)
+        this.cooldown = this.attackCd * this.frenzyRate;
+        this.attackTimer = 0;
+      }
       this.hitSet.clear();
       if (this.samurai) this.startSlash();
       else if (this.gunner) sfx.gunshot();
@@ -1218,6 +1249,15 @@ export class Player implements Body {
       bounce: this.bounce,
       load: this.loadId,
     });
+    if (this.frenzy) {
+      // CHEKSIZ O'Q: baraban tugamaydi, o'q kuchliroq bo'lishi mumkin, gilza otilib chiqadi
+      const b = this.bolts[this.bolts.length - 1]!;
+      b.frenzy = true;
+      if (this.frenzyPower !== 1) b.power = this.frenzyPower;
+      b.left += this.frenzyPierce;
+      this.shells++;
+      return;
+    }
     this.ammo--;
     // baraban bo'shadi — o'zi qayta o'qlanadi (yelpig'ich tugagach)
     if (this.ammo <= 0 && this.fanLeft <= 0) this.startReload();
@@ -1231,7 +1271,14 @@ export class Player implements Body {
 
   /** Qayta o'qlash: baraban aylanadi, RELOAD_TIME dan keyin to'ladi. */
   startReload() {
-    if (!this.gunner || this.reloading || this.ammo >= this.ammoMax || this.fanLeft > 0) return;
+    if (
+      !this.gunner ||
+      this.frenzy ||
+      this.reloading ||
+      this.ammo >= this.ammoMax ||
+      this.fanLeft > 0
+    )
+      return;
     this.reloadT = this.reloadTime;
     this.charge = 0;
     sfx.cylinder();

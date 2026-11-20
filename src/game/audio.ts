@@ -768,6 +768,32 @@ class SoundFX {
     this.tone(520, 0.2, "triangle", 0.02, 780, 0.1);
   }
 
+  /** CHEKSIZ O'Q: baraban tez aylanadi — chiqillash ritmi */
+  frenzySpin(dur = 0.5) {
+    const n = Math.max(4, Math.round(dur / 0.05));
+    for (let i = 0; i < n; i++) this.tone(1800 + i * 40, 0.025, "square", 0.02, 1200, i * 0.045);
+    this.tone(300, dur, "sawtooth", 0.015, 900);
+  }
+
+  /** Tez otish boshlandi: "chak" — baraban qulflandi */
+  frenzyGo() {
+    this.tone(900, 0.06, "square", 0.04, 500);
+    this.noise(0.06, 0.05, 3000);
+    this.tone(140, 0.2, "sine", 0.05, 70, 0.03);
+  }
+
+  /** Qisqa "chiq" */
+  frenzyClick() {
+    this.tone(2400, 0.03, "square", 0.02, 1800);
+  }
+
+  /** Oqibat: gilzalar "puf", to'pponcha g'ilofga — "shirq", baraban to'la "chak" */
+  frenzyHolster() {
+    this.noise(0.25, 0.04, 900);
+    this.noise(0.12, 0.03, 2600, 0.12);
+    this.tone(1100, 0.05, "square", 0.03, 700, 0.3);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;
