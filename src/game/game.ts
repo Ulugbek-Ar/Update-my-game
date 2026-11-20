@@ -167,14 +167,21 @@ import {
   impactZone,
   pathsHit,
   rainDrops,
+  launchVolley,
+  nearestTarget,
   planStrikes,
+  stepArrow,
   superPaths,
+  volleyTargets,
+  type SuperArrow,
   type PlannedStrike,
   type SuperStage,
 } from "./super";
 import { SuperOrb, renderSuperCard, renderSuperOrb, type CardText } from "./superFx";
 import { sceneFor, type SceneCtx, type SceneTarget, type SuperScene } from "./superScene";
 import {
+  GUNNER_PORTRAIT_VARIANTS,
+  HUNTER_PORTRAIT_VARIANTS,
   KNIGHT_PORTRAIT_VARIANTS,
   MAGE_PORTRAIT_VARIANTS,
   PALADIN_PORTRAIT_VARIANTS,
@@ -636,6 +643,8 @@ const POWER_KEYS = [
   "wideBlade",
   "meteorRain",
   "eternalCrater",
+  "fifteenArrows",
+  "chainBlast",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -707,6 +716,8 @@ export class Game {
   /** Joriy superning rejalashtirilgan zarbalari (power — zarba kuchi) va allaqachon nishonga olinganlar */
   private strikes: (PlannedStrike<Enemy | Boss> & { power?: number })[] = [];
   private struck = new Set<object>();
+  /** O'N O'Q OVI: har o'qning nishoni (tayyorlanishda belgilanadi; null — nishonsiz o'q) */
+  private volleyAim: (Enemy | Boss | null)[] = [];
   /** Shar to'lgandagi "TAYYOR!" yozuvi qolgan vaqti (faqat ko'rinish) */
   private readyNote = 0;
   /** O'yinchining shu kadrdagi gorizontal harakati (−1..1) — shardagi suyuqlik chayqalishi uchun */
@@ -3383,7 +3394,8 @@ export class Game {
       this.releaseStrikes();
     if (cast.stage === "prep" && !this.gawked && cast.t >= cast.def.stages.prep * 0.62)
       this.pickGawker();
-    if (cast.def.impact) {
+    if (cast.def.volley) this.updateVolley(cast, raw);
+    else if (cast.def.impact) {
       // nishon doirasi "qulflanadi" (bir marta)
       if (cast.stage === "prep" && cast.wave === 0 && cast.t >= cast.def.stages.prep * 0.55) {
         cast.wave = 1;
@@ -3431,7 +3443,8 @@ export class Game {
           double: p.doubleHorizon,
           wide: p.wideBlade,
         });
-      if (!def.impact) this.planStrikeWave(0);
+      if (def.volley) this.launchArrows(cast);
+      else if (!def.impact) this.planStrikeWave(0);
       if (def.sounds.strike) sfx[def.sounds.strike](cast.strikeTime);
     }
     if (s === "after" && def.center) {
@@ -3440,6 +3453,16 @@ export class Game {
       p.x = this.castAt.x;
       p.y = this.castAt.y;
     }
+    // katta qadamda zarba bosqichi o'tib ketsa ham hamma o'q albatta tegadi
+    if (s === "after" && def.volley)
+      cast.arrows.forEach((a, i) => {
+        if (a.done) return;
+        this.aimArrow(a, this.volleyLive());
+        a.x = a.tx;
+        a.y = a.ty;
+        a.done = true;
+        this.arrowHit(a, i);
+      });
     // katta qadamda zarba bosqichi o'tib ketsa ham meteorit albatta urilishi kerak
     if (s === "after" && def.impact && !cast.landed) this.landMeteor();
     if (s === "after") {
@@ -3648,8 +3671,120 @@ export class Game {
     };
   }
 
+  /**
+   * O'N O'Q OVI: tayyorlanish o'rtasida nishonlar belgilanadi (har nishon ustida belgi), zarbada
+   * o'qlar uchadi va har biri o'z nishonini topadi.
+   */
+  private updateVolley(cast: SuperCast, raw: number) {
+    if (cast.stage === "prep" && cast.wave === 0 && cast.t >= cast.def.stages.prep * 0.4)
+      this.planVolley(cast);
+    if (cast.stage !== "strike") return;
+    const live = this.volleyLive();
+    cast.arrows.forEach((a, i) => {
+      if (a.done) return;
+      this.aimArrow(a, live);
+      if (stepArrow(cast.def, a, raw, cast.t)) this.arrowHit(a, i);
+    });
+  }
+
+  /** O'qlar uchun tirik nishonlar: ko'rinib turgan moblar va boss */
+  private volleyLive(): (Enemy | Boss)[] {
+    const live: (Enemy | Boss)[] = this.enemies.filter((e) => !e.dead && !e.removed && !e.hidden);
+    const b = this.boss;
+    if (b && !b.dead && b.spawn <= 0) live.push(b);
+    return live;
+  }
+
+  /** Nishonlar: moblar yaqindan uzoqqa, so'ng boss; o'q ko'p bo'lsa qayta aylanadi. Belgilar chiqadi. */
+  private planVolley(cast: SuperCast) {
+    cast.wave = 1;
+    const V = cast.def.volley!;
+    const live = this.volleyLive();
+    const mobs = live.filter((t): t is Enemy => t instanceof Enemy);
+    const bosses = live.filter((t): t is Boss => t instanceof Boss);
+    this.volleyAim = volleyTargets<Enemy | Boss>(
+      this.castAt,
+      mobs,
+      bosses,
+      this.player.fifteenArrows ? V.more : V.n,
+    );
+    const ctx = this.sceneCtx();
+    let i = 0;
+    for (const t of new Set(this.volleyAim)) {
+      if (!t) continue;
+      this.scene?.mark(this.sceneTarget(t), t instanceof Boss, cast, ctx);
+      sfx[cast.def.sounds.mark](i++);
+    }
+  }
+
+  /** Zarba boshlandi: o'qlar osmonga yelpig'ich bo'lib otiladi (o'lgan nishon o'rniga — eng yaqini) */
+  private launchArrows(cast: SuperCast) {
+    if (cast.wave === 0) this.planVolley(cast);
+    const live = this.volleyLive();
+    const p = this.player;
+    const aim = this.volleyAim.map((t) => (t && !t.dead ? t : nearestTarget(this.castAt, live)));
+    cast.arrows = launchVolley(
+      cast.def,
+      this.castAt,
+      aim,
+      { x: p.fx || (p.fy ? 0 : 1), y: p.fy },
+      cast.strikeTime,
+    );
+    for (const a of cast.arrows) this.aimArrow(a, live);
+  }
+
+  /** O'q nishoni: o'lgan bo'lsa — o'qqa eng yaqin tirik nishonga buriladi; joyi har kadr yangilanadi */
+  private aimArrow(a: SuperArrow, live: (Enemy | Boss)[]) {
+    let t = a.target as Enemy | Boss | null;
+    if (!t || t.dead || (t instanceof Enemy && t.removed)) {
+      t = nearestTarget(a, live);
+      if (t) a.target = t;
+    }
+    if (!t || t.dead) return;
+    const q = this.pathTarget(t);
+    a.tx = q.x;
+    a.ty = q.y;
+  }
+
+  /** O'q tegdi: nishonga super zarbasi va kichik portlash; ZANJIRLI PORTLASH — atrofdagilarga ham */
+  private arrowHit(a: SuperArrow, i: number) {
+    const cast = this.cast!;
+    const V = cast.def.volley!;
+    const t = a.target as Enemy | Boss | null;
+    if (t && !t.dead) {
+      this.struck.add(t);
+      this.superHit(t, i, t instanceof Boss ? V.bossPower : 1);
+    } else {
+      this.scene?.hit({ x: a.x, y: a.y, size: 6 }, false, false, cast, this.sceneCtx());
+      sfx[cast.def.sounds.hit](i);
+    }
+    if (!this.player.chainBlast) return;
+    const chained = this.blasting;
+    this.blasting = true;
+    for (const e of this.enemies) {
+      if (e.dead || e === t) continue;
+      const q = this.pathTarget(e);
+      if (Math.hypot(q.x - a.x, q.y - a.y) - q.size / 2 > V.chain.r) continue;
+      e.spawn = 0;
+      this.damageTarget(e, this.player.damage * V.chain.power, false);
+      if (e.dead) cast.kills++;
+    }
+    const b = this.boss;
+    if (
+      b &&
+      b !== t &&
+      !b.dead &&
+      b.spawn <= 0 &&
+      Math.hypot(b.x - a.x, b.y - a.y) - b.size / 2 <= V.chain.r
+    )
+      this.superHit(b, i, V.chain.bossPower);
+    this.blasting = chained;
+    this.fx.burst(a.x, a.y, this.theme.hot, this.fx.isReduced() ? 3 : 8, 70, 1);
+  }
+
   /** Super tugadi: o'yinchining daxlsizligi shu kadrda tugaydi, boshqaruv qaytadi. */
   private endCast() {
+    this.volleyAim = [];
     this.cast = null;
     this.strikes = [];
     this.struck.clear();
@@ -5702,11 +5837,19 @@ export class Game {
             ? MAGE_PORTRAIT_VARIANTS[
                 Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
               ]
-            : this.hero === "paladin"
-              ? PALADIN_PORTRAIT_VARIANTS[
+            : this.hero === "hunter"
+              ? HUNTER_PORTRAIT_VARIANTS[
                   Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
                 ]
-              : "",
+              : this.hero === "gunner"
+                ? GUNNER_PORTRAIT_VARIANTS[
+                    Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
+                  ]
+                : this.hero === "paladin"
+                  ? PALADIN_PORTRAIT_VARIANTS[
+                      Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
+                    ]
+                  : "",
         ),
         text,
         this.fx.isReduced(),

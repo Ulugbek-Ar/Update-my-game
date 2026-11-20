@@ -886,6 +886,33 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.eternalCrater = true),
     ok: (p) => !p.eternalCrater,
   },
+  // ---- SUPER kartalari (O'N O'Q OVI — Ovchi) ----
+  {
+    id: "fifteenarrows",
+    name: "O'N BESH O'Q",
+    desc: "Superda 10 emas, 15 ta o'q uchadi",
+    color: "#8fd14f",
+    tags: ["super"],
+    icon: "fifteenarrows",
+    hero: "hunter",
+    super: "ten-arrows",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.fifteenArrows = true),
+    ok: (p) => !p.fifteenArrows,
+  },
+  {
+    id: "chainblast",
+    name: "ZANJIRLI PORTLASH",
+    desc: "Super o'qi portlashi atrofdagi dushmanlarga ham tegadi",
+    color: "#8fd14f",
+    tags: ["super"],
+    icon: "chainblast",
+    hero: "hunter",
+    super: "ten-arrows",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.chainBlast = true),
+    ok: (p) => !p.chainBlast,
+  },
 ];
 
 /**

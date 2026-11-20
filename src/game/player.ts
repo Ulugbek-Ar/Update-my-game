@@ -420,6 +420,12 @@ export class Player implements Body {
    */
   meteorRain = false;
   eternalCrater = false;
+  /**
+   * SUPER kartalari (O'N O'Q OVI — Ovchi): O'N BESH O'Q (15 o'q) va ZANJIRLI PORTLASH (o'q portlashi
+   * atrofdagi dushmanlarga ham zarar beradi).
+   */
+  fifteenArrows = false;
+  chainBlast = false;
   /** Oltin qalqon qolgan vaqti: zarba o'tmaydi; shu kadrda zarba to'sildi (Game effekt chiqaradi) */
   sunShield = 0;
   shieldHit = false;

@@ -55,7 +55,13 @@ export type SuperSound =
   | "meteorBossHit"
   | "meteorCrush"
   | "meteorSettle"
-  | "meteorSmall";
+  | "meteorSmall"
+  | "volleyDraw"
+  | "volleyMark"
+  | "volleyLoose"
+  | "volleyHit"
+  | "volleyBossHit"
+  | "volleyEnd";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -140,6 +146,66 @@ export interface SuperRainDrop {
   done: boolean;
 }
 
+/**
+ * Kuzatuvchi o'qlar yog'ini (SuperDef.volley — O'N O'Q OVI): o'qlar osmonga yelpig'ich bo'lib otiladi,
+ * egri yoy bilan burilib har biri o'z nishonini topadi (nishon o'lsa — eng yaqin tirik nishonga
+ * buriladi), tekkanda kichik portlash.
+ */
+export interface SuperVolleyDef {
+  /** O'qlar soni; O'N BESH O'Q kartasi bilan — more */
+  n: number;
+  more: number;
+  /** Uchish tezligi (px/s, haqiqiy vaqt) */
+  speed: number;
+  /** Burilish tezligi (rad/s) — uchgan sari kuchayadi, o'q albatta yetib boradi */
+  turn: number;
+  /** Yelpig'ichning yarim burchagi (rad): o'qlar osmonga shu oraliqda otiladi */
+  spread: number;
+  /** O'qlar orasidagi kechikish (s) */
+  gap: number;
+  /** Tegish masofasi (px) */
+  hit: number;
+  /** Bitta o'qning bossga kuchi (dmg.boss ulushi) — jami baribir bossCap dan oshmaydi */
+  bossPower: number;
+  /** Portlash radiusi (px, ko'rinish); ZANJIRLI PORTLASH kartasi: shu radiusdagi boshqalarga zarar */
+  blast: number;
+  chain: { r: number; power: number; bossPower: number };
+}
+
+/** Uchayotgan super o'qi (SuperCast.arrows) */
+export interface SuperArrow {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  /** Nishon (egasining obyekti) va uning oxirgi ma'lum joyi */
+  target: object | null;
+  tx: number;
+  ty: number;
+  /** Zarba bosqichi boshidan kechikish (s) va uchish vaqti */
+  delay: number;
+  age: number;
+  /** Shu vaqtdan keyin o'q albatta tegadi (s) */
+  life: number;
+  done: boolean;
+}
+
+/**
+ * O'qlash shart bo'lmagan tez otish (SuperDef.frenzy — CHEKSIZ O'Q): zarba bosqichida o'yinchi
+ * boshqaruvni qaytarib oladi, baraban tugamaydi, qayta o'qlash yo'q, otish tezlashadi.
+ */
+export interface SuperFrenzyDef {
+  /** Davomiyligi (s); UZUN DASHT kartasi bilan — long */
+  time: number;
+  long: number;
+  /** Otish oralig'i ko'paytuvchisi (attackCd × shu) */
+  rate: number;
+  /** QIZIGAN PO'LAT kartasi: o'q zarari ko'paytuvchisi va qo'shimcha teshib o'tish */
+  hot: { dmg: number; pierce: number };
+  /** Bitta o'qning bossga zarari (dmg.boss ulushi) — jami bossCap dan oshmaydi */
+  bossPower: number;
+}
+
 export interface SuperDef {
   id: string;
   hero: Hero;
@@ -184,6 +250,10 @@ export interface SuperDef {
   path?: SuperPathDef;
   /** Meteorit zarbasi (OSMON TOSHI): bitta nuqta, markaz/chet zonalari va krater. Yo'q — oddiy */
   impact?: SuperImpactDef;
+  /** Kuzatuvchi o'qlar (O'N O'Q OVI). Yo'q — oddiy */
+  volley?: SuperVolleyDef;
+  /** Cheksiz tez otish (CHEKSIZ O'Q): zarba bosqichida o'yinchi erkin. Yo'q — oddiy */
+  frenzy?: SuperFrenzyDef;
   /**
    * Super shari suyuqligi rangi — faqat ODDIY skinda (skin bo'lsa — skin theme'i). Yo'q — theme'ning
    * accent/accentDark/glow ranglari.
@@ -417,12 +487,67 @@ const SKY_STONE: SuperDef = {
   fx: "meteor",
 };
 
+/**
+ * O'N O'Q OVI (Ovchi) — v3.14 da ochildi.
+ * Tayyorlanish (0.8 s): Ovchi kamonni osmonga tortadi, vaqt sekinlashadi, har nishon ustida yashil
+ * nishon belgisi paydo bo'ladi. Zarba (1.4 s): 10 ta o'q osmonga yelpig'ich bo'lib uchadi, egri yoy bilan
+ * burilib har biri o'z nishonini topadi (nishon o'lsa — eng yaqin tirik dushmanga buriladi), tekkanda
+ * kichik portlash. Oqibat (0.6 s): Ovchi kamonni tushiradi.
+ *
+ * Zaryad 20. Bossga: har o'q maksimal jonining 8% × 0.25 = 2% i, jami 10% dan oshmaydi.
+ * Kartalar: O'N BESH O'Q (15 o'q), ZANJIRLI PORTLASH (portlash atrofidagilarga ham zarar).
+ */
+const TEN_ARROWS: SuperDef = {
+  id: "ten-arrows",
+  hero: "hunter",
+  name: "O'N O'Q OVI",
+  desc: "O'nta o'q osmonga uchadi — har biri o'z nishonini o'zi topadi",
+  color: "#8fd14f",
+  charge: 20,
+  time: 2.8,
+  params: { sparks: 10, sparksReduced: 3 },
+  open: true,
+  stages: { prep: 0.8, strike: 1.4, after: 0.6 },
+  slow: { prep: 0.25, strike: 0.12, after: 0.5 },
+  strike: { mark: 0, gap: 0, tail: 0, min: 1.4 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0.3, dust: 0.4, bossKneel: 0.6 },
+  // super shari: o'rmon yashili
+  orb: { accent: "#3f8a2a", accentDark: "#163a12", glow: "#b8f070" },
+  volley: {
+    n: 10,
+    more: 15,
+    speed: 300,
+    turn: 4,
+    spread: 0.9,
+    gap: 0.045,
+    hit: 7,
+    bossPower: 0.25,
+    blast: 14,
+    chain: { r: 26, power: 1.5, bossPower: 0.1 },
+  },
+  card: { time: 0.7, short: 0.25, sub: "OVCHI SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "volleyDraw",
+    mark: "volleyMark",
+    hit: "volleyHit",
+    bossHit: "volleyBossHit",
+    end: "volleyEnd",
+    strike: "volleyLoose",
+  },
+  fx: "arrows",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
   samurai: THOUSAND_CUTS,
   knight: HORIZON_CUT,
   mage: SKY_STONE,
+  hunter: TEN_ARROWS,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */
@@ -720,6 +845,106 @@ export function rainDrops(
   return out;
 }
 
+/**
+ * O'qlar nishonlari: moblar yaqindan uzoqqa, so'ng bosslar; o'q ko'p bo'lsa nishonlar qayta
+ * aylanadi (har nishonga teng). Nishon yo'q — null (o'q oldinga uchib, bo'sh joyda portlaydi).
+ */
+export function volleyTargets<T extends StrikeTarget>(
+  from: { x: number; y: number },
+  mobs: readonly T[],
+  bosses: readonly T[],
+  n: number,
+): (T | null)[] {
+  const dist = (t: T) => Math.hypot(t.x - from.x, t.y - from.y);
+  const order = [...[...mobs].sort((a, b) => dist(a) - dist(b)), ...bosses];
+  return Array.from({ length: n }, (_, i) => (order.length ? order[i % order.length]! : null));
+}
+
+/**
+ * O'qlarni otish: hammasi `from` dan osmonga (tepaga) yelpig'ich bo'lib, ketma-ket (`gap`). Nishonsiz
+ * o'q `face` tomonga 70 px narida portlaydi. `window` — zarba bosqichi: o'q shu vaqt ichida albatta tegadi.
+ */
+export function launchVolley(
+  def: SuperDef,
+  from: { x: number; y: number },
+  targets: readonly (StrikeTarget | null)[],
+  face: { x: number; y: number },
+  window = def.stages.strike,
+): SuperArrow[] {
+  const V = def.volley;
+  if (!V) return [];
+  const n = targets.length;
+  return targets.map((t, i) => {
+    const a = -Math.PI / 2 + (n > 1 ? (i / (n - 1) - 0.5) * 2 * V.spread : 0);
+    const delay = i * V.gap;
+    const fm = Math.hypot(face.x, face.y) || 1;
+    return {
+      x: from.x,
+      y: from.y - 10,
+      vx: Math.cos(a) * V.speed * 0.8,
+      vy: Math.sin(a) * V.speed * 0.8,
+      target: t as object | null,
+      tx: t ? t.x : from.x + (face.x / fm) * 70,
+      ty: t ? t.y : from.y + (face.y / fm) * 70,
+      delay,
+      age: 0,
+      life: Math.max(0.3, window - delay - 0.12),
+      done: false,
+    };
+  });
+}
+
+/**
+ * O'qni bir qadam suradi: nishonga (tx, ty) egri yoy bilan buriladi — burilish uchgan sari kuchayadi,
+ * `life` tugaganda o'q nishonga "yopishadi". Qaytaradi: shu qadamda tegdimi.
+ */
+export function stepArrow(def: SuperDef, a: SuperArrow, dt: number, t: number): boolean {
+  const V = def.volley;
+  if (!V || a.done || t < a.delay) return false;
+  a.age += dt;
+  const k = Math.min(1, a.age / a.life);
+  const dx = a.tx - a.x,
+    dy = a.ty - a.y;
+  const cur = Math.atan2(a.vy, a.vx);
+  const want = Math.atan2(dy, dx);
+  let d = want - cur;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  const max = V.turn * (1 + 6 * k * k) * dt;
+  const ang = cur + Math.max(-max, Math.min(max, d));
+  const sp = V.speed * (0.8 + 0.7 * k);
+  a.vx = Math.cos(ang) * sp;
+  a.vy = Math.sin(ang) * sp;
+  const step = sp * dt;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= V.hit + step || a.age >= a.life) {
+    a.x = a.tx;
+    a.y = a.ty;
+    a.done = true;
+    return true;
+  }
+  a.x += a.vx * dt;
+  a.y += a.vy * dt;
+  return false;
+}
+
+/** Nishoni o'lgan o'q uchun yangi nishon: o'qqa eng yaqin tirik nishon (yo'q — null) */
+export function nearestTarget<T extends StrikeTarget>(
+  a: { x: number; y: number },
+  list: readonly T[],
+): T | null {
+  let best: T | null = null,
+    bd = Infinity;
+  for (const t of list) {
+    const d = Math.hypot(t.x - a.x, t.y - a.y);
+    if (d < bd) {
+      bd = d;
+      best = t;
+    }
+  }
+  return best;
+}
+
 export type CastStage = "card" | SuperStage;
 
 /**
@@ -759,6 +984,8 @@ export class SuperCast {
   rain: SuperRainDrop[] = [];
   /** Krater yashash vaqti (s; ABADIY KRATER kartasi bilan uzunroq) */
   craterTime = 0;
+  /** O'N O'Q OVI: uchayotgan o'qlar (zarba bosqichida egasi to'ldiradi) */
+  arrows: SuperArrow[] = [];
 
   constructor(
     readonly def: SuperDef,

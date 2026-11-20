@@ -726,6 +726,48 @@ class SoundFX {
     this.tone(420, 0.05, "square", 0.015, 260, 0.1);
   }
 
+  /** O'N O'Q OVI: kamon ipi sekin tortiladi — g'ijirlash va ko'tariluvchi hushtak */
+  volleyDraw(dur = 0.8) {
+    const d = Math.max(0.3, dur);
+    this.tone(180, d, "sawtooth", 0.02, 240);
+    this.noise(d * 0.8, 0.015, 900, 0.05);
+    this.tone(600, d, "sine", 0.02, 1500);
+  }
+
+  /** Nishon belgisi qulflandi: qisqa "tik" — har belgida biroz balandroq */
+  volleyMark(i = 0) {
+    const f = 1500 + Math.min(14, i) * 90;
+    this.tone(f, 0.05, "triangle", 0.025, f * 1.2);
+  }
+
+  /** O'qlar osmonga uchdi: ip "tang" va ko'p "vizz" */
+  volleyLoose(dur = 1.4) {
+    this.tone(220, 0.18, "triangle", 0.07, 110);
+    this.noise(0.12, 0.06, 2600);
+    for (let i = 0; i < 5; i++)
+      this.tone(2400 - i * 180, 0.22, "sine", 0.018, 900, 0.03 + i * 0.07);
+    this.noise(Math.max(0.3, dur * 0.5), 0.02, 4200, 0.2);
+  }
+
+  /** O'q tekdi: kichik portlash "puk" */
+  volleyHit(i = 0) {
+    const k = Math.min(10, i);
+    this.tone(160 + k * 6, 0.12, "sine", 0.06, 60);
+    this.noise(0.08, 0.05, 1800 + k * 60);
+  }
+
+  /** O'q bossga tekdi: qalinroq portlash */
+  volleyBossHit() {
+    this.tone(110, 0.3, "sine", 0.1, 40);
+    this.noise(0.18, 0.08, 1200);
+  }
+
+  /** Oqibat: kamon tushiriladi, barglar shitirlaydi */
+  volleyEnd() {
+    this.noise(0.4, 0.02, 3000, 0.05);
+    this.tone(520, 0.2, "triangle", 0.02, 780, 0.1);
+  }
+
   /** Samuray katanasi: yuqori "shing" — kombo oshgani sari balandroq, 3-zarba kengroq */
   katana(step = 0) {
     const f = 2200 + step * 320;

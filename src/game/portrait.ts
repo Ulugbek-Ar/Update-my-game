@@ -20,6 +20,16 @@ import {
 } from "./paladinPortrait";
 import { MAGE_PORTRAIT_COLORS, MAGE_PORTRAIT_GRID, magePortraitPixels } from "./magePortrait";
 import {
+  HUNTER_PORTRAIT_COLORS,
+  HUNTER_PORTRAIT_GRID,
+  hunterPortraitPixels,
+} from "./hunterPortrait";
+import {
+  GUNNER_PORTRAIT_COLORS,
+  GUNNER_PORTRAIT_GRID,
+  gunnerPortraitPixels,
+} from "./gunnerPortrait";
+import {
   SAMURAI_PORTRAIT_GRID,
   samuraiPortraitColors,
   samuraiPortraitPixels,
@@ -33,7 +43,11 @@ export function portraitGrid(hero: Hero) {
       ? SAMURAI_PORTRAIT_GRID
       : hero === "mage"
         ? MAGE_PORTRAIT_GRID
-        : PALADIN_PORTRAIT_GRID;
+        : hero === "hunter"
+          ? HUNTER_PORTRAIT_GRID
+          : hero === "gunner"
+            ? GUNNER_PORTRAIT_GRID
+            : PALADIN_PORTRAIT_GRID;
 }
 
 /** Paladin portreti kadrlari: tirqishdagi nur kuchayib boradi, toj yaltiraydi */
@@ -47,6 +61,12 @@ export const SAMURAI_PORTRAIT_VARIANTS = ["closed", "open", "flash"] as const;
 export const MAGE_PORTRAIT_VARIANTS = ["", "raised", "flash"] as const;
 
 export const KNIGHT_PORTRAIT_VARIANTS = ["", "wind", "glint"] as const;
+
+/** Ovchi portreti kadrlari: ip tortiladi, ko'zlar yonadi, o'q uchi yaltiraydi va barglar uchadi */
+export const HUNTER_PORTRAIT_VARIANTS = ["", "drawn", "flash"] as const;
+
+/** Mergan portreti kadrlari: tinch, baraban aylanadi, tutun va gilzalar */
+export const GUNNER_PORTRAIT_VARIANTS = ["", "spin", "smoke"] as const;
 
 const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, "0");
 /** a va b ranglar aralashmasi (k — b ulushi) */
@@ -66,6 +86,9 @@ export function portraitColors(hero: Hero, palette?: SpritePalette): string[] {
   if (hero === "samurai") return samuraiPortraitColors(palette?.colors ?? PALETTES.samurai);
   // Sehrgar: yovuz sehrgarning o'z rang to'plami (skin palitrasi hozircha portretga ta'sir qilmaydi)
   if (hero === "mage") return [...MAGE_PORTRAIT_COLORS];
+  // Ovchi va Mergan: portretning o'z rang to'plami (skin palitrasi portretga ta'sir qilmaydi)
+  if (hero === "hunter") return [...HUNTER_PORTRAIT_COLORS];
+  if (hero === "gunner") return [...GUNNER_PORTRAIT_COLORS];
   if (hero !== "knight") return [...(palette?.colors ?? PALETTES[hero])];
   const base: string[] = [...KNIGHT_PORTRAIT_COLORS];
   const pc = palette?.colors;
@@ -110,6 +133,20 @@ export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
       ),
     );
   }
+  if (hero === "hunter")
+    return hunterPortraitPixels(
+      Math.max(
+        0,
+        HUNTER_PORTRAIT_VARIANTS.indexOf(variant as (typeof HUNTER_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
+  if (hero === "gunner")
+    return gunnerPortraitPixels(
+      Math.max(
+        0,
+        GUNNER_PORTRAIT_VARIANTS.indexOf(variant as (typeof GUNNER_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
   if (hero === "samurai")
     return samuraiPortraitPixels(
       Math.max(

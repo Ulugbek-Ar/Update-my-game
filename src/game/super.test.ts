@@ -44,6 +44,8 @@ type GI = {
 };
 const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
 const DT = 1 / 60;
+/** Superi ochiq qahramonlar (har versiyada qo'shiladi) */
+const SUPER_HEROES: Hero[] = ["paladin", "samurai", "knight", "mage", "hunter"];
 
 function makeGame(hero: Hero = "paladin") {
   if (hero !== "knight" && hero !== "mage" && hero !== "hunter") unlockHero(hero);
@@ -95,7 +97,7 @@ beforeEach(() => {
 });
 
 describe("Super tizimi: ma'lumot", () => {
-  it("is open: the Paladin, the Samurai, the Knight and the Mage have supers, others have none", () => {
+  it("is open: the Paladin, the Samurai, the Knight, the Mage and the Hunter have supers", () => {
     expect(SUPERS_ENABLED).toBe(true);
     expect(superFor("paladin")?.name).toBe("ILOHIY HUKM");
     // v4.0: ikkinchi super — Samurayning MING KESIMI
@@ -104,13 +106,15 @@ describe("Super tizimi: ma'lumot", () => {
     expect(superFor("knight")?.name).toBe("UFQ KESIMI");
     // v4.0: to'rtinchi super — Sehrgarning OSMON TOSHI
     expect(superFor("mage")?.name).toBe("OSMON TOSHI");
-    for (const h of HEROES)
-      if (!["paladin", "samurai", "knight", "mage"].includes(h)) expect(superFor(h), h).toBeNull();
+    // v3.14: beshinchi super — Ovchining O'N O'Q OVI
+    expect(superFor("hunter")?.name).toBe("O'N O'Q OVI");
+    for (const h of HEROES) if (!SUPER_HEROES.includes(h)) expect(superFor(h), h).toBeNull();
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superById("divine-judgment")).toBe(superFor("paladin"));
     expect(superById("thousand-cuts")).toBe(superFor("samurai"));
     expect(superById("horizon-cut")).toBe(superFor("knight"));
     expect(superById("sky-stone")).toBe(superFor("mage"));
+    expect(superById("ten-arrows")).toBe(superFor("hunter"));
     expect(superById("yo'q")).toBeNull();
   });
 
@@ -686,7 +690,7 @@ describe("Super ijrosi (o'yinda)", () => {
 });
 
 describe("Superi yo'q qahramonlar", () => {
-  for (const hero of HEROES.filter((h) => !["paladin", "samurai", "knight", "mage"].includes(h)))
+  for (const hero of HEROES.filter((h) => !SUPER_HEROES.includes(h)))
     it(`${hero}: no meter, no orb, no super — and the game runs as before`, () => {
       const { g, gi } = makeGame(hero);
       expect(g.superMeter.def).toBeNull();
@@ -775,9 +779,10 @@ describe("Super kartasi portreti", () => {
         colors: ["#050307", "#2a1a30", "#4a3a5a", "#aab4c4", "#b02a2a"],
       })[4],
     ).toBe("#4a3a5a");
-    // superi yo'q qahramonda portret yo'q; Sehrgarda — yovuz sehrgar portreti (96x96)
-    expect(portraitPixels("hunter")).toBeNull();
-    expect(portraitPixels("gunner")).toBeNull();
-    expect(portraitPixels("mage")?.length).toBe(portraitGrid("mage") ** 2);
+    // superli har qahramonda portret bor (96x96): Sehrgar — yovuz sehrgar, Ovchi — yashil qalpoq
+    for (const h of SUPER_HEROES) expect(portraitPixels(h)?.length, h).toBe(portraitGrid(h) ** 2);
+    // Merganning portreti superidan oldin tayyorlangan
+    for (const h of HEROES)
+      if (!SUPER_HEROES.includes(h) && h !== "gunner") expect(portraitPixels(h), h).toBeNull();
   });
 });

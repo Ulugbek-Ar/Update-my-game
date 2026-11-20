@@ -1932,23 +1932,66 @@ function huntBow(p: Pixels, hand: Point, draw: Point | null, arrow: boolean) {
   p.rect(4, hx - 1, hy - 1, 3, 3);
 }
 
-/** Ovchining hujum kadrlari: 0 — o'qni qo'ydi, 1 — to'liq tortdi, 2 — qo'yib yubordi. */
-const hunterShots: readonly { hand: Point; draw: Point | null; arrow: boolean; other: Point }[] = [
+/** Ovchi kamoni osmonga qaratilgan (super): dir — o'q yo'nalishi, pull — ip qancha tortilgan (px). */
+function huntBowSky(p: Pixels, hand: Point, dir: Point, pull: number, arrow: boolean) {
+  const l = Math.hypot(dir[0], dir[1]) || 1;
+  const ux = dir[0] / l,
+    uy = dir[1] / l;
+  // yelkalar o'qqa tik: uchlari biroz orqaga egilgan
+  const nx = -uy,
+    ny = ux;
+  const P = (a: number, b: number): Point => [
+    Math.round(hand[0] + nx * a - ux * b),
+    Math.round(hand[1] + ny * a - uy * b),
+  ];
+  const top = P(7, 2),
+    bot = P(-7, 2);
+  p.line(4, top, P(4, 0), 1);
+  p.line(4, P(4, 0), P(0, -1), 1);
+  p.line(4, P(0, -1), P(-4, 0), 1);
+  p.line(4, P(-4, 0), bot, 1);
+  const draw = P(0, pull);
+  if (pull > 0) {
+    p.line(5, top, draw, 1);
+    p.line(5, draw, bot, 1);
+  } else p.line(5, top, bot, 1);
+  if (arrow) {
+    p.line(4, draw, P(0, -5), 1);
+    const tip = P(0, -6);
+    p.rect(1, tip[0], tip[1], 1, 1);
+    p.rect(5, draw[0], draw[1], 1, 1);
+  }
+  p.rect(4, hand[0] - 1, hand[1] - 1, 2, 2);
+}
+
+/**
+ * Ovchining hujum kadrlari: 0 — o'qni qo'ydi, 1 — to'liq tortdi, 2 — qo'yib yubordi.
+ * 3..5 — O'N O'Q OVI super kadrlari (HUNTER_SUPER_FRAME): kamon osmonga qaratilgan — tortilmoqda,
+ * to'liq tortilgan, qo'yib yuborilgan. Oddiy hujum kadrlari o'zgarmaydi.
+ */
+const hunterShots: readonly {
+  hand: Point;
+  draw: Point | null;
+  arrow: boolean;
+  other: Point;
+  sky?: { dir: Point; pull: number };
+}[] = [
   { hand: [25, 15], draw: [20, 15], arrow: true, other: [20, 15] },
   { hand: [26, 14], draw: [16, 14], arrow: true, other: [16, 14] },
   { hand: [26, 15], draw: null, arrow: false, other: [14, 18] },
+  { hand: [22, 6], draw: null, arrow: true, other: [19, 10], sky: { dir: [1, -2], pull: 3 } },
+  { hand: [22, 5], draw: null, arrow: true, other: [18, 12], sky: { dir: [1, -2], pull: 6 } },
+  { hand: [22, 5], draw: null, arrow: false, other: [13, 15], sky: { dir: [1, -2], pull: 0 } },
 ];
+
+/** O'N O'Q OVI super kadrlari ("attack" holatida — Player.superFrame) */
+export const HUNTER_SUPER_FRAME = { aim: 3, full: 4, loose: 5 } as const;
 
 /**
  * Ovchi: 2 — to'q yashil shim va kapyushon ichi, 3 — yashil plash va kapyushon,
  * 4 — jigarrang charm (kamon, o'qdon, kamar, etik), 5 — teri va o'q patlari.
  */
-function hunter(
-  p: Pixels,
-  pose: Pose,
-  back: boolean,
-  shot: { hand: Point; draw: Point | null; arrow: boolean; other: Point } | null,
-) {
+function hunter(p: Pixels, pose: Pose, back: boolean, shot: (typeof hunterShots)[number] | null) {
   const { bob: b, lean: l } = pose;
   const hand = shot ? shot.hand : pose.hand;
   const other = shot ? shot.other : pose.otherHand;
@@ -2009,7 +2052,8 @@ function hunter(
   }
   // old qo'l va kamon
   p.line(3, [20 + l, 14 + b], hand, 2);
-  huntBow(p, hand, shot ? shot.draw : null, shot ? shot.arrow : false);
+  if (shot?.sky) huntBowSky(p, hand, shot.sky.dir, shot.sky.pull, shot.arrow);
+  else huntBow(p, hand, shot ? shot.draw : null, shot ? shot.arrow : false);
   p.rect(5, hand[0], hand[1], 1, 1);
 }
 
@@ -6015,6 +6059,35 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     ".XKRRFFRRKX.",
     "..XKKKKKKX..",
     "...XXXXXX...",
+  ],
+  // O'N O'Q OVI kartalari: osmonga yelpig'ich bo'lib uchgan beshta o'q / o'q va zanjir portlash
+  fifteenarrows: [
+    "X....X....X.",
+    "XX..XWX..XX.",
+    ".TX..T..XT..",
+    "..T..T..T...",
+    "...T.T.T....",
+    "....TTT.....",
+    "X..BBGBB..X.",
+    "XT.BGGGB.TX.",
+    ".TTBGGGBTT..",
+    "...BBGBB....",
+    "....DDD.....",
+    "............",
+  ],
+  chainblast: [
+    "........WWX.",
+    ".......TWX..",
+    "......T.....",
+    ".....T......",
+    "..G.T..G....",
+    ".GDG..GDG...",
+    "GDWDGGDWDG..",
+    ".GDG..GDG...",
+    "..G....G....",
+    "....G.......",
+    "...GDG......",
+    "....G.......",
   ],
   petalveil: [
     "....U..U....",

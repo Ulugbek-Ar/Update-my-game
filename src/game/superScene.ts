@@ -22,6 +22,7 @@ import { DivineScene } from "./divineFx";
 import { CutsScene } from "./cutsFx";
 import { HorizonScene } from "./horizonFx";
 import { MeteorScene } from "./meteorFx";
+import { ArrowScene } from "./arrowsFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -173,6 +174,7 @@ export const SUPER_SCENES: Record<string, () => SuperScene> = {
   cuts: () => new CutsScene(),
   horizon: () => new HorizonScene(),
   meteor: () => new MeteorScene(),
+  arrows: () => new ArrowScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */
