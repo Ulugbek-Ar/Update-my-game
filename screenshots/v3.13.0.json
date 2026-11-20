@@ -1,0 +1,90 @@
+[
+  {
+    "title": "Qor Malikasi: muz nusxalari va muz halqa",
+    "text": "2-fazada Malika uch joyda ko'k doira yoqadi va ulardan biriga sakraydi — qolgan ikkitasida muz nusxa paydo bo'ladi. Zarar faqat tojida yaltirash bor haqiqiy Malikaga o'tadi, nusxa bir zarbada sinadi, tirik ekan o'yinchi ostiga muz nayzasi chiqaradi. Muz halqa arena chetidan 3 soniyada torayadi — uzuq chiziqli xavfsiz doiraga ulguring. 25% jonda ikkalasi birga keladi.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter2();"
+      },
+      {
+        "wave": 4
+      },
+      {
+        "wait": 400
+      },
+      {
+        "eval": "g.skipIntro(); g.enemies = []; g.player.takeHit = () => false; g.player.encase = () => false; const b = g.boss; b.spawn = 0; b.hp = b.maxHp * 0.5;"
+      },
+      {
+        "wait": 150
+      },
+      {
+        "eval": "g.banner.timer = 0; g.enemies = []; const b = g.boss; b.guard = 0; b.cloneTimer = 0.5; b.ringTimer = 1.2; g.player.x = 70; g.player.y = 190; setInterval(() => { const r = b.iceRing, p = g.player; if (r && r.stage !== 'hold') { p.x += (r.x - p.x) * 0.05; p.y += (r.y - p.y) * 0.05; } }, 16);"
+      },
+      {
+        "focus": {
+          "x": 160,
+          "y": 120,
+          "w": 320
+        }
+      },
+      {
+        "wait": 300
+      }
+    ]
+  },
+  {
+    "title": "O'rmon Shohi: ildiz panjarasi va daraxt qo'riqchilar",
+    "text": "Polda panjara shaklida yoriqlar chiziladi, so'ng xavfsiz yo'lakdan boshqa hamma joydan ildiz otilib chiqadi — tegsa zarar va ushlab qoladi. 2-fazada 2 ta daraxt qo'riqchi o'sadi: ular tirik ekan Shohni yashil qalqon o'raydi va zarari 70% kam o'tadi, yaqin kelganni shox bilan uradi. Avval qo'riqchilarni yiqiting. 25% jonda ildizlar tezroq chiqadi.",
+    "mob": true,
+    "video": 5,
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1"
+        }
+      },
+      {
+        "start": true
+      },
+      {
+        "eval": "g.startChapter3();"
+      },
+      {
+        "wave": 4
+      },
+      {
+        "wait": 400
+      },
+      {
+        "eval": "g.skipIntro(); g.enemies = []; g.player.takeHit = () => false; const b = g.boss; b.spawn = 0; b.hp = b.maxHp * 0.5;"
+      },
+      {
+        "wait": 150
+      },
+      {
+        "eval": "g.banner.timer = 0; g.enemies = []; const b = g.boss; b.guard = 0; b.gridTimer = 1.2; b.flowers = []; g.player.x = 160; g.player.y = 190; setInterval(() => { g.enemies = g.enemies.filter((e) => e.kind !== 'spider'); const k = b.grid, p = g.player; if (k && k.warn > 0) { const l = k.lanes[0]; if (l.vertical) p.x += (l.at - p.x) * 0.08; else p.y += (l.at - p.y) * 0.08; } }, 16);"
+      },
+      {
+        "focus": {
+          "x": 160,
+          "y": 120,
+          "w": 320
+        }
+      },
+      {
+        "wait": 300
+      }
+    ]
+  }
+]

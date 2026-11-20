@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.12.0";
+export const GAME_VERSION = "3.13.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.13.0",
+    date: "2026-11-20",
+    notes:
+      "Bosslar yangi hujumlarni o'rgandi. Qor Malikasi muz nusxalari yasaydi va arenani muz halqa bilan toraytiradi. O'rmon Shohi ildiz panjarasi chiqaradi va daraxt qo'riqchilari ortiga yashirinadi. Oni kaltagini bumerangdek otadi. Iblis yerdan olov ustunlari chiqaradi.",
+  },
   {
     version: "3.12.0",
     date: "2026-11-19",
