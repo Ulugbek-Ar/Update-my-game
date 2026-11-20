@@ -125,6 +125,8 @@ export class Boss implements Body {
   /** Zarba yerga tekkan kadrda true (ekran silkinishi uchun) */
   justSlammed = false;
   protected facingLeft = false;
+  /** "Effektlarni kamaytirish": ogohlantirishlar miltillamaydi, yaltirash qotib turadi (Game beradi) */
+  calm = false;
   /** OLOV YO'LAGI: tayyorgarlik, yugurish va yo'nalishi */
   rushWindup = 0;
   rushT = 0;
@@ -173,6 +175,11 @@ export class Boss implements Body {
   /** Faza almashinuvidagi daxlsizlik */
   get invulnerable() {
     return this.guard > 0;
+  }
+
+  /** Ogohlantirish miltillashi ("Effektlarni kamaytirish"da qotib turadi) */
+  protected pulse(time: number, speed = 28) {
+    return this.calm ? 0.75 : 0.5 + 0.4 * Math.sin(time * speed);
   }
 
   /** Boss zarbasi (g'azabda +1). */
@@ -581,6 +588,8 @@ export class Boss implements Body {
 
 // ---------------- 2-dunyo Bossi: Qor Malikasi ----------------
 export const QUEEN_HP = 40;
+/** v3.13: yangi hujumlar (nusxalar, muz halqa) jangni cho'zmasin — moslashuvchan jon shuncha kam */
+export const QUEEN_HP_TRIM = 0.9;
 /** Muz nayzalari: 3 ta, ketma-ket, har biri oldin ko'k doira bilan ogohlantiriladi */
 export const SPIKE_COUNT = 3;
 export const SPIKE_GAP = 0.35;
@@ -619,6 +628,29 @@ const MIRROR_C = { x: ROOM.w / 2, y: ROOM.h / 2 };
 const MIRROR_R = 84;
 /** Malika markazga yaqin tursa ham nusxalar bir-birining ustiga tushmasin */
 const MIRROR_MIN_R = 64;
+/**
+ * 2-faza: MUZ NUSXALARI — 3 joyda ko'k doira yonadi, so'ng Malika ulardan biriga sakraydi, qolgan
+ * ikkitasida muz nusxa paydo bo'ladi. Faqat haqiqiysi (tojida yaltirash) zarar oladi; nusxa bir
+ * zarbada sinadi. Nusxalar tirik ekan har CLONE_SHOT s da o'yinchi ostiga muz nayzasi chiqaradi.
+ */
+export const CLONE_EVERY = 15;
+export const CLONE_WARN = 0.8;
+export const CLONE_COUNT = 2;
+export const CLONE_LIFE = 10;
+export const CLONE_SHOT = 3;
+/**
+ * 2-faza: MUZ HALQA — arena chetidan muz CLOSE_TIME s davomida torayadi, ichkarida xavfsiz doira
+ * qoladi. Avval RING_WARN s xavfsiz doira va chetdagi muz ko'rinadi; muz ichida qolgan o'yinchi
+ * bir marta zarar olib, doira tomon itariladi.
+ */
+export const RING_EVERY = 17;
+export const RING_WARN = 0.8;
+export const RING_CLOSE = 3;
+export const RING_HOLD = 0.6;
+export const RING_SAFE = 36;
+const RING_FROM = 210;
+/** Shu jon ulushidan pastda muz nusxalari va muz halqa birga keladi */
+export const QUEEN_COMBO_AT = 0.25;
 
 /** Xonadagi tirik Muz ruhlari soniga qarab nechta yangi ruh chaqiriladi. */
 export function summonCount(alive: number) {
@@ -646,6 +678,21 @@ export interface Beam {
 
 export interface Mirror extends BossPart {
   flash: number;
+}
+
+/** Muz nusxa: qolgan umri va keyingi nayzagacha */
+export interface IceClone extends BossPart {
+  life: number;
+  shot: number;
+}
+
+/** Muz halqa: xavfsiz doira markazi, bosqichi (ogohlantirish / torayish / turish) va taymeri */
+export interface IceRing {
+  x: number;
+  y: number;
+  stage: "warn" | "close" | "hold";
+  t: number;
+  hit: boolean;
 }
 
 /** Nuqtadan kesmagacha masofa. */
@@ -697,6 +744,16 @@ export class Queen extends Boss {
   /** 3-faza: ko'zgu nusxalari (zarar olmaydi, soyasi yo'q) */
   mirrors: Mirror[] = [];
   swapT = MIRROR_SWAP;
+  /** 2-faza: muz nusxalari, ular chiqadigan joylar (ogohlantirish) va taymer */
+  clones: IceClone[] = [];
+  cloneSpots: { x: number; y: number }[] = [];
+  cloneWarn = 0;
+  private cloneTimer = 0;
+  /** Shu kadrda sindirilgan nusxalar (Game effekt chiqaradi) */
+  shattered: { x: number; y: number }[] = [];
+  /** 2-faza: torayuvchi muz halqa */
+  iceRing: IceRing | null = null;
+  private ringTimer = 0;
 
   constructor(hp = QUEEN_HP) {
     super(hp);
@@ -706,6 +763,8 @@ export class Queen extends Boss {
     if (ph === 2) {
       this.summonTimer = 0;
       this.iceTimer = 0.5;
+      this.cloneTimer = 3;
+      this.ringTimer = 9;
     }
     if (ph === 3) {
       this.mirrors = Array.from({ length: MIRROR_COUNT }, () => ({
@@ -739,14 +798,123 @@ export class Queen extends Boss {
     });
   }
 
-  /** Ko'zgu nusxasi zarbani yutadi — zarar yo'q. */
+  /** Ko'zgu nusxasi zarbani yutadi, muz nusxa sinadi — ikkalasida ham zarar yo'q. */
   override partAt(b: Body): BossPart | null {
-    return this.mirrors.find((m) => overlap(b, m as unknown as Body)) ?? null;
+    return (
+      this.clones.find((c) => overlap(b, c as unknown as Body)) ??
+      this.mirrors.find((m) => overlap(b, m as unknown as Body)) ??
+      null
+    );
   }
 
   override strikePart(part: BossPart) {
+    const i = this.clones.indexOf(part as IceClone);
+    if (i >= 0) {
+      this.clones.splice(i, 1);
+      this.shattered.push({ x: part.x, y: part.y });
+      return false;
+    }
     (part as Mirror).flash = 0.25;
     return false;
+  }
+
+  /** Malika va ikki nusxa chiqadigan 3 joy: markaz atrofida 120° oraliqda. */
+  private startClones() {
+    if (this.cloneWarn > 0) return;
+    const ox = this.x - MIRROR_C.x,
+      oy = (this.y - MIRROR_C.y) / 0.9;
+    const r = Math.max(MIRROR_MIN_R, Math.min(MIRROR_R, Math.hypot(ox, oy)));
+    const a0 = Math.atan2(oy, ox) + Math.PI / 3;
+    this.cloneSpots = Array.from({ length: CLONE_COUNT + 1 }, (_, i) => {
+      const a = a0 + (i * Math.PI * 2) / (CLONE_COUNT + 1);
+      return { x: MIRROR_C.x + Math.cos(a) * r, y: MIRROR_C.y + Math.sin(a) * r * 0.9 };
+    });
+    this.clones = [];
+    this.cloneWarn = CLONE_WARN;
+    this.justWarned = true;
+  }
+
+  /** Ogohlantirish tugadi: Malika tasodifiy joyga, qolganlariga muz nusxa. */
+  private placeClones() {
+    const spots = this.cloneSpots;
+    const k = Math.floor(Math.random() * spots.length) % spots.length;
+    this.x = spots[k]!.x;
+    this.y = spots[k]!.y;
+    this.clones = spots
+      .filter((_, i) => i !== k)
+      .map((s, i) => ({
+        x: s.x,
+        y: s.y,
+        size: MIRROR_SIZE,
+        life: CLONE_LIFE,
+        shot: 0.6 + i * 0.5,
+      }));
+    this.cloneSpots = [];
+    this.flash = 0.3;
+    if (this.mirrors.length) this.placeMirrors();
+  }
+
+  private startRing(p: Target) {
+    if (this.iceRing) return;
+    // xavfsiz doira o'yinchidan uzoq emas — 3 s ichida bemalol yetib boriladi
+    const cx = Math.max(96, Math.min(ROOM.w - 96, p.x + (Math.random() - 0.5) * 120));
+    const cy = Math.max(76, Math.min(ROOM.h - 76, p.y + (Math.random() - 0.5) * 90));
+    this.iceRing = { x: cx, y: cy, stage: "warn", t: RING_WARN, hit: false };
+    this.justWarned = true;
+  }
+
+  /** Halqaning hozirgi ichki radiusi (undan tashqarisi muz). */
+  ringRadius() {
+    const r = this.iceRing;
+    if (!r || r.stage === "warn") return RING_FROM;
+    if (r.stage === "hold") return RING_SAFE;
+    return RING_SAFE + (RING_FROM - RING_SAFE) * (r.t / RING_CLOSE);
+  }
+
+  private updateClones(dt: number, p: Target) {
+    if (this.cloneWarn > 0) {
+      this.cloneWarn -= dt;
+      if (this.cloneWarn <= 0) this.placeClones();
+    }
+    for (const c of this.clones) {
+      c.life -= dt;
+      c.shot -= dt;
+      if (c.shot <= 0) {
+        // nusxa ham sehr qiladi: o'yinchi ostiga bitta nayza (ko'k doira bilan ogohlantiriladi)
+        c.shot = CLONE_SHOT;
+        this.spikes.push({ x: p.x, y: p.y, warn: SPIKE_WARN, life: SPIKE_SHOW });
+      }
+    }
+    for (const c of this.clones) if (c.life <= 0) this.shattered.push({ x: c.x, y: c.y });
+    this.clones = this.clones.filter((c) => c.life > 0);
+  }
+
+  private updateRing(dt: number, p: Target) {
+    const r = this.iceRing;
+    if (!r) return;
+    r.t -= dt;
+    if (r.stage === "warn") {
+      if (r.t <= 0) r.stage = "close";
+      if (r.t <= 0) r.t = RING_CLOSE;
+      return;
+    }
+    if (!r.hit) {
+      const dx = p.x - r.x,
+        dy = p.y - r.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (
+        d > this.ringRadius() + p.size / 2 &&
+        p.takeHit(this.dmg(1), p.x + dx / d, p.y + dy / d, 140)
+      ) {
+        r.hit = true;
+        this.justSpiked = true;
+      }
+    }
+    if (r.t > 0) return;
+    if (r.stage === "close") {
+      r.stage = "hold";
+      r.t = RING_HOLD;
+    } else this.iceRing = null;
   }
 
   protected override step(dt: number, p: Target) {
@@ -764,6 +932,8 @@ export class Queen extends Boss {
     this.updateSpikes(dt, p);
     this.updateIce(dt, p);
     this.updateBeam(dt, p);
+    this.updateClones(dt, p);
+    this.updateRing(dt, p);
     for (const m of this.mirrors) if (m.flash > 0) m.flash -= dt;
     if (this.wind.t > 0) this.wind.t -= dt;
     if (this.dead) {
@@ -774,6 +944,11 @@ export class Queen extends Boss {
       this.ice = [];
       this.beam = null;
       this.mirrors = [];
+      for (const c of this.clones) this.shattered.push({ x: c.x, y: c.y });
+      this.clones = [];
+      this.cloneWarn = 0;
+      this.cloneSpots = [];
+      this.iceRing = null;
       return;
     }
     if (this.mirrors.length) {
@@ -798,6 +973,20 @@ export class Queen extends Boss {
       if (this.iceTimer <= 0) {
         this.iceTimer = ICE_EVERY;
         this.freezeFloor(p);
+      }
+      // 25% jondan pastda nusxalar va halqa birga keladi
+      const combo = this.hp <= this.maxHp * QUEEN_COMBO_AT;
+      this.cloneTimer -= dt;
+      if (this.cloneTimer <= 0 && !this.clones.length) {
+        this.cloneTimer = CLONE_EVERY * WORLD_BOSS_CD;
+        this.startClones();
+        if (combo) this.startRing(p);
+      }
+      this.ringTimer -= dt;
+      if (this.ringTimer <= 0) {
+        this.ringTimer = RING_EVERY * WORLD_BOSS_CD;
+        this.startRing(p);
+        if (combo && !this.clones.length) this.startClones();
       }
     }
     if (this.enraged) {
@@ -924,8 +1113,55 @@ export class Queen extends Boss {
     this.spikes = this.spikes.filter((s) => s.warn > 0 || s.life > 0);
   }
 
+  /** Muz halqa: tashqarisi muz, ichkarida xavfsiz doira (uzuq chiziq). */
+  private renderRing(ctx: CanvasRenderingContext2D, time: number) {
+    const r = this.iceRing;
+    if (!r) return;
+    const rad = this.ringRadius();
+    const warn = r.stage === "warn";
+    const k = warn ? 1 - r.t / RING_WARN : 1;
+    ctx.fillStyle = withAlpha(DANGER.iceFill, warn ? 0.08 + 0.1 * k : 0.38);
+    ctx.beginPath();
+    ctx.rect(ROOM.wall, ROOM.wall, ROOM.w - 2 * ROOM.wall, ROOM.h - 2 * ROOM.wall);
+    ctx.arc(r.x, r.y, warn ? RING_SAFE : rad, 0, Math.PI * 2, true);
+    ctx.fill("evenodd");
+    if (!warn) {
+      // muz devorining ichki chekkasi: oq qirov va to'q ko'k chiziq
+      ctx.strokeStyle = withAlpha(DANGER.iceWarn, 0.85);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, rad, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(238,247,255,0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, rad + 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // xavfsiz doira — qayerga borish kerakligi butun hujum davomida ko'rinadi
+    ctx.strokeStyle = withAlpha(DANGER.iceWarn, this.pulse(time, 20));
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, RING_SAFE, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   /** Poldagi muz, nur, ogohlantirish doiralari va nayzalar — boshqa jonzotlardan oldin chiziladi. */
   override renderFloor(ctx: CanvasRenderingContext2D, time = 0) {
+    this.renderRing(ctx, time);
+    for (const s of this.cloneSpots) {
+      // nusxalar va Malika chiqadigan joylar
+      const k = 1 - Math.max(0, this.cloneWarn) / CLONE_WARN;
+      ctx.fillStyle = withAlpha(DANGER.iceFill, 0.12 + 0.25 * k);
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + 10, 16, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(DANGER.iceWarn, this.pulse(time));
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
     for (const b of this.ice) {
       const x = Math.round(b.x),
         y = Math.round(b.y);
@@ -1025,7 +1261,35 @@ export class Queen extends Boss {
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
+    if (this.clones.length && !this.dead) this.renderSparkle(ctx, this.x, this.y - 19);
     ctx.globalAlpha = 1;
+  }
+
+  /** Haqiqiy Malika tojidagi yaltirash: oltin yulduzcha (nusxalarda yo'q). */
+  private renderSparkle(ctx: CanvasRenderingContext2D, x: number, y: number) {
+    const t = this.calm ? 1 : 0.6 + 0.4 * Math.abs(Math.sin(this.fightT * 6));
+    const r = Math.round(2 + 2 * t);
+    x = Math.round(x);
+    y = Math.round(y);
+    ctx.fillStyle = `rgba(255,226,90,${0.35 * t})`;
+    ctx.fillRect(x - r - 1, y - r - 1, 2 * r + 3, 2 * r + 3);
+    ctx.fillStyle = "#fff6c0";
+    ctx.fillRect(x - r, y, 2 * r + 1, 1);
+    ctx.fillRect(x, y - r, 1, 2 * r + 1);
+    ctx.fillStyle = "#ffe25a";
+    ctx.fillRect(x - 1, y - 1, 3, 3);
+  }
+
+  /** Muz nusxa: Malikaning o'zi, och-ko'k shaffof, soyasi va tojida yaltirashi yo'q. */
+  renderClone(ctx: CanvasRenderingContext2D, c: IceClone) {
+    const { state, frame } = this.anim;
+    ctx.globalAlpha = Math.min(1, c.life * 2) * 0.78;
+    renderSprite(ctx, "queen", state, frame, c.x, c.y, false, this.facingLeft);
+    ctx.globalAlpha = 1;
+    // muz yoriqlari — nusxa ekanini yaqindan ham ko'rsatadi
+    ctx.fillStyle = "rgba(220,240,255,0.85)";
+    ctx.fillRect(Math.round(c.x - 5), Math.round(c.y - 4), 4, 1);
+    ctx.fillRect(Math.round(c.x + 2), Math.round(c.y + 3), 1, 4);
   }
 
   /** Ko'zgu nusxalari: Malikaning aynan o'zi, faqat soyasi yo'q (Game soyani faqat haqiqiysiga chizadi). */

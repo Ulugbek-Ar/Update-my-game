@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { WORLD_BOSS_MUL, bossHpFor } from "./bossPower";
 import { Game } from "./game";
 import { Enemy, FROST_CHILL, FROST_WINDUP } from "./enemy";
-import { Queen, QUEEN_HP, MAX_SPIRITS, summonCount } from "./boss";
+import { Queen, QUEEN_HP, QUEEN_HP_TRIM, MAX_SPIRITS, summonCount } from "./boss";
 import { BOSS_WAVE, WAVES2 } from "./waves";
 import { Player, CHILL_SPEED } from "./player";
 import { loadAchievements } from "./achievements";
@@ -88,7 +88,7 @@ describe("2-bob: o'tish", () => {
     expect(g.boss).toBeInstanceOf(Queen);
     // joni o'yinchi kuchiga moslashadi, asosiy 40 — pastki chegara
     expect(g.boss!.maxHp).toBe(
-      bossHpFor(g.player, QUEEN_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.ice),
+      bossHpFor(g.player, QUEEN_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.ice * QUEEN_HP_TRIM),
     );
     expect(g.boss!.maxHp).toBeGreaterThanOrEqual(QUEEN_HP);
     expect(QUEEN_HP).toBe(40);

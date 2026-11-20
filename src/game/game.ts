@@ -17,6 +17,7 @@ import {
   KING_LIGHT,
   Queen,
   QUEEN_HP,
+  QUEEN_HP_TRIM,
   WIND_PUSH,
   impSummonCount,
   spiderSummonCount,
@@ -1217,7 +1218,12 @@ export class Game {
             )
           : ice
             ? new Queen(
-                bossHpFor(p, bossHp(i, QUEEN_HP), cycle, this.powerFactor() * WORLD_BOSS_MUL.ice),
+                bossHpFor(
+                  p,
+                  bossHp(i, QUEEN_HP),
+                  cycle,
+                  this.powerFactor() * WORLD_BOSS_MUL.ice * QUEEN_HP_TRIM,
+                ),
               )
             : new Boss(bossHpFor(p, bossHp(i), cycle, this.powerFactor()));
       // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
@@ -1315,6 +1321,12 @@ export class Game {
       this.fx.burst(p.x, p.y, "#dceeff", 16, 60, 2);
       this.fx.text(p.x, p.y - 20, this.touch ? "TEZ BOS!" : "TEZ BOS: HUJUM / DASH!", "#7fe9ff");
     }
+    for (const s of q.shattered) {
+      sfx.iceSpike();
+      this.fx.burst(s.x, s.y - 4, "#dceeff", 14, 80, 2);
+      this.fx.burst(s.x, s.y - 4, "#7fe9ff", 8, 50, 1);
+    }
+    q.shattered = [];
     if (q.justSpiked) {
       q.justSpiked = false;
       sfx.iceSpike();
@@ -2499,6 +2511,7 @@ export class Game {
     }
     const boss = this.boss;
     if (boss) {
+      boss.calm = this.fx.isReduced();
       boss.update(dt, target);
       if (boss.justPhased) {
         // yangi faza: qisqa daxlsizlik, ekran chaqnaydi, sahna rangi o'zgaradi, yangi hujum
@@ -3962,6 +3975,7 @@ export class Game {
 
   /** Boss qismiga zarba: ko'zgu yutadi (zarar yo'q), gul zarar oladi. */
   private strikePart(b: Boss, part: { x: number; y: number }, dmg: number, x: number, y: number) {
+    const clone = b instanceof Queen && b.clones.some((c) => c === part);
     if (b.strikePart(part as Parameters<Boss["strikePart"]>[0], dmg)) {
       sfx.hit();
       this.fx.burst(x, y, "#e0679a", 6, 60, 1);
@@ -3969,7 +3983,7 @@ export class Game {
     }
     sfx.block();
     this.fx.burst(x, y, "#dceeff", 8, 70, 1);
-    this.fx.text(part.x, part.y - 26, "KO'ZGU!", "#a9cdee");
+    this.fx.text(part.x, part.y - 26, clone ? "NUSXA!" : "KO'ZGU!", "#a9cdee");
   }
 
   /**
@@ -4777,7 +4791,8 @@ export class Game {
         r: () => {
           if (!boss.dead) this.shadow(c, boss.x, boss.y + 24, 30);
           // ko'zgular bor paytda haqiqiy Malikaning soyasi och muz polda ham aniq ko'rinsin
-          if (boss instanceof Queen && boss.mirrors.length) this.shadow(c, boss.x, boss.y + 24, 34);
+          if (boss instanceof Queen && (boss.mirrors.length || boss.clones.length))
+            this.shadow(c, boss.x, boss.y + 24, 34);
           const lively = !this.fx.isReduced();
           if (this.intro > 0 && lively) {
             // kirish sahnasi: xona qorayadi, boss (va undan keyin chiziladiganlar) yoritilgan qoladi
@@ -4805,8 +4820,10 @@ export class Game {
         },
       });
     // ko'zgu nusxalari: soyasi yo'q — haqiqiy Malikani shundan ajratish mumkin
-    if (boss instanceof Queen)
+    if (boss instanceof Queen) {
       for (const m of boss.mirrors) all.push({ y: m.y, r: () => boss.renderMirror(c, m) });
+      for (const m of boss.clones) all.push({ y: m.y, r: () => boss.renderClone(c, m) });
+    }
     const ch = this.chest;
     if (ch) all.push({ y: ch.y, r: () => this.renderChest(c, ch) });
     // yopilgan tuzoq dushman oyog'ida, uning ustida chiziladi

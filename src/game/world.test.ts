@@ -12,7 +12,7 @@ import {
   WOLF_TIRED,
   type EnemyKind,
 } from "./enemy";
-import { Queen, QUEEN_HP } from "./boss";
+import { Queen, QUEEN_HP, QUEEN_HP_TRIM } from "./boss";
 import { BOSS_WAVE, WAVES, WAVES2, WORLD_KINDS, waveEnemies } from "./waves";
 import { Player } from "./player";
 import { KILL_GOLD } from "./shop";
@@ -98,7 +98,7 @@ describe("Har dunyoning o'z moblari", () => {
     gi.startWave(BOSS_WAVE + 5);
     expect(g.boss).toBeInstanceOf(Queen);
     expect(g.boss!.maxHp).toBe(
-      bossHpFor(g.player, QUEEN_HP + 15, 1, g.powerFactor() * WORLD_BOSS_MUL.ice),
+      bossHpFor(g.player, QUEEN_HP + 15, 1, g.powerFactor() * WORLD_BOSS_MUL.ice * QUEEN_HP_TRIM),
     );
     for (const e of g.enemies) expect(W2.has(e.kind)).toBe(true);
   });
