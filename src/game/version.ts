@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.13.0";
+export const GAME_VERSION = "3.14.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.14.0",
+    date: "2026-11-20",
+    notes:
+      "Hamma qahramonlarning superi tayyor. Ovchining o'n o'qi nishonini o'zi topadi. Mergan uch yarim soniya cheksiz o'q otadi. Superlar endi onlayn olamda ham ishlaydi.",
+  },
   {
     version: "3.13.0",
     date: "2026-11-20",

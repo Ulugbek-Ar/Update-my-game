@@ -134,7 +134,7 @@ export class ArrowScene implements SuperScene {
       const k = Math.min(1, m.age / MARK_IN) * (m.fade >= 0 ? m.fade / 0.15 : 1);
       const p = m.t.live ?? m.t;
       const r = (m.boss ? 14 : 7) * (1.6 - 0.6 * k);
-      c.strokeStyle = withAlpha(T.glow, 0.45 * k);
+      c.strokeStyle = withAlpha(T.edge, 0.45 * k);
       c.lineWidth = 1;
       c.beginPath();
       c.ellipse(p.x, p.y + m.t.size / 2 - 1, r, r * 0.45, 0, 0, Math.PI * 2);
@@ -164,7 +164,7 @@ export class ArrowScene implements SuperScene {
         cy = Math.round(p.y - m.t.size / 2 - 7);
       const r = (m.boss ? 7 : 4) + Math.round((1 - k) * 5);
       const pulse = ctx.reduced ? 1 : 0.75 + 0.25 * Math.sin(m.age * 14);
-      const col = withAlpha(T.glow, k * pulse);
+      const col = withAlpha(T.edge, k * pulse);
       const a0 = m.age * (ctx.reduced ? 1 : 4);
       for (let q = 0; q < 4; q++) {
         const a = a0 + (q * Math.PI) / 2;
@@ -183,7 +183,7 @@ export class ArrowScene implements SuperScene {
       for (let j = 0; j < tr.length; j++) {
         const q = tr[j]!;
         const a = (j + 1) / (tr.length + 1);
-        px(c, withAlpha(T.glow, 0.55 * a), Math.round(q.x), Math.round(q.y), 1, 1);
+        px(c, withAlpha(T.edge, 0.7 * a), Math.round(q.x), Math.round(q.y), 1, 1);
       }
       const ar = arrows[i];
       if (!ar || ar.done || !cast || cast.stage !== "strike" || cast.t < ar.delay) return;
