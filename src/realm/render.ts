@@ -85,6 +85,13 @@ export interface NetView {
 }
 
 export interface RealmView {
+  /** Onlayn superlar (v3.14): yer va havo qatlami (dunyo koordinatasida), ekran qatlami (karta, shar) */
+  superLayer?: (
+    c: CanvasRenderingContext2D,
+    layer: "ground" | "air",
+    view: { x: number; y: number; w: number; h: number },
+  ) => void;
+  superHud?: (c: CanvasRenderingContext2D) => void;
   sim: RealmSim;
   me: RealmPlayer;
   net: NetView;
@@ -400,6 +407,7 @@ export class RealmRenderer {
     this.prompt(c, v);
     c.restore();
     this.hud(c, v);
+    v.superHud?.(c);
     this.overlays(c, v);
     c.restore();
   }
@@ -574,6 +582,8 @@ export class RealmRenderer {
           if (TALL[sim.tileAt(tx, ty)] && (ty + 1) * TILE > foot)
             occluders.add(ty * sim.map.w + tx);
     };
+    // super sahnalari: yerdagi belgilar (personajlar ostida)
+    v.superLayer?.(c, "ground", { x: camX, y: camY, w: VIEW_W, h: VIEW_H });
     // moblar (tartib — oyoq bo'yicha)
     for (const m of sim.mobs) {
       const x = lerp(m.px, m.x, v.alpha),
@@ -744,6 +754,8 @@ export class RealmRenderer {
     }
     // Samuray: kechikkan IAI kesiklari (moblar ustida)
     for (const k of v.cuts) if (inView(k.x, k.y, camX, camY, 40)) renderCut(c, k);
+    // super sahnalari: nurlar, o'qlar, meteorit (personajlar ustida)
+    v.superLayer?.(c, "air", { x: camX, y: camY, w: VIEW_W, h: VIEW_H });
     v.fx.renderParticles(c);
   }
 

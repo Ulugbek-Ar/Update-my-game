@@ -103,6 +103,8 @@ export const CommandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("use"), slot }),
   z.object({ type: z.literal("buy"), item: id }),
   z.object({ type: z.literal("sell"), slot }),
+  /** v3.14: super (eski klient yubormaydi; yangi klient faqat welcome.sup bo'lsa yuboradi) */
+  z.object({ type: z.literal("super") }),
 ]) satisfies z.ZodType<RealmCommand>;
 
 const list = z.array(id).max(64);
@@ -330,6 +332,8 @@ export interface NetMe {
   ui: RealmUi | null;
   starNight: number;
   titles: string[];
+  /** Super zaryadi (v3.14; eski server yubormaydi, eski klient e'tiborsiz qoldiradi) */
+  sp?: number;
 }
 
 /** Delta holat: maydon bo'lmasa — o'zgarmagan */
@@ -396,6 +400,8 @@ export type ServerMsg =
       hall?: HallInfo;
       /** hafta g'olibi (vodiy xonasida) */
       champ?: ChampInfo | null;
+      /** Server onlayn superlarni qabul qiladi (v3.14; eski server yubormaydi) */
+      sup?: boolean;
     }
   /** zal bezagi o'zgardi (daraja, gerb, yangi trofey) */
   | { t: "hall"; hall: HallInfo }

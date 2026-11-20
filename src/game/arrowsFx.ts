@@ -144,7 +144,8 @@ export class ArrowScene implements SuperScene {
 
   renderAir(c: CanvasRenderingContext2D, cast: SuperCast | null, ctx: SceneCtx) {
     const T = ctx.theme;
-    if (this.dim > 0.01) px(c, `rgba(4,10,4,${0.32 * this.dim})`, 0, 0, ROOM.w, ROOM.h);
+    if (this.dim > 0.01)
+      px(c, `rgba(4,10,4,${0.32 * this.dim})`, ctx.view.x, ctx.view.y, ctx.view.w, ctx.view.h);
     // kamondan osmonga nur
     if (this.beam > 0 && cast?.stage === "prep") {
       const k = this.beam;

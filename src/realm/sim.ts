@@ -19,6 +19,15 @@ import {
   type PlayerInput,
 } from "@/game/player";
 import { CRIT_MUL } from "@/game/crit";
+import { SuperMeter, frenzyBossDamage } from "@/game/super";
+import {
+  endRealmSuper,
+  realmBoss,
+  startRealmSuper,
+  updateRealmSuper,
+  type RealmCast,
+  type SuperEvent,
+} from "./supers";
 import { overlap, type Body } from "@/game/animation";
 import type { Hero } from "@/game/hero";
 import { RealmMap } from "./map";
@@ -90,7 +99,9 @@ export type RealmCommand =
   | { type: "close" }
   | { type: "use"; slot: number }
   | { type: "buy"; item: string }
-  | { type: "sell"; slot: number };
+  | { type: "sell"; slot: number }
+  /** Super (v3.14): server shar to'lganini o'zi tekshiradi — to'lmagan bo'lsa rad etadi */
+  | { type: "super" };
 
 export interface PlayerCommand {
   pid: string;
@@ -190,7 +201,12 @@ export type RealmEvent =
   | { type: "iai"; pid: string; x: number; y: number; x2: number; y2: number }
   | { type: "cut"; pid: string; x: number; y: number; a: number; r: number; n: number }
   | { type: "parry"; pid: string; x: number; y: number }
-  | { type: "dodge"; pid: string; x: number; y: number };
+  | { type: "dodge"; pid: string; x: number; y: number }
+  /**
+   * Super boshlandi (v3.14): bitta qisqa xabar — atrofdagilar sahnani o'zida chizadi. Eski klient
+   * bu turni bilmaydi va e'tiborsiz qoldiradi.
+   */
+  | SuperEvent;
 
 export interface Stack {
   item: string;
@@ -366,6 +382,9 @@ export class RealmPlayer {
   /** IAI boshlangan joy (iz chizish uchun) */
   iaiFrom = { x: 0, y: 0 };
   base: { maxHp: number; damage: number; speed: number };
+  /** Super zaryadi (serverda) va davom etayotgan super (supers.ts) */
+  meter: SuperMeter;
+  cast: RealmCast | null = null;
 
   constructor(
     public id: string,
@@ -375,6 +394,7 @@ export class RealmPlayer {
     tiles: number,
   ) {
     this.p = this.makePlayer(x, y);
+    this.meter = new SuperMeter(hero);
     this.base = { maxHp: this.p.maxHp, damage: this.p.damage, speed: this.p.speed };
     this.px = x;
     this.py = y;
@@ -495,6 +515,7 @@ export class RealmSim {
   hurtPlayer(rp: RealmPlayer, dmg: number, fromX: number, fromY: number, force: number) {
     if (rp.p.dead || !rp.p.takeHit(dmg, fromX, fromY, force)) return false;
     rp.lastHurt = this.tick;
+    rp.meter.addHurt();
     this.events.push({ type: "mobHurtPlayer", pid: rp.id, x: rp.p.x, y: rp.p.y });
     return true;
   }
@@ -1376,7 +1397,8 @@ export class RealmSim {
     m.hitters.clear();
   }
 
-  private hit(rp: RealmPlayer, m: RealmMob, dmg: number, knock: number) {
+  /** Mobga zarba. fromSuper — super zarbasi (shar to'lmaydi) */
+  hit(rp: RealmPlayer, m: RealmMob, dmg: number, knock: number, fromSuper = false) {
     if (m.dead || m.under || m.spawnT > 0.3) return false;
     // mashq qo'g'irchog'i: zararni ko'rsatadi, o'zi o'lmaydi va javob bermaydi
     if (m.kind === "dummy") {
@@ -1387,6 +1409,8 @@ export class RealmSim {
       return true;
     }
     const evading = m.evading;
+    // super zaryadi: berilgan zarar (super zarbasidan va qo'g'irchoqdan emas)
+    if (!fromSuper && !evading) rp.meter.add(Math.min(dmg, m.hp));
     if (m.kind === "warden" || m.kind === "ashking") m.hitters.add(rp.id);
     const killed = damageMob(m, dmg, rp.p.x, rp.p.y, knock, this);
     if (!evading) this.events.push({ type: "hit", x: m.x, y: m.y - 6, dmg, kind: m.kind });
@@ -1483,6 +1507,9 @@ export class RealmSim {
         return this.buy(rp, c.item);
       case "sell":
         return this.sell(rp, c.slot);
+      case "super":
+        startRealmSuper(this, rp);
+        return;
     }
   }
 
@@ -1517,10 +1544,19 @@ export class RealmSim {
   private updatePlayer(rp: RealmPlayer, dt: number) {
     const p = rp.p;
     if (p.dead) {
+      if (rp.cast) endRealmSuper(rp);
       p.anim.update(dt);
       rp.deadT += dt;
       if (rp.deadT >= (rp.raidRespawn ? KING_RESPAWN : RESPAWN_TIME)) this.respawn(rp);
       return;
+    }
+    if (rp.cast) {
+      updateRealmSuper(this, rp, dt);
+      // super paytida joyida va daxlsiz (CHEKSIZ O'Q tez otishida — erkin)
+      if (rp.cast && !rp.cast.cast.free) {
+        p.castTick(dt);
+        return;
+      }
     }
     const hpBefore = p.hp;
     this.movePlayer(rp, dt);
@@ -1952,7 +1988,15 @@ export class RealmSim {
         const s = (b.size + m.size) / 2;
         if (Math.abs(b.x - m.x) < s && Math.abs(b.y - m.y) < s) {
           b.hitSet.add(m.id);
-          this.hit(rp, m, rp.p.damage * (b.power ?? 1), 120);
+          let dmg = rp.p.damage * (b.power ?? 1);
+          const rc = rp.cast?.cast;
+          if (b.frenzy && rc?.def.frenzy && realmBoss(m)) {
+            // CHEKSIZ O'Q: tez otishning qo'shimcha zarari bossga chegaralangan
+            const r = frenzyBossDamage(rc.def, m.maxHp, rc.frenzyExtra.get(m) ?? 0, dmg);
+            rc.frenzyExtra.set(m, (rc.frenzyExtra.get(m) ?? 0) + r.extra);
+            dmg = r.dmg;
+          }
+          this.hit(rp, m, dmg, 120);
           if (--b.left <= 0) return false;
         }
       }

@@ -243,6 +243,11 @@ export class RealmMirror {
     me.ui = n.ui;
     me.starNight = n.starNight;
     me.titles = n.titles ?? [];
+    // super zaryadi serverdan (eski server yubormaydi — 0)
+    const sp = n.sp ?? 0;
+    if (me.meter.def && sp >= me.meter.def.charge && me.meter.value < me.meter.def.charge)
+      me.meter.justFilled = true;
+    me.meter.value = me.meter.def ? Math.min(me.meter.def.charge, sp) : 0;
     // jon, zarar, tezlik va yorug'lik inventardan (serverdagi bilan bir xil hisob)
     this.sim.applyBonuses(me);
   }

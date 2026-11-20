@@ -149,7 +149,6 @@ export class FrenzyScene implements SuperScene {
         sh.vx *= 0.5;
         if (Math.abs(sh.vz) < 14) sh.rest = true;
       }
-      sh.x = Math.max(ROOM.wall, Math.min(ROOM.w - ROOM.wall, sh.x));
     }
     for (const p of this.puffs) p.life -= dt;
     this.puffs = this.puffs.filter((p) => p.life > 0);
@@ -167,7 +166,8 @@ export class FrenzyScene implements SuperScene {
   renderAir(c: CanvasRenderingContext2D, cast: SuperCast | null, ctx: SceneCtx) {
     const T = ctx.theme;
     const O = ctx.orb ?? T;
-    if (this.dim > 0.01) px(c, `rgba(10,6,2,${0.3 * this.dim})`, 0, 0, ROOM.w, ROOM.h);
+    if (this.dim > 0.01)
+      px(c, `rgba(10,6,2,${0.3 * this.dim})`, ctx.view.x, ctx.view.y, ctx.view.w, ctx.view.h);
     // havodagi gilzalar (aylanib uchadi)
     for (const sh of this.shells) {
       if (sh.z <= 0.5) continue;

@@ -11,7 +11,7 @@ import { DEFAULT_SKIN, selectedSkin, skinLook } from "@/game/skins";
 import { heroBurst, heroImpact, heroTrail, type SkinLook } from "@/game/skinFx";
 import { CUT_LIFE, MOON_LIFE, STREAK_LIFE } from "@/game/samuraiFx";
 import { BUBBLE_TIME } from "./realmFx";
-import { nearestLook } from "./render";
+import { nearestLook, text as drawText } from "./render";
 import { Input } from "@/game/input";
 import { Effects } from "@/game/effects";
 import { sfx, type MusicTrack } from "@/game/audio";
@@ -54,6 +54,7 @@ import { RealmMirror } from "./net/mirror";
 import { Predictor, SNAP_DIST } from "./net/predict";
 import { SERVER_URL, guestTag, inviteLink, onlineWanted } from "./net/config";
 import { telegramApp, telegramShare } from "@/lib/telegram";
+import { RealmSupers } from "./superView";
 
 export { REALM_SAVE_KEY };
 /** Oflayn o'yinchi id'si (onlayn — server beradi) */
@@ -159,6 +160,48 @@ export class RealmClient {
   private acc = 0;
   private time = 0;
   private pending: RealmCommand[] = [];
+  /** Onlayn superlar ko'rinishi: sahnalar, egasining kartasi va shari (superView.ts) */
+  supers = new RealmSupers();
+  /** Server superlarni qabul qiladimi (welcome.sup; oflayn — doim) */
+  private serverSupers = false;
+
+  /** Super zaryadi (oflayn — mahalliy sim, onlayn — serverdan) */
+  get superMeter() {
+    return this.me.meter;
+  }
+
+  get orb() {
+    return this.supers.orb;
+  }
+
+  get theme() {
+    return this.lookOf(this.pid).theme;
+  }
+
+  /** Super shari ranglari: oddiy skinda — superning o'z suyuqligi */
+  get orbTheme() {
+    const look = this.lookOf(this.pid);
+    const o = this.me.meter.def?.orb;
+    return o && look.tier === "default" ? { ...look.theme, ...o } : look.theme;
+  }
+
+  /** Superni ishlatish mumkinmi (yakuniy tekshiruv — serverda) */
+  canSuper() {
+    const me = this.me;
+    return (
+      me.meter.ready &&
+      !me.p.dead &&
+      !me.ui &&
+      !me.cast &&
+      (!this.online || this.serverSupers) &&
+      !this.supers.locked(this.pid)
+    );
+  }
+
+  /** Kamera hududi (taxminan: o'yinchi markazda) — sahnalarning qorong'ilashuvi uchun */
+  private camView() {
+    return { x: this.me.p.x - VIEW_W / 2, y: this.me.p.y - VIEW_H / 2, w: VIEW_W, h: VIEW_H };
+  }
   private axis = { x: 0, y: 0 };
   private atkHeld = false;
   private dashHeld = false;
@@ -214,6 +257,20 @@ export class RealmClient {
     this.me.gold = this.gold = loadGold();
     this.me.keys = [...loadBossKeys()];
     this.view = {
+      superLayer: (c, layer, view) =>
+        layer === "ground"
+          ? this.supers.renderGround(c, view, this.fx, this.fx.isReduced())
+          : this.supers.renderAir(c, view, this.fx, this.fx.isReduced()),
+      superHud: (c) => {
+        const reduced = this.fx.isReduced();
+        if (this.me.meter.def && !this.touch)
+          this.supers.renderOrb(c, VIEW_W - 22, VIEW_H - 22, 12, this.orbTheme, reduced);
+        this.supers.renderCard(
+          c,
+          (s, x, y, size, color, align) => drawText(c, s, x, y, size, color, align),
+          reduced,
+        );
+      },
       sim: this.sim,
       me: this.me,
       alpha: 0,
@@ -329,6 +386,7 @@ export class RealmClient {
 
   private onNet(m: ServerMsg) {
     if (m.t === "welcome") {
+      this.serverSupers = !!m.sup;
       if (m.hall) this.view.hall = m.hall;
       if (m.champ !== undefined) {
         this.view.champ = m.champ;
@@ -823,6 +881,10 @@ export class RealmClient {
     }
     this.input.endFrame();
     this.fx.update(dt);
+    const meter = this.me.meter;
+    const filled = meter.justFilled;
+    meter.justFilled = false;
+    this.supers.frame(dt, meter.ratio, meter.ready, filled, this.fx.isReduced());
     for (const k of v.cracks) k.life -= dt;
     v.cracks = v.cracks.filter((k) => k.life > 0);
     for (const q of v.quakes) q.life -= dt;
@@ -870,6 +932,8 @@ export class RealmClient {
     }
     // Mergan: R (telefonda o'q belgisi) — qayta o'qlash; oynalar ochiq bo'lsa e'tiborsiz
     if (inp.consumeReload() && !blocked) cmds.push({ type: "reload" });
+    // super (L / Q, telefonda — shar tugmasi): faqat shar to'lganda (server baribir tekshiradi)
+    if (inp.consumeSuper() && !blocked && this.canSuper()) cmds.push({ type: "super" });
     const pressed = (t: "attack" | "ability") => cmds.some((c) => c.type === t && c.down);
     // qisqa bosish bitta tick ichida qo'yib yuborilgan bo'lsa ham "qo'yib yuborish" yuboriladi
     const atk = !blocked && inp.attackHeld();
@@ -912,6 +976,7 @@ export class RealmClient {
       saveGold(this.gold);
     }
     for (const e of events) this.onEvent(e);
+    this.supers.tick(TICK_DT, this.sim, this.me.p, this.camView(), this.fx, this.fx.isReduced());
     // Sardorning og'ir qadami: oyoq yerga tekkan kadrda chang va juda yengil silkinish
     // (silkinish sozlamada o'chirilgan bo'lsa view.shake 0 — ko'rinmaydi)
     for (const m of this.sim.mobs) {
@@ -961,7 +1026,12 @@ export class RealmClient {
       this.reconcile();
     }
     const p = me.p;
+    // o'z superi: server qahramonni joyida ushlab turadi — bashorat ham shunday
+    const lock = this.supers.locked(this.pid) && !p.dead;
+    if (lock && !p.casting) p.beginCast();
+    else if (!lock && p.casting) p.endCast();
     if (p.dead) p.anim.update(TICK_DT);
+    else if (lock) p.castTick(TICK_DT);
     else {
       this.sim.movePlayer(me, TICK_DT);
       // o'q, tuzoq, tutun va xabarlar serverdan keladi
@@ -1165,6 +1235,17 @@ export class RealmClient {
     switch (e.type) {
       case "guild":
         if (mine) this.onGuild(e.what);
+        return;
+      case "super":
+        this.supers.start(
+          e,
+          mine,
+          this.lookOf(e.pid),
+          this.sim.players.get(e.pid)?.hero ?? this.hero,
+          this.camView(),
+          fx,
+          fx.isReduced(),
+        );
         return;
       case "hit":
         // mashq qo'g'irchog'i: o'zi bergan zarar hisobi (4 s urilmasa — yangidan)

@@ -322,6 +322,7 @@ export class RealmRoom {
       code: this.code,
       tick: this.sim.tick,
       n: this.members.size,
+      sup: true,
       ...this.welcomeExtra(),
     });
     // birinchi holat darhol (to'liq: baseline bo'sh)
@@ -616,6 +617,7 @@ export class RealmRoom {
       ui: rp.ui,
       starNight: rp.starNight,
       titles: rp.titles,
+      sp: Math.round(rp.meter.value * 10) / 10,
     };
     const mk = JSON.stringify(me);
     if (mk !== b.me) {

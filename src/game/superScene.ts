@@ -151,7 +151,8 @@ export class PlainScene implements SuperScene {
 
   renderAir(c: CanvasRenderingContext2D, _cast: SuperCast | null, ctx: SceneCtx) {
     const T = ctx.theme;
-    if (this.dim > 0.01) px(c, `rgba(4,2,10,${0.4 * this.dim})`, 0, 0, ROOM.w, ROOM.h);
+    if (this.dim > 0.01)
+      px(c, `rgba(4,2,10,${0.4 * this.dim})`, ctx.view.x, ctx.view.y, ctx.view.w, ctx.view.h);
     for (const m of this.marks) {
       const k = m.life / m.max;
       c.strokeStyle = withAlpha(T.glow, k);
