@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Oni, ONI_THROW_TIME, ONI_THROW_WINDUP, clubPoint } from "./oni";
 import {
+  Boss,
+  PILLAR_WARN,
   CLONE_WARN,
   ForestKing,
   GRID_LANE,
@@ -137,5 +140,53 @@ describe("O'rmon Shohi: ildiz panjarasi va daraxt qo'riqchilar", () => {
     hp = k.hp;
     k.takeDamage(10);
     expect(hp - k.hp).toBeCloseTo(10);
+  });
+});
+
+describe("Oni: kanabo bumerangi", () => {
+  it("otishdan oldin yo'l ko'rinadi, kaltak borishda ham, qaytishda ham uradi", () => {
+    expect(ONI_THROW_WINDUP * 0.8).toBeGreaterThanOrEqual(0.6);
+    const { p, hits } = dummy(240, 74);
+    const o = new Oni(100);
+    o.spawn = 0;
+    o.turn = 2; // 1-fazada navbat: urish, supurish, OTISH
+    o.cd = 0;
+    o.update(1 / 60, p);
+    expect(o.attack?.kind).toBe("throw");
+    expect(o.attack!.t).toBeGreaterThanOrEqual(0.6);
+    for (let t = 0; t < 2 && !o.club; t += 1 / 60) o.update(1 / 60, p);
+    const c = o.club!;
+    expect(c).toBeTruthy();
+    // yo'l yopiq: boshida va oxirida Oni qo'lida
+    const end = clubPoint(c, 1);
+    expect(Math.hypot(end.x - c.x0, end.y - c.y0)).toBeLessThan(0.01);
+    // o'yinchini borish va qaytish yo'li ustida ushlab turamiz
+    const n = hits.length;
+    for (let t = 0; t < ONI_THROW_TIME; t += 1 / 60) {
+      const k = Math.min(1, (c.t + 1 / 60) / ONI_THROW_TIME);
+      const q = clubPoint(c, k < 0.5 ? 0.25 : 0.75);
+      p.x = q.x;
+      p.y = q.y;
+      o.update(1 / 60, p);
+    }
+    expect(hits.length - n).toBe(2);
+  });
+});
+
+describe("Iblis: olov ustunlari (faqat 2-faza)", () => {
+  it("1-fazada yo'q, 2-fazada o'yinchi tomon qator — har biri kamida 0.6 s ogohlantiriladi", () => {
+    const { p } = dummy(40, 200);
+    const b = ready(new Boss(100), 0.95, p);
+    run(b, p, 10);
+    expect(b.pillars.length).toBe(0);
+    const b2 = ready(new Boss(100), 0.5, p);
+    expect(b2.phase).toBe(2);
+    for (let t = 0; t < 6 && !b2.pillars.length; t += 1 / 60) b2.update(1 / 60, p);
+    expect(b2.pillars.length).toBeGreaterThan(2);
+    expect(PILLAR_WARN).toBeGreaterThanOrEqual(0.6);
+    for (const q of b2.pillars) expect(q.warn).toBeGreaterThan(0.55);
+    // qator o'yinchi tomon: oxirgisi o'yinchiga yaqinroq
+    const d = (q: { x: number; y: number }) => Math.hypot(q.x - p.x, q.y - p.y);
+    expect(d(b2.pillars.at(-1)!)).toBeLessThan(d(b2.pillars[0]!));
   });
 });

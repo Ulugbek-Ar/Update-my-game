@@ -66,10 +66,43 @@ const ONI_COMBO_STEP = 60;
 export const ONI_STAGGER = 1;
 /** Kombo o'rtasidagi zarba parry qilinsa: Oni tisariladi, keyingi zarba shuncha kechikadi */
 export const ONI_RECOIL = 0.12;
+/**
+ * KANABO BUMERANGI: Oni kaltagini otadi — u yoy chizib o'yinchi ortiga uchadi va boshqa yoy bilan
+ * qaytadi (ikki yo'nalishda uradi). Tayyorgarlikda butun yo'l uzuq chiziq bilan ko'rinadi; uchib
+ * yurganda Oni qo'li bo'sh — urish uchun qulay payt.
+ */
+export const ONI_THROW_WINDUP = 0.85;
+export const ONI_THROW_TIME = 1.4;
+/** Yoyning yarim kengligi, kaltak radiusi, uchish masofasi chegaralari */
+export const ONI_THROW_W = 30;
+export const ONI_THROW_R = 9;
+const ONI_THROW_MIN = 80;
+const ONI_THROW_MAX = 160;
 /** Zarbadan keyin shu vaqt ichidagi parry "gurzi zarbasi" hisoblanadi */
 const MELEE_MARK = 0.15;
 
-export type OniMove = "slam" | "sweep" | "ring" | "combo";
+export type OniMove = "slam" | "sweep" | "ring" | "combo" | "throw";
+
+/** Uchayotgan kanabo: otilgan joy, yo'nalish, masofa, vaqt va qaysi yo'nalishda tekkan */
+export interface OniClub {
+  x0: number;
+  y0: number;
+  a: number;
+  len: number;
+  t: number;
+  hitOut: boolean;
+  hitBack: boolean;
+}
+
+/** Bumerang yo'lidagi nuqta: k = 0..1 (0 va 1 — Oni qo'li, 0.5 — eng uzoq nuqta). */
+export function clubPoint(c: Pick<OniClub, "x0" | "y0" | "a" | "len">, k: number) {
+  const th = k * Math.PI * 2;
+  const f = (c.len / 2) * (1 - Math.cos(th)),
+    s = ONI_THROW_W * Math.sin(th);
+  const ux = Math.cos(c.a),
+    uy = Math.sin(c.a);
+  return { x: c.x0 + ux * f - uy * s, y: c.y0 + uy * f + ux * s };
+}
 
 interface OniAttack {
   kind: OniMove;
@@ -123,7 +156,11 @@ export class Oni extends Boss {
   blazeY = 0;
   /** Shu kadrda olov halqasi yondi (Game ovoz beradi) */
   justIgnited = false;
+  /** Uchayotgan kanabo bumerangi */
+  club: OniClub | null = null;
   private meleeT = 0;
+  /** Navbatdagi otishning masofasi (tayyorgarlikda yo'l chiziladi) */
+  throwLen = ONI_THROW_MIN;
 
   constructor(hp = ONI_HP) {
     super(hp);
@@ -152,6 +189,7 @@ export class Oni extends Boss {
     this.attack = null;
     this.wave = null;
     this.fireRing = null;
+    this.club = null;
     this.recover = 0;
     this.stagger = 0;
     this.turn = 0;
@@ -211,8 +249,10 @@ export class Oni extends Boss {
       this.attack = null;
       this.wave = null;
       this.fireRing = null;
+      this.club = null;
       return;
     }
+    this.updateClub(dt, p);
     this.updateWave(dt, p);
     this.updateRing(dt, p);
     if (this.stagger > 0) {
@@ -243,10 +283,11 @@ export class Oni extends Boss {
   /** Navbatdagi hujum: 1-fazada urish va supurish, 2-fazada kombo va olov halqasi qo'shiladi. */
   private startAttack(dx: number, dy: number, d: number) {
     const order: readonly OniMove[] =
-      this.phase >= 2 ? ["combo", "slam", "ring", "sweep"] : ["slam", "sweep"];
+      this.phase >= 2 ? ["combo", "slam", "ring", "sweep", "throw"] : ["slam", "sweep", "throw"];
     let kind = order[this.turn++ % order.length]!;
-    // uzoqdagi o'yinchiga kombo yetmaydi — o'rniga supuradi
+    // uzoqdagi o'yinchiga kombo yetmaydi — o'rniga supuradi; yaqindagiga kaltak otmaydi — uradi
     if (kind === "combo" && d > ONI_COMBO_NEAR) kind = "sweep";
+    if (kind === "throw" && d < 40) kind = "slam";
     const a = Math.atan2(dy, dx);
     this.facingLeft = Math.cos(a) < 0;
     this.justWarned = true;
@@ -257,8 +298,12 @@ export class Oni extends Boss {
           ? this.windupOf(ONI_SWEEP_WINDUP)
           : kind === "ring"
             ? ONI_RING_WARN + ONI_RING_GAP
-            : ONI_COMBO_WINDUP[0];
+            : kind === "throw"
+              ? this.windupOf(ONI_THROW_WINDUP)
+              : ONI_COMBO_WINDUP[0];
     const lead = kind === "slam" ? Math.min(ONI_SLAM_LEAD, d) : 0;
+    // bumerang o'yinchi ortidan aylanib o'tadi
+    if (kind === "throw") this.throwLen = Math.max(ONI_THROW_MIN, Math.min(ONI_THROW_MAX, d + 28));
     this.attack = {
       kind,
       t: total,
@@ -300,6 +345,21 @@ export class Oni extends Boss {
       this.swingA = at.a;
       if (this.inLane(p, at)) p.takeHit(this.dmg(1), this.x, this.y, 240);
       return this.endAttack(0.55);
+    }
+    if (at.kind === "throw") {
+      if (at.t > 0) return this.show(at.t > at.total * 0.4 ? 0 : 1);
+      // kaltak qo'ldan chiqdi: Oni u qaytguncha qo'li bo'sh turadi
+      this.club = {
+        x0: this.x,
+        y0: this.y,
+        a: at.a,
+        len: this.throwLen,
+        t: 0,
+        hitOut: false,
+        hitBack: false,
+      };
+      this.justSlammed = true;
+      return this.endAttack(ONI_THROW_TIME + 0.15);
     }
     if (at.kind === "ring") {
       // bo'kirib turadi: olovni updateRing yoqadi
@@ -349,6 +409,66 @@ export class Oni extends Boss {
     return Math.abs(angleDiff(Math.atan2(dy, dx), a)) <= ONI_COMBO_ARC;
   }
 
+  /** Bumerang: borishda bir marta, qaytishda yana bir marta urishi mumkin. */
+  private updateClub(dt: number, p: Target) {
+    const c = this.club;
+    if (!c) return;
+    c.t += dt;
+    const k = Math.min(1, c.t / ONI_THROW_TIME);
+    const q = clubPoint(c, k);
+    const back = k >= 0.5;
+    if (
+      !(back ? c.hitBack : c.hitOut) &&
+      Math.hypot(p.x - q.x, p.y - q.y) < ONI_THROW_R + p.size / 2
+    ) {
+      if (back) c.hitBack = true;
+      else c.hitOut = true;
+      p.takeHit(this.dmg(1), q.x, q.y, 170);
+    }
+    if (k >= 1) this.club = null;
+  }
+
+  /** Bumerang yo'li (uzuq yoy) va uchayotgan kaltak. */
+  private renderClub(ctx: CanvasRenderingContext2D, time: number) {
+    const at = this.attack;
+    const path =
+      at?.kind === "throw" ? { x0: this.x, y0: this.y, a: at.a, len: this.throwLen } : this.club;
+    if (!path) return;
+    const warn = at?.kind === "throw";
+    const k = warn ? 1 - Math.max(0, at.t) / at.total : 1;
+    ctx.strokeStyle = withAlpha(
+      DANGER.oniSweep,
+      warn ? (this.calm ? 0.8 : 0.45 + 0.35 * Math.sin(time * 28)) : 0.35,
+    );
+    ctx.lineWidth = warn ? 2 + 2 * k : 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    for (let i = 0; i <= 32; i++) {
+      const q = clubPoint(path, i / 32);
+      if (i) ctx.lineTo(q.x, q.y);
+      else ctx.moveTo(q.x, q.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const c = this.club;
+    if (!c) return;
+    // aylanib uchayotgan temir kanabo
+    const q = clubPoint(c, Math.min(1, c.t / ONI_THROW_TIME));
+    ctx.save();
+    ctx.translate(Math.round(q.x), Math.round(q.y));
+    ctx.rotate(c.t * 18);
+    ctx.fillStyle = "#6b4630";
+    ctx.fillRect(-9, -1, 6, 3);
+    ctx.fillStyle = "#3a3440";
+    ctx.fillRect(-3, -3, 12, 6);
+    ctx.fillStyle = "#c9c2b0";
+    for (const sx of [-1, 3, 7]) {
+      ctx.fillRect(sx, -4, 1, 1);
+      ctx.fillRect(sx, 3, 1, 1);
+    }
+    ctx.restore();
+  }
+
   /** To'lqin halqasi kengayadi; o'yinchiga yetganda bir marta zarba (dash bilan o'tib ketiladi). */
   private updateWave(dt: number, p: Target) {
     const w = this.wave;
@@ -388,7 +508,8 @@ export class Oni extends Boss {
 
   override renderFloor(ctx: CanvasRenderingContext2D, time = 0) {
     if (this.dead) return;
-    const pulse = 0.45 + 0.35 * Math.sin(time * 28);
+    const pulse = this.calm ? 0.8 : 0.45 + 0.35 * Math.sin(time * 28);
+    this.renderClub(ctx, time);
     const at = this.attack;
     if (at?.kind === "slam") {
       const k = 1 - Math.max(0, at.t) / at.total;

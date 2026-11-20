@@ -50,6 +50,26 @@ const EDGE_GROW = 5;
 const EDGE_HOLD = 3;
 const EDGE_SHRINK = 3;
 /** 3-faza: olov sharlari spiral bo'lib sochiladi */
+/**
+ * Faqat 2-faza: OLOV USTUNLARI — Iblisdan o'yinchi tomon qator bo'lib yerdan ketma-ket olov
+ * otiladi. Har biri avval olovli doira bilan ogohlantiriladi; yo'nalish shu paytda qotadi — chetga
+ * chiqib qochiladi.
+ */
+export const PILLAR_EVERY = 7;
+export const PILLAR_COUNT = 6;
+export const PILLAR_GAP = 20;
+export const PILLAR_WARN = 0.7;
+export const PILLAR_STEP = 0.12;
+export const PILLAR_R = 9;
+const PILLAR_SHOW = 0.45;
+
+export interface Pillar {
+  x: number;
+  y: number;
+  warn: number;
+  life: number;
+}
+
 export const SPIRAL_SHOTS = 28;
 const SPIRAL_GAP = 0.045;
 const SPIRAL_STEP = 0.38;
@@ -135,6 +155,9 @@ export class Boss implements Body {
   private rushLast = { x: 0, y: 0 };
   /** Olov izi */
   fires: Fire[] = [];
+  /** 2-faza: olov ustunlari */
+  pillars: Pillar[] = [];
+  private pillarTimer = 0;
   private impTimer = 0;
   /** Yonayotgan arena chetlari: bosqich, taymer va hozirgi kenglik */
   edge: { stage: EdgeStage; t: number; m: number } = { stage: "idle", t: EDGE_IDLE, m: 0 };
@@ -265,7 +288,10 @@ export class Boss implements Body {
 
   /** Yangi fazaga o'tganda (har boss o'zinikini qo'shadi). */
   protected onPhase(ph: BossPhase) {
-    if (ph === 2) this.impTimer = 0.8;
+    if (ph === 2) {
+      this.impTimer = 0.8;
+      this.pillarTimer = 2.5;
+    }
     if (ph === 3) this.edge = { stage: "warn", t: EDGE_WARN, m: 0 };
   }
 
@@ -304,8 +330,10 @@ export class Boss implements Body {
     if (this.shock > 0) this.shock -= dt;
     if (this.slow > 0) this.slow -= dt;
     this.updateFires(dt, p);
+    this.updatePillars(dt, p);
     if (this.dead) {
       this.fires = [];
+      this.pillars = this.pillars.filter((q) => q.warn <= 0);
       this.edge = { stage: "idle", t: EDGE_IDLE, m: 0 };
       this.spiralLeft = 0;
       this.rushWindup = this.rushT = 0;
@@ -361,6 +389,13 @@ export class Boss implements Body {
     this.x += (dx / d) * speed * dt;
     this.y += (dy / d) * speed * dt;
     this.anim.set("walk");
+    if (this.phase === 2) {
+      this.pillarTimer -= dt;
+      if (this.pillarTimer <= 0 && d > 40) {
+        this.pillarTimer = PILLAR_EVERY + Math.random() * 2;
+        this.raisePillars(dx / d, dy / d);
+      }
+    }
     if (this.phase >= 2) this.rushTimer -= dt;
     if (this.phase >= 2 && this.rushTimer <= 0 && d > 50) {
       // OLOV YO'LAGI: yo'nalish shu paytda qotadi — chiziqdan chetga chiqib qochish mumkin
@@ -375,6 +410,65 @@ export class Boss implements Body {
       this.windup = SLAM_WINDUP;
       this.justWarned = true;
       this.anim.set("attack", true);
+    }
+  }
+
+  /** Olov ustunlari qatori: Iblis oldidan o'yinchi tomonga, ketma-ket. */
+  private raisePillars(ux: number, uy: number) {
+    for (let i = 0; i < PILLAR_COUNT; i++) {
+      const x = this.x + ux * (24 + i * PILLAR_GAP),
+        y = this.y + 8 + uy * (24 + i * PILLAR_GAP);
+      if (x < ROOM.wall || x > ROOM.w - ROOM.wall || y < ROOM.wall || y > ROOM.h - ROOM.wall) break;
+      this.pillars.push({ x, y, warn: PILLAR_WARN + i * PILLAR_STEP, life: PILLAR_SHOW });
+    }
+    this.justWarned = true;
+  }
+
+  private updatePillars(dt: number, p: Target) {
+    for (const q of this.pillars) {
+      if (q.warn > 0) {
+        q.warn -= dt;
+        if (q.warn <= 0) {
+          this.shock = Math.max(this.shock, 0.12);
+          if (Math.hypot(p.x - q.x, p.y + 4 - q.y) < PILLAR_R + p.size / 2)
+            p.takeHit(this.dmg(1), q.x, q.y, 140);
+        }
+      } else q.life -= dt;
+    }
+    this.pillars = this.pillars.filter((q) => q.warn > 0 || q.life > 0);
+  }
+
+  /** Olov ustunlari: ogohlantirish doirasi, so'ng yerdan otilgan alanga. */
+  private renderPillars(ctx: CanvasRenderingContext2D, time: number) {
+    for (const q of this.pillars) {
+      if (q.warn > 0) {
+        const k = Math.max(0, 1 - q.warn / PILLAR_WARN);
+        ctx.fillStyle = withAlpha(DANGER.fireLane, 0.12 + 0.3 * k);
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, PILLAR_R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = withAlpha(DANGER.fireLane, this.pulse(time, 30));
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        continue;
+      }
+      const a = Math.min(1, q.life * 4);
+      const h = Math.round(Math.min(1, (PILLAR_SHOW - q.life) * 12) * 26);
+      const x = Math.round(q.x),
+        y = Math.round(q.y);
+      const fl = this.calm ? 0 : Math.round(Math.sin(time * 30 + q.x) * 1.5);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = withAlpha(DANGER.fireLane, 0.5);
+      ctx.beginPath();
+      ctx.arc(x, y, PILLAR_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ff6a2a";
+      ctx.fillRect(x - 5, y - h, 10, h);
+      ctx.fillStyle = "#ffb03a";
+      ctx.fillRect(x - 3 + fl, y - h - 3, 6, h);
+      ctx.fillStyle = "#ffe14d";
+      ctx.fillRect(x - 1 + fl, y - h + 2, 2, h - 4);
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -478,6 +572,7 @@ export class Boss implements Body {
 
   /** Bossdan oldin, polga chiziladi: olov izi, yo'lak chizig'i va yonuvchi chetlar. */
   renderFloor(ctx: CanvasRenderingContext2D, time = 0) {
+    this.renderPillars(ctx, time);
     if (this.rushWindup > 0) {
       const k = 1 - this.rushWindup / RUSH_WINDUP;
       const len = RUSH_SPEED * RUSH_TIME;
