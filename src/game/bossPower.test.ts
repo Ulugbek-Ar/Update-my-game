@@ -225,6 +225,8 @@ describe("Boss fazalari", () => {
       expect(b.hp).toBe(60);
       for (let t = 0; t < PHASE_GUARD + 0.1; t += 0.05) b.update(0.05, p as Target);
       expect(b.invulnerable).toBe(false);
+      // O'rmon Shohining daraxt qo'riqchilari (qalqon) bu yerda tekshirilmaydi
+      if (b instanceof ForestKing) b.guards = [];
       b.takeDamage(45);
       expect(b.hp).toBe(30);
       b.update(0.01, p as Target);

@@ -1316,6 +1316,8 @@ export class Queen extends Boss {
 
 // ---------------- 3-dunyo Bossi: O'rmon Shohi ----------------
 export const KING_HP = 50;
+/** v3.13: yangi hujumlar (qo'riqchilar, ildiz panjarasi) jangni cho'zmasin — moslashuvchan jon shuncha kam */
+export const KING_HP_TRIM = 0.8;
 /** Ildizlar qatori: Shohdan o'yinchi tomonga 6 ta, ketma-ket chiqadi */
 export const KING_ROOTS = 6;
 export const KING_ROOT_GAP = 18;
@@ -1353,6 +1355,61 @@ export const THORN_W = 8;
 export const THORN_GAP = 40;
 /** 3-faza: qorong'ida ildizlar shuncha uzunroq ogohlantiriladi (svetlyachoklar yig'iladi) */
 export const DARK_EXTRA = 0.3;
+/**
+ * ILDIZ PANJARASI: avval polda panjara shaklida yoriqlar, so'ng xavfsiz yo'laklardan boshqa hamma
+ * joydan ildiz chiqadi (tegsa zarar va ushlaydi). 1-fazada 2 ta yo'lak (biri o'yinchi yonida),
+ * keyin 1 ta. 25% jondan pastda tezroq va tez-tez.
+ */
+export const GRID_EVERY = 13;
+export const GRID_WARN = 1.1;
+export const GRID_WARN_FAST = 0.8;
+export const GRID_FAST_AT = 0.25;
+export const GRID_CELL = 32;
+export const GRID_LANE = 34;
+const GRID_SHOW = 0.6;
+/**
+ * 2-faza: DARAXT QO'RIQCHILAR — tirik ekan Shoh zarari GUARD_SHIELD ulushga kam (yashil qalqon).
+ * Yaqin kelgan o'yinchiga shox bilan uradi (qizil doira bilan ogohlantiriladi).
+ */
+export const GUARD_COUNT = 2;
+export const GUARD_SHIELD = 0.7;
+export const GUARD_GROW = 1;
+export const GUARD_SLAM_EVERY = 4;
+export const GUARD_SLAM_WARN = 0.8;
+export const GUARD_SLAM_R = 22;
+const GUARD_REACH = 72;
+/** Shoh qo'riqchiga shundan yaqin kelmaydi */
+const GUARD_KEEP = 36;
+export const GUARD_SPOTS: readonly (readonly [number, number])[] = [
+  [92, 134],
+  [228, 134],
+];
+/** Qo'riqchi joni: Shoh jonining 4% i, kamida 4 */
+export function guardHp(maxHp: number) {
+  return Math.max(4, Math.ceil(maxHp * 0.04));
+}
+
+export interface Guard extends BossPart {
+  hp: number;
+  maxHp: number;
+  grow: number;
+  flash: number;
+  /** keyingi zarbagacha; slam > 0 — zarba ogohlantirishi (qolgan vaqt) va nuqtasi */
+  cd: number;
+  slam: number;
+  sx: number;
+  sy: number;
+}
+
+/** Ildiz panjarasi: xavfsiz yo'laklar (tik — x, yotiq — y markazi), ogohlantirish va ko'rinish */
+export interface RootGrid {
+  lanes: { vertical: boolean; at: number }[];
+  ox: number;
+  oy: number;
+  warn: number;
+  total: number;
+  life: number;
+}
 
 export interface Flower extends BossPart {
   hp: number;
@@ -1397,6 +1454,12 @@ export class ForestKing extends Boss {
   private thornTimer = 0;
   /** Shu kadrda gul so'ldi (Game effekt chiqaradi) */
   wilted: { x: number; y: number }[] = [];
+  /** Ildiz panjarasi */
+  grid: RootGrid | null = null;
+  private gridTimer = 5;
+  /** 2-faza: daraxt qo'riqchilar va shu kadrda yiqilganlari */
+  guards: Guard[] = [];
+  felled: { x: number; y: number }[] = [];
 
   constructor(hp = KING_HP) {
     super(hp);
@@ -1423,20 +1486,147 @@ export class ForestKing extends Boss {
       this.flowers.push({ x, y, size: 14, hp, maxHp: hp, grow: FLOWER_GROW, flash: 0 });
     }
     this.thornTimer = ph === 2 ? 3 : 1.5;
+    if (ph === 2) {
+      const ghp = guardHp(this.maxHp);
+      this.guards = GUARD_SPOTS.slice(0, GUARD_COUNT).map(([x, y], i) => ({
+        x,
+        y,
+        size: 18,
+        hp: ghp,
+        maxHp: ghp,
+        grow: GUARD_GROW,
+        flash: 0,
+        cd: 2 + i * 2,
+        slam: 0,
+        sx: x,
+        sy: y,
+      }));
+      this.justWarned = true;
+    }
+  }
+
+  /** Tirik qo'riqchi bor ekan Shohni yashil qalqon o'raydi */
+  get shielded() {
+    return !this.dead && this.guards.some((g) => g.hp > 0);
+  }
+
+  /** Qalqon zarbaning GUARD_SHIELD qismini yutadi (superlar ham — avval qo'riqchilarni yiqiting). */
+  override takeDamage(dmg: number) {
+    return super.takeDamage(this.shielded ? dmg * (1 - GUARD_SHIELD) : dmg);
   }
 
   override partAt(b: Body): BossPart | null {
-    return this.flowers.find((f) => f.hp > 0 && overlap(b, f as unknown as Body)) ?? null;
+    return (
+      this.flowers.find((f) => f.hp > 0 && overlap(b, f as unknown as Body)) ??
+      this.guards.find((g) => g.hp > 0 && overlap(b, g as unknown as Body)) ??
+      null
+    );
   }
 
   /** Gulga zarar (o'sayotgani ham urilsa bo'ladi); so'lsa — Shoh davolanmaydi. */
   override strikePart(part: BossPart, dmg: number) {
+    if (this.guards.includes(part as Guard)) {
+      const g = part as Guard;
+      if (g.hp <= 0) return false;
+      g.hp -= dmg;
+      g.flash = 0.2;
+      if (g.hp <= 0) this.felled.push({ x: g.x, y: g.y });
+      return true;
+    }
     const f = part as Flower;
     if (f.hp <= 0) return false;
     f.hp -= dmg;
     f.flash = 0.2;
     if (f.hp <= 0) this.wilted.push({ x: f.x, y: f.y });
     return true;
+  }
+
+  /** Qo'riqchilar: o'sadi, yaqin kelgan o'yinchiga shox bilan uradi. */
+  private updateGuards(dt: number, p: Target) {
+    for (const g of this.guards) {
+      if (g.flash > 0) g.flash -= dt;
+      if (g.grow > 0) {
+        g.grow -= dt;
+        continue;
+      }
+      if (g.slam > 0) {
+        g.slam -= dt;
+        if (g.slam <= 0 && Math.hypot(p.x - g.sx, p.y - g.sy) < GUARD_SLAM_R + p.size / 2) {
+          p.takeHit(this.dmg(1), g.sx, g.sy, 160);
+          this.justSlammed = true;
+        }
+        continue;
+      }
+      g.cd -= dt;
+      const dx = p.x - g.x,
+        dy = p.y - g.y;
+      const d = Math.hypot(dx, dy) || 1;
+      if (g.cd > 0 || d > GUARD_REACH) continue;
+      // zarba nuqtasi o'yinchi tomonda, lekin qo'riqchidan uzoqlashmaydi
+      const r = Math.min(d, 34);
+      g.sx = g.x + (dx / d) * r;
+      g.sy = g.y + (dy / d) * r;
+      g.slam = GUARD_SLAM_WARN;
+      g.cd = GUARD_SLAM_EVERY * WORLD_BOSS_CD;
+      this.justWarned = true;
+    }
+    this.guards = this.guards.filter((g) => g.hp > 0);
+  }
+
+  /** Panjara: yo'laklardan biri o'yinchi yonida — ogohlantirish ichida bemalol yetiladi. */
+  private startGrid(p: Target) {
+    const fast = this.hp <= this.maxHp * GRID_FAST_AT;
+    const near = (v: number, lo: number, hi: number) =>
+      Math.max(lo, Math.min(hi, v + (Math.random() - 0.5) * 90));
+    const vert = this.phase === 1 || Math.random() < 0.5;
+    const lanes = [
+      vert
+        ? { vertical: true, at: near(p.x, 48, ROOM.w - 48) }
+        : { vertical: false, at: near(p.y, 48, ROOM.h - 48) },
+    ];
+    if (this.phase === 1) lanes.push({ vertical: false, at: 60 + Math.random() * (ROOM.h - 120) });
+    // tikanli devor o'yinchini yo'lakdan to'sib qo'ymasin: yo'lak devorning o'yinchi tomonida
+    const l0 = lanes[0]!;
+    for (const t of this.thorns) {
+      if (t.vertical !== l0.vertical) continue;
+      const me = l0.vertical ? p.x : p.y;
+      if (Math.sign(me - t.at) !== Math.sign(l0.at - t.at)) l0.at = 2 * me - l0.at;
+    }
+    const warn = (fast ? GRID_WARN_FAST : GRID_WARN) + (this.dark ? DARK_EXTRA : 0);
+    this.grid = {
+      lanes,
+      ox: ROOM.wall + Math.random() * GRID_CELL,
+      oy: ROOM.wall + Math.random() * GRID_CELL,
+      warn,
+      total: warn,
+      life: GRID_SHOW,
+    };
+    this.justWarned = true;
+  }
+
+  /** Nuqta xavfsiz yo'lak ichidami */
+  inLane(x: number, y: number, pad = 0) {
+    return !!this.grid?.lanes.some(
+      (l) => Math.abs((l.vertical ? x : y) - l.at) < GRID_LANE / 2 - pad,
+    );
+  }
+
+  private updateGrid(dt: number, p: Target) {
+    const g = this.grid;
+    if (!g) return;
+    if (g.warn > 0) {
+      g.warn -= dt;
+      if (g.warn <= 0) {
+        this.justRooted = true;
+        this.justSlammed = true;
+        // yo'lak ichida tanasining yarmi bo'lsa ham omon qoladi
+        if (!this.inLane(p.x, p.y) && p.takeHit(this.dmg(1), p.x, p.y + 6, 60))
+          p.ensnare(KING_ROOT_SNARE);
+      }
+      return;
+    }
+    g.life -= dt;
+    if (g.life <= 0) this.grid = null;
   }
 
   private updateFlowers(dt: number) {
@@ -1514,14 +1704,25 @@ export class ForestKing extends Boss {
     if (this.slow > 0) this.slow -= dt;
     this.updateRoots(dt, p);
     if (this.dead) {
-      // o'lgach yangi ildizlar chiqmaydi, gullar so'ladi, tikanlar quriydi
+      // o'lgach yangi ildizlar chiqmaydi, gullar so'ladi, tikanlar quriydi, qo'riqchilar yiqiladi
       this.roots = this.roots.filter((r) => r.warn <= 0);
       this.flowers = [];
       this.thorns = [];
+      if (this.grid && this.grid.warn > 0) this.grid = null;
+      for (const g of this.guards) this.felled.push({ x: g.x, y: g.y });
+      this.guards = [];
       return;
     }
     this.updateFlowers(dt);
     this.updateThorns(dt, p);
+    this.updateGuards(dt, p);
+    this.updateGrid(dt, p);
+    this.gridTimer -= dt;
+    if (this.gridTimer <= 0 && !this.grid) {
+      const fast = this.hp <= this.maxHp * GRID_FAST_AT;
+      this.gridTimer = GRID_EVERY * (fast ? 0.7 : 1) * WORLD_BOSS_CD;
+      this.startGrid(p);
+    }
     this.summonTimer -= dt;
     if (this.summonTimer <= 0) {
       this.wantSummon = true;
@@ -1544,6 +1745,17 @@ export class ForestKing extends Boss {
       this.y += (dy / d) * speed * dt;
       this.anim.set("walk");
     } else this.anim.set("idle");
+    // qo'riqchi ustiga chiqmaydi — qo'riqchini urish uchun yo'l ochiq qoladi
+    for (const g of this.guards) {
+      const gx = this.x - g.x,
+        gy = this.y - g.y;
+      const gd = Math.hypot(gx, gy);
+      if (gd >= GUARD_KEEP) continue;
+      const ux = gd > 0.01 ? gx / gd : 0,
+        uy = gd > 0.01 ? gy / gd : -1;
+      this.x = g.x + ux * GUARD_KEEP;
+      this.y = g.y + uy * GUARD_KEEP;
+    }
 
     this.castTimer -= dt;
     if (this.castTimer <= 0 && d < 180) {
@@ -1587,9 +1799,148 @@ export class ForestKing extends Boss {
     this.roots = this.roots.filter((r) => r.warn > 0 || r.life > 0);
   }
 
+  /**
+   * Ildiz panjarasi: ogohlantirishda yo'laklardan tashqarida panjara yoriqlari (to'q-sariq), chiqqanda
+   * shu tugunlardan ildizlar. over — qorong'ilik ustidan (3-faza) faqat yoriqlar chiziladi.
+   */
+  renderGrid(ctx: CanvasRenderingContext2D, time: number, over = false) {
+    const g = this.grid;
+    if (!g) return;
+    const l = ROOM.wall,
+      t = ROOM.wall,
+      r = ROOM.w - ROOM.wall,
+      b = ROOM.h - ROOM.wall;
+    const lanesClip = () => {
+      // xavfsiz yo'laklarni kesib tashlash (evenodd bilan "teshik")
+      ctx.beginPath();
+      ctx.rect(l, t, r - l, b - t);
+      for (const ln of g.lanes) {
+        if (ln.vertical) ctx.rect(ln.at + GRID_LANE / 2, t, -GRID_LANE, b - t);
+        else ctx.rect(r, ln.at - GRID_LANE / 2, l - r, GRID_LANE);
+      }
+    };
+    ctx.save();
+    lanesClip();
+    ctx.clip("evenodd");
+    if (g.warn > 0) {
+      const k = 1 - g.warn / g.total;
+      if (!over) {
+        ctx.fillStyle = withAlpha(DANGER.rootCrack, 0.06 + 0.16 * k);
+        ctx.fillRect(l, t, r - l, b - t);
+      }
+      ctx.strokeStyle = withAlpha(DANGER.rootCrack, over ? 0.55 : this.pulse(time, 22));
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = g.ox; x < r; x += GRID_CELL) {
+        // yoriq biroz qiyshiq — chizg'ich emas, yer yorilgan
+        ctx.moveTo(Math.round(x) + 0.5, t);
+        for (let y = t; y <= b; y += 8)
+          ctx.lineTo(Math.round(x + Math.sin(y * 0.7 + x) * 1.2) + 0.5, y);
+      }
+      for (let y = g.oy; y < b; y += GRID_CELL) {
+        ctx.moveTo(l, Math.round(y) + 0.5);
+        for (let x = l; x <= r; x += 8)
+          ctx.lineTo(x, Math.round(y + Math.sin(x * 0.7 + y) * 1.2) + 0.5);
+      }
+      ctx.stroke();
+    } else if (!over) {
+      const age = GRID_SHOW - g.life;
+      for (let x = g.ox; x < r; x += GRID_CELL)
+        for (let y = g.oy; y < b; y += GRID_CELL) renderRoots(ctx, x, y, age);
+    }
+    ctx.restore();
+    if (g.warn > 0 && !over) {
+      // yo'lak chegaralari — qayerda turish kerakligi aniq
+      ctx.strokeStyle = "rgba(200,255,170,0.55)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      for (const ln of g.lanes)
+        for (const e of [-GRID_LANE / 2, GRID_LANE / 2]) {
+          if (ln.vertical) {
+            ctx.moveTo(Math.round(ln.at + e) + 0.5, t);
+            ctx.lineTo(Math.round(ln.at + e) + 0.5, b);
+          } else {
+            ctx.moveTo(l, Math.round(ln.at + e) + 0.5);
+            ctx.lineTo(r, Math.round(ln.at + e) + 0.5);
+          }
+        }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  /** Daraxt qo'riqchi: tana, shox-qo'llar, barg toji va yashil ko'zlar; zarba ogohlantirishi. */
+  private renderGuard(ctx: CanvasRenderingContext2D, g: Guard, time: number) {
+    if (g.slam > 0) {
+      const k = 1 - g.slam / GUARD_SLAM_WARN;
+      ctx.fillStyle = withAlpha(DANGER.guardSlam, 0.1 + 0.25 * k);
+      ctx.beginPath();
+      ctx.arc(g.sx, g.sy, GUARD_SLAM_R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(DANGER.guardSlam, this.pulse(time));
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    const k = g.grow > 0 ? 1 - g.grow / GUARD_GROW : 1;
+    const x = Math.round(g.x),
+      y = Math.round(g.y);
+    const h = Math.round(10 + 12 * k);
+    const white = g.flash > 0;
+    const sway = this.calm ? 0 : Math.round(Math.sin(time * 2 + g.x) * 1);
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(x - 9, y + 8, 18, 3);
+    // tana va ildiz-oyoqlar
+    ctx.fillStyle = white ? "#ffffff" : "#4a3020";
+    ctx.fillRect(x - 4, y + 9 - h, 8, h);
+    ctx.fillRect(x - 7, y + 7, 4, 3);
+    ctx.fillRect(x + 3, y + 7, 4, 3);
+    ctx.fillStyle = white ? "#ffffff" : "#6b4630";
+    ctx.fillRect(x - 2, y + 9 - h, 2, h);
+    // shox-qo'llar (zarbada ko'tariladi)
+    const arm = g.slam > 0 ? -4 : 0;
+    ctx.fillStyle = white ? "#ffffff" : "#4a3020";
+    ctx.fillRect(x - 10, y - h / 2 + 4 + arm, 6, 2);
+    ctx.fillRect(x + 4, y - h / 2 + 4 + arm, 6, 2);
+    // barg toji
+    const cy = y + 2 - h;
+    ctx.fillStyle = white ? "#ffffff" : "#2e5a24";
+    ctx.fillRect(x - 9 + sway, cy - 6, 18, 9);
+    ctx.fillRect(x - 6 + sway, cy - 9, 12, 3);
+    ctx.fillStyle = white ? "#ffffff" : "#4f8a3a";
+    ctx.fillRect(x - 7 + sway, cy - 6, 6, 3);
+    ctx.fillRect(x + 1 + sway, cy - 4, 5, 3);
+    // ko'zlar
+    ctx.fillStyle = "#d8ff7a";
+    ctx.fillRect(x - 3, cy + 5, 2, 2);
+    ctx.fillRect(x + 1, cy + 5, 2, 2);
+    // jon chizig'i
+    if (g.hp < g.maxHp) {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(x - 8, cy - 13, 16, 2);
+      ctx.fillStyle = "#a6f08e";
+      ctx.fillRect(x - 8, cy - 13, Math.round((16 * g.hp) / g.maxHp), 2);
+    }
+  }
+
   /** Poldagi gullar, tikanlar, ogohlantirishlar va ildizlar — boshqa jonzotlardan oldin chiziladi. */
   override renderFloor(ctx: CanvasRenderingContext2D, time = 0) {
+    this.renderGrid(ctx, time);
     for (const t of this.thorns) this.renderThorn(ctx, t, time);
+    for (const g of this.guards) {
+      if (g.grow <= 0 && !this.dead) {
+        // qalqon ildizi: qo'riqchidan Shohga yashil nur
+        ctx.strokeStyle = `rgba(120,230,120,${this.calm ? 0.4 : 0.3 + 0.2 * Math.sin(time * 6 + g.x)})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(g.x, g.y);
+        ctx.lineTo(this.x, this.y + 6);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      this.renderGuard(ctx, g, time);
+    }
     for (const f of this.flowers) {
       if (f.grow <= 0 && !this.dead) {
         // davolash nuri: guldan Shohga
@@ -1646,6 +1997,17 @@ export class ForestKing extends Boss {
       isFlashing(this) || state === "hurt",
       this.facingLeft,
     );
+    if (this.shielded) {
+      // yashil qalqon: qo'riqchilar tirik ekan zarar 70% kam
+      const a = this.calm ? 0.5 : 0.4 + 0.15 * Math.sin(this.fightT * 5);
+      ctx.fillStyle = `rgba(110,220,110,${a * 0.35})`;
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y + 2, 22, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(170,255,150,${a + 0.2})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -1740,6 +2102,8 @@ export class ForestKing extends Boss {
    */
   renderSwarm(ctx: CanvasRenderingContext2D, time: number) {
     if (!this.dark) return;
+    // qorong'ida ham panjara yoriqlari ko'rinadi
+    this.renderGrid(ctx, time, true);
     const fly = (x: number, y: number, i: number, r: number) => {
       const a = time * 3 + i * 2.1;
       const fx = x + Math.cos(a) * r,

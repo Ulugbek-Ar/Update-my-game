@@ -16,7 +16,14 @@ import {
   trackPoint,
   type EnemyKind,
 } from "./enemy";
-import { ForestKing, KING_HP, MAX_SPIDERS, spiderSummonCount, KING_SUMMON_EVERY } from "./boss";
+import {
+  ForestKing,
+  KING_HP,
+  KING_HP_TRIM,
+  MAX_SPIDERS,
+  spiderSummonCount,
+  KING_SUMMON_EVERY,
+} from "./boss";
 import { BOSS_WAVE, WAVES3, WORLD_KINDS, waveEnemies } from "./waves";
 import { Player } from "./player";
 import { ROOM } from "./animation";
@@ -105,7 +112,7 @@ describe("3-dunyo: faqat o'z moblari", () => {
     }
     expect(g.boss).toBeInstanceOf(ForestKing);
     expect(g.boss!.maxHp).toBe(
-      bossHpFor(g.player, KING_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.forest),
+      bossHpFor(g.player, KING_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.forest * KING_HP_TRIM),
     );
     expect(KING_HP).toBe(50);
     expect(g.fx.snowOn).toBe(false);
@@ -127,9 +134,11 @@ describe("3-dunyo: faqat o'z moblari", () => {
     expect(g.boss).toBeInstanceOf(ForestKing);
     // cheksizda har qaytishda kuchliroq: asosiy jon +15 va moslashuv +10%
     expect(g.boss!.maxHp).toBe(
-      bossHpFor(g.player, KING_HP + 15, 1, g.powerFactor() * WORLD_BOSS_MUL.forest),
+      bossHpFor(g.player, KING_HP + 15, 1, g.powerFactor() * WORLD_BOSS_MUL.forest * KING_HP_TRIM),
     );
-    expect(g.boss!.maxHp).toBeGreaterThan(bossHpFor(g.player, KING_HP, 0, g.powerFactor()));
+    expect(g.boss!.maxHp).toBeGreaterThan(
+      bossHpFor(g.player, KING_HP, 0, g.powerFactor() * WORLD_BOSS_MUL.forest * KING_HP_TRIM),
+    );
   });
 
   it("the map path: beating the Queen unlocks world 3, beating the King records it", () => {
@@ -414,6 +423,7 @@ describe("O'rmon Shohi", () => {
     tick(g, 2);
     expect(k.phase).toBe(2);
     expect(k.dark).toBe(false);
+    k.guards = [];
     gi.damageTarget(k, k.maxHp * 0.35);
     tick(g, 1.2);
     expect(k.phase).toBe(3);

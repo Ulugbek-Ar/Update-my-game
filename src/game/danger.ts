@@ -29,6 +29,9 @@ export const DANGER = {
   /** Ayozli ruh: sovuq nafas */
   breath: "#1e5ac8",
   breathFill: "#3c8ce6",
+  /** O'rmon Shohi: ildiz panjarasi yoriqlari va daraxt qo'riqchi zarbasi */
+  rootCrack: "#ff6e1e",
+  guardSlam: "#ff3c3c",
   /** Onlayn: Sardorning yer yorig'i halqalari */
   quakeRing: "#ff7a2a",
   /** Sakura bog'i: Ninja zarbasi doirasi va Tengu sho'ng'ish nuqtasi */

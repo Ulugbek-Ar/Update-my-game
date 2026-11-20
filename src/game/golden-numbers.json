@@ -2409,6 +2409,7 @@
   "summonTimer": 4,
   "justRooted": false,
   "thornTimer": 0,
+  "gridTimer": 5,
   "anim": {
    "idle": [
     2,

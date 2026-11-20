@@ -14,6 +14,7 @@ import {
   Boss,
   ForestKing,
   KING_HP,
+  KING_HP_TRIM,
   KING_LIGHT,
   Queen,
   QUEEN_HP,
@@ -1214,7 +1215,12 @@ export class Game {
         ? new Oni(bossHpFor(p, bossHp(i, ONI_HP), cycle, this.powerFactor()))
         : forest
           ? new ForestKing(
-              bossHpFor(p, bossHp(i, KING_HP), cycle, this.powerFactor() * WORLD_BOSS_MUL.forest),
+              bossHpFor(
+                p,
+                bossHp(i, KING_HP),
+                cycle,
+                this.powerFactor() * WORLD_BOSS_MUL.forest * KING_HP_TRIM,
+              ),
             )
           : ice
             ? new Queen(
@@ -1293,6 +1299,14 @@ export class Game {
       sfx.kill();
     }
     k.wilted = [];
+    for (const w of k.felled) {
+      this.fx.burst(w.x, w.y - 10, "#6b4630", 12, 70, 2);
+      this.fx.burst(w.x, w.y - 14, "#a6f08e", 10, 60, 1);
+      this.fx.text(w.x, w.y - 26, "QO'RIQCHI YIQILDI", "#a6f08e");
+      this.score += 50;
+      sfx.kill();
+    }
+    k.felled = [];
     if (k.justRooted) {
       k.justRooted = false;
       sfx.root();

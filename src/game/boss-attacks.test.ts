@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { CLONE_WARN, Queen, RING_CLOSE, RING_WARN } from "./boss";
+import {
+  CLONE_WARN,
+  ForestKing,
+  GRID_LANE,
+  GRID_WARN,
+  GRID_WARN_FAST,
+  GUARD_SHIELD,
+  Queen,
+  RING_CLOSE,
+  RING_WARN,
+} from "./boss";
 import type { Target } from "./player";
 
 /** Zarba olishni yozib boradigan soxta o'yinchi */
@@ -80,5 +90,52 @@ describe("Qor Malikasi: muz nusxalari va muz halqa", () => {
       q.update(1 / 60, p);
     }
     expect(hits.length).toBe(n);
+  });
+});
+
+describe("O'rmon Shohi: ildiz panjarasi va daraxt qo'riqchilar", () => {
+  it("panjara: yoriqlar kamida 0.6 s oldin, yo'lakdan tashqarida zarar, yo'lak ichida xavfsiz", () => {
+    expect(GRID_WARN_FAST).toBeGreaterThanOrEqual(0.6);
+    for (const inside of [false, true]) {
+      const { p, hits } = dummy(160, 120);
+      const k = ready(new ForestKing(100), 0.9, p);
+      for (let t = 0; t < 10 && !k.grid; t += 1 / 60) k.update(1 / 60, p);
+      const g = k.grid!;
+      expect(g.warn).toBeGreaterThanOrEqual(0.6);
+      const lane = g.lanes[0]!;
+      // yo'lak o'yinchi yonida — ogohlantirish ichida yetib boriladi
+      expect(Math.abs((lane.vertical ? p.x : p.y) - lane.at)).toBeLessThan(80);
+      const off = inside ? 0 : GRID_LANE;
+      const n = hits.length;
+      for (let t = 0; t < GRID_WARN + 0.1; t += 1 / 60) {
+        k.roots = [];
+        k.thorns = [];
+        if (lane.vertical) p.x = lane.at + off;
+        else p.y = lane.at + off;
+        if (!inside && g.lanes[1]) p.y = g.lanes[1].at + GRID_LANE;
+        k.update(1 / 60, p);
+      }
+      if (inside) expect(hits.length).toBe(n);
+      else expect(hits.length).toBeGreaterThan(n);
+    }
+  });
+
+  it("2-fazada 2 ta qo'riqchi: tirik ekan Shoh zarari 70% kam, yiqilgach to'liq", () => {
+    const { p } = dummy(160, 200);
+    const k = ready(new ForestKing(1000), 0.59, p);
+    expect(k.phase).toBe(2);
+    expect(k.guards.length).toBe(2);
+    expect(k.shielded).toBe(true);
+    k.guard = 0;
+    let hp = k.hp;
+    k.takeDamage(10);
+    expect(hp - k.hp).toBeCloseTo(10 * (1 - GUARD_SHIELD));
+    for (const g of [...k.guards]) k.strikePart(g, 999);
+    k.update(1 / 60, p);
+    expect(k.guards.length).toBe(0);
+    expect(k.shielded).toBe(false);
+    hp = k.hp;
+    k.takeDamage(10);
+    expect(hp - k.hp).toBeCloseTo(10);
   });
 });

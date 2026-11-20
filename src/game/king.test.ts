@@ -43,6 +43,8 @@ function kingFight(phase: 2 | 3) {
   tick(g, 0.04);
   if (phase === 3) {
     tick(g, PHASE_GUARD);
+    // qo'riqchilar (qalqon) alohida sinovda — bu yerda 3-fazaga to'g'ridan-to'g'ri o'tamiz
+    k.guards = [];
     gi.damageTarget(k, k.maxHp * 0.35);
     tick(g, 0.04);
   }

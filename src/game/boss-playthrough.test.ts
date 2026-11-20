@@ -48,12 +48,19 @@ function playBoss(hero: Hero, world: World) {
   let t = 0;
   for (; t < 400 && !b.dead; t += dt) {
     g.enemies = g.enemies.filter((e) => e.kind !== "spider" && e.kind !== "frost");
-    const flower = b instanceof ForestKing ? b.flowers.find((f) => f.hp > 0) : undefined;
+    // gul, so'ng daraxt qo'riqchi (qalqonni tushirish) — keyin Shoh
+    const flower =
+      b instanceof ForestKing
+        ? (b.flowers.find((f) => f.hp > 0) ?? b.guards.find((g) => g.hp > 0))
+        : undefined;
     const tgt = flower ?? b;
     // Paladin SHANG yo'lagi uzun (40 px) — uzoqroqdan uradi
     const range = p.ranged ? 50 : flower ? 12 : p.paladin ? 30 : 22;
-    // nishon bilan bir gorizontal chiziqda, chap tomonda turish
-    const want = { x: Math.max(30, tgt.x - range), y: tgt.y };
+    // nishon bilan bir gorizontal chiziqda, chap tomonda turish; qo'riqchiga esa Shoh to'smaydigan
+    // tomondan (Shoh qo'riqchidan chapda bo'lsa — o'ngdan)
+    const guard = b instanceof ForestKing && b.guards.some((g) => g === tgt);
+    const side = guard && b.x < tgt.x ? 1 : -1;
+    const want = { x: Math.max(30, Math.min(290, tgt.x + side * range)), y: tgt.y };
     const dx = want.x - p.x,
       dy = want.y - p.y;
     const near = Math.abs(dx) < 4 && Math.abs(dy) < 3;
