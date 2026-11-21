@@ -1388,10 +1388,10 @@ const FOREST_KINDS: ReadonlySet<EnemyKind> = new Set(["spider", "shroom", "trean
 const SAKURA_KINDS: ReadonlySet<EnemyKind> = new Set(["ninja", "tengu", "kitsune"]);
 
 /** Yerdan chiqqan ildizlar (daraxt odam va O'rmon Shohi): t — chiqqandan beri o'tgan vaqt. */
-export function renderRoots(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
-  const h = Math.min(1, t * 10) * 11;
-  const bx = Math.round(x),
-    by = Math.round(y + 7);
+const ROOT_CACHE = new Map<number, HTMLCanvasElement>();
+
+/** Ildiz shoxchalarini chizish (keshsiz) — piksellar bo'yicha. */
+function drawRootPixels(ctx: CanvasRenderingContext2D, bx: number, by: number, h: number) {
   for (const [ox, k, lean] of [
     [-6, 0.6, -1],
     [-2, 1, 0],
@@ -1407,6 +1407,30 @@ export function renderRoots(ctx: CanvasRenderingContext2D, x: number, y: number,
       ctx.fillRect(sx, by - i, 1, 1);
     }
   }
+}
+
+/**
+ * Yerdan chiqqan ildizlar. Ildiz panjarasida (O'rmon Shohi) bir kadrda ~80 ta chiziladi —
+ * har birini yuzlab fillRect bilan chizish telefonda kadrlarni tushirardi, shuning uchun
+ * har bo'y uchun bir marta tayyorlangan rasm (kesh) drawImage bilan qo'yiladi.
+ */
+export function renderRoots(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  const h = Math.round(Math.min(1, t * 10) * 11);
+  const bx = Math.round(x),
+    by = Math.round(y + 7);
+  if (typeof document === "undefined" || typeof ctx.drawImage !== "function")
+    return drawRootPixels(ctx, bx, by, h);
+  let img = ROOT_CACHE.get(h);
+  if (!img) {
+    img = document.createElement("canvas");
+    img.width = 24;
+    img.height = 13;
+    const c = img.getContext("2d");
+    if (!c) return drawRootPixels(ctx, bx, by, h);
+    drawRootPixels(c, 10, 12, h);
+    ROOT_CACHE.set(h, img);
+  }
+  ctx.drawImage(img, bx - 10, by - 12);
 }
 
 /** a - b burchak farqi, [-PI, PI] oralig'ida. */
