@@ -2622,7 +2622,8 @@ export class Game {
     this.enemies = this.enemies.filter((e) => !e.removed);
 
     // ustma-ust yig'ilmaslik
-    const alive = this.enemies.filter((e) => e.active);
+    // devorda yurgan o'rgimchaklar boshqa "qatlam"da — itarilsa devor yo'lagidan chiqib, qaytib sakrab titraydi
+    const alive = this.enemies.filter((e) => e.active && !(e.kind === "spider" && e.onWall));
     for (let i = 0; i < alive.length; i++) {
       for (let j = i + 1; j < alive.length; j++) separate(alive[i]!, alive[j]!);
       if (boss?.active) separate(alive[i]!, boss, 1);
