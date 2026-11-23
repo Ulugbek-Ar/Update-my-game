@@ -31,6 +31,10 @@ on:
         description: "PC fayllarini yuborish: eng oxirgi versiya Windows (.exe) va portativ HTML arxivlarini kanalga yuborish (post yuborilmaydi)"
         type: boolean
         default: false
+      vertical:
+        description: 'Vertikal video: "version" (bo''sh = joriy) uchun TikTok/Shorts/Reels videosini qayta yasab faqat muallifga yuborish (kanalga post yuborilmaydi)'
+        type: boolean
+        default: false
 
 concurrency:
   group: telegram-post
@@ -152,7 +156,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" skrinshot-preview
 
       - name: Kanalga yuborish
-        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test && !inputs.vertical }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
@@ -167,7 +171,7 @@ jobs:
           node --experimental-strip-types scripts/telegram-post.mjs
 
       - name: Versiyani "chiqdi" deb belgilash
-        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test && !inputs.vertical }}
         run: |
           T="tg-v${{ steps.check.outputs.version }}"
           git tag -f "$T"
@@ -175,8 +179,31 @@ jobs:
 
       - name: Post kanalga chiqdi
         id: posted
-        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test }}
+        if: ${{ steps.check.outputs.skip != 'true' && !inputs.test && !inputs.vertical }}
         run: echo "posted=true" >> "$GITHUB_OUTPUT"
+
+      # TikTok/Shorts/Reels uchun vertikal video + tayyor matn — faqat muallifga shaxsiy xabar
+      # (ADMIN_TELEGRAM_IDS dagi birinchi ID), kanalga EMAS. Xato bo'lsa ham post ishi buzilmaydi.
+      - name: Vertikal video (muallifga)
+        id: vertical
+        if: ${{ steps.check.outputs.skip != 'true' && (inputs.vertical || steps.posted.outputs.posted == 'true') }}
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADMIN_TELEGRAM_IDS: ${{ secrets.ADMIN_TELEGRAM_IDS || vars.ADMIN_TELEGRAM_IDS }}
+          GAME_URL_PUBLIC: ${{ vars.GAME_URL }}
+          SHOT_VERSION: ${{ steps.check.outputs.version }}
+          VERTICAL_SEND: "1"
+        run: PW_DIR="$RUNNER_TEMP/pw" PW_CHANNEL=chrome node --experimental-strip-types scripts/vertical.mjs
+
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() && steps.vertical.outcome != 'skipped' }}
+        continue-on-error: true
+        with:
+          name: vertikal-video
+          path: shots/vertical-v*
+          if-no-files-found: ignore
 
   # ── Android APK kanalga ───────────────────────────────────────────────────────
   # x.y.0 versiya posti bilan birga (x.y.z, z > 0 — APK yo'q) yoki qo'lda "APK yuborish".
@@ -184,7 +211,7 @@ jobs:
   # debug imzoli APK ustidan keyingi versiyalar o'rnatilmay qoladi.
   apk-plan:
     needs: post
-    if: ${{ !cancelled() && !inputs.seed && !inputs.test }}
+    if: ${{ !cancelled() && !inputs.seed && !inputs.test && !inputs.vertical }}
     runs-on: ubuntu-latest
     outputs:
       send: ${{ steps.plan.outputs.send }}
@@ -262,7 +289,7 @@ jobs:
   # 50 MB dan katta fayl o'rniga Release havolasi yuboriladi (scripts/telegram-pc.mjs).
   pc-plan:
     needs: post
-    if: ${{ !cancelled() && !inputs.seed && !inputs.test && !inputs.apk }}
+    if: ${{ !cancelled() && !inputs.seed && !inputs.test && !inputs.apk && !inputs.vertical }}
     runs-on: ubuntu-latest
     outputs:
       send: ${{ steps.plan.outputs.send }}
