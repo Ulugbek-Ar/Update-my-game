@@ -26,12 +26,14 @@ export const XP_PER_HOUR = 3_000;
 /** O'sish shundan uzoq vaqtga hisoblanmaydi (14 kun) */
 const MAX_HOURS = 24 * 14;
 
-export type LimitField = "gold" | "score" | "xp";
+/** skin — mukofot skini (faqat server beradi: do'st chaqirish) */
+export type LimitField = "gold" | "score" | "xp" | "skin";
 
 export const FIELD_TEXT: Record<LimitField, string> = {
   gold: "oltin",
   score: "rekord",
   xp: "tajriba (XP)",
+  skin: "mukofot skini",
 };
 
 /** O'yin kabi o'qiladi: son bo'lmagan yozuv — 0 (buzuq yozuv saqlashni to'xtatmaydi) */

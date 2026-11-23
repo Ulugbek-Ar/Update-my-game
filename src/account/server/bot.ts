@@ -8,7 +8,7 @@
  * Bu modul tarmoqqa chiqmaydi: Telegram'ga yuboriladigan chaqiruvlar ro'yxatini qaytaradi
  * (AccountDO ularni bajaradi) — Node'da sinaladi.
  */
-import { DEVICE_NAME, LOGIN_CODE_RE } from "../protocol";
+import { DEVICE_NAME, LOGIN_CODE_RE, normalizeFriendCode } from "../protocol";
 import type { AccountStore } from "./store";
 
 export interface TgCall {
@@ -42,7 +42,25 @@ export const BOT_TEXT = {
   done: "✅ Tasdiqlandi! O'yinga qayting — u o'zi kiradi.",
   cancelled: "Bekor qilindi. Kirish so'rovi rad etildi.",
   stale: "Havola eskirgan",
+  /** do'st chaqirish havolasi (t.me/<bot>?start=ref_KOD) */
+  refOk: (site: string) =>
+    `🏰 Piksel Qal'a — sizni do'stingiz taklif qildi!\n\nAkkaunt oching (Telegram bilan kirish) va 1-to'lqinni tugating — ikkalangiz 100 oltin olasiz.\n\nO'ynash: ${site}`,
+  refOld: (site: string) =>
+    `🏰 Piksel Qal'a\n\nSizda allaqachon akkaunt bor — do'st taklifi faqat yangi o'yinchilar uchun.\n\nO'ynash: ${site}`,
+  refSelf: (site: string) =>
+    `🏰 Piksel Qal'a\n\nBu sizning o'z taklif havolangiz — uni do'stlaringizga yuboring.\n\nO'ynash: ${site}`,
 };
+
+/** Sayt havolasiga ?ref=KOD (saytda kirganda ham taklif hisoblansin) */
+export function refSite(site: string, code: string) {
+  try {
+    const u = new URL(site);
+    u.searchParams.set("ref", code);
+    return u.toString();
+  } catch {
+    return site;
+  }
+}
 
 /** Bitta Telegram update. now — ms, site — o'yin sayti (salomlashuv xabari uchun). */
 export function botUpdate(store: AccountStore, update: unknown, now: number, site: string) {
@@ -58,6 +76,23 @@ export function botUpdate(store: AccountStore, update: unknown, now: number, sit
     // faqat shaxsiy chat (guruh va kanallarda bot jim)
     if (chat["type"] !== "private" || !user || !text.startsWith("/start")) return calls;
     const chatId = Number(chat["id"]);
+    // do'st chaqirish: /start ref_KOD (kod — chaqiruvchining do'st kodi)
+    const ref = /^\/start(?:@\w+)?\s+ref_([A-Za-z0-9]{1,16})$/.exec(text);
+    if (ref) {
+      const code = normalizeFriendCode(ref[1]);
+      const r = code ? store.referrals.botStart(user.id, code, now) : "bad";
+      const link = r === "ok" && code ? refSite(site, code) : site;
+      const reply =
+        r === "ok"
+          ? BOT_TEXT.refOk(link)
+          : r === "old"
+            ? BOT_TEXT.refOld(site)
+            : r === "self"
+              ? BOT_TEXT.refSelf(site)
+              : BOT_TEXT.welcome(site);
+      calls.push({ method: "sendMessage", body: { chat_id: chatId, text: reply } });
+      return calls;
+    }
     const m = /^\/start(?:@\w+)?\s+login_([A-Za-z0-9]+)$/.exec(text);
     if (!m) {
       calls.push({

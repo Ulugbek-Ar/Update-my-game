@@ -111,7 +111,7 @@ export async function handleApi(
       if (!lim.login.allow(`ip:${env.ip}`, env.now)) return fail("rate");
       const user = await verifyInitData(b.initData, env.botToken, env.now, AUTH_MAX_AGE);
       if (!user) return fail("sign");
-      return { ok: true, ...(await store.login(user, b.device, env.now)) };
+      return { ok: true, ...(await store.login(user, b.device, env.now, b.ref)) };
     }
     case "auth/widget": {
       const b = body as ReqOf<"auth/widget">;
@@ -119,7 +119,7 @@ export async function handleApi(
       if (!lim.login.allow(`ip:${env.ip}`, env.now)) return fail("rate");
       const user = await verifyLoginWidget(b.user, env.botToken, env.now, AUTH_MAX_AGE);
       if (!user) return fail("sign");
-      return { ok: true, ...(await store.login(user, b.device, env.now)) };
+      return { ok: true, ...(await store.login(user, b.device, env.now, b.ref)) };
     }
     case "auth/bot": {
       const b = body as ReqOf<"auth/bot">;
@@ -131,7 +131,7 @@ export async function handleApi(
     }
     case "auth/poll": {
       const b = body as ReqOf<"auth/poll">;
-      const r = await store.pollBotLogin(b.code, b.secret, env.now);
+      const r = await store.pollBotLogin(b.code, b.secret, env.now, b.ref);
       if (r.status === "wait") return { ok: true, status: "wait" };
       if (r.status === "done")
         return { ok: true, status: "done", token: r.token, me: r.me, created: r.created };
@@ -252,7 +252,14 @@ export async function handleApi(
     case "gifts/list": {
       const p = await authed();
       if (!p) return fail("auth");
+      // do'st chaqirish: kunlik chegara tufayli navbatdagi mukofotlar
+      store.db.tx(() => store.referrals.flush(p.id, env.now));
       return { ok: true, gifts: store.gifts.list(p.id) };
+    }
+    case "ref/info": {
+      const p = await authed();
+      if (!p) return fail("auth");
+      return { ok: true, ...store.referrals.info(p, env.bot, env.now) };
     }
     case "gifts/claim": {
       const b = body as ReqOf<"gifts/claim">;

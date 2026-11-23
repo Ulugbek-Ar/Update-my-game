@@ -1,17 +1,31 @@
 /**
  * DO'STLAR: ro'yxat (onlayn/oflayn, qayerda), "YONIGA KIRISH" (do'st olamda bo'lsa), tayyor
- * iboralar bilan xabar, so'rovlar (qabul/rad), taxallus yoki do'st kodi bilan qo'shish, bloklash.
+ * iboralar bilan xabar, so'rovlar (qabul/rad), taxallus yoki do'st kodi bilan qo'shish, bloklash,
+ * "Do'st chaqirish" (taklif havolasi, Telegram'da ulashish, hisob — docs/referrals.md).
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { friends, placeText, useFriends } from "@/account/friends";
-import { FRIEND_PHRASES, formatFriendCode, type FriendInfo } from "@/account/protocol";
+import {
+  FRIEND_PHRASES,
+  REF_DAILY_CAP,
+  REF_GOLD,
+  REF_SKIN_GOAL,
+  formatFriendCode,
+  type FriendInfo,
+  type RefInfo,
+} from "@/account/protocol";
+import { account } from "@/account/account";
+import { ERROR_TEXT, call } from "@/account/api";
+import { refBotLink, refShareLink, refSiteLink, REF_SHARE_TEXT } from "@/account/referral";
+import { openExternal } from "@/lib/desktop";
+import { telegramShare } from "@/lib/telegram";
 import { useAccount } from "@/account/useAccount";
 import { pixelFocus } from "@/lib/pixel-ui";
 import { AuthorBadge, HeroAvatar, LevelBadge, PixelWindow } from "./pixel";
 import { GuildTagBadge } from "./GuildBadge";
 import { ago, btn, tabBtn } from "./pixelUi";
 
-type Tab = "list" | "requests" | "add" | "inbox" | "blocked";
+type Tab = "list" | "requests" | "add" | "invite" | "inbox" | "blocked";
 
 function Row({ f, children }: { f: FriendInfo; children?: ReactNode }) {
   return (
@@ -179,6 +193,108 @@ function AddTab({ code }: { code: string }) {
   );
 }
 
+/** Nusxalash tugmasi bilan havola */
+function LinkRow({ label, link }: { label: string; link: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-foreground">{label}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          readOnly
+          value={link}
+          aria-label={label}
+          onFocus={(e) => e.currentTarget.select()}
+          className={`min-w-0 flex-1 border-2 border-border bg-background px-2 py-1 text-primary ${pixelFocus}`}
+        />
+        <button
+          onClick={() => {
+            void navigator.clipboard?.writeText(link).then(
+              () => setCopied(true),
+              () => {},
+            );
+          }}
+          className={btn("pixelOutline", "px-2 py-1")}
+        >
+          {copied ? "NUSXALANDI" : "NUSXALASH"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Do'st chaqirish: shaxsiy havola, Telegram'da ulashish, nechta do'st chaqirilgani */
+function InviteTab() {
+  const [info, setInfo] = useState<RefInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const token = account.sessionToken;
+    if (!token) return;
+    let live = true;
+    void call("ref/info", { token }).then((r) => {
+      if (!live) return;
+      if (r.ok) setInfo(r);
+      else setError(ERROR_TEXT[r.error]);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (error)
+    return (
+      <p role="alert" className="text-[#ff4d6d]">
+        {error}
+      </p>
+    );
+  if (!info) return <p className="text-muted-foreground">Yuklanmoqda...</p>;
+  const site = refSiteLink(info.code);
+  const bot = refBotLink(info.code, info.bot);
+  const share = bot ?? site;
+  const toSkin = Math.max(0, REF_SKIN_GOAL - info.rewarded);
+  return (
+    <>
+      <p className="text-foreground">
+        Do'stingiz shu havola orqali <span className="text-primary">birinchi marta</span> akkaunt
+        ochib, 1-to'lqinni tugatsa — ikkalangiz {REF_GOLD} oltin olasiz (sovg'a qutisiga).{" "}
+        {REF_SKIN_GOAL} ta do'st — Ritsar uchun «CHAQIRUVCHI» skini.
+      </p>
+      {bot && <LinkRow label="Telegram bot havolasi:" link={bot} />}
+      <LinkRow label="Sayt havolasi:" link={site} />
+      <button
+        onClick={() => {
+          if (!telegramShare(share, REF_SHARE_TEXT)) openExternal(refShareLink(share));
+        }}
+        className={btn("pixel", "self-start")}
+      >
+        TELEGRAM'DA ULASHISH
+      </button>
+      <ul aria-label="Chaqirilgan do'stlar" className="flex flex-col gap-1 text-foreground">
+        <li>
+          Havola orqali kelganlar: <span className="text-primary">{info.joined}</span>
+        </li>
+        <li>
+          1-to'lqinni tugatganlar (mukofot): <span className="text-primary">{info.rewarded}</span>
+        </li>
+        {info.queued > 0 && (
+          <li className="text-muted-foreground">
+            Navbatda: {info.queued} (kuniga ko'pi bilan {REF_DAILY_CAP} ta mukofot)
+          </li>
+        )}
+        <li>
+          «CHAQIRUVCHI» skini:{" "}
+          {info.skin ? (
+            <span className="text-[#a6f08e]">OLINDI</span>
+          ) : (
+            <span className="text-primary">
+              {info.rewarded}/{REF_SKIN_GOAL} (yana {toSkin} ta)
+            </span>
+          )}
+        </li>
+      </ul>
+    </>
+  );
+}
+
 export function FriendsWindow({
   onClose,
   onJoin,
@@ -207,6 +323,7 @@ export function FriendsWindow({
     ["list", `DO'STLAR${l ? ` ${online}/${l.friends.length}` : ""}`],
     ["requests", `SO'ROVLAR${st.requests ? ` (${st.requests})` : ""}`],
     ["add", "QO'SHISH"],
+    ["invite", "CHAQIRISH"],
     ["inbox", `XABARLAR${st.unread ? ` (${st.unread})` : ""}`],
     ["blocked", "BLOK"],
   ];
@@ -232,6 +349,8 @@ export function FriendsWindow({
       )}
       {tab === "add" ? (
         <AddTab code={me.code} />
+      ) : tab === "invite" ? (
+        <InviteTab />
       ) : tab === "inbox" ? (
         st.inbox.length ? (
           <>

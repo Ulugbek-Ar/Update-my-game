@@ -117,6 +117,8 @@ Kirgan o'yinchilar gildiya tuzadi (500 oltin) yoki qo'shiladi: rollar, qo'shilis
 
 ## Muallif paneli, sovg'alar va ekspeditsiya (v3.4)
 
+Do'st chaqirish (taklif havolasi, mukofotlar) — [docs/referrals.md](referrals.md).
+
 Muallif (admin) paneli va sovg'a yuborish — [docs/admin.md](admin.md). Sovg'a qutisi: muallifdan
 kelgan sovg'a server tomonidan bulutdagi progressga yoziladi (bir marta, qurilma almashsa ham
 yo'qolmaydi). Ekspeditsiya: kirgan o'yinchida vaqt server soati bo'yicha (`exp/*`), mehmonda —

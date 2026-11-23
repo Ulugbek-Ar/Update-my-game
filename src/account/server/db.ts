@@ -295,6 +295,31 @@ export const SCHEMA: readonly string[] = [
     hero TEXT NOT NULL,
     start INTEGER NOT NULL
   )`,
+  // ---------------- do'st chaqirish (docs/referrals.md) ----------------
+  // har yangi akkaunt (Telegram ID bo'yicha) faqat BIR MARTA: tg — kalit, o'yinchi o'chsa ham qator
+  // qoladi (player = 0). done — yangi o'yinchi 1-to'lqinni tugatgan va oltin olgan vaqt; paid —
+  // chaqiruvchiga mukofot berilgan vaqt, day — o'sha kun (Toshkent, kunlik chegara uchun)
+  `CREATE TABLE IF NOT EXISTS referrals (
+    tg INTEGER PRIMARY KEY,
+    player INTEGER NOT NULL,
+    referrer INTEGER NOT NULL,
+    at INTEGER NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    paid INTEGER NOT NULL DEFAULT 0,
+    day TEXT NOT NULL DEFAULT ''
+  )`,
+  `CREATE INDEX IF NOT EXISTS referrals_player ON referrals (player)`,
+  `CREATE INDEX IF NOT EXISTS referrals_referrer ON referrals (referrer, paid)`,
+  // botdagi /start ref_KOD: akkaunt hali yo'q — ochilganda shu chaqiruvchiga bog'lanadi
+  `CREATE TABLE IF NOT EXISTS ref_pending (
+    tg INTEGER PRIMARY KEY,
+    referrer INTEGER NOT NULL,
+    at INTEGER NOT NULL
+  )`,
+  // akkaunti o'chirilgan Telegram ID'lar: qayta ochilsa — "yangi" emas (takror hisoblanmaydi)
+  `CREATE TABLE IF NOT EXISTS ref_seen (tg INTEGER PRIMARY KEY)`,
+  // "Chaqiruvchi" skini berilgan o'yinchilar (bir marta)
+  `CREATE TABLE IF NOT EXISTS ref_skin (player INTEGER PRIMARY KEY, at INTEGER NOT NULL)`,
 ];
 
 export function initSchema(db: Db) {

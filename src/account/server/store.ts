@@ -29,6 +29,7 @@ import { Scores } from "./scores";
 import { Admin } from "./admin";
 import { Gifts } from "./gifts";
 import { Expeditions } from "./expeditions";
+import { Referrals } from "./referrals";
 
 const DAY = 86_400_000;
 /** Bir o'yinchida ko'pi bilan shuncha sessiya (eskisi o'chadi) */
@@ -136,6 +137,8 @@ export class AccountStore {
   readonly gifts: Gifts;
   /** ekspeditsiya (server soati) */
   readonly exp: Expeditions;
+  /** do'st chaqirish (docs/referrals.md) */
+  readonly referrals: Referrals;
 
   constructor(readonly db: Db) {
     initSchema(db);
@@ -145,6 +148,7 @@ export class AccountStore {
     this.admin = new Admin(this);
     this.gifts = new Gifts(this);
     this.exp = new Expeditions(this);
+    this.referrals = new Referrals(this);
   }
 
   // ---------------- o'yinchilar ----------------
@@ -188,8 +192,11 @@ export class AccountStore {
     }
   }
 
-  /** Telegram foydalanuvchisi bo'yicha o'yinchi; birinchi kirishda yaratiladi */
-  ensurePlayer(user: Pick<TgUser, "id" | "username">, now: number) {
+  /**
+   * Telegram foydalanuvchisi bo'yicha o'yinchi; birinchi kirishda yaratiladi. ref — do'st
+   * chaqirish kodi: faqat yangi akkauntda hisoblanadi (eski akkauntga kirishda e'tiborsiz).
+   */
+  ensurePlayer(user: Pick<TgUser, "id" | "username">, now: number, ref?: string | null) {
     const old = this.playerByTg(user.id);
     if (old) return { player: old, created: false };
     const nick = this.freeNick(user.username);
@@ -201,7 +208,14 @@ export class AccountStore {
       this.freeCode(),
       now,
     );
-    return { player: this.playerByTg(user.id)!, created: true };
+    const player = this.playerByTg(user.id)!;
+    try {
+      this.referrals.attach(player, ref, now);
+    } catch (e) {
+      // taklif yozilmasa ham akkaunt ochiladi
+      console.error("referral attach", e);
+    }
+    return { player, created: true };
   }
 
   me(p: PlayerRow): Me {
@@ -257,6 +271,7 @@ export class AccountStore {
     this.db.tx(() => {
       const p = this.player(id);
       this.guilds.forget(id);
+      if (p) this.referrals.forget(p);
       for (const q of [
         "DELETE FROM sessions WHERE player = ?",
         "DELETE FROM saves WHERE player = ?",
@@ -339,8 +354,13 @@ export class AccountStore {
   }
 
   /** Telegram tasdiqlagan foydalanuvchi: o'yinchi (kerak bo'lsa yangi) va sessiya */
-  async login(user: Pick<TgUser, "id" | "username">, device: Device, now: number) {
-    const { player, created } = this.ensurePlayer(user, now);
+  async login(
+    user: Pick<TgUser, "id" | "username">,
+    device: Device,
+    now: number,
+    ref?: string | null,
+  ) {
+    const { player, created } = this.ensurePlayer(user, now, ref);
     const token = await this.createSession(player.id, device, now);
     return { token, me: this.me(player), created };
   }
@@ -393,7 +413,7 @@ export class AccountStore {
    * O'yin tasdiqni so'raydi (secret — faqat kodni boshlagan qurilmada). Tasdiqlangan bo'lsa kod
    * o'chiriladi va sessiya beriladi — ikkinchi marta ishlamaydi.
    */
-  async pollBotLogin(code: string, secret: string, now: number) {
+  async pollBotLogin(code: string, secret: string, now: number, ref?: string | null) {
     const hash = await sha256Hex(secret);
     // token oldindan: tekshiruv va yozish bitta sinxron blokda
     const token = randomString(43);
@@ -410,6 +430,7 @@ export class AccountStore {
       const { player, created } = this.ensurePlayer(
         { id: num(r.tg), ...(r.hint ? { username: str(r.hint) } : {}) },
         now,
+        ref,
       );
       const device = isDevice(str(r.device)) ? (str(r.device) as Device) : "web";
       this.db.exec(
@@ -466,6 +487,9 @@ export class AccountStore {
       const hours = cur ? (now - num(cur.at)) / 3_600_000 : 0;
       const bad = checkSave(req.data, prev, hours);
       if (bad) return { ok: false as const, error: "invalid" as const, field: bad };
+      // mukofot skini (do'st chaqirish) — faqat server bergan bo'lsa
+      if (!this.referrals.skinsAllowed(player, req.data))
+        return { ok: false as const, error: "invalid" as const, field: "skin" as const };
       const dev = req.dev ?? "";
       if (!cur) {
         this.db.exec(
@@ -522,6 +546,12 @@ export class AccountStore {
         } catch (e) {
           console.error("guild onSave", e);
         }
+      // do'st chaqirish: yangi o'yinchi akkaunt bilan to'lqin tugatdimi (oldingi bulut nusxasidan)
+      try {
+        this.referrals.onSave(player, () => prev ?? parseData(str(cur.data)), req.data, now);
+      } catch (e) {
+        console.error("referral onSave", e);
+      }
       return { ok: true as const, version };
     });
   }

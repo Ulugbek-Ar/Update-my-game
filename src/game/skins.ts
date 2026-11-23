@@ -38,6 +38,11 @@ export interface Skin {
   theme: SkinTheme;
   /** Zarracha, iz, zarba, ovoz va animatsiya qo'shimchasi */
   fx: SkinFx;
+  /**
+   * Mukofot skini (sotilmaydi, kuch bermaydi): faqat server beradi. "referral" — 5 ta do'st
+   * chaqirilganda (docs/referrals.md).
+   */
+  reward?: "referral";
 }
 
 type Def = [id: string, name: string, colors: readonly string[]];
@@ -374,13 +379,68 @@ export const SKINS: Record<Hero, readonly Skin[]> = Object.fromEntries(
   ]),
 ) as unknown as Record<Hero, readonly Skin[]>;
 
+/** "Chaqiruvchi" — 5 ta do'st chaqirgan Ritsarga (do'st chaqirish tizimi, v3.7 skin tizimida) */
+export const REFERRAL_SKIN = "knight-caller";
+
+/**
+ * MUKOFOT SKINLARI: do'konda sotilmaydi (narx yo'q), SKINS ro'yxatiga kirmaydi (har qahramonda
+ * default + 3 ta pullik qoidasi o'zgarmaydi), faqat server sovg'a sifatida beradi. Kuch bermaydi —
+ * faqat ko'rinish (ranglar va oddiy effektlar).
+ */
+export const REWARD_SKINS: Partial<Record<Hero, readonly Skin[]>> = {
+  knight: [
+    {
+      id: REFERRAL_SKIN,
+      hero: "knight",
+      name: "CHAQIRUVCHI",
+      price: 0,
+      reward: "referral",
+      // kontur, zirh soyasi, zirh, yaltiroq, chaqnash: zumrad-firuza jarchi zirhi
+      colors: ["#04100c", "#0f5a48", "#1fa585", "#7fe8c8", "#eafff6"],
+      tier: "rare",
+      theme: theme([
+        "#5fe0b8",
+        "#1f7a62",
+        "#d8fff0",
+        "#7fe8c8",
+        "#10302a",
+        "#eafff6",
+        "#5fe0b8",
+        "#d8fff0",
+        "#7fe8c8",
+        "#1f7a62",
+        "#bff5e2",
+        "#ffffff",
+        "#04100c",
+        "#10302a",
+        "#a8e8d4",
+      ]),
+      fx: { ...PLAIN_FX, particle: "star", trail: "sparkle", bits: ["#d8fff0", "#5fe0b8"] },
+    },
+  ],
+};
+
+/** Qahramonning do'kondagi barcha skinlari: default, 3 ta pullik va mukofot skinlari */
+export function heroSkins(hero: Hero): readonly Skin[] {
+  return ALL_SKINS[hero];
+}
+
+const ALL_SKINS = Object.fromEntries(
+  HERO_IDS.map((h) => [h, [...SKINS[h], ...(REWARD_SKINS[h] ?? [])]]),
+) as unknown as Record<Hero, readonly Skin[]>;
+
+/** Barcha mukofot skinlari id'lari */
+export function rewardSkinIds(): string[] {
+  return HERO_IDS.flatMap((h) => (REWARD_SKINS[h] ?? []).map((s) => s.id));
+}
+
 export function skinById(hero: Hero, id: string | null | undefined): Skin | null {
-  return SKINS[hero]?.find((s) => s.id === id) ?? null;
+  return ALL_SKINS[hero]?.find((s) => s.id === id) ?? null;
 }
 
 /** Skin nomi id bo'yicha ("knight-gold" -> "OLTIN RITSAR") */
 export function skinName(id: string) {
-  for (const h of HERO_IDS) for (const s of SKINS[h]) if (s.id === id) return s.name;
+  for (const h of HERO_IDS) for (const s of heroSkins(h)) if (s.id === id) return s.name;
   return id;
 }
 
@@ -418,7 +478,7 @@ export function parseSkins(raw: string | null | undefined): SkinSave {
   try {
     const v = JSON.parse(raw ?? "null") as Partial<SkinSave> | null;
     if (!v || typeof v !== "object") return out;
-    const paid = new Set(paidSkinIds());
+    const paid = new Set([...paidSkinIds(), ...rewardSkinIds()]);
     if (Array.isArray(v.owned))
       out.owned = [...new Set(v.owned.filter((x): x is string => paid.has(x as string)))];
     if (v.sel && typeof v.sel === "object")
@@ -448,9 +508,9 @@ function saveSkins(s: SkinSave) {
   }
 }
 
-/** Default doim ochiq; pullik — sotib olingan bo'lsa */
+/** Default doim ochiq; pullik va mukofot skini — ro'yxatda bo'lsa */
 export function ownsSkin(skin: Skin, save: SkinSave = loadSkins()) {
-  return skin.price <= 0 || save.owned.includes(skin.id);
+  return (skin.price <= 0 && !skin.reward) || save.owned.includes(skin.id);
 }
 
 /** Tanlangan skin (sotib olinmagan yoki noma'lum bo'lsa — default) */
@@ -473,7 +533,8 @@ export function buySkin(
 ) {
   const skin = skinById(hero, id);
   const save = loadSkins();
-  if (!skin || ownsSkin(skin, save)) return false;
+  // mukofot skini sotilmaydi
+  if (!skin || skin.reward || ownsSkin(skin, save)) return false;
   const g = gold.get();
   if (g < skin.price) return false;
   gold.set(g - skin.price);
@@ -496,7 +557,7 @@ export function selectSkin(hero: Hero, id: string) {
 /** Progress yozuvlariga (bulut, muallif paneli, sovg'a) skin qo'shish — sof funksiya */
 export function grantSkinsIn(raw: string | undefined, ids: readonly string[]) {
   const s = parseSkins(raw);
-  const paid = new Set(paidSkinIds());
+  const paid = new Set([...paidSkinIds(), ...rewardSkinIds()]);
   for (const id of ids) if (paid.has(id) && !s.owned.includes(id)) s.owned.push(id);
   return JSON.stringify(s);
 }

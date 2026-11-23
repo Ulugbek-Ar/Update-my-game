@@ -28,6 +28,9 @@ export const CHAMP_KEY = "pixel-rpg-champ";
  */
 export const EXP_KEY = "pixel-rpg-expedition";
 
+/** Do'st chaqirish: havoladagi taklif kodi (?ref=KOD) — akkaunt ochilguncha shu qurilmada */
+export const REF_KEY = "pixel-rpg-ref";
+
 export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   ACCOUNT_KEY,
   CLOUD_KEY,
@@ -39,4 +42,5 @@ export const ACCOUNT_DEVICE_KEYS: readonly string[] = [
   GUILD_READ_KEY,
   CHAMP_KEY,
   EXP_KEY,
+  REF_KEY,
 ];

@@ -178,13 +178,23 @@ export const MAX_OUTGOING = 30;
 /** Shuncha vaqt ichida yangilangan holat — onlayn */
 export const ONLINE_MS = 5 * 60_000;
 
+/**
+ * Do'st chaqirish kodi (taklif havolasidagi ?ref=KOD / start=ref_KOD — chaqiruvchining do'st kodi).
+ * Faqat yangi akkaunt ochilganda hisoblanadi; eski klientlar yubormaydi (ixtiyoriy).
+ */
+const ref = z
+  .string()
+  .regex(/^[A-HJ-NP-Z2-9]{8}$/)
+  .optional();
+
 export const REQ = {
   /** Telegram Mini App: Telegram.WebApp.initData */
-  "auth/webapp": z.object({ initData: z.string().min(1).max(4096), device }),
+  "auth/webapp": z.object({ initData: z.string().min(1).max(4096), device, ref }),
   /** Saytdagi Telegram Login Widget javobi */
   "auth/widget": z.object({
     user: z.record(z.string().max(32), z.union([z.string().max(512), z.number()])),
     device,
+    ref,
   }),
   /** Ilova va kompyuter: bot orqali kirishni boshlash */
   "auth/bot": z.object({ device }),
@@ -192,6 +202,7 @@ export const REQ = {
   "auth/poll": z.object({
     code: z.string().regex(LOGIN_CODE_RE),
     secret: z.string().regex(/^[A-Za-z0-9_-]{22,64}$/),
+    ref,
   }),
   "auth/logout": z.object({ token }),
   me: z.object({ token }),
@@ -433,6 +444,9 @@ export const REQ = {
   "exp/start": z.object({ token, hero }),
   /** Qaytarish: o'tgan vaqtga qarab mukofot (end — qahramon bilan o'ynash boshlandi) */
   "exp/claim": z.object({ token, end: z.boolean().optional() }),
+  // ---------------- do'st chaqirish (docs/referrals.md) ----------------
+  /** Taklif havolasi uchun kod, bot va hisoblar (navbatdagi mukofotlar ham shu yerda beriladi) */
+  "ref/info": z.object({ token }),
 } as const;
 
 export type Op = keyof typeof REQ;
@@ -726,6 +740,29 @@ export interface PlayerCard {
   author?: boolean;
 }
 
+/** Do'st chaqirish: shuncha mukofotli do'st — "Chaqiruvchi" skini */
+export const REF_SKIN_GOAL = 5;
+/** Har ikkalasiga (chaqiruvchi va yangi o'yinchi) shuncha oltin */
+export const REF_GOLD = 100;
+/** Bitta chaqiruvchiga kuniga ko'pi bilan shuncha mukofot (qolgani keyingi kunlarga navbatda) */
+export const REF_DAILY_CAP = 10;
+
+/** "ref/info" javobi */
+export interface RefInfo {
+  /** taklif kodi (do'st kodi bilan bir xil) */
+  code: string;
+  /** bot username (t.me havolasi uchun); sozlanmagan bo'lsa null */
+  bot: string | null;
+  /** havola orqali akkaunt ochganlar */
+  joined: number;
+  /** 1-to'lqinni tugatib, mukofot olganlar (chaqiruvchiga berilgani) */
+  rewarded: number;
+  /** 1-to'lqinni tugatgan, lekin kunlik chegara tufayli navbatda */
+  queued: number;
+  /** "Chaqiruvchi" skini berilganmi */
+  skin: boolean;
+}
+
 /** Qabul qiluvchidagi sovg'a */
 export interface GiftInfo {
   id: number;
@@ -840,11 +877,13 @@ type ExtraReply<O extends Op> = O extends "admin/info"
                 ? { ok: true; exp: ExpeditionState | null; now: number } | Fail
                 : O extends "exp/claim"
                   ? { ok: true; reward: ExpeditionReward | null } | Fail
-                  : { ok: true } | Fail;
+                  : O extends "ref/info"
+                    ? ({ ok: true } & RefInfo) | Fail
+                    : { ok: true } | Fail;
 
 export type Reply<O extends Op> = O extends `guild/${string}`
   ? GuildReply<O>
-  : O extends `admin/${string}` | `gifts/${string}` | `exp/${string}`
+  : O extends `admin/${string}` | `gifts/${string}` | `exp/${string}` | `ref/${string}`
     ? ExtraReply<O>
     : O extends "auth/webapp" | "auth/widget"
       ? { ok: true; token: string; me: Me } | Fail

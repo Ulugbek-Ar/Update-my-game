@@ -1,5 +1,6 @@
 /**
- * Sovg'alar: faqat muallif (admin) yuboradi, faqat server orqali. Sovg'a serverda turadi va
+ * Sovg'alar: muallif (admin) yoki server o'zi (sender = 0: do'st chaqirish mukofoti,
+ * referrals.ts) yuboradi, faqat server orqali. Sovg'a serverda turadi va
  * olinganda server o'zi bulutdagi progressga yozadi (oltin, XP, qahramon) — bir marta, qurilma
  * almashsa ham yo'qolmaydi. Mehmon (akkauntsiz) o'yinchi serverda yo'q — unga yuborib bo'lmaydi.
  */
@@ -9,6 +10,7 @@ import { GIFT_NOTE_MAX, HERO_IDS, type CloudSave, type GiftInfo, type SentGift }
 import type { Hero } from "@/game/hero";
 import { first, num, str, type Row } from "./db";
 import type { AccountStore, PlayerRow } from "./store";
+import { SYSTEM_SENDER } from "./referrals";
 
 /** Bitta o'yinchida ko'pi bilan shuncha olinmagan sovg'a */
 export const MAX_PENDING_GIFTS = 50;
@@ -64,14 +66,17 @@ export class Gifts {
   }
 
   private info(r: GiftRow): GiftInfo {
-    const s = this.store.player(num(r.sender));
+    const system = num(r.sender) === SYSTEM_SENDER;
+    const s = system ? null : this.store.player(num(r.sender));
     return {
       id: num(r.id),
-      from: {
-        nick: s ? str(s.nick) : "Muallif",
-        avatar: heroOf(str(s?.avatar)) ?? "knight",
-        author: true,
-      },
+      from: system
+        ? { nick: "Do'st chaqirish", avatar: "knight", author: false }
+        : {
+            nick: s ? str(s.nick) : "Muallif",
+            avatar: heroOf(str(s?.avatar)) ?? "knight",
+            author: true,
+          },
       gold: num(r.gold),
       xp: num(r.xp),
       hero: heroOf(str(r.hero)),
@@ -169,7 +174,11 @@ export class Gifts {
   /** Muallif panelidagi "Yuborilgan sovg'alar" (oxirgi 50 ta) */
   sent(): SentGift[] {
     return this.db
-      .exec<GiftRow>("SELECT * FROM gifts ORDER BY id DESC LIMIT ?", SENT_N)
+      .exec<GiftRow>(
+        "SELECT * FROM gifts WHERE sender != ? ORDER BY id DESC LIMIT ?",
+        SYSTEM_SENDER,
+        SENT_N,
+      )
       .toArray()
       .map((r) => this.sentInfo(r));
   }

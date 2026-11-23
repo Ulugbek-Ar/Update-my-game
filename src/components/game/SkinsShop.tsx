@@ -7,6 +7,7 @@ import type { AnimState } from "@/game/animation";
 import {
   SKINS,
   buySkin,
+  heroSkins,
   loadSkins,
   ownsSkin,
   selectSkin,
@@ -16,6 +17,7 @@ import {
   type Skin,
 } from "@/game/skins";
 import { sfx } from "@/game/audio";
+import { REF_SKIN_GOAL } from "@/account/protocol";
 import { TIER_COLOR, TIER_NAME, type SkinTier } from "@/game/skinFx";
 import { DEMO_H, DEMO_W, SkinDemo, demoPhase } from "@/game/skinDemo";
 import { currentSettings } from "@/game/settings";
@@ -270,7 +272,7 @@ export function SkinsShop({
       )}
       <SkinShowcase hero={hero} skin={shown} />
       <ul aria-label={`${info.name} skinlari`} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {SKINS[hero].map((s) => {
+        {heroSkins(hero).map((s) => {
           const owned = ownsSkin(s, save);
           const chosen = cur.id === s.id;
           const canBuy = open && !owned && gold >= s.price;
@@ -311,6 +313,15 @@ export function SkinsShop({
                   >
                     TANLASH
                   </button>
+                ) : s.reward ? (
+                  // mukofot skini sotilmaydi: DO'STLAR -> CHAQIRISH
+                  <span
+                    className="flex w-full flex-col items-center gap-1 border-2 border-border px-2 py-1 text-muted-foreground"
+                    aria-label={`${s.name} — ${REF_SKIN_GOAL} ta do'st chaqirganlarga`}
+                  >
+                    <Lock />
+                    <span className="whitespace-normal">{REF_SKIN_GOAL} DO'ST CHAQIRING</span>
+                  </span>
                 ) : (
                   <button
                     onClick={() => buy(s)}

@@ -14,6 +14,7 @@ import { ACCOUNTS_ENABLED, ERROR_TEXT, accConfig, call, currentDevice } from "./
 import { ACCOUNT_KEY, CLOUD_KEY, LOGIN_KEY } from "./keys";
 import type { ErrCode, Me } from "./protocol";
 import { widgetAuth, loadWidget } from "./widget";
+import { captureRef, clearRef, refField } from "./referral";
 
 export interface AccountState {
   /** kirgan o'yinchi (mehmon — null) */
@@ -119,6 +120,8 @@ export class AccountManager {
   init() {
     if (this.inited || !ACCOUNTS_ENABLED) return;
     this.inited = true;
+    // do'st chaqirish havolasi (?ref=KOD): akkaunt ochilganda serverga yuboriladi
+    captureRef();
     const c = read<Cached>(ACCOUNT_KEY);
     if (c?.token && c.me) {
       this.token = c.token;
@@ -153,7 +156,7 @@ export class AccountManager {
 
   private async loginWebApp(initData: string) {
     this.set({ busy: true, error: null });
-    const r = await call("auth/webapp", { initData, device: "telegram" });
+    const r = await call("auth/webapp", { initData, device: "telegram", ...refField() });
     this.set({ busy: false });
     if (!r.ok) return this.set({ error: errText(r.error) });
     await this.finish(r.token, r.me, !!(r as { created?: boolean }).created);
@@ -171,7 +174,7 @@ export class AccountManager {
     const user = await widgetAuth(botId);
     if (!user) return;
     this.set({ busy: true, error: null });
-    const r = await call("auth/widget", { user, device: currentDevice() });
+    const r = await call("auth/widget", { user, device: currentDevice(), ...refField() });
     this.set({ busy: false });
     if (!r.ok) return this.set({ error: errText(r.error) });
     await this.finish(r.token, r.me, !!(r as { created?: boolean }).created);
@@ -223,7 +226,7 @@ export class AccountManager {
     if (typeof document !== "undefined" && document.visibilityState === "hidden")
       return this.schedulePoll();
     this.polling = true;
-    const r = await call("auth/poll", { code: p.code, secret: p.secret });
+    const r = await call("auth/poll", { code: p.code, secret: p.secret, ...refField() });
     this.polling = false;
     if (!read<PendingLogin>(LOGIN_KEY)) return; // shu orada bekor qilindi
     if (!r.ok) {
@@ -238,6 +241,8 @@ export class AccountManager {
 
   private async finish(token: string, me: Me, created: boolean) {
     this.token = token;
+    // taklif faqat birinchi akkaunt ochilishida hisoblanadi — endi kerak emas
+    clearRef();
     write(ACCOUNT_KEY, { token, me } satisfies Cached);
     this.set({
       me,
