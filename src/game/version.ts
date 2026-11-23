@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.14.0";
+export const GAME_VERSION = "3.20.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.20.0",
+    date: "2026-11-24",
+    notes:
+      "Yangi qahramon — Ninja: ikki katana, shurikenlar va tutun bombasi bilan ko'rinmas bo'lib qoladi. Ninjaning superi — Soya bo'roni: soya-nusxalari har bir dushmanni kesib o'tadi. O'yin yangi effektlar bilan jonlandi: zarba uchqunlari, dushmanlarning parchalanib yoki ruh bo'lib yo'qolishi, tanga, sandiq va bosslar effektlari. Do'stingizni chaqiring — ikkalangiz ham 100 oltin olasiz, besh do'st chaqirganlarga maxsus skin. O'rmon Shohi jangi telefonda silliqroq ishlaydi.",
+  },
   {
     version: "3.14.0",
     date: "2026-11-20",
