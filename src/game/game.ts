@@ -28,6 +28,7 @@ import { INTRO_TIME, PHASE_GUARD, WORLD_BOSS_MUL, bossHpFor } from "./bossPower"
 import { introFrame, phasePulse } from "./mobAnim";
 import { renderAirAmbience, renderGroundAmbience } from "./ambience";
 import { CombatFx, chestPop, flyerPos, renderChestRays, renderSpark } from "./combatFx";
+import { PixelFx, type DeathStyle } from "./pixelFx";
 import {
   HEART_BREAK,
   HudFx,
@@ -414,6 +415,27 @@ const KILL_COLOR: Record<EnemyKind, string> = {
   ninja: "#4d4a80",
   tengu: "#e4e0ea",
   kitsune: "#5ab8ff",
+};
+
+/** pixelfx o'lim effekti: kichik moblar — poof, kattalar — parchalanish, ruhlilar — ruh ko'tariladi */
+const DEATH_STYLE: Record<EnemyKind, DeathStyle> = {
+  blob: "poof",
+  wisp: "soul",
+  rammer: "shatter",
+  archer: "shatter",
+  shield: "shatter",
+  frost: "soul",
+  golem: "shatter",
+  iceblob: "poof",
+  wolf: "shatter",
+  spider: "poof",
+  shroom: "poof",
+  treant: "shatter",
+  owl: "poof",
+  imp: "poof",
+  ninja: "shatter",
+  tengu: "poof",
+  kitsune: "soul",
 };
 
 /** Xona bezagi: to'lqinlar oralig'ida pol rangi va bezaklari o'zgaradi. */
@@ -812,6 +834,8 @@ export class Game {
   fx = new Effects();
   /** Jang hissi (combatFx.ts): zarba uchqunlari va HUD'ga uchuvchi belgilar — faqat ko'rinish */
   cfx = new CombatFx();
+  /** pixelfx effektlari (pixelFx.ts): uchqun, o'lim, terish, sandiq, karta, bosslar — faqat ko'rinish */
+  pfx = new PixelFx();
   /** HUD animatsiyalari (hudFx.ts): yuraklar, oltin hisobi — faqat ko'rinish */
   hud = new HudFx();
   attempt = 1;
@@ -1046,6 +1070,7 @@ export class Game {
     this.runBosses = 0;
     this.fx = new Effects();
     this.cfx.clear();
+    this.pfx.clear();
     this.hud.reset(this.player.hp, this.runGold);
     this.score = 0;
     this.newBest = false;
@@ -1924,6 +1949,17 @@ export class Game {
       mult > 1 ? "#ffcc33" : "#ffffff",
     );
     this.fx.burst(e.x, e.y, KILL_COLOR[e.kind], 14, 80);
+    // pixelfx o'lim effekti: tana zarbadan nari to'zg'iydi — faqat ko'rinish, e.x/e.y o'zgarmaydi
+    this.pfx.death(
+      DEATH_STYLE[e.kind],
+      ENEMY_SPRITE[e.kind],
+      e.facingLeft,
+      e.x,
+      e.spriteY,
+      KILL_COLOR[e.kind],
+      e.x >= this.player.x ? 1 : -1,
+      this.fx.isReduced(),
+    );
     sfx.kill();
     if (e.kind === "golem") {
       // qor odam 2 ta Muz slime'ga bo'linadi
@@ -2174,10 +2210,16 @@ export class Game {
     // zarba nuqtasida kichik uchqun, kritikda — alohida oltin chaqnash (faqat ko'rinish)
     const hd = Math.hypot(t.x - p.x, t.y - p.y) || 1;
     const edge = Math.min(t.size / 2, 8);
-    this.cfx.spark(
-      t.x - ((t.x - p.x) / hd) * edge,
-      t.y - 3 - ((t.y - p.y) / hd) * edge,
+    const sparkX = t.x - ((t.x - p.x) / hd) * edge,
+      sparkY = t.y - 3 - ((t.y - p.y) / hd) * edge;
+    this.cfx.spark(sparkX, sparkY, crit, this.fx.isReduced());
+    // pixelfx uchquni (skin rangida) — zarba yo'nalishi bo'ylab
+    this.pfx.hit(
+      sparkX,
+      sparkY,
+      Math.atan2(t.y - p.y, t.x - p.x),
       crit,
+      this.theme,
       this.fx.isReduced(),
     );
     // zarar raqami: haqiqatda ketgan jon; ochko yozuvi (+20) bilan ustma-ust tushmasin
@@ -2282,6 +2324,7 @@ export class Game {
     // super paytida zarrachalar sekinlashmaydi (nur uchqunlari jonli qolsin)
     this.fx.update(cast ? raw : dt);
     this.cfx.update(cast ? raw : dt);
+    this.pfx.update(cast ? raw : dt);
     if (this.scene) {
       this.scene.update(raw, cast, this.sceneCtx());
       if (!cast && !this.scene.alive) this.scene = null;
@@ -4992,6 +5035,8 @@ export class Game {
     const scene = this.scene;
     const sceneCtx = scene ? this.sceneCtx() : null;
     if (scene && sceneCtx) scene.renderGround(c, this.cast, sceneCtx);
+    // pixelfx: boss yorig'i va sandiq nurlari (personajlar ostida)
+    this.pfx.renderGround(c);
 
     // chuqurlik bo'yicha tartib
     const p = this.player;
@@ -5160,6 +5205,7 @@ export class Game {
     if (scene && sceneCtx) scene.renderAir(c, this.cast, sceneCtx);
     this.fx.renderParticles(c);
     for (const sp of this.cfx.sparks) renderSpark(c, sp, this.fx.isReduced());
+    this.pfx.renderAir(c);
     if (this.darkness > 0) {
       // O'rmon Shohi g'azabi: faqat o'yinchi atrofi yorug'
       const g = c.createRadialGradient(p.x, p.y, KING_LIGHT * 0.4, p.x, p.y, KING_LIGHT);

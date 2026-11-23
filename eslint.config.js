@@ -15,6 +15,7 @@ export default tseslint.config(
       "shots",
       "server/.wrangler",
       "server/node_modules",
+      "src/vendor",
     ],
   },
   {

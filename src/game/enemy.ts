@@ -1243,6 +1243,20 @@ export class Enemy implements Body {
     this.anim.set("walk");
   }
 
+  /** Sprayt markazi chiziladigan y (faqat ko'rinish; pixelFx.ts o'lim effekti ham shundan oladi) */
+  get spriteY() {
+    const tall =
+      this.kind === "rammer" ||
+      this.kind === "archer" ||
+      this.kind === "shield" ||
+      this.kind === "golem" ||
+      this.kind === "treant" ||
+      this.kind === "ninja";
+    return tall
+      ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
+      : this.y - 3 - Math.round(this.alt);
+  }
+
   render(ctx: CanvasRenderingContext2D) {
     const { state, frame } = this.anim;
     if (this.kind === "imp" && this.impWindup > 0 && !this.dead) {
@@ -1305,21 +1319,12 @@ export class Enemy implements Body {
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 16, 2, 4);
       ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 11, 2, 2);
     }
-    const tall =
-      this.kind === "rammer" ||
-      this.kind === "archer" ||
-      this.kind === "shield" ||
-      this.kind === "golem" ||
-      this.kind === "treant" ||
-      this.kind === "ninja";
     // ninja tutunga aylanayotganda asta so'nadi
     if (this.hidden) ctx.globalAlpha *= 0.35 + 0.65 * Math.max(0, this.aiTimer / NINJA_VANISH);
     // muz ruhi yarim shaffof, muz slime biroz shaffof
     if (this.kind === "frost") ctx.globalAlpha *= 0.78;
     else if (this.kind === "iceblob") ctx.globalAlpha *= 0.88;
-    const sy = tall
-      ? this.y - (this.kind === "golem" || this.kind === "treant" ? 6 : 0)
-      : this.y - 3 - Math.round(this.alt);
+    const sy = this.spriteY;
     // vizual qatlam (mobAnim.ts): squash & stretch va paydo bo'lish — faqat ko'rinish
     const lively = !currentSettings().reduceFx;
     const flying = FLYING_KINDS.has(this.kind);
