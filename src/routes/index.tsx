@@ -1899,6 +1899,10 @@ function SettingsWindow({
           >
             YOPISH
           </button>
+          {/* pixelfx (MIT) — litsenziya talabi: muallif va litsenziya ko'rsatiladi */}
+          <p className="text-[8px] leading-4 text-muted-foreground">
+            Effektlar: pixelfx (patch-gg), MIT litsenziyasi
+          </p>
         </div>
       </div>
     </div>

@@ -1537,6 +1537,8 @@ export class Game {
     this.fx.addShake(0.12);
     this.fx.burst(ch.x, ch.y - 4, "#ffcc33", 22, 90, 2);
     this.fx.burst(ch.x, ch.y - 4, "#fff2a8", 10, 60, 1);
+    // pixelfx: orqada aylanuvchi oltin nurlar va oltin chaqnash — faqat ko'rinish
+    this.pfx.chest(ch.x, ch.y, this.fx.isReduced());
     const gold = CHEST_GOLD[0] + Math.floor(rand() * (CHEST_GOLD[1] - CHEST_GOLD[0] + 1));
     for (let k = 0; k < 5; k++) {
       const a = Math.PI * (0.15 + (k / 4) * 0.7);
@@ -1812,6 +1814,7 @@ export class Game {
     this.fx.text(c.x, c.y - 8, `+${c.value}`, "#ffcc33");
     // tanga HUD'dagi oltin hisobiga uchib boradi (oltin allaqachon qo'shilgan — faqat ko'rinish)
     this.cfx.fly("coin", c.x, c.y, ROOM.w - 8, ROOM.h - 9, this.fx.isReduced());
+    this.pfx.pickup("coin", c.x, c.y, this.fx.isReduced());
   }
 
   /** To'lqin yakunida yerda qolgan tangalar o'zi teriladi. */
@@ -1865,6 +1868,8 @@ export class Game {
     sfx.upgrade();
     this.fx.text(this.player.x, this.player.y - 16, u.name, u.color);
     this.fx.burst(this.player.x, this.player.y, u.color, 18, 70);
+    // pixelfx: qahramon ustida skin rangidagi kuch portlashi — faqat ko'rinish
+    this.pfx.card(this.player.x, this.player.y, this.theme, this.fx.isReduced());
     for (const tag of u.tags) this.gainTag(tag);
     this.input.clearQueued();
     if (this.bonusPick) {
@@ -2896,6 +2901,7 @@ export class Game {
         this.fx.text(d.x, d.y - 8, "+1 YURAK", "#ff4d6d");
         // yurak HUD'dagi o'z katagiga uchib boradi
         this.cfx.fly("heart", d.x, d.y, 8 + (p.hp - 1) * 10, 7, this.fx.isReduced());
+        this.pfx.pickup("heart", d.x, d.y, this.fx.isReduced());
       } else {
         this.score += 25;
         this.fx.text(d.x, d.y - 8, "+25", "#ffffff");
