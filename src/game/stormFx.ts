@@ -20,7 +20,7 @@ import type { SceneCtx, SceneTarget, SuperScene } from "./superScene";
 
 /** Soya-nusxa yashash vaqti va kesik chizig'i yashash vaqti (s) */
 export const CLONE_LIFE = 0.32;
-export const STORM_SLASH_LIFE = 0.4;
+export const STORM_SLASH_LIFE = 0.55;
 /** Tutun bulutlari (bir puflashda) — oddiy va kamaytirilgan */
 export const STORM_PUFFS = 9;
 export const STORM_PUFFS_REDUCED = 3;
@@ -158,7 +158,7 @@ export class StormScene implements SuperScene {
   hit(t: SceneTarget, boss: boolean, _killed: boolean, _cast: SuperCast, ctx: SceneCtx) {
     const live = t.live ?? t;
     const a = -0.7 + this.rnd() * 0.5;
-    const len = t.size * (boss ? 2.4 : 1.6) + 10;
+    const len = t.size * (boss ? 2.6 : 2) + 16;
     const life = STORM_SLASH_LIFE * (boss ? 1.5 : 1);
     this.slashes.push({ x: live.x, y: live.y - 2, a, len, life, max: life, big: boss });
     this.slashes.push({
@@ -218,7 +218,7 @@ export class StormScene implements SuperScene {
     const V = ctx.view;
     // 1) dunyo qora-qirmiziga botadi
     if (this.dim > 0.01) {
-      px(c, `rgba(12,2,8,${0.5 * this.dim})`, V.x, V.y, V.w, V.h);
+      px(c, `rgba(12,2,8,${0.62 * this.dim})`, V.x, V.y, V.w, V.h);
       if (cast && !this.hidden(cast) && ctx.drawOwner) ctx.drawOwner(c);
     }
     // 2) soya-nusxalar: tutundan chiqib, kesish pozasida
@@ -240,8 +240,14 @@ export class StormScene implements SuperScene {
         uy = Math.sin(s.a) * half;
       c.save();
       c.lineCap = "square";
-      c.strokeStyle = withAlpha(T.accent, 0.9 * k);
-      c.lineWidth = s.big ? 4 : 3;
+      c.strokeStyle = withAlpha(T.accentDark, 0.8 * k);
+      c.lineWidth = s.big ? 6 : 5;
+      c.beginPath();
+      c.moveTo(s.x - ux, s.y - uy);
+      c.lineTo(s.x + ux, s.y + uy);
+      c.stroke();
+      c.strokeStyle = withAlpha(T.accent, k);
+      c.lineWidth = s.big ? 3 : 2;
       c.beginPath();
       c.moveTo(s.x - ux, s.y - uy);
       c.lineTo(s.x + ux, s.y + uy);

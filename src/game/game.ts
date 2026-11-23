@@ -5488,10 +5488,12 @@ export class Game {
   private renderSmoke(c: CanvasRenderingContext2D, sm: Smoke) {
     const a = Math.min(1, sm.life * 1.5, (SMOKE_LIFE - sm.life) * 6);
     const T = this.theme;
+    // Ninja tutuni — ko'mir va kul (inner uning qilich yoyi rangi: qizil marjon)
+    const [c1, c2] = this.player.shinobi ? [T.shade, T.mist] : [T.inner, T.rim];
     for (let k = 0; k < 8; k++) {
       const ang = this.time * 0.6 + k * 0.8;
       const r = k === 0 ? 0 : SMOKE_RADIUS * 0.5;
-      c.fillStyle = withAlpha(k % 2 ? T.inner : T.rim, 0.34 * a);
+      c.fillStyle = withAlpha(k % 2 ? c1 : c2, (this.player.shinobi ? 0.45 : 0.34) * a);
       c.beginPath();
       c.arc(
         sm.x + Math.cos(ang) * r,
