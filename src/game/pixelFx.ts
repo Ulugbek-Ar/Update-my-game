@@ -507,15 +507,15 @@ export class PixelFx {
   /** Boss keyingi fazaga o'tdi: atrofida chaqmoq va zarb halqasi (o'yinchiga zarar yo'q) */
   bossPhase(x: number, y: number, reduced: boolean) {
     this.spawn("bossPhase", "thunderclap", x, y, reduced, {
-      scale: 0.6,
-      speed: 1.1,
+      scale: 0.75,
+      speed: 0.85,
       opts: { palette: PHASE_BOLT, sparks: PHASE_SPARK, reach: 80 },
     });
   }
 
   /** Boss yengildi: oq-oltin nur portlashi */
   bossDeath(x: number, y: number, reduced: boolean) {
-    this.spawn("bossDeath", "plasmaExplosion", x, y + 30, reduced, {
+    this.spawn("bossDeath", "plasmaExplosion", x, y, reduced, {
       scale: 0.8,
       speed: 0.9,
       opts: { palette: BOSS_DEATH, accent: BOSS_DEATH_ACCENT },

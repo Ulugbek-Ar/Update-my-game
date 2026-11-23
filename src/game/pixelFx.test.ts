@@ -163,6 +163,22 @@ describe("pixelfx effektlari", () => {
     expect([e.x, e.y]).toEqual([x, y]);
   });
 
+  it("bosses: the intro opens a rift, the killing blow bursts — boss position untouched", () => {
+    const { g, gi } = makeGame();
+    (g as unknown as { startWave(i: number): void }).startWave(4);
+    const boss = g.boss!;
+    expect(boss).toBeTruthy();
+    expect(g.pfx.lives.some((l) => l.kind === "bossSpawn")).toBe(true);
+    const spy = vi.spyOn(g.pfx, "bossDeath");
+    const at = [boss.x, boss.y];
+    boss.spawn = 0;
+    boss.guard = 0;
+    boss.hp = 1;
+    gi.damageTarget(boss, 99);
+    expect(spy).toHaveBeenCalledWith(at[0], at[1], false);
+    expect([boss.x, boss.y]).toEqual(at);
+  });
+
   it("hero effects take the skin's colors; the rest stay clear of the danger colors", () => {
     for (const s of ALL_SKINS) expect(heroPalette(s.theme)).toContain(s.theme.spark);
     const game = [GOLD, HEART, PORTAL, PHASE_BOLT, PHASE_SPARK, BOSS_DEATH, BOSS_DEATH_ACCENT];

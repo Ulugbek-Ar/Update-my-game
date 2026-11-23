@@ -1292,6 +1292,8 @@ export class Game {
       // kirish sahnasi: boss shu vaqt ichida paydo bo'ladi, dunyo to'xtab turadi
       this.intro = INTRO_TIME;
       this.boss.spawn = this.boss.spawnMax = INTRO_TIME + 0.4;
+      // pixelfx: boss turgan joyda polda yoriq ochiladi — faqat ko'rinish
+      this.pfx.bossSpawn(this.boss.x, this.boss.y + 24, this.fx.isReduced());
       this.input.clearQueued();
       sfx.roar();
       this.fx.addShake(0.4);
@@ -2263,6 +2265,8 @@ export class Game {
         120,
         3,
       );
+      // pixelfx: oq-oltin nur portlashi — faqat ko'rinish
+      this.pfx.bossDeath(t.x, t.y, this.fx.isReduced());
       // sekin harakat va tanga yomg'iri (oflayn o'yin; oltin miqdori o'zgarmaydi)
       this.slowmo = SLOWMO_TIME;
       for (let k = 0; k < COIN_RAIN; k++)
@@ -2621,6 +2625,8 @@ export class Game {
         const b = PHASE_BANNERS[this.bossKind(boss)][boss.phase - 2]!;
         this.banner = { title: b.title, sub: b.sub, timer: 2 };
         this.phaseFlash = 0.5;
+        // pixelfx: boss atrofida chaqmoq va halqa (zarar yo'q, silkinish yo'q) — faqat ko'rinish
+        this.pfx.bossPhase(boss.x, boss.y + 24, this.fx.isReduced());
         this.shots = [];
         sfx.roar();
         this.fx.addShake(0.5);
