@@ -1598,7 +1598,9 @@ export class RealmSim {
         text: `Tutun: ${Math.ceil(p.smokeCooldown)}s`,
       });
     }
-    if (p.hidden && !this.inSmoke(p)) p.hideT = 0;
+    // Ninja tutundan sakrab chiqadi — ko'rinmasligi o'z vaqti bilan tugaydi
+    if (p.hidden && !p.shinobi && !this.inSmoke(p)) p.hideT = 0;
+    if (p.shinobi) p.ambushed = p.threw = false;
     this.updateLava(rp, dt);
 
     if (p.paladin) this.updatePaladin(rp);

@@ -69,7 +69,7 @@ export const getCombatTip = createServerFn({ method: "POST" })
         ]),
         problem: z.string().max(500),
         hero: z
-          .enum(["knight", "mage", "hunter", "gunner", "paladin", "samurai"])
+          .enum(["knight", "mage", "hunter", "gunner", "paladin", "samurai", "shinobi"])
           .default("knight"),
       })
       .parse(d),
@@ -111,7 +111,7 @@ export const getCombatTip = createServerFn({ method: "POST" })
       const result = streamText({
         model: provider.responses("openai/gpt-6-astra"),
         system: MECHANICS,
-        prompt: `Qahramon: ${data.hero === "mage" ? "Sehrgar (shar, halqa, teleport)" : data.hero === "hunter" ? "Ovchi (o'q, teshuvchi o'q, orqaga sakrash, tuzoq)" : data.hero === "gunner" ? "Mergan (to'pponcha o'qi, barabanni bo'shatish, sirpanish, tutun bombasi, qayta o'qlash)" : data.hero === "samurai" ? "Samuray qiz (katana: tez 3 zarbali kombo, 3-zarba keng; hujumni bosib turib qo'yib yuborsa IAI — chaqmoqdek sirpanib o'tadi va yo'lidagilarni 0.25 s dan keyin kesadi; zarba tegishidan sal oldin dash — MUKAMMAL CHETLANISH: vaqt sekinlashadi, keyingi zarba kritik; zarba tegayotgan lahzada hujum — PARRY: zarba bekor, snaryad egasiga qaytadi; 4 yurak, tez)" : data.hero === "paladin" ? "Paladin — tank (ulkan qilich: SHANG yo'lak zarbasi 0.4s tayyorgarlik bilan, Osmon hukmi — 360° to'lqin va gangitish, Muqaddas hamla — himoyali yugurish, Qasam — dushmanlarni o'ziga tortib zararni yarmiga kamaytiradi; 8 yurak, sekin)" : "Ritsar (qilich, aylana zarba, dash)"}.\nQiynalayotgan raqib: ${names[data.enemy]}.\nO'yinchi muammosi: ${data.problem.trim() || "(izoh yo'q)"}`,
+        prompt: `Qahramon: ${data.hero === "mage" ? "Sehrgar (shar, halqa, teleport)" : data.hero === "hunter" ? "Ovchi (o'q, teshuvchi o'q, orqaga sakrash, tuzoq)" : data.hero === "gunner" ? "Mergan (to'pponcha o'qi, barabanni bo'shatish, sirpanish, tutun bombasi, qayta o'qlash)" : data.hero === "shinobi" ? "Ninja (ikki katana: tez chap-o'ng zarbalar, zarari past; hujumni bosib turib qo'yib yuborsa 3 ta shuriken yelpig'ich bo'lib uchadi; dash — tutun bombasi: tutun qoldirib sakraydi va 1 s ko'rinmas bo'ladi, dushmanlar uni yo'qotadi; ko'rinmaslikdan keyingi birinchi zarba 2 baravar — orqadan zarba; 4 yurak)" : data.hero === "samurai" ? "Samuray qiz (katana: tez 3 zarbali kombo, 3-zarba keng; hujumni bosib turib qo'yib yuborsa IAI — chaqmoqdek sirpanib o'tadi va yo'lidagilarni 0.25 s dan keyin kesadi; zarba tegishidan sal oldin dash — MUKAMMAL CHETLANISH: vaqt sekinlashadi, keyingi zarba kritik; zarba tegayotgan lahzada hujum — PARRY: zarba bekor, snaryad egasiga qaytadi; 4 yurak, tez)" : data.hero === "paladin" ? "Paladin — tank (ulkan qilich: SHANG yo'lak zarbasi 0.4s tayyorgarlik bilan, Osmon hukmi — 360° to'lqin va gangitish, Muqaddas hamla — himoyali yugurish, Qasam — dushmanlarni o'ziga tortib zararni yarmiga kamaytiradi; 8 yurak, sekin)" : "Ritsar (qilich, aylana zarba, dash)"}.\nQiynalayotgan raqib: ${names[data.enemy]}.\nO'yinchi muammosi: ${data.problem.trim() || "(izoh yo'q)"}`,
         providerOptions: {
           openai: {
             forceReasoning: true,

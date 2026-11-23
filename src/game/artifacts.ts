@@ -29,7 +29,8 @@ export type ArtifactId =
   | "bigtrap"
   | "lastshot"
   | "vowlight"
-  | "iaireset";
+  | "iaireset"
+  | "smokecharm";
 
 export interface Artifact {
   id: ArtifactId;
@@ -400,6 +401,25 @@ export const ARTIFACTS: readonly Artifact[] = [
       "kXwXkkYk.",
       "kXXXk.kYk",
       ".kkk...kk",
+    ],
+  },
+  {
+    id: "smokecharm",
+    name: "QORA TUMOR",
+    desc: "Tutun bombasi yonidagi dushmanlarni 1 s gangitadi",
+    color: "#b0a8c0",
+    dark: "#ff6f91",
+    hero: "shinobi",
+    icon: [
+      "..kkkkk..",
+      ".kXXXXXk.",
+      "kXXwXXXXk",
+      "kXXXkXXXk",
+      "kXXkYkXXk",
+      "kXXXkXXXk",
+      ".kXXXXXk.",
+      "..kkYkk..",
+      "....k....",
     ],
   },
 ];

@@ -34,6 +34,11 @@ import {
   samuraiPortraitColors,
   samuraiPortraitPixels,
 } from "./samuraiPortrait";
+import {
+  SHINOBI_PORTRAIT_COLORS,
+  SHINOBI_PORTRAIT_GRID,
+  shinobiPortraitPixels,
+} from "./shinobiPortrait";
 
 /** Portret to'ri (kvadrat): Ritsar, Paladin va Samurayda 96 (katta, batafsil) */
 export function portraitGrid(hero: Hero) {
@@ -47,7 +52,9 @@ export function portraitGrid(hero: Hero) {
           ? HUNTER_PORTRAIT_GRID
           : hero === "gunner"
             ? GUNNER_PORTRAIT_GRID
-            : PALADIN_PORTRAIT_GRID;
+            : hero === "shinobi"
+              ? SHINOBI_PORTRAIT_GRID
+              : PALADIN_PORTRAIT_GRID;
 }
 
 /** Paladin portreti kadrlari: tirqishdagi nur kuchayib boradi, toj yaltiraydi */
@@ -67,6 +74,9 @@ export const HUNTER_PORTRAIT_VARIANTS = ["", "drawn", "flash"] as const;
 
 /** Mergan portreti kadrlari: tinch, baraban aylanadi, tutun va gilzalar */
 export const GUNNER_PORTRAIT_VARIANTS = ["", "spin", "smoke"] as const;
+
+/** Ninja portreti kadrlari: ko'zlar xira → qizil yonadi → tig'lar yaltiraydi, ko'zdan chaqnash */
+export const SHINOBI_PORTRAIT_VARIANTS = ["", "glare", "flash"] as const;
 
 const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, "0");
 /** a va b ranglar aralashmasi (k — b ulushi) */
@@ -89,6 +99,8 @@ export function portraitColors(hero: Hero, palette?: SpritePalette): string[] {
   // Ovchi va Mergan: portretning o'z rang to'plami (skin palitrasi portretga ta'sir qilmaydi)
   if (hero === "hunter") return [...HUNTER_PORTRAIT_COLORS];
   if (hero === "gunner") return [...GUNNER_PORTRAIT_COLORS];
+  // Ninja: portretning o'z rang to'plami (qora mato, qizil oy, po'lat)
+  if (hero === "shinobi") return [...SHINOBI_PORTRAIT_COLORS];
   if (hero !== "knight") return [...(palette?.colors ?? PALETTES[hero])];
   const base: string[] = [...KNIGHT_PORTRAIT_COLORS];
   const pc = palette?.colors;
@@ -145,6 +157,13 @@ export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
       Math.max(
         0,
         GUNNER_PORTRAIT_VARIANTS.indexOf(variant as (typeof GUNNER_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
+  if (hero === "shinobi")
+    return shinobiPortraitPixels(
+      Math.max(
+        0,
+        SHINOBI_PORTRAIT_VARIANTS.indexOf(variant as (typeof SHINOBI_PORTRAIT_VARIANTS)[number]),
       ),
     );
   if (hero === "samurai")

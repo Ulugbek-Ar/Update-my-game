@@ -76,6 +76,7 @@ describe("HERO_THEME", () => {
       "gunner",
       "paladin",
       "samurai",
+      "shinobi",
     ]);
     expect(new Set(HEROES).size).toBe(HEROES.length);
     expect(HERO_LIST.length).toBeLessThanOrEqual(MAX_HEROES);

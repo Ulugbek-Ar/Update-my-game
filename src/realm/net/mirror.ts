@@ -22,6 +22,7 @@ import {
   PF_IAI,
   PF_CHARGE,
   PF_PARRY,
+  PF_LEFT,
   MARK_KINDS,
   type NetMe,
   type NetMob,
@@ -190,6 +191,7 @@ export class RealmMirror {
         arrow: kind === 1,
         bullet: kind === 2,
         wave: kind === 3,
+        shuriken: kind === 4,
         owner: "",
         life: 1,
         hitSet: new Set<number>(),
@@ -290,6 +292,11 @@ export class RealmMirror {
         }
         p.charge = f & PF_CHARGE ? IAI_MIN : 0;
         p.parryPose = f & PF_PARRY ? 0.2 : 0;
+      }
+      if (p.shinobi) {
+        // Ninja: qaysi qo'l qilichi uradi va shuriken zaryadi (turish holati)
+        p.blade = !!(a[11] & PF_LEFT);
+        p.charge = a[11] & PF_CHARGE ? 0.2 : 0;
       }
       p.flash = a[12];
       rp.titles = a[13] ? [a[13]] : [];

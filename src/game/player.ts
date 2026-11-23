@@ -9,6 +9,7 @@ import {
 } from "./animation";
 import type { Input } from "./input";
 import { SAMURAI_FRAME, SAMURAI_FRAMES, renderSprite, type SpritePalette } from "./sprites";
+import { SHINOBI_FRAME, SHINOBI_FRAMES } from "./shinobiSprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
 import type { FlairKind, ToneKind } from "./skinFx";
@@ -154,6 +155,49 @@ export const PARRY_GUARD = 0.3;
 export const PARRY_STUN = 0.7;
 /** QAYTGAN PO'LAT kartasi: parry dan keyin shuncha soniya tezlashish */
 export const PARRY_BOOST = 2;
+/**
+ * NINJA (id "shinobi"): 4 yurak, tezlik 100. Ikki katana — chap va o'ng qo'l navbat bilan uradi:
+ * 0.18 s da bir zarba (zarba 0.12 s), har biri Ritsarnikining 45% i. DPS = 0.45 / 0.18 = 2.5 —
+ * Paladin va Ritsar oralig'ida (bossPower.ts). Samuraydan farqi: ochiq duel emas — yashirinib uradi.
+ */
+export const SHINOBI_MAX_HP = 4;
+export const SHINOBI_SPEED = 100;
+export const TWIN_CD = 0.18;
+export const TWIN_TIME = 0.12;
+export const TWIN_REACH = 13;
+export const TWIN_MUL = 0.45;
+/** Kuchli hujum: bosib turib qo'yib yuborilsa — shurikenlar yelpig'ich (±spread) bo'lib uchadi */
+export const SHURIKEN_N = 3;
+/** KO'P SHURIKEN kartasi: shuncha qo'shiladi */
+export const SHURIKEN_CARD = 2;
+export const SHURIKEN_SPREAD = 0.26;
+export const SHURIKEN_SPEED = 230;
+export const SHURIKEN_RANGE = 160;
+/** Bitta shuriken zarari (oddiy zarar ulushi) */
+export const SHURIKEN_MUL = 1;
+export const SHURIKEN_CD = 2.5;
+export const SHURIKEN_CHARGE = 0.45;
+/** Otish pozasi */
+export const THROW_TIME = 0.16;
+/**
+ * TUTUN BOMBASI (dash): chiqqan joyda tutun buluti qoladi, Ninja VANISH_TIME soniya ko'rinmaydi —
+ * dushmanlar uni yo'qotib, tutunga qarab yuradi. Dash har VANISH_CD da (karta va sinergiya qisqartiradi).
+ */
+export const VANISH_TIME = 1;
+/** UZUN SOYA kartasi: ko'rinmaslik shuncha uzayadi */
+export const VANISH_CARD = 0.6;
+export const SHINOBI_DASH_CD = 1.8;
+/**
+ * ORQADAN ZARBA: ko'rinmaslikdan keyingi birinchi zarba (katana yoki shurikenlar) ×AMBUSH_MUL;
+ * ORQADAN ZARBA kartasi bilan ×AMBUSH_CARD, SOYA sinergiyasi bilan ×3. Hujum ko'rinmaslikni buzadi;
+ * ko'rinmaslik o'zi tugasa ham yana AMBUSH_GRACE soniya kutadi.
+ */
+export const AMBUSH_MUL = 2;
+export const AMBUSH_CARD = 2.5;
+export const AMBUSH_GRACE = 0.5;
+/** TUTUN PARDASI (super kartasi): superdan keyin shuncha soniya ko'rinmaydi */
+export const SMOKE_VEIL_TIME = 2;
+
 /** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
 export const ENCASE_MAX = 3.5;
 /** Dash/teleport/sakrash tugagach shuncha himoya dumi (o'yinchi biroz shaffof) */
@@ -217,6 +261,8 @@ export interface Bolt {
   frenzy?: boolean;
   /** Samuray parry bilan qaytargan dushman snaryadi: o'q yoki olov shari (rangi — ko'k olov) */
   reflect?: "arrow" | "fire" | "blue";
+  /** Ninja shurikeni (aylanib uchadi; masofasi `range`) */
+  shuriken?: boolean;
 }
 
 /** Faol IAI sirpanishi */
@@ -454,6 +500,25 @@ export class Player implements Body {
   petalStorm = false;
   coldBlood = false;
   /**
+   * Ninja: qaysi qo'l uradi (false — o'ng, true — chap), bitta otishdagi shurikenlar, ko'rinmaslik
+   * davomiyligi, orqadan zarba ko'paytuvchisi va qolgan "orqadan zarba" oynasi (0 — yo'q).
+   */
+  blade = false;
+  shurikens = SHURIKEN_N;
+  vanishTime = VANISH_TIME;
+  ambushMul = AMBUSH_MUL;
+  ambushT = 0;
+  /** Joriy zarbaning orqadan zarba ko'paytuvchisi (1 — oddiy) */
+  ambushHit = 1;
+  /** Shu kadrda orqadan zarba boshlandi (Game: "ORQADAN!" yozuvi va qizil uchqun) */
+  ambushed = false;
+  /** Kartalar: ZAHARLI SHURIKEN; super kartalari TUTUN PARDASI va SOYA IZI */
+  poisonStar = false;
+  smokeVeil = false;
+  shadowTrail = false;
+  /** Shu kadrda shurikenlar otildi (Game ovoz va effekt) */
+  threw = false;
+  /**
    * Afsonaviy skin animatsiyasi (skinFx.ts; null — yo'q). "moon" (Qizil oy): IAI dan keyin katanani
    * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
    */
@@ -552,6 +617,29 @@ export class Player implements Body {
       };
       this.anim.defs.attack = { frames: 3, frameTime: KATANA_TIME / 3, loop: false };
     }
+    if (hero === "shinobi") {
+      this.hp = this.maxHp = SHINOBI_MAX_HP;
+      this.speed = SHINOBI_SPEED;
+      this.attackCd = TWIN_CD;
+      this.attackTime = TWIN_TIME;
+      this.reach = TWIN_REACH;
+      this.dashCd = SHINOBI_DASH_CD;
+      this.spinCd = SHURIKEN_CD;
+      this.chargeTime = SHURIKEN_CHARGE;
+      this.boltSpeed = SHURIKEN_SPEED;
+      // sharf uchi hilpiraydi: ko'proq kadr, umumiy davomiylik o'sha (1 s, 0.48 s)
+      this.anim.defs.idle = {
+        frames: SHINOBI_FRAMES.idle,
+        frameTime: 1 / SHINOBI_FRAMES.idle,
+        loop: true,
+      };
+      this.anim.defs.walk = {
+        frames: SHINOBI_FRAMES.walk,
+        frameTime: 0.48 / SHINOBI_FRAMES.walk,
+        loop: true,
+      };
+      this.anim.defs.attack = { frames: 3, frameTime: TWIN_TIME / 3, loop: false };
+    }
   }
 
   get mage() {
@@ -572,6 +660,15 @@ export class Player implements Body {
 
   get samurai() {
     return this.hero === "samurai";
+  }
+
+  get shinobi() {
+    return this.hero === "shinobi";
+  }
+
+  /** Ninja: keyingi zarba — orqadan zarba (ko'rinmaslik yoki undan keyingi qisqa oyna) */
+  get ambushReady() {
+    return this.shinobi && this.ambushT > 0;
   }
 
   /** Parry oynasi ochiq: shu payt tekkan zarba qaytariladi */
@@ -637,6 +734,8 @@ export class Player implements Body {
     if (this.paladin) return this.damage * (this.spinning ? this.strongMul : 2);
     // katana: tez, lekin har zarba yengilroq (IAI zarari alohida — Game: iai.mul)
     if (this.samurai) return this.damage * KATANA_MUL;
+    // ikki katana: har zarba yengil, orqadan zarba — ko'paytuvchi bilan
+    if (this.shinobi) return this.damage * TWIN_MUL * this.ambushHit;
     return this.spinning ? this.damage * this.strongMul : this.damage;
   }
 
@@ -762,6 +861,8 @@ export class Player implements Body {
     this.iai = null;
     this.iaiLock = this.iaiPose = this.parryPose = this.parryT = 0;
     this.fanLeft = 0;
+    this.hideT = this.ambushT = 0;
+    this.ambushHit = 1;
     this.shiftHold = -1;
     this.snare = 0;
     if (this.ice > 0) {
@@ -828,7 +929,7 @@ export class Player implements Body {
   attackBox(): Body | null {
     if (this.paladin) return this.paladinBox();
     // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
-    if (this.spinning && !this.hunter && !this.gunner)
+    if (this.spinning && !this.hunter && !this.gunner && !this.shinobi)
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
     // Sehrgar va Ovchining oddiy zarbasi — shar/o'q, u alohida uchadi
     if (this.attackTimer <= 0 || this.ranged) return null;
@@ -882,6 +983,7 @@ export class Player implements Body {
     if (this.hideT > 0) this.hideT -= dt;
     if (this.gunner) this.updateGun(dt, input);
     if (this.samurai) this.tickSamurai(dt);
+    if (this.shinobi && this.ambushT > 0) this.ambushT -= dt;
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
@@ -981,6 +1083,8 @@ export class Player implements Body {
       this.dashCooldown = this.dashCd;
       this.attackTimer = 0;
       this.charge = 0;
+      // Ninja: TUTUN BOMBASI — chiqqan joyda tutun, ko'rinmaslik va orqadan zarba oynasi
+      if (this.shinobi) this.vanish();
       // Samuray: mukammal chetlanish oynasi shu lahzadan; dash parry oynasini yopadi
       if (this.samurai) {
         this.dashAge = 0;
@@ -1036,7 +1140,11 @@ export class Player implements Body {
         this.attackTimer = 0;
         this.hitSet.clear();
         if (this.gunner) sfx.cylinder();
-        else if (this.paladin) {
+        else if (this.shinobi) {
+          // shurikenlar: qisqa otish pozasi, bossga ham uchadi
+          this.spinTimer = THROW_TIME;
+          this.throwStars();
+        } else if (this.paladin) {
           // OSMON HUKMI: qilich yerga tushdi — to'lqin va gangitish (Game)
           sfx.judgment();
           this.judged = true;
@@ -1077,6 +1185,7 @@ export class Player implements Body {
       }
       this.hitSet.clear();
       if (this.samurai) this.startSlash();
+      else if (this.shinobi) this.startTwin();
       else if (this.gunner) sfx.gunshot();
       else sfx.attack();
       if (this.tone) sfx.skinTone(this.tone);
@@ -1137,6 +1246,54 @@ export class Player implements Body {
     }
     if (this.iaiPose > 0) this.iaiPose -= dt;
     if (this.parryPose > 0) this.parryPose -= dt;
+  }
+
+  /** TUTUN BOMBASI: tutun buluti (Game/RealmSim), ko'rinmaslik va orqadan zarba oynasi. */
+  private vanish() {
+    this.smokes.push({ x: this.x, y: this.y });
+    this.hideT = Math.max(this.hideT, this.vanishTime);
+    this.ambushT = this.vanishTime + AMBUSH_GRACE;
+    sfx.smokeBomb();
+  }
+
+  /** Ko'rinmaslikdan keyingi birinchi hujum: ko'paytuvchi qaytadi, ko'rinmaslik buziladi. */
+  private takeAmbush() {
+    if (!this.ambushReady) return 1;
+    this.ambushT = this.hideT = 0;
+    this.ambushed = true;
+    return this.ambushMul;
+  }
+
+  /** Ikki katana: chap va o'ng qo'l navbat bilan uradi. */
+  private startTwin() {
+    this.blade = !this.blade;
+    this.ambushHit = this.takeAmbush();
+    sfx.twinBlade(this.blade);
+  }
+
+  /** Shurikenlar: qarab turgan tomonga yelpig'ich (±SHURIKEN_SPREAD qadam), har biri bitta dushmanga. */
+  private throwStars() {
+    const power = SHURIKEN_MUL * this.takeAmbush();
+    const base = Math.atan2(this.fy, this.fx);
+    const n = Math.max(1, this.shurikens);
+    for (let i = 0; i < n; i++) {
+      const a = base + (i - (n - 1) / 2) * SHURIKEN_SPREAD;
+      this.bolts.push({
+        x: this.x + this.fx * 7,
+        y: this.y + this.fy * 7 - 2,
+        vx: Math.cos(a) * this.boltSpeed,
+        vy: Math.sin(a) * this.boltSpeed,
+        size: 5,
+        left: 1 + this.pierce,
+        hit: [],
+        shuriken: true,
+        range: SHURIKEN_RANGE,
+        power,
+        ...(this.poisonStar ? { poison: true } : {}),
+      });
+    }
+    this.threw = true;
+    sfx.shuriken(n);
   }
 
   /** Katana zarbasi: kombo sanog'i (3-zarba — keng yoy) va parry oynasi. */
@@ -1531,9 +1688,10 @@ export class Player implements Body {
       [state, frame] = this.samuraiFrame();
       if (this.iai) this.renderAfterimages(ctx, state, frame);
     }
+    if (this.shinobi) [state, frame] = this.shinobiFrame();
     // vizual qatlam (heroAnim.ts): oraliq kadr, burilish va zarba siqilishi — faqat ko'rinish
     const plain = state === this.anim.state && frame === this.anim.frame;
-    const sub = plain && !this.samurai ? subFrame(this.anim) : 0;
+    const sub = plain && !this.samurai && !this.shinobi ? subFrame(this.anim) : 0;
     const [sx, sy] = plain ? heroScale(this.vis, this.anim) : [1, 1];
     const scaled = sx !== 1 || sy !== 1;
     if (scaled) {
@@ -1584,6 +1742,22 @@ export class Player implements Body {
     if (this.charge >= IAI_MIN) return ["attack", F.charge];
     // hujum tugagach Animator "attack"da qolsa (yurmayotgan bo'lsa) — oxirgi kadr
     if (a.state === "attack") return ["attack", Math.min(2, a.frame)];
+    return [a.state, a.frame];
+  }
+
+  /**
+   * Ninja kadri: o'ng (0..2) yoki chap (3..5) qilich zarbasi, shuriken zaryadi/otishi, tutun sakrashi.
+   * Faqat Animator holati, `blade`, `charge` va `spinTimer` dan — onlayn ko'zgu ham shu bilan chizadi.
+   */
+  shinobiFrame(): [AnimState, number] {
+    const F = SHINOBI_FRAME;
+    const a = this.anim;
+    if (this.casting && this.superFrame >= 0 && !this.dead) return ["attack", this.superFrame];
+    if (this.dead || a.state === "hurt") return [a.state, a.frame];
+    if (this.dashing) return ["attack", F.dash];
+    if (this.spinTimer > 0) return ["attack", F.throw];
+    if (this.charge >= Math.min(0.2, this.chargeTime)) return ["attack", F.aim];
+    if (a.state === "attack") return ["attack", (this.blade ? F.left : 0) + Math.min(2, a.frame)];
     return [a.state, a.frame];
   }
 

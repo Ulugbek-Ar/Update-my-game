@@ -1,5 +1,5 @@
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai";
+export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai" | "shinobi";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -70,6 +70,17 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     uiText: "#ffe3ee",
     empty: "#3a1a28",
   },
+  // Ninja (id "shinobi" — "ninja" Sakura bog'idagi Ninja-soya mobining sprayti): qora kiyim va qizil
+  // sharf. Effektlarda qizil marjon tusida (xavf zonalarining qizilidan uzoq), porlashi — po'lat-oq,
+  // izi — kul tutun
+  shinobi: {
+    accent: "#ff6f91",
+    accentDark: "#7a1420",
+    glow: "#e6e2ea",
+    trail: "rgba(90,84,104,0.8)",
+    uiText: "#ff8a94",
+    empty: "#2a1418",
+  },
 };
 
 /**
@@ -138,6 +149,12 @@ export const PALADIN_PRICE = 450;
  */
 export const SAMURAI_PRICE = 600;
 
+/**
+ * Ninja narxi: Samuray bilan bir qatorda (600 oltin ≈ 3 ta uch dunyoli o'yin). Yashirin qotil —
+ * ko'rinmaslik va orqadan zarbani to'g'ri ishlatgan o'yinchi uchun.
+ */
+export const SHINOBI_PRICE = 600;
+
 export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
@@ -186,6 +203,14 @@ export const HERO_LIST: readonly HeroInfo[] = [
     theme: HERO_THEME.samurai,
     price: SAMURAI_PRICE,
     desc: "Samuray qiz: tez katana kombosi. IAI — bosib tursang zaryadlanadi, qo'yib yuborsang chaqmoqdek kesib o'tadi. O'z vaqtida dash — vaqt sekinlashadi, o'z vaqtida zarba — dushman hujumi qaytadi. 4 yurak.",
+  },
+  {
+    id: "shinobi",
+    role: "warrior",
+    name: "NINJA",
+    theme: HERO_THEME.shinobi,
+    price: SHINOBI_PRICE,
+    desc: "Yashirin qotil: ikki katana bilan tez chap-o'ng zarbalar. Bosib tursang — 3 ta shuriken yelpig'ich bo'lib uchadi. Dash — tutun bombasi: 1 s ko'rinmaysan, dushmanlar seni yo'qotadi, keyingi zarba 2 baravar (orqadan zarba). 4 yurak.",
   },
 ];
 

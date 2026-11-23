@@ -65,7 +65,13 @@ export type SuperSound =
   | "frenzySpin"
   | "frenzyGo"
   | "frenzyClick"
-  | "frenzyHolster";
+  | "frenzyHolster"
+  | "stormVanish"
+  | "stormWind"
+  | "stormBlink"
+  | "stormSlash"
+  | "stormBossCut"
+  | "stormSheathe";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -609,6 +615,48 @@ export function frenzyTime(def: SuperDef, long = false) {
   return F ? (long ? F.long : F.time) : def.stages.strike;
 }
 
+/**
+ * SOYA BO'RONI (Ninja).
+ * Tayyorlanish (0.7 s): Ninja qo'l belgisini qiladi, dunyo qora-qirmiziga botadi, Ninja tutunga
+ * aylanib yo'qoladi. Zarba (≤1.4 s): ekrandagi HAR dushman yonida bir lahzaga soya-nusxa paydo
+ * bo'lib uni kesadi (qizil kesik chiziqlari) — dushmanlar deyarli qotgan. Oqibat (0.8 s): Ninja xona
+ * markazida tutundan chiqib ikki qilichini qinga qaytaradi.
+ *
+ * Zaryad 20 (boshqa superlar kabi). Bossga: maksimal jonining 8% i, jami 10% dan oshmaydi (kartalar
+ * ham oshirmaydi). Kartalar: TUTUN PARDASI (superdan keyin 2 s ko'rinmaslik), SOYA IZI (shuriken va
+ * tutun darhol tayyor).
+ */
+const SHADOW_STORM: SuperDef = {
+  id: "shadow-storm",
+  hero: "shinobi",
+  name: "SOYA BO'RONI",
+  desc: "Ninja tutunga aylanadi — har dushman yonida soya-nusxa paydo bo'lib uni kesadi",
+  color: "#ff6f91",
+  charge: 20,
+  time: 2.9,
+  params: {},
+  open: true,
+  stages: { prep: 0.7, strike: 1.4, after: 0.8 },
+  slow: { prep: 0.2, strike: 0.05, after: 0.3 },
+  strike: { mark: 0.14, gap: 0.1, tail: 0.3, min: 0.9 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0.3, dust: 0.5, bossKneel: 0.8 },
+  center: true,
+  card: { time: 0.7, short: 0.25, sub: "NINJA SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "stormVanish",
+    mark: "stormBlink",
+    hit: "stormSlash",
+    bossHit: "stormBossCut",
+    end: "stormSheathe",
+    strike: "stormWind",
+  },
+  fx: "storm",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
@@ -617,6 +665,7 @@ export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   mage: SKY_STONE,
   hunter: TEN_ARROWS,
   gunner: ENDLESS_LEAD,
+  shinobi: SHADOW_STORM,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */

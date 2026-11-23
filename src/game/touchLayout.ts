@@ -250,6 +250,11 @@ export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> 
         attack: { text: "KATANA", sub: "tursa: iai", aria: "Katana zarbasi", icon: "sword" },
         dash: { text: "DASH", aria: "Dash", icon: "dash" },
       };
+    case "shinobi":
+      return {
+        attack: { text: "QILICH", sub: "tursa: shuriken", aria: "Ikki katana", icon: "sword" },
+        dash: { text: "TUTUN", aria: "Tutun bombasi", icon: "dash" },
+      };
     case "gunner":
       return {
         attack: { text: "O'Q", aria: "O'q", icon: "bullet" },

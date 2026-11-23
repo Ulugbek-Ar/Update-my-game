@@ -36,6 +36,7 @@ import {
   PF_IAI,
   PF_CHARGE,
   PF_PARRY,
+  PF_LEFT,
   MARK_KINDS,
   ROOM_CAP,
   SNAPSHOT_EVERY,
@@ -529,7 +530,8 @@ export class RealmRoom {
         r1(p.vx),
         r1(p.vy),
         p.size,
-        p.wave ? 3 : p.bullet ? 2 : p.arrow ? 1 : 0,
+        // 4 — Ninja shurikeni (eski klient uni oddiy shar qilib chizadi)
+        p.wave ? 3 : p.bullet ? 2 : p.arrow ? 1 : p.shuriken ? 4 : 0,
       ]);
     const bk = JSON.stringify(bolts);
     if (bk !== b.bolts) {
@@ -673,7 +675,9 @@ export function netPlayer(
       ? (p.iai ? PF_IAI : 0) |
         (p.charge >= IAI_MIN ? PF_CHARGE : 0) |
         (p.parryPose > 0 ? PF_PARRY : 0)
-      : 0);
+      : hero === "shinobi"
+        ? (p.blade ? PF_LEFT : 0) | (p.charge >= 0.2 ? PF_CHARGE : 0)
+        : 0);
   const out: NetPlayer = [
     o.id,
     hero,

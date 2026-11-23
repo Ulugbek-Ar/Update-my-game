@@ -737,25 +737,29 @@ function Index() {
                         ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
                         : h === "samurai"
                           ? "KATANA — tez kombo, DASH — chetlanish"
-                          : h === "mage"
-                            ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                            : h === "hunter"
-                              ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                              : h === "gunner"
-                                ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
-                                : "ZARBA — hujum, DASH — sirpanish"}
+                          : h === "shinobi"
+                            ? "QILICH — ikki katana, TUTUN — ko'rinmaslik"
+                            : h === "mage"
+                              ? "SHAR — sehrli shar, TELEPORT — sakrash"
+                              : h === "hunter"
+                                ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
+                                : h === "gunner"
+                                  ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
+                                  : "ZARBA — hujum, DASH — sirpanish"}
                       <br />
                       {h === "paladin"
                         ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
                         : h === "samurai"
                           ? "KATANA ni bosib turing — Iai, o'z vaqtida bosing — parry"
-                          : h === "mage"
-                            ? "SHAR ni bosib turing — sehrli halqa"
-                            : h === "hunter"
-                              ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                              : h === "gunner"
-                                ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
-                                : "ZARBA ni bosib turing — aylana zarba"}
+                          : h === "shinobi"
+                            ? "QILICH ni bosib turing — 3 ta shuriken"
+                            : h === "mage"
+                              ? "SHAR ni bosib turing — sehrli halqa"
+                              : h === "hunter"
+                                ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
+                                : h === "gunner"
+                                  ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
+                                  : "ZARBA ni bosib turing — aylana zarba"}
                     </>
                   ) : (
                     <>
@@ -767,39 +771,45 @@ function Index() {
                         ? "SHANG (yo'lak bo'ylab zarba)"
                         : h === "samurai"
                           ? "katana, o'z vaqtida — parry"
-                          : h === "mage"
-                            ? "sehrli shar"
-                            : h === "hunter"
-                              ? "o'q"
-                              : h === "gunner"
-                                ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
-                                : "hujum"}
+                          : h === "shinobi"
+                            ? "ikki katana (chap-o'ng)"
+                            : h === "mage"
+                              ? "sehrli shar"
+                              : h === "hunter"
+                                ? "o'q"
+                                : h === "gunner"
+                                  ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
+                                  : "hujum"}
                       <br />
                       {actionKey(kb, "attack")} ni bosib turish —{" "}
                       {h === "paladin"
                         ? "osmon hukmi (gangitadi)"
                         : h === "samurai"
                           ? "Iai (kesib o'tadi)"
-                          : h === "mage"
-                            ? "sehrli halqa"
-                            : h === "hunter"
-                              ? "teshuvchi o'q"
-                              : h === "gunner"
-                                ? "barabanni bo'shatish"
-                                : "aylana zarba"}
+                          : h === "shinobi"
+                            ? "3 ta shuriken (yelpig'ich)"
+                            : h === "mage"
+                              ? "sehrli halqa"
+                              : h === "hunter"
+                                ? "teshuvchi o'q"
+                                : h === "gunner"
+                                  ? "barabanni bo'shatish"
+                                  : "aylana zarba"}
                       <br />
                       {actionKeys(kb, "dash")} —{" "}
                       {h === "paladin"
                         ? "muqaddas hamla, bosib turish — qasam"
                         : h === "samurai"
                           ? "dash, o'z vaqtida — chetlanish"
-                          : h === "mage"
-                            ? "teleport"
-                            : h === "hunter"
-                              ? "orqaga sakrash, bosib turish — tuzoq"
-                              : h === "gunner"
-                                ? "sirpanish, bosib turish — tutun bombasi"
-                                : "dash"}
+                          : h === "shinobi"
+                            ? "tutun bombasi: 1 s ko'rinmaslik, keyin 2x zarba"
+                            : h === "mage"
+                              ? "teleport"
+                              : h === "hunter"
+                                ? "orqaga sakrash, bosib turish — tuzoq"
+                                : h === "gunner"
+                                  ? "sirpanish, bosib turish — tutun bombasi"
+                                  : "dash"}
                       <br />
                       {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
                     </>
@@ -1396,14 +1406,16 @@ function selectedHeroFrame(
   moving: boolean,
 ): readonly [AnimState, number, number] {
   // 110 ms lik taymer: nafas — har 5 tikda bir kadr
-  if (!moving) return ["idle", Math.floor(tick / 5) % (hero === "samurai" ? 4 : 2), 0];
-  const n = visualFrames(hero, "walk", hero === "samurai" ? 6 : 4);
+  // Samuray va Ninja: o'z kadrlari (4 nafas, 6 qadam), oraliq kadrsiz
+  const own = hero === "samurai" || hero === "shinobi";
+  if (!moving) return ["idle", Math.floor(tick / 5) % (own ? 4 : 2), 0];
+  const n = visualFrames(hero, "walk", own ? 6 : 4);
   // 3 aylana yuradi, so'ng 8 tik nafas oladi
   const cycle = n * 3 + 8;
   const k = tick % cycle;
   if (k >= n * 3) return ["idle", Math.floor((k - n * 3) / 4) % 2, 0];
   const v = k % n;
-  return hero === "samurai" ? ["walk", v, 0] : ["walk", v >> 1, v & 1];
+  return own ? ["walk", v, 0] : ["walk", v >> 1, v & 1];
 }
 
 /** Ekran almashganda ochiladigan piksel parda (styles.css: screen-wipe) — faqat bezak. */

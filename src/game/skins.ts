@@ -142,6 +142,12 @@ const THEMES: Record<string, ThemeRow> = {
   "samurai-lotus": ["#9fe0ff", "#2f7f8f", "#eafaff", "#bfeaff", "#16303a", "#ffffff", "#9fe0ff", "#dff6ff", "#c6ecff", "#2f7f8f", "#c6ecff", "#ffffff", "#0a1420", "#16303a", "#f4fbff"],
   // Qizil oy: och qizil-pushti oy nuri va to'q qirmizi soya (boss ogohlantirish qizilidan uzoq)
   "samurai-moon": ["#ff5c93", "#8a0a24", "#ffe0e8", "#ff9db8", "#2a0a12", "#ffffff", "#ff5c93", "#ffd0dc", "#ff9db8", "#5a0818", "#ffd0dc", "#ffffff", "#0d0406", "#2a0a12", "#ffd0dc"],
+  // Kul Ninja: kul-kumush tutun va muz-ko'k sharf
+  "shinobi-ash": ["#7fb8ff", "#1e3a6a", "#e4e8f0", "#b8d4ff", "#1a2230", "#f0f2f6", "#7fb8ff", "#c8d8f0", "#a8c0e0", "#5a6070", "#b8c0cc", "#ffffff", "#08090c", "#3a3e48", "#c8ccd4"],
+  // Bambuk soyasi: yashil barglar va bambuk izi
+  "shinobi-bamboo": ["#9ad05a", "#3a6a2a", "#e8f4d0", "#c8e890", "#1a2a14", "#e8f4d0", "#9ad05a", "#c8e890", "#b0d878", "#3a4a30", "#a8c088", "#ffffff", "#060a06", "#1a2a1a", "#c8d8b8"],
+  // Oq arvoh: oq tutun, moviy sharf va oy kumushi
+  "shinobi-ghost": ["#5ad0ff", "#1e6a8a", "#f4f8ff", "#bfeaff", "#14283a", "#ffffff", "#5ad0ff", "#d8f2ff", "#a8e0ff", "#7a8aa8", "#d8e2f0", "#ffffff", "#0a0c12", "#3a4458", "#e8eef8"],
   // Olov Paladin: oltin-sariq alanga, oq yadro (xavf zonasining qizilidan uzoq)
   "paladin-flame": ["#ffc24a", "#b8620a", "#fff0b0", "#ffc24a", "#3a1e08", "#fffbe8", "#ffd870", "#ffe08a", "#fff0b0", "#b8620a", "#fff0b0", "#ffffff", "#170602", "#4a1a06", "#ffd870"],
 };
@@ -183,6 +189,12 @@ const DEFS: Record<Hero, readonly Def[]> = {
     ["night", "TUNGI GUL", ["#0c0714", "#1c1430", "#6b3fa8", "#d48aff", "#f0e4f4"]],
     ["lotus", "QOR LOTOS", ["#0a1420", "#27405e", "#bfe6ff", "#5aa9e6", "#ffffff"]],
     ["moon", "QIZIL OY", ["#0d0406", "#f4eef2", "#c41832", "#3a0c16", "#f6e2dc"]],
+  ],
+  // Ninja: kontur va kamar, kiyim, burmalar va bog'ichlar, sharf va ko'zlar, po'lat
+  shinobi: [
+    ["ash", "KUL NINJA", ["#08090c", "#4a4c56", "#8a8e9a", "#3f8fe0", "#e8ecf2"]],
+    ["bamboo", "BAMBUK SOYASI", ["#060a06", "#1a2a1a", "#3e5a3a", "#9ad05a", "#dfe8d8"]],
+    ["ghost", "OQ ARVOH", ["#0a0c12", "#e4e8f0", "#8a94aa", "#3ab8f0", "#ffffff"]],
   ],
 };
 
@@ -299,9 +311,27 @@ const FX: Record<string, SkinFx> = {
     flair: "moon",
     tone: "moon",
   },
+  // NOYOB: bambuk barglari va barg izi
+  "shinobi-bamboo": {
+    ...PLAIN_FX,
+    particle: "leaf",
+    trail: "leaf",
+    bits: ["#c8e890", "#e8f4d0"],
+  },
+  // AFSONAVIY: oq arvoh — oy kumushi yulduzchalari, soya izi, yarim oy kesigi, hilpiragan sharf,
+  // tungi ohang
+  "shinobi-ghost": {
+    particle: "star",
+    trail: "shadow",
+    bits: ["#ffffff", "#bfeaff"],
+    impact: "shuriken",
+    flair: "wraith",
+    tone: "ghost",
+  },
 };
 
 const DEFAULT_NAME: Record<Hero, string> = {
+  shinobi: "ODDIY NINJA",
   knight: "ODDIY RITSAR",
   mage: "ODDIY SEHRGAR",
   hunter: "ODDIY OVCHI",

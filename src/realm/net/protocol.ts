@@ -82,6 +82,7 @@ const HERO_IDS = [
   "gunner",
   "paladin",
   "samurai",
+  "shinobi",
 ] as const satisfies readonly Hero[];
 const num = z.number().finite();
 const axis = num.min(-1).max(1);
@@ -248,7 +249,12 @@ export const PF_DASH = 1,
    */
   PF_IAI = 16,
   PF_CHARGE = 32,
-  PF_PARRY = 64;
+  PF_PARRY = 64,
+  /**
+   * Ninja: chap qo'l qilichi uradi (aks holda — o'ng). Shuriken zaryadi — PF_CHARGE bilan. Eski
+   * klient Ninjani Ritsar ko'radi (heroCompat.ts) — bu bitni o'qimaydi.
+   */
+  PF_LEFT = 128;
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,

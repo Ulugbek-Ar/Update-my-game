@@ -822,6 +822,73 @@ class SoundFX {
     this.tone(180, 0.12, "square", 0.04, 60);
   }
 
+  /** Ninja: tutun bombasi — kichik "puf" va shivirlagan "shhh" (Mergan tutunidan qisqa va baland) */
+  smokeBomb() {
+    this.noise(0.3, 0.06, 1500);
+    this.noise(0.18, 0.035, 5200, 0.05);
+    this.tone(160, 0.12, "triangle", 0.025, 70);
+  }
+
+  /** Ninja ikki katanasi: qisqa "fsht" — chap qo'l pastroq, o'ng qo'l balandroq */
+  twinBlade(left = false) {
+    const f = left ? 2600 : 3100;
+    this.noise(0.045, 0.045, 6800);
+    this.tone(f, 0.06, "triangle", 0.035, f * 1.3);
+  }
+
+  /** Shurikenlar: aylanib uchgan "fyu-fyu-fyu" */
+  shuriken(n = 3) {
+    for (let i = 0; i < Math.min(5, n); i++)
+      this.tone(1700 + i * 120, 0.07, "square", 0.02, 2600 + i * 120, i * 0.035);
+    this.noise(0.08, 0.03, 4800);
+  }
+
+  /** Orqadan zarba: past "tuk" va keskin "chiq" */
+  ambush() {
+    this.tone(140, 0.08, "square", 0.05, 60);
+    this.noise(0.05, 0.08, 7400, 0.02);
+    this.tone(3600, 0.07, "triangle", 0.035, 2400, 0.02);
+  }
+
+  /** SOYA BO'RONI tayyorlanishi: tutun "PUFF" va pasayuvchi shivir — Ninja yo'qoladi */
+  stormVanish() {
+    this.noise(0.6, 0.09, 1200);
+    this.noise(0.45, 0.04, 5200, 0.1);
+    this.tone(220, 0.5, "sawtooth", 0.025, 55);
+  }
+
+  /** Zarba bosqichi boshida: past shamol guvillashi */
+  stormWind(dur = 1.2) {
+    this.noise(Math.max(0.3, dur), 0.035, 900);
+    this.tone(70, Math.max(0.3, dur), "triangle", 0.03, 95);
+  }
+
+  /** Soya-nusxa paydo bo'ladi: qisqa "fft" */
+  stormBlink() {
+    this.noise(0.035, 0.04, 3800);
+  }
+
+  /** Soya-nusxa kesdi: ikki tig' "shik-shik" */
+  stormSlash() {
+    this.noise(0.05, 0.08, 7200);
+    this.tone(3300, 0.05, "square", 0.03, 1800);
+    this.tone(2700, 0.05, "square", 0.025, 1500, 0.04);
+  }
+
+  /** Bossni kesdi: og'ir "SHHAK" */
+  stormBossCut() {
+    this.noise(0.22, 0.12, 5600);
+    this.tone(2900, 0.2, "sawtooth", 0.04, 600);
+    this.tone(120, 0.18, "square", 0.05, 50);
+  }
+
+  /** Oqibat: ikki qilich qinga — "shrk... chak-chak" */
+  stormSheathe() {
+    this.noise(0.3, 0.03, 3000);
+    this.tone(2400, 0.05, "square", 0.035, 1500, 0.32);
+    this.tone(2000, 0.05, "square", 0.035, 1300, 0.42);
+  }
+
   /** IAI kechikkan kesigi: qisqa "chiq" (har belgilangan dushmanga bittadan) */
   iaiCut() {
     this.noise(0.04, 0.07, 7000);

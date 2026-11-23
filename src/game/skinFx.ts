@@ -92,11 +92,14 @@ export type ParticleShape =
 export type TrailKind =
   "square" | "snow" | "smoke" | "sparkle" | "ember" | "sand" | "shadow" | "leaf";
 /** Afsonaviy: zarba tekkanda ekranda kichik shakl */
-export type ImpactKind = "crystal" | "flare" | "crescent" | "gust" | "phoenix" | "moon" | "eclipse";
+export type ImpactKind =
+  "crystal" | "flare" | "crescent" | "gust" | "phoenix" | "moon" | "eclipse" | "shuriken";
 /** Afsonaviy: turganda o'ziga xos harakat (ko'z porlashi, aura...) va hujumdagi "flourish" */
-export type FlairKind = "frost" | "halo" | "eyes" | "scarf" | "embers" | "moon" | "eclipse";
+export type FlairKind =
+  "frost" | "halo" | "eyes" | "scarf" | "embers" | "moon" | "eclipse" | "wraith";
 /** Afsonaviy: hujum ovoziga qo'shiladigan o'z ohangi (Web Audio) */
-export type ToneKind = "chime" | "sun" | "night" | "steppe" | "flame" | "moon" | "eclipse";
+export type ToneKind =
+  "chime" | "sun" | "night" | "steppe" | "flame" | "moon" | "eclipse" | "ghost";
 
 export interface SkinFx {
   particle: ParticleShape;
@@ -240,6 +243,21 @@ export const DEFAULT_THEME: Record<Hero, SkinTheme> = {
     shade: "#3a1a28",
     mist: "#ffe3ee",
   },
+  // qilich yoyi po'lat-oq (edge), ichki yoy va uchqun — qizil marjon (inner, spark, hot), tutun —
+  // ko'mir va kul (core, shade, mist), shuriken — po'lat (rim, glint)
+  shinobi: {
+    ...HERO_THEME.shinobi,
+    edge: "#e6e2ea",
+    inner: "#ff8a94",
+    spark: "#ffb3c0",
+    hot: "#ff8a94",
+    core: "#5a5468",
+    rim: "#b0a8c0",
+    glint: "#ffffff",
+    ink: "#0c0a10",
+    shade: "#2a2634",
+    mist: "#b0a8c0",
+  },
 };
 
 const DEFAULT_LOOKS = Object.fromEntries(
@@ -298,6 +316,7 @@ const HEAD_Y: Record<Hero, number> = {
   gunner: -9,
   paladin: -9,
   samurai: -7,
+  shinobi: -7,
 };
 
 /** Flair chizishi uchun kerakli o'yinchi maydonlari (Player va onlayn RealmPlayer.p) */
@@ -417,6 +436,26 @@ export function renderFlair(
     const sway = Math.round(Math.sin(time * 3.2) * 1.5);
     px(c, withAlpha(t.glow, 0.8), x - dir * (9 + (f ? 1 : 0)), hy + 6 + sway, 1, 1);
     px(c, withAlpha(t.accent, 0.6), x - dir * (11 + (f ? 0 : 1)), hy + 8 + sway, 1, 1);
+  } else if (kind === "wraith") {
+    // oq arvoh: oyoq ostidan ko'tariluvchi oqish tutun tolalari, uzun sharf uchi va xira ko'zlar
+    for (let i = 0; i < 3; i++) {
+      const k = (time * 0.7 + i / 3) % 1;
+      px(
+        c,
+        withAlpha(i % 2 ? t.mist : t.glow, 0.7 * (1 - k)),
+        x - 5 + i * 5,
+        y + 10 - k * 18,
+        1,
+        2,
+      );
+    }
+    const sway = Math.round(Math.sin(time * 4) * 1.5);
+    px(c, withAlpha(t.accent, 0.8), x - dir * (8 + (f ? 1 : 0)), y - 3 + sway, 3, 1);
+    px(c, withAlpha(t.glow, 0.6), x - dir * (11 + (f ? 1 : 0)), y - 2 + sway, 2, 1);
+    if (idle && f && !reduced) {
+      px(c, withAlpha(t.glint, 0.9), x + dir * 1, hy + 1, 1, 1);
+      px(c, withAlpha(t.glint, 0.9), x + dir * 4, hy + 1, 1, 1);
+    }
   } else if (kind === "embers") {
     // olov aura: yelkadan ko'tariluvchi cho'g'lar
     for (let i = 0; i < 3; i++) {
@@ -460,6 +499,11 @@ export const TONES: Record<ToneKind, readonly [number, number, OscillatorType, n
   night: [
     [196, 0.16, "sine", 0],
     [1568, 0.12, "sine", 0.06],
+  ],
+  // arvoh: pasayuvchi sovuq hushtak
+  ghost: [
+    [1318, 0.14, "sine", 0],
+    [988, 0.18, "sine", 0.07],
   ],
   // dasht: do'mbira chertishi kabi ikki nota
   steppe: [

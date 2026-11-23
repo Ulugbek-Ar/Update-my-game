@@ -150,7 +150,10 @@ describe("Sinergiyalar", () => {
       if (hero === "hunter") expect(p.strongMul).toBe(3);
       if (hero === "paladin") expect(p.strongMul).toBe(4);
       if (hero === "gunner") expect(p.fanPierce).toBe(true);
-      if (hero !== "mage" && hero !== "gunner") expect(heroDps(p)).toBeGreaterThan(dps);
+      // Ninja: sinergiya orqadan zarbani kuchaytiradi (mahorat — ideal DPS formulasiga kirmaydi)
+      if (hero === "shinobi") expect(p.ambushMul).toBe(3);
+      if (hero !== "mage" && hero !== "gunner" && hero !== "shinobi")
+        expect(heroDps(p)).toBeGreaterThan(dps);
     });
 
   it("ZARAR 3: a dying enemy blasts its neighbour", () => {

@@ -23,6 +23,7 @@ import {
   type Cut,
   type Streak,
 } from "./samuraiFx";
+import { renderShuriken } from "./shinobiFx";
 
 export const DEMO_W = 128;
 export const DEMO_H = 64;
@@ -144,7 +145,7 @@ export function samuraiPose(k: number, sheathe: boolean): SamuraiPose {
 }
 
 /** Yaqin jangchilar nishon yonida turadi va dashda orqaga sirpanadi; uzoqdan otuvchilar — chapda */
-const melee = (h: Hero) => h === "knight" || h === "paladin" || h === "samurai";
+const melee = (h: Hero) => h === "knight" || h === "paladin" || h === "samurai" || h === "shinobi";
 const homeOf = (h: Hero) => (h === "samurai" ? SAM_DEMO.home : melee(h) ? 80 : 30);
 
 export class SkinDemo {
@@ -285,10 +286,11 @@ export class SkinDemo {
       } else this.hit(this.x + (this.hero === "paladin" ? 22 : 18), y);
     } else if (ph === "strong") {
       this.ring = 0.3;
-      if (this.hero === "gunner") {
+      if (this.hero === "gunner" || this.hero === "shinobi") {
+        // Mergan yelpig'ichi va Ninja shurikenlari: uchtasi nishonga uchadi
         for (const vy of [-40, 0, 40])
           this.shots.push({ x: this.x + 10, y, vx: 160, vy, strong: true, life: 1 });
-        this.muzzle(this.x + 10, y);
+        if (this.hero === "gunner") this.muzzle(this.x + 10, y);
       } else if (this.hero === "hunter")
         this.shots.push({ x: this.x + 10, y, vx: 190, vy: 0, strong: true, life: 1 });
       else if (this.hero === "mage") this.hit(this.x + 26, y);
@@ -388,8 +390,8 @@ export class SkinDemo {
       c.arc(this.x, FLOOR_Y, r * 0.7, -0.9, 0.9);
       c.stroke();
     }
-    // kuchli zarba halqasi
-    if (this.ring > 0) {
+    // kuchli zarba halqasi (Ninjada yo'q — shurikenlar uchadi)
+    if (this.ring > 0 && this.hero !== "shinobi") {
       const q = this.ring / 0.3;
       if (this.hero === "paladin") {
         renderQuake(c, { x: this.x, y: FLOOR_Y + 4, r: 36, life: q * 0.45, max: 0.45 }, T);
@@ -536,6 +538,8 @@ export class SkinDemo {
       px(c, T.accentDark, s.x - len, s.y - 1, 1, 1);
       px(c, T.edge, s.x - len - 1, s.y + 1, 1, 1);
       px(c, T.edge, s.x - len - 1, s.y - 1, 1, 1);
+    } else if (this.hero === "shinobi") {
+      renderShuriken(c, { x: s.x, y: s.y, power: 1 }, this.t, T);
     } else {
       const l = Math.hypot(s.vx, s.vy) || 1;
       for (let k = 2; k <= 5; k++)

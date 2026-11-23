@@ -461,6 +461,15 @@ export class Effects {
         }
         c.stroke();
         c.fillRect(Math.round(m.x) - 1, Math.round(m.y) - 1, 3, 3);
+      } else if (m.kind === "shuriken") {
+        // shuriken izi: to'rt uchli yulduz, aylanib kattalashadi
+        for (let i = 0; i < 4; i++) {
+          const an = m.rot + (i * Math.PI) / 2;
+          c.moveTo(m.x, m.y);
+          c.lineTo(m.x + Math.cos(an) * r, m.y + Math.sin(an) * r);
+          c.lineTo(m.x + Math.cos(an + 0.5) * r * 0.35, m.y + Math.sin(an + 0.5) * r * 0.35);
+        }
+        c.stroke();
       } else if (m.kind === "crescent") {
         // tungi o'roq: ikki qavat yarim oy
         c.arc(m.x, m.y, r * 0.8, m.rot, m.rot + Math.PI * 1.1);

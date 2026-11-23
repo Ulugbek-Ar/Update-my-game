@@ -52,6 +52,7 @@ const HERO_THREE: Record<Hero, string> = {
   gunner: "Yelpig'ich o'qlari teshib o'tadi",
   paladin: "OSMON HUKMI 4 baravar zarar",
   samurai: "To'liq Iai 3 baravar zarar",
+  shinobi: "Orqadan zarba 3 baravar zarar",
 };
 
 export const TAGS: Record<Tag, TagDef> = {
@@ -85,6 +86,7 @@ export const TAGS: Record<Tag, TagDef> = {
   porox: { name: "POROX", color: "#dba45a", two: "", three: HERO_THREE.gunner },
   nur: { name: "NUR", color: "#f2c14e", two: "", three: HERO_THREE.paladin },
   gul: { name: "SAKURA", color: "#ff8fb8", two: "", three: HERO_THREE.samurai },
+  soya: { name: "SOYA", color: "#ff6f91", two: "", three: HERO_THREE.shinobi },
   // SUPER kartalari kam (har superda 2 ta) — ikkalasi yig'ilsa sinergiya ochiladi (TAG_NEED)
   super: {
     name: "SUPER",
@@ -94,7 +96,7 @@ export const TAGS: Record<Tag, TagDef> = {
   },
 };
 // qahramon tegi 2: kuchli zarba zaryadi tezroq to'ladi
-for (const t of ["polat", "sehr", "ov", "porox", "nur", "gul"] as const)
+for (const t of ["polat", "sehr", "ov", "porox", "nur", "gul", "soya"] as const)
   TAGS[t].two = "Kuchli zarba zaryadi 20% tez";
 
 /** Har qahramonning o'z tegi */
@@ -105,6 +107,7 @@ export const HERO_TAG: Record<Hero, Tag> = {
   gunner: "porox",
   paladin: "nur",
   samurai: "gul",
+  shinobi: "soya",
 };
 
 export const ALL_TAGS = Object.keys(TAGS) as Tag[];
@@ -155,6 +158,7 @@ function applyThree(tag: Tag, p: Player) {
   else if (p.hero === "hunter" || p.hero === "samurai") p.strongMul = 3;
   else if (p.hero === "paladin") p.strongMul = 4;
   else if (p.hero === "gunner") p.fanPierce = true;
+  else if (p.hero === "shinobi") p.ambushMul = Math.max(p.ambushMul, 3);
   // Sehrgar: teleport portlashi — Game
 }
 
@@ -196,6 +200,8 @@ export const TAG_ICONS: Record<Tag, readonly string[]> = {
   nur: ["k..k..k", ".kkXkk.", ".kXwXk.", "kXXXXXk", ".kXXXk.", ".kkXkk.", "k..k..k"],
   // sakura guli
   gul: [".kk.kk.", "kXXkXXk", "kXXwXXk", ".kwkwk.", "kXXwXXk", "kXXkXXk", ".kk.kk."],
+  // shuriken
+  soya: ["...k...", "..kXk..", "kkkXkkk", "kXXkXXk", "kkkXkkk", "..kXk..", "...k..."],
   // super shari: shisha shar ichida suyuqlik
   super: [".kkkkk.", "kw....k", "k.w...k", "kXXXXXk", "kXXwXXk", "kXXXXXk", ".kkkkk."],
 };

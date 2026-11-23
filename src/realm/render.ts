@@ -7,7 +7,8 @@ import type { Effects } from "@/game/effects";
 import { HERO_ROLE, HERO_THEME, hudBarColors, withAlpha, type Hero } from "@/game/hero";
 import { DANGER } from "@/game/danger";
 import { skinLook, skinPalette } from "@/game/skins";
-import { renderFlair, type SkinLook } from "@/game/skinFx";
+import { DEFAULT_THEME, renderFlair, type SkinLook } from "@/game/skinFx";
+import { renderShuriken } from "@/game/shinobiFx";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
 import {
@@ -716,6 +717,9 @@ export class RealmRenderer {
           px(c, k < 4 ? t.accent : t.accentDark, b.x - (b.vx / l) * k, b.y - (b.vy / l) * k, 1, 1);
         px(c, ot?.ink ?? "#0b0907", b.x - 1.5, b.y - 1.5, 3, 3);
         px(c, t.glow, b.x - 1, b.y - 1, 2, 2);
+      } else if (b.shuriken) {
+        // Ninja shurikeni: to'rt uchli po'lat yulduz (uchgan sari aylanadi)
+        renderShuriken(c, b, 0, ot ?? DEFAULT_THEME.shinobi);
       } else if (b.arrow) {
         const a = Math.atan2(b.vy, b.vx);
         c.save();

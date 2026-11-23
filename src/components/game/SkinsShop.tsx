@@ -141,11 +141,15 @@ export function SkinShowcase({
       : phase === "charge" || phase === "strong"
         ? hero === "samurai"
           ? "IAI"
-          : "KUCHLI HUJUM"
+          : hero === "shinobi"
+            ? "SHURIKEN"
+            : "KUCHLI HUJUM"
         : phase === "dash"
           ? hero === "mage"
             ? "TELEPORT"
-            : "DASH"
+            : hero === "shinobi"
+              ? "TUTUN"
+              : "DASH"
           : "TURISH";
   return (
     <figure className="flex flex-col items-center gap-1" aria-label="Skin jonli ko'rinishi">

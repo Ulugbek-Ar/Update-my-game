@@ -24,6 +24,11 @@
  *     har (spinCd + 0.8 s zaryad) da. Mukammal chetlanish va parry — mahorat: formulaga kirmaydi
  *     (o'yinchi yaxshi o'ynasa bossni tezroq yengadi).
  *
+ *   Ninja:
+ *     ikki katana = 0.45 × zarar / zarba_orasi (0.18 s) = 2.5 — Paladin va Ritsar oralig'ida,
+ *     shuriken yelpig'ichidan bitta nishonga bittasi tegadi (1 × zarar) har (spinCd + 0.45 s) da.
+ *     Orqadan zarba (ko'rinmaslikdan keyin ×2) — mahorat: formulaga kirmaydi.
+ *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
@@ -36,7 +41,7 @@
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
  */
-import { KATANA_MUL, type Player } from "./player";
+import { KATANA_MUL, SHURIKEN_MUL, TWIN_MUL, type Player } from "./player";
 
 /** Ideal urib turishda boss shuncha soniyada o'ladi */
 export const BOSS_FIGHT_TIME = 60;
@@ -84,6 +89,12 @@ export function heroDps(p: Player) {
     const basic = (KATANA_MUL * p.damage) / p.attackCd;
     const iai = p.strongMul * p.damage * (p.iaiDouble ? 2 : 1);
     const cycle = (basic * p.spinCd + iai) / (p.spinCd + p.chargeTime);
+    return Math.max(basic, cycle);
+  }
+  if (p.shinobi) {
+    const basic = (TWIN_MUL * p.damage) / p.attackCd;
+    // bitta nishonga yelpig'ichdan bitta shuriken tegadi
+    const cycle = (basic * p.spinCd + SHURIKEN_MUL * p.damage) / (p.spinCd + p.chargeTime);
     return Math.max(basic, cycle);
   }
   const multi = Math.max(1, p.multishot);

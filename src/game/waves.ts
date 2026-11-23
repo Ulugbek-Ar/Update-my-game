@@ -1,6 +1,17 @@
 import { superFor } from "./super";
 import type { EnemyKind } from "./enemy";
-import { DODGE_WINDOW_CARD, IAI_RANGE_CARD, KATANA_TIME, type Player } from "./player";
+import {
+  AMBUSH_CARD,
+  DODGE_WINDOW_CARD,
+  IAI_RANGE_CARD,
+  KATANA_TIME,
+  SHURIKEN_CARD,
+  SHURIKEN_N,
+  TWIN_TIME,
+  VANISH_CARD,
+  VANISH_TIME,
+  type Player,
+} from "./player";
 import type { Hero } from "./hero";
 
 /** Dunyo: 1 — Olovli zindon, 2 — Muz sardobasi, 3 — Zulmat o'rmoni, 4 — Sakura bog'i */
@@ -131,6 +142,7 @@ export type Tag =
   | "porox"
   | "nur"
   | "gul"
+  | "soya"
   // SUPER kartalari (v3.9): kam uchraydi, faqat superi bor qahramonda
   | "super";
 
@@ -172,6 +184,8 @@ export interface Upgrade {
   paladin?: HeroCard;
   /** Samuray uchun alohida karta */
   samurai?: HeroCard;
+  /** Ninja uchun alohida karta */
+  shinobi?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
   /** SUPER kartasi: faqat shu superi (super.ts: id) ochiq bo'lgan qahramonga chiqadi */
@@ -193,9 +207,11 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
             ? u.paladin
             : p.hero === "samurai"
               ? u.samurai
-              : undefined;
+              : p.hero === "shinobi"
+                ? u.shinobi
+                : undefined;
   if (!alt) return u;
-  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, samurai: _s, ...base } = u;
+  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, samurai: _s, shinobi: _n, ...base } = u;
   return { ...base, ...alt };
 }
 
@@ -291,6 +307,13 @@ export const UPGRADES: Upgrade[] = [
       color: "#fff2b0",
       icon: "greatblade",
     },
+    shinobi: {
+      tags: ["zarar"],
+      name: "O'TKIR TIG'LAR",
+      desc: "Ikki katana va shuriken zarari oshadi",
+      color: "#e6e2ea",
+      icon: "twinblades",
+    },
     samurai: {
       tags: ["zarar"],
       name: "O'TKIR KATANA",
@@ -351,6 +374,18 @@ export const UPGRADES: Upgrade[] = [
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
       ok: (p) => p.reach < 30,
     },
+    shinobi: {
+      tags: ["soya"],
+      name: "UZUN TIG'LAR",
+      desc: "Ikki katana uzoqroqqa yetadi, shurikenlar tezroq",
+      color: "#e6e2ea",
+      icon: "twinblades",
+      apply: (p) => {
+        p.reach += 4;
+        p.boltSpeed += 30;
+      },
+      ok: (p) => p.reach < 21,
+    },
     samurai: {
       tags: ["gul"],
       name: "UZUN IAI",
@@ -402,6 +437,16 @@ export const UPGRADES: Upgrade[] = [
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
       ok: (p) => p.attackCd > 0.66,
     },
+    shinobi: {
+      tags: ["zarar"],
+      name: "CHAQQON QO'LLAR",
+      desc: "Ikki katana zarbalari orasi 25% qisqa",
+      color: "#ff8a94",
+      icon: "twinblades",
+      // zarba vaqtidan (0.12 s) qisqarmaydi
+      apply: (p) => (p.attackCd = Math.max(TWIN_TIME + 0.01, p.attackCd * 0.75)),
+      ok: (p) => p.attackCd > 0.14,
+    },
     samurai: {
       tags: ["zarar"],
       name: "TEZ QIN",
@@ -451,6 +496,13 @@ export const UPGRADES: Upgrade[] = [
       desc: "Tezlik +15%, hamla tezroq qaytadi",
       color: "#fff2b0",
       icon: "path",
+    },
+    shinobi: {
+      tags: ["tezlik"],
+      name: "SOYA QADAMI",
+      desc: "Tezlik +15%, tutun bombasi tezroq qaytadi",
+      color: "#b0a8c0",
+      icon: "vanish",
     },
     samurai: {
       tags: ["tezlik"],
@@ -594,6 +646,13 @@ export const UPGRADES: Upgrade[] = [
       desc: "Ketma-ket 2 ta muqaddas hamla",
       color: "#f2c14e",
       icon: "hamla2",
+    },
+    shinobi: {
+      tags: ["tezlik"],
+      name: "IKKI TUTUN",
+      desc: "Ketma-ket 2 ta tutun bombasi",
+      color: "#b0a8c0",
+      icon: "vanish",
     },
     samurai: {
       tags: ["tezlik"],
@@ -778,6 +837,51 @@ export const UPGRADES: Upgrade[] = [
     apply: (p) => (p.coldBlood = true),
     ok: (p) => !p.coldBlood,
   },
+  // ---- Faqat Ninja ----
+  {
+    id: "manystars",
+    name: "KO'P SHURIKEN",
+    desc: "Bir otishda +2 shuriken (5 ta)",
+    color: "#e6e2ea",
+    tags: ["soya"],
+    icon: "shuriken",
+    hero: "shinobi",
+    apply: (p) => (p.shurikens += SHURIKEN_CARD),
+    ok: (p) => p.shurikens < SHURIKEN_N + SHURIKEN_CARD,
+  },
+  {
+    id: "longshadow",
+    name: "UZUN SOYA",
+    desc: "Tutundan keyin ko'rinmaslik 0.6 s uzoqroq",
+    color: "#b0a8c0",
+    tags: ["soya"],
+    icon: "vanish",
+    hero: "shinobi",
+    apply: (p) => (p.vanishTime += VANISH_CARD),
+    ok: (p) => p.vanishTime < VANISH_TIME + VANISH_CARD,
+  },
+  {
+    id: "backstab",
+    name: "ORQADAN ZARBA",
+    desc: "Ko'rinmaslikdan keyingi zarba 2.5 baravar",
+    color: "#ff6f91",
+    tags: ["soya"],
+    icon: "backstab",
+    hero: "shinobi",
+    apply: (p) => (p.ambushMul = Math.max(p.ambushMul, AMBUSH_CARD)),
+    ok: (p) => p.ambushMul < AMBUSH_CARD,
+  },
+  {
+    id: "poisonstar",
+    name: "ZAHARLI SHURIKEN",
+    desc: "Shurikenlar dushmanni zaharlaydi",
+    color: "#a6f08e",
+    tags: ["soya"],
+    icon: "poisonstar",
+    hero: "shinobi",
+    apply: (p) => (p.poisonStar = true),
+    ok: (p) => !p.poisonStar,
+  },
   // ---- SUPER kartalari (ILOHIY HUKM — Paladin): kam uchraydi, "SUPER" tegli ----
   {
     id: "sunshield",
@@ -831,6 +935,33 @@ export const UPGRADES: Upgrade[] = [
     rare: SUPER_CARD_CHANCE,
     apply: (p) => (p.petalVeil = true),
     ok: (p) => !p.petalVeil,
+  },
+  // ---- SUPER kartalari (SOYA BO'RONI — Ninja) ----
+  {
+    id: "smokeveil",
+    name: "TUTUN PARDASI",
+    desc: "Superdan keyin 2 s ko'rinmaysan, keyingi zarba 2x",
+    color: "#b0a8c0",
+    tags: ["super"],
+    icon: "smokeveil",
+    hero: "shinobi",
+    super: "shadow-storm",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.smokeVeil = true),
+    ok: (p) => !p.smokeVeil,
+  },
+  {
+    id: "shadowtrail",
+    name: "SOYA IZI",
+    desc: "Superdan keyin shuriken va tutun darhol tayyor",
+    color: "#ff6f91",
+    tags: ["super"],
+    icon: "shadowtrail",
+    hero: "shinobi",
+    super: "shadow-storm",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.shadowTrail = true),
+    ok: (p) => !p.shadowTrail,
   },
   // ---- SUPER kartalari (UFQ KESIMI — Ritsar) ----
   {

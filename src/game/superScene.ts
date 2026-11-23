@@ -24,6 +24,7 @@ import { HorizonScene } from "./horizonFx";
 import { MeteorScene } from "./meteorFx";
 import { ArrowScene } from "./arrowsFx";
 import { FrenzyScene } from "./frenzyFx";
+import { StormScene } from "./stormFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -185,6 +186,7 @@ export const SUPER_SCENES: Record<string, () => SuperScene> = {
   meteor: () => new MeteorScene(),
   arrows: () => new ArrowScene(),
   frenzy: () => new FrenzyScene(),
+  storm: () => new StormScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

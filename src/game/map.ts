@@ -437,7 +437,9 @@ export function heroBadge(
             ? ["#f2c14e", "#7a5a12", "#fff2b0"]
             : hero === "samurai"
               ? ["#ff8fb8", "#2a1e3c", "#fff0ec"]
-              : ["#4f8a3a", "#1f4a24", "#c9a26b"];
+              : hero === "shinobi"
+                ? ["#1b1922", "#060508", "#d8283a"]
+                : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {
     px(c, main, x + 1, y, 5, 7);
@@ -465,6 +467,13 @@ export function heroBadge(
     px(c, hi, x + 2, y + 2, 4, 3);
     px(c, main, x + 1, y + 5, 5, 2);
     px(c, "#d8324a", x, y, 1, 1);
+  } else if (hero === "shinobi") {
+    // qora qalpoq, ko'z tirqishida ikki qizil nuqta, bo'yinda qizil sharf
+    px(c, main, x, y, 7, 7);
+    px(c, dark, x + 1, y + 2, 5, 1);
+    px(c, hi, x + 2, y + 2, 1, 1);
+    px(c, hi, x + 4, y + 2, 1, 1);
+    px(c, hi, x, y + 5, 7, 1);
   } else if (hero === "mage") {
     px(c, dark, x, y + 5, 7, 2);
     px(c, dark, x + 1, y + 3, 5, 2);

@@ -27,6 +27,7 @@ export type AchievementId =
   | "collector"
   | "synergy2"
   | "winSamurai"
+  | "winShinobi"
   | "firstIai"
   | "dodge10"
   | "parryBoss"
@@ -68,6 +69,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   { id: "collector", name: "KOLLEKTSIONER", desc: "Bitta o'yinda 5 ta artefakt yig'" },
   { id: "synergy2", name: "SINERGIYA USTASI", desc: "Bitta o'yinda 2 ta sinergiya och" },
   { id: "winSamurai", name: "SAMURAY BILAN YUT", desc: "Samuray bilan o'yinni yut" },
+  { id: "winShinobi", name: "NINJA BILAN YUT", desc: "Ninja bilan o'yinni yut" },
   { id: "firstIai", name: "BIRINCHI IAI", desc: "Samuray bilan birinchi Iai zarbasini ber" },
   {
     id: "dodge10",

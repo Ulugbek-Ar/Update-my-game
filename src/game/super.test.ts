@@ -42,7 +42,15 @@ type GI = {
 const canvas = { getContext: () => ({ imageSmoothingEnabled: false }) };
 const DT = 1 / 60;
 /** Superi ochiq qahramonlar (har versiyada qo'shiladi) */
-const SUPER_HEROES: Hero[] = ["paladin", "samurai", "knight", "mage", "hunter", "gunner"];
+const SUPER_HEROES: Hero[] = [
+  "paladin",
+  "samurai",
+  "knight",
+  "mage",
+  "hunter",
+  "gunner",
+  "shinobi",
+];
 
 function makeGame(hero: Hero = "paladin") {
   if (hero !== "knight" && hero !== "mage" && hero !== "hunter") unlockHero(hero);

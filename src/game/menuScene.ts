@@ -98,7 +98,7 @@ export function castPose(
 ): { state: "idle" | "walk" | "attack"; frame: number; sub: number } {
   const cyc = t * 2 + phase * 2;
   const idle =
-    kind === "samurai"
+    kind === "samurai" || kind === "shinobi"
       ? { state: "idle" as const, frame: Math.floor(t * 4 + phase * 4) % 4, sub: 0 }
       : {
           state: "idle" as const,

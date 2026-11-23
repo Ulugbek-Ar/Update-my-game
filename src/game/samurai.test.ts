@@ -601,7 +601,7 @@ describe("Super MING KESIM: ochiq (v4.0)", () => {
     expect(SUPERS.samurai?.open).toBe(true);
     expect(superFor("samurai")?.id).toBe("thousand-cuts");
     for (const h of HERO_LIST)
-      if (!["paladin", "samurai", "knight", "mage", "hunter", "gunner"].includes(h.id))
+      if (!["paladin", "samurai", "knight", "mage", "hunter", "gunner", "shinobi"].includes(h.id))
         expect(superFor(h.id)).toBeNull();
   });
 
