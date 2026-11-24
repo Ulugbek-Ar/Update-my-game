@@ -127,7 +127,8 @@ const quad = (a: V2, b: V2, c: V2, t: number): V2 => {
   ];
 };
 
-type Strand = { pts: V2[]; nrm: V2[]; rad: number[] };
+/** box — nuqtalar chegarasi eng katta radius bilan kengaytirilgan (undan tashqarida tegish yo'q) */
+type Strand = { pts: V2[]; nrm: V2[]; rad: number[]; box: [number, number, number, number] };
 /** Kubik bezye tutam: eni w0 → w1, wave — uchiga qarab kuchayadigan shamol to'lqini */
 function strand(a: V2, b: V2, c: V2, d: V2, w0: number, w1: number, wave = 0, phase = 0) {
   const M = 90;
@@ -140,7 +141,7 @@ function strand(a: V2, b: V2, c: V2, d: V2, w0: number, w1: number, wave = 0, ph
       u * u * u * a[1] + 3 * u * u * t * b[1] + 3 * u * t * t * c[1] + t * t * t * d[1],
     ]);
   }
-  const s: Strand = { pts: [], nrm: [], rad: [] };
+  const s: Strand = { pts: [], nrm: [], rad: [], box: [1e9, 1e9, -1e9, -1e9] };
   for (let i = 0; i <= M; i++) {
     const p0 = raw[Math.max(0, i - 1)]!,
       p1 = raw[Math.min(M, i + 1)]!;
@@ -154,10 +155,20 @@ function strand(a: V2, b: V2, c: V2, d: V2, w0: number, w1: number, wave = 0, ph
     s.pts.push([p[0] - ty * off, p[1] + tx * off]);
     s.rad.push(Math.max(0.35, (w0 + (w1 - w0) * Math.pow(t, 0.9)) / 2));
   }
+  const R = Math.max(...s.rad);
+  for (const [x, y] of s.pts) {
+    s.box[0] = Math.min(s.box[0], x - R);
+    s.box[1] = Math.min(s.box[1], y - R);
+    s.box[2] = Math.max(s.box[2], x + R);
+    s.box[3] = Math.max(s.box[3], y + R);
+  }
   return s;
 }
 /** Tutam ichidami: u — ko'ndalang (−1..1), t — uzunlik bo'yicha (0..1), n — normal */
 function hit(s: Strand, x: number, y: number) {
+  // tez rad etish: qutidan tashqarida har nuqtagacha masofa > eng katta radius — natija bir xil
+  const b = s.box;
+  if (x < b[0] || y < b[1] || x > b[2] || y > b[3]) return null;
   let best = 0,
     bd = 1e9;
   for (let i = 0; i < s.pts.length; i++) {
@@ -175,7 +186,21 @@ function hit(s: Strand, x: number, y: number) {
   const u = clamp(((x - p[0]) * n[0] + (y - p[1]) * n[1]) / r, -1, 1);
   return { u, t: best / (s.pts.length - 1), n };
 }
+/** Ko'pburchak chegarasi (kesh): undan tashqaridagi nuqta ichida bo'lolmaydi — natija bir xil */
+const polyBox = new WeakMap<readonly V2[], [number, number, number, number]>();
 function inPoly(pts: readonly V2[], x: number, y: number) {
+  let b = polyBox.get(pts);
+  if (!b) {
+    b = [1e9, 1e9, -1e9, -1e9];
+    for (const [px, py] of pts) {
+      b[0] = Math.min(b[0], px);
+      b[1] = Math.min(b[1], py);
+      b[2] = Math.max(b[2], px);
+      b[3] = Math.max(b[3], py);
+    }
+    polyBox.set(pts, b);
+  }
+  if (x < b[0] || y < b[1] || x > b[2] || y > b[3]) return false;
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
     const a = pts[i]!,

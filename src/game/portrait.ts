@@ -244,3 +244,37 @@ export function superPortrait(
   cache.set(key, canvas);
   return canvas;
 }
+
+/** Har qahramon portretining kadr nomlari (super kartasi shu tartibda chizadi) */
+export const PORTRAIT_FRAMES: Record<Hero, readonly string[]> = {
+  knight: KNIGHT_PORTRAIT_VARIANTS,
+  mage: MAGE_PORTRAIT_VARIANTS,
+  hunter: HUNTER_PORTRAIT_VARIANTS,
+  gunner: GUNNER_PORTRAIT_VARIANTS,
+  paladin: PALADIN_PORTRAIT_VARIANTS,
+  samurai: SAMURAI_PORTRAIT_VARIANTS,
+  shinobi: SHINOBI_PORTRAIT_VARIANTS,
+  priestess: PRIESTESS_PORTRAIT_VARIANTS,
+  wolf: WOLF_PORTRAIT_VARIANTS,
+};
+
+/**
+ * Super portretlarini oldindan tayyorlash (o'yin boshida): har kadr alohida bo'sh vaqtda yasaladi va
+ * keshga tushadi — super boshlanganda (masalan Samurayning MING KESIMi) kadr tutilib qolmaydi.
+ * Kanvassiz muhitda (sinov) hech narsa qilmaydi.
+ */
+export function prewarmPortraits(hero: Hero, palette?: SpritePalette) {
+  if (typeof document === "undefined") return;
+  const list = PORTRAIT_FRAMES[hero] ?? [];
+  const later = (fn: () => void) =>
+    typeof requestIdleCallback === "function"
+      ? requestIdleCallback(fn, { timeout: 1200 })
+      : setTimeout(fn, 50);
+  let i = 0;
+  const step = () => {
+    if (i >= list.length) return;
+    superPortrait(hero, palette, list[i++]);
+    later(step);
+  };
+  later(step);
+}

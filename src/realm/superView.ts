@@ -9,18 +9,7 @@ import { ROOM } from "@/game/animation";
 import { sfx } from "@/game/audio";
 import type { Effects } from "@/game/effects";
 import type { Hero } from "@/game/hero";
-import {
-  GUNNER_PORTRAIT_VARIANTS,
-  HUNTER_PORTRAIT_VARIANTS,
-  KNIGHT_PORTRAIT_VARIANTS,
-  MAGE_PORTRAIT_VARIANTS,
-  PALADIN_PORTRAIT_VARIANTS,
-  SAMURAI_PORTRAIT_VARIANTS,
-  SHINOBI_PORTRAIT_VARIANTS,
-  PRIESTESS_PORTRAIT_VARIANTS,
-  WOLF_PORTRAIT_VARIANTS,
-  superPortrait,
-} from "@/game/portrait";
+import { PORTRAIT_FRAMES, superPortrait } from "@/game/portrait";
 import type { SkinLook } from "@/game/skinFx";
 import {
   SuperCast,
@@ -286,16 +275,3 @@ export class RealmSupers {
     renderSuperOrb(c, this.orb, x, y, r, theme, reduced);
   }
 }
-
-/** Har qahramon portretining kadr nomlari (portrait.ts) */
-const PORTRAIT_FRAMES: Record<Hero, readonly string[]> = {
-  knight: KNIGHT_PORTRAIT_VARIANTS,
-  mage: MAGE_PORTRAIT_VARIANTS,
-  hunter: HUNTER_PORTRAIT_VARIANTS,
-  gunner: GUNNER_PORTRAIT_VARIANTS,
-  paladin: PALADIN_PORTRAIT_VARIANTS,
-  samurai: SAMURAI_PORTRAIT_VARIANTS,
-  shinobi: SHINOBI_PORTRAIT_VARIANTS,
-  priestess: PRIESTESS_PORTRAIT_VARIANTS,
-  wolf: WOLF_PORTRAIT_VARIANTS,
-};

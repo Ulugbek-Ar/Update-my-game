@@ -213,6 +213,7 @@ import {
   SHINOBI_PORTRAIT_VARIANTS,
   PRIESTESS_PORTRAIT_VARIANTS,
   WOLF_PORTRAIT_VARIANTS,
+  prewarmPortraits,
   superPortrait,
 } from "./portrait";
 import { renderSunShield } from "./divineFx";
@@ -1131,6 +1132,8 @@ export class Game {
     this.look = skinLook(this.hero);
     this.player.tone = this.look.fx.tone;
     this.player.flair = this.look.fx.flair;
+    // super portretlari oldindan (bo'sh vaqtda) — super boshlanishida kadr tutilmasin
+    prewarmPortraits(this.hero, this.player.skin);
   }
 
   /** Faol skinning qobiliyat ranglari (skinFx.ts: SkinTheme) */
