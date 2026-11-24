@@ -3,6 +3,7 @@
  * iboralar bilan xabar, so'rovlar (qabul/rad), taxallus yoki do'st kodi bilan qo'shish, bloklash,
  * "Do'st chaqirish" (taklif havolasi, Telegram'da ulashish, hisob — docs/referrals.md).
  */
+import { t } from "@/i18n";
 import { useEffect, useState, type ReactNode } from "react";
 import { friends, placeText, useFriends } from "@/account/friends";
 import {
@@ -16,7 +17,7 @@ import {
 } from "@/account/protocol";
 import { account } from "@/account/account";
 import { ERROR_TEXT, call } from "@/account/api";
-import { refBotLink, refShareLink, refSiteLink, REF_SHARE_TEXT } from "@/account/referral";
+import { refBotLink, refShareLink, refShareText, refSiteLink } from "@/account/referral";
 import { openExternal } from "@/lib/desktop";
 import { telegramShare } from "@/lib/telegram";
 import { useAccount } from "@/account/useAccount";
@@ -186,7 +187,7 @@ function AddTab({ code }: { code: string }) {
           }}
           className={btn("pixelOutline", "px-2 py-1")}
         >
-          {copied ? "NUSXALANDI" : "NUSXALASH"}
+          {copied ? t("inv.copied") : t("tr.copy")}
         </button>
       </p>
     </>
@@ -216,7 +217,7 @@ function LinkRow({ label, link }: { label: string; link: string }) {
           }}
           className={btn("pixelOutline", "px-2 py-1")}
         >
-          {copied ? "NUSXALANDI" : "NUSXALASH"}
+          {copied ? t("inv.copied") : t("tr.copy")}
         </button>
       </div>
     </div>
@@ -246,7 +247,7 @@ function InviteTab() {
         {error}
       </p>
     );
-  if (!info) return <p className="text-muted-foreground">Yuklanmoqda...</p>;
+  if (!info) return <p className="text-muted-foreground">{t("inbox.loading")}</p>;
   const site = refSiteLink(info.code);
   const bot = refBotLink(info.code, info.bot);
   const share = bot ?? site;
@@ -254,39 +255,37 @@ function InviteTab() {
   return (
     <>
       <p className="text-foreground">
-        Do'stingiz shu havola orqali <span className="text-primary">birinchi marta</span> akkaunt
-        ochib, 1-to'lqinni tugatsa — ikkalangiz {REF_GOLD} oltin olasiz (sovg'a qutisiga).{" "}
-        {REF_SKIN_GOAL} ta do'st — Ritsar uchun «CHAQIRUVCHI» skini.
+        {t("inv.note", { gold: REF_GOLD, n: REF_SKIN_GOAL, skin: t("skin.referral") })}
       </p>
-      {bot && <LinkRow label="Telegram bot havolasi:" link={bot} />}
-      <LinkRow label="Sayt havolasi:" link={site} />
+      {bot && <LinkRow label={t("inv.tgLink")} link={bot} />}
+      <LinkRow label={t("inv.siteLink")} link={site} />
       <button
         onClick={() => {
-          if (!telegramShare(share, REF_SHARE_TEXT)) openExternal(refShareLink(share));
+          if (!telegramShare(share, refShareText())) openExternal(refShareLink(share));
         }}
         className={btn("pixel", "self-start")}
       >
-        TELEGRAM'DA ULASHISH
+        {t("inv.share")}
       </button>
-      <ul aria-label="Chaqirilgan do'stlar" className="flex flex-col gap-1 text-foreground">
+      <ul aria-label={t("inv.listAria")} className="flex flex-col gap-1 text-foreground">
         <li>
-          Havola orqali kelganlar: <span className="text-primary">{info.joined}</span>
+          {t("inv.joined")} <span className="text-primary">{info.joined}</span>
         </li>
         <li>
-          1-to'lqinni tugatganlar (mukofot): <span className="text-primary">{info.rewarded}</span>
+          {t("inv.rewarded")} <span className="text-primary">{info.rewarded}</span>
         </li>
         {info.queued > 0 && (
           <li className="text-muted-foreground">
-            Navbatda: {info.queued} (kuniga ko'pi bilan {REF_DAILY_CAP} ta mukofot)
+            {t("inv.queued", { n: info.queued, cap: REF_DAILY_CAP })}
           </li>
         )}
         <li>
-          «CHAQIRUVCHI» skini:{" "}
+          {t("inv.skin", { skin: t("skin.referral") })}{" "}
           {info.skin ? (
-            <span className="text-[#a6f08e]">OLINDI</span>
+            <span className="text-[#a6f08e]">{t("inv.gotSkin")}</span>
           ) : (
             <span className="text-primary">
-              {info.rewarded}/{REF_SKIN_GOAL} (yana {toSkin} ta)
+              {t("inv.progress", { n: info.rewarded, goal: REF_SKIN_GOAL, left: toSkin })}
             </span>
           )}
         </li>
@@ -320,16 +319,16 @@ export function FriendsWindow({
   const l = st.lists;
   const online = l?.friends.filter((f) => f.online).length ?? 0;
   const tabs: [Tab, string][] = [
-    ["list", `DO'STLAR${l ? ` ${online}/${l.friends.length}` : ""}`],
-    ["requests", `SO'ROVLAR${st.requests ? ` (${st.requests})` : ""}`],
-    ["add", "QO'SHISH"],
-    ["invite", "CHAQIRISH"],
-    ["inbox", `XABARLAR${st.unread ? ` (${st.unread})` : ""}`],
-    ["blocked", "BLOK"],
+    ["list", t("fr.tabList", { x: l ? ` ${online}/${l.friends.length}` : "" })],
+    ["requests", t("fr.tabReq", { x: st.requests ? ` (${st.requests})` : "" })],
+    ["add", t("fr.tabAdd")],
+    ["invite", t("fr.tabInvite")],
+    ["inbox", t("fr.tabInbox", { x: st.unread ? ` (${st.unread})` : "" })],
+    ["blocked", t("fr.tabBlocked")],
   ];
   return (
-    <PixelWindow label="Do'stlar" title="DO'STLAR" onClose={onClose} wide>
-      <div role="tablist" aria-label="Do'stlar bo'limlari" className="flex flex-wrap gap-2">
+    <PixelWindow label={t("fr.aria")} title={t("m.friends")} onClose={onClose} wide>
+      <div role="tablist" aria-label={t("fr.tabsAria")} className="flex flex-wrap gap-2">
         {tabs.map(([id, label]) => (
           <button
             key={id}

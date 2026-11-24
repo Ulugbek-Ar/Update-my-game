@@ -2,6 +2,7 @@
  * Akkaunt serveriga so'rovlar (klient). Tarmoq "transport" orqali — testlarda u to'g'ridan-to'g'ri
  * server mantig'iga (handleApi) ulanadi, skrinshot/demo rejimida — soxta ma'lumotga.
  */
+import { t } from "@/i18n";
 import { SERVER_URL } from "@/realm/net/config";
 import { IS_APP, IS_DESKTOP, IS_PORTABLE } from "@/lib/platform";
 import { telegramApp } from "@/lib/telegram";
@@ -94,26 +95,70 @@ export function currentDevice(): Device {
 
 /** Xato matnlari (o'zbekcha) */
 export const ERROR_TEXT: Record<ErrCode, string> = {
-  net: "Internet yo'q yoki server javob bermadi",
-  auth: "Sessiya tugagan — qayta kiring",
-  bad: "So'rov xato",
-  rate: "Juda ko'p urinish — biroz kuting",
-  server: "Server hozircha tayyor emas — keyinroq urinib ko'ring",
-  sign: "Telegram tasdig'i noto'g'ri yoki eskirgan",
-  expired: "Kod eskirgan — qaytadan urinib ko'ring",
-  invalid: "Saqlanishda imkonsiz qiymat bor",
-  conflict: "Bulutda yangiroq saqlanish bor",
-  big: "Saqlanish juda katta",
-  taken: "Bu taxallus band",
-  nick: "Taxallus qoidaga mos emas",
-  none: "Topilmadi",
-  limit: "Chegaraga yetdingiz",
-  gold: "Oltin yetmaydi",
-  cooldown: "Gildiyadan chiqqaningizga hali 24 soat bo'lmadi",
-  full: "Gildiya to'la",
-  perm: "Bu amal uchun huquqingiz yo'q",
-  guild: "Siz allaqachon gildiyadasiz (yoki gildiyada emassiz)",
-  name: "Nom yoki teg qoidaga mos emas",
-  invite: "Bu gildiyaga faqat taklif bilan kiriladi",
-  muted: "Chatda vaqtincha jim qilingansiz",
+  get net() {
+    return t("err.net");
+  },
+  get auth() {
+    return t("err.auth");
+  },
+  get bad() {
+    return t("err.bad");
+  },
+  get rate() {
+    return t("err.rate");
+  },
+  get server() {
+    return t("err.server");
+  },
+  get sign() {
+    return t("err.sign");
+  },
+  get expired() {
+    return t("err.expired");
+  },
+  get invalid() {
+    return t("err.invalid");
+  },
+  get conflict() {
+    return t("err.conflict");
+  },
+  get big() {
+    return t("err.big");
+  },
+  get taken() {
+    return t("err.taken");
+  },
+  get nick() {
+    return t("err.nick");
+  },
+  get none() {
+    return t("err.none");
+  },
+  get limit() {
+    return t("err.limit");
+  },
+  get gold() {
+    return t("err.gold");
+  },
+  get cooldown() {
+    return t("err.cooldown");
+  },
+  get full() {
+    return t("err.full");
+  },
+  get perm() {
+    return t("err.perm");
+  },
+  get guild() {
+    return t("err.guild");
+  },
+  get name() {
+    return t("err.name");
+  },
+  get invite() {
+    return t("err.invite");
+  },
+  get muted() {
+    return t("err.muted");
+  },
 };

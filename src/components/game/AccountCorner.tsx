@@ -1,7 +1,8 @@
 /**
- * Bosh menyuning chap yuqori burchagi: mehmon — "KIRISH", kirgan o'yinchi — avatar, taxallus,
+ * Bosh menyuning chap yuqori burchagi: mehmon — t("acc.login"), kirgan o'yinchi — avatar, taxallus,
  * daraja va bulut holati (bosilsa — profil). Progress tanlovi kutilayotgan bo'lsa — "TANLANG!".
  */
+import { t } from "@/i18n";
 import { useAccount, useCloud } from "@/account/useAccount";
 import { useLevel } from "@/account/progression";
 import { account } from "@/account/account";
@@ -62,14 +63,14 @@ export function AccountCorner({
     return (
       <button
         onClick={onLogin}
-        aria-label="KIRISH"
-        title={`Telegram bilan kirish: progress bulutda, do'stlar va reyting (${level}-daraja)`}
+        aria-label={t("acc.login")}
+        title={t("acc.loginT", { n: level })}
         className={btn("pixelOutline", "inline-flex items-center gap-1 px-2 py-0.5")}
       >
         <LevelBadge level={level} />
         <TelegramIcon />
         <span className={a.pending ? "gift-blink text-primary" : undefined}>
-          {a.pending ? "KUTILMOQDA..." : "KIRISH"}
+          {a.pending ? t("acc.waiting") : t("acc.login")}
         </span>
       </button>
     );
@@ -88,7 +89,7 @@ export function AccountCorner({
       </button>
       {c.decision && (
         <button onClick={onDecision} className={btn("pixel", "gift-blink px-2 py-1")}>
-          PROGRESSNI TANLANG!
+          {t("acc.pick")}
         </button>
       )}
     </div>

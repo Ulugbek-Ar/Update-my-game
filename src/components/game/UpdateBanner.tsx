@@ -4,6 +4,7 @@
  * narsa ko'rinmaydi. Windows dasturida updater bo'lsa: YANGILASH — yuklab, o'rnatib, qayta ochadi
  * (saqlanishlar AppData'da qoladi); aks holda YUKLAB OLISH — Release yoki Telegram kanal.
  */
+import { t } from "@/i18n";
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,13 +63,13 @@ export function UpdateBanner({ inline = false }: { inline?: boolean }) {
         "flex flex-col items-start gap-2 border-2 border-primary bg-card px-3 py-2 text-left text-[8px] sm:text-[10px] leading-relaxed text-foreground",
       )}
     >
-      <span>Yangi versiya v{version} chiqdi!</span>
+      <span>{t("upd.new", { v: version })}</span>
       <button
         onClick={() => void onClick()}
         disabled={busy}
         className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-3 py-1")}
       >
-        {busy ? "YUKLANMOQDA..." : self ? "YANGILASH" : "YUKLAB OLISH"}
+        {busy ? t("m.loading") : self ? t("m.update") : t("upd.download")}
       </button>
     </div>
   );

@@ -1,8 +1,9 @@
 /**
- * SOVG'A QUTISI — "Sovg'a keldi!" oynasi: kimdan (MUALLIF belgisi bilan), nima, xat va "OLISH".
+ * SOVG'A QUTISI — "Sovg'a keldi!" oynasi: kimdan (MUALLIF belgisi bilan), nima, xat va t("inbox.take").
  * Olinganda: oltin — tanga yomg'iri, qahramon — nur ichida paydo bo'ladi. Bir nechta sovg'a
  * bo'lsa — navbatma-navbat.
  */
+import { t } from "@/i18n";
 import { skinName } from "@/game/skins";
 import { useEffect, useState } from "react";
 import { adminErrorText } from "@/account/admin";
@@ -27,7 +28,7 @@ function GiftCard({ g }: { g: GiftInfo }) {
         {g.gold > 0 && (
           <li className="inline-flex items-center gap-1 border-2 border-primary px-2 py-1 text-primary">
             <Icon id="coin" color="#ffcc33" size={14} />
-            {g.gold} oltin
+            {t("inbox.gold", { n: g.gold })}
           </li>
         )}
         {g.xp > 0 && (
@@ -41,12 +42,12 @@ function GiftCard({ g }: { g: GiftInfo }) {
             style={{ borderColor: hero.theme.accent, color: hero.theme.uiText }}
           >
             <HeroAvatar hero={hero.id} size={20} />
-            Qahramon: {hero.name}
+            {t("inbox.hero", { name: hero.name })}
           </li>
         )}
         {g.skin && (
           <li className="inline-flex items-center gap-1 border-2 border-[#c99ae8] px-2 py-1 text-[#c99ae8]">
-            Skin: {skinName(g.skin)}
+            {t("inbox.skin", { name: skinName(g.skin) })}
           </li>
         )}
       </ul>
@@ -83,9 +84,7 @@ export function GiftInboxWindow({
     const r = await giftBox.claim(gift.id);
     setBusy(false);
     if (!r.ok)
-      return setErr(
-        r.error === "none" ? "Bu sovg'a allaqachon olingan" : adminErrorText({ error: r.error }),
-      );
+      return setErr(r.error === "none" ? t("inbox.taken") : adminErrorText({ error: r.error }));
     sfx.upgrade();
     setGot(r.gift);
     onClaimed(r.gift);
@@ -93,12 +92,12 @@ export function GiftInboxWindow({
   const hero = got?.hero ? HERO_LIST.find((h) => h.id === got.hero) : null;
   return (
     <PixelWindow
-      label="Sovg'a qutisi"
+      label={t("inbox.aria")}
       accent
       title={
         <span className="inline-flex items-center gap-2">
           <Icon id="gift" color="#ffcc33" size={16} />
-          {got ? "SOVG'A OLINDI!" : g ? "SOVG'A KELDI!" : "SOVG'A QUTISI"}
+          {got ? t("inbox.got") : g ? t("inbox.came") : t("inbox.title")}
         </span>
       }
       onClose={onClose}
@@ -118,48 +117,47 @@ export function GiftInboxWindow({
               className="gift-pop text-center text-xs sm:text-sm"
               style={{ color: hero.theme.uiText }}
             >
-              YANGI QAHRAMON: {hero.name}!
+              {t("inbox.newHero", { name: hero.name })}
             </p>
           )}
           {got.gold > 0 && (
             <p className="gift-pop inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
-              <Icon id="coin" color="#ffcc33" size={16} />+{got.gold} OLTIN!
+              <Icon id="coin" color="#ffcc33" size={16} />
+              {t("gift.plusGold", { n: got.gold })}
             </p>
           )}
           {got.xp > 0 && <p className="gift-pop self-start text-[#9fd0ef]">+{got.xp} XP</p>}
           {got.skin && (
             <p className="gift-pop self-start text-[#c99ae8]">
-              YANGI SKIN: {skinName(got.skin)}! (Do'kon — SKINLAR)
+              {t("inbox.newSkin", { name: skinName(got.skin) })}
             </p>
           )}
           {hero && (
             <p className="text-muted-foreground">
-              <span style={{ color: HERO_THEME[hero.id].uiText }}>{hero.name}</span> endi menyudagi
-              qahramonlar qatorida — tanlab o'ynang.
+              <span style={{ color: HERO_THEME[hero.id].uiText }}>{hero.name}</span>{" "}
+              {t("inbox.heroNote")}
             </p>
           )}
           <div className="flex flex-wrap gap-2">
             {(list?.length ?? 0) > 0 ? (
               <button onClick={() => setGot(null)} className={btn()}>
-                KEYINGI SOVG'A ({list!.length})
+                {t("inbox.next", { n: list!.length })}
               </button>
             ) : (
               <button onClick={onClose} className={btn()}>
-                ZO'R!
+                {t("inbox.great")}
               </button>
             )}
           </div>
           {got.gold > 0 && <CoinRain />}
         </div>
       ) : !list ? (
-        <p className="text-muted-foreground">Yuklanmoqda...</p>
+        <p className="text-muted-foreground">{t("inbox.loading")}</p>
       ) : !g ? (
         <>
-          <p className="text-muted-foreground">
-            Hozircha sovg'a yo'q. O'yin muallifi sovg'a yuborsa — shu yerda paydo bo'ladi.
-          </p>
+          <p className="text-muted-foreground">{t("inbox.empty")}</p>
           <button onClick={onClose} className={btn("pixel", "self-start")}>
-            YOPISH
+            {t("common.close")}
           </button>
         </>
       ) : (
@@ -172,7 +170,7 @@ export function GiftInboxWindow({
           )}
           <div className="flex flex-wrap items-center gap-2">
             <button disabled={busy} onClick={() => void take(g)} className={btn()}>
-              {busy ? "..." : "OLISH"}
+              {busy ? "..." : t("inbox.take")}
             </button>
             <button onClick={onClose} className={btn("pixelOutline")}>
               KEYINROQ

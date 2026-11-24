@@ -1257,7 +1257,7 @@ function RotateOverlay() {
         <rect x={7} y={4} width={2} height={2} fill="#ffcc33" />
       </svg>
       <h2 className="text-primary text-sm leading-6">TELEFONNI AYLANTIRING</h2>
-      <p className="text-foreground text-[10px] leading-5">O'yin gorizontal holatda o'ynaladi</p>
+      <p className="text-foreground text-[10px] leading-5">{t("m.landscape")}</p>
     </div>
   );
 }
@@ -1916,7 +1916,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
         <div className="flex items-center justify-between gap-2">
           <h2 className="inline-flex items-center gap-2 text-primary">
             <PixelIcon id="gift" color="#ffcc33" size={16} />
-            KUNLIK SOVG'A
+            {t("gift.title")}
           </h2>
           <button
             onClick={onClose}
@@ -1927,10 +1927,9 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
           </button>
         </div>
         <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">
-          Har kuni kiring — sovg'a kattalashadi, 7-kuni katta sovg'a. Bir kun o'tkazib yuborilsa —
-          yana 1-kundan.
+          {t("gift.note")}
         </p>
-        <ol aria-label="7 kunlik sovg'alar" className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        <ol aria-label={t("gift.daysAria")} className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           {GIFT_REWARDS.map((gold, i) => {
             const day = i + 1;
             const today = day === status.day;
@@ -1940,7 +1939,11 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
               <li
                 key={day}
                 aria-current={today ? "date" : undefined}
-                aria-label={`${day}-kun: ${gold} oltin${got ? ", olingan" : today ? ", bugun" : ""}`}
+                aria-label={t("gift.dayAria", {
+                  d: day,
+                  g: gold,
+                  s: got ? t("gift.got") : today ? t("gift.today") : "",
+                })}
                 className={cn(
                   "relative flex flex-col items-center gap-1 border-2 px-1 py-2 text-center",
                   today && !got
@@ -1950,7 +1953,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
                       : "border-border text-muted-foreground",
                 )}
               >
-                <span className="text-[8px] sm:text-[9px]">{day}-KUN</span>
+                <span className="text-[8px] sm:text-[9px]">{t("gift.day", { d: day })}</span>
                 <PixelIcon id={big ? "gift" : "coin"} color="#ffcc33" size={big ? 26 : 20} />
                 <span className={big ? "text-primary" : undefined}>{gold}</span>
                 {got && (
@@ -1970,28 +1973,25 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
               <span className="gift-open-lid" />
             </span>
             <p className="gift-pop gift-late inline-flex items-center gap-2 self-start text-primary text-xs sm:text-sm">
-              <PixelIcon id="coin" color="#ffcc33" size={16} />+{claim.gold} OLTIN!
+              <PixelIcon id="coin" color="#ffcc33" size={16} />
+              {t("gift.plusGold", { n: claim.gold })}
             </p>
             {!!claim.bonus && (
-              <p className="text-[#ffd97a]">
-                Gildiya sovg'asi (daraja foydasi): +{claim.bonus} oltin
-              </p>
+              <p className="text-[#ffd97a]">{t("gift.guildBonus", { n: claim.bonus })}</p>
             )}
             {claim.achievement && (
               <p className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary">
                 <PixelIcon id="trophy" color="#ffcc33" size={12} />
-                YUTUQ OCHILDI: {claim.achievement.name}
+                {t("shop.achUnlocked", { name: claim.achievement.name })}
               </p>
             )}
             <p className="text-muted-foreground">
-              Ertaga: {GIFT_REWARDS[next - 1]} oltin{" "}
-              <span className="whitespace-nowrap">({next}-kun).</span>
+              {t("gift.tomorrow", { g: GIFT_REWARDS[next - 1] ?? 0, d: next })}
             </p>
           </div>
         ) : status.claimed ? (
           <p className="text-muted-foreground">
-            Bugungi sovg'a olindi. Ertaga: {GIFT_REWARDS[next - 1]} oltin{" "}
-            <span className="whitespace-nowrap">({next}-kun).</span>
+            {t("gift.claimedTomorrow", { g: GIFT_REWARDS[next - 1] ?? 0, d: next })}
           </p>
         ) : null}
         <div className="flex flex-wrap gap-2">
@@ -2001,7 +2001,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
               onClick={take}
               className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-4 py-2")}
             >
-              OLISH: +{status.reward} OLTIN
+              {t("gift.take", { n: status.reward })}
             </button>
           )}
           <button
@@ -2038,7 +2038,7 @@ function JoinRoomWindow({
   const [error, setError] = useState("");
   const submit = () => {
     const c = normalizeRoomCode(code);
-    if (!c) return setError("Kod — 6 ta harf va raqam (masalan, K7QW2M)");
+    if (!c) return setError(t("join.codeHint"));
     onJoin(c);
   };
   return (
@@ -2049,14 +2049,12 @@ function JoinRoomWindow({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Xonaga kirish"
+        aria-label={t("join.title")}
         className="flex w-[min(92vw,380px)] flex-col items-center gap-3 border-4 border-border bg-card p-4 text-center text-[10px] sm:text-xs leading-5"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-primary">{t("m.join")}</h2>
-        <p className="text-muted-foreground">
-          Do'stingiz pauza menyusidagi DO'STNI CHAQIRISH oynasidan yuborgan xona kodini yozing.
-        </p>
+        <p className="text-muted-foreground">{t("join.note")}</p>
         <input
           autoFocus
           value={code}
@@ -2064,7 +2062,7 @@ function JoinRoomWindow({
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}
-          aria-label="Xona kodi"
+          aria-label={t("join.codeAria")}
           placeholder="K7QW2M"
           onChange={(e) => {
             setError("");
@@ -2076,9 +2074,7 @@ function JoinRoomWindow({
           className={`w-44 border-2 border-border bg-background px-3 py-2 text-center text-base tracking-[0.3em] text-primary ${pixelFocus}`}
         />
         {error && <p className="text-[#ff4d6d]">{error}</p>}
-        {locked && (
-          <p className="text-[#ff9a3c]">Abadiyat olamiga kirish uchun avval Iblisni yeng.</p>
-        )}
+        {locked && <p className="text-[#ff9a3c]">{t("join.needDevil")}</p>}
         <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={submit}
@@ -2094,7 +2090,7 @@ function JoinRoomWindow({
             onClick={onClose}
             className={cn(buttonVariants({ variant: "pixelOutline", size: "none" }), "px-4 py-2")}
           >
-            BEKOR
+            {t("join.cancel")}
           </button>
         </div>
       </div>
@@ -2115,14 +2111,14 @@ function ExitWindow({ onClose }: { onClose: () => void }) {
         className="flex w-[min(92vw,380px)] flex-col items-center gap-4 border-4 border-border bg-card p-4 text-center text-[10px] sm:text-xs leading-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary">Chiqishni xohlaysizmi?</h2>
-        <p className="text-muted-foreground">Rekord, oltin va yutuqlar saqlangan.</p>
+        <h2 className="text-primary">{t("exit.q")}</h2>
+        <p className="text-muted-foreground">{t("exit.saved")}</p>
         <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={exitApp}
             className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-4 py-2")}
           >
-            HA, CHIQISH
+            {t("exit.yes")}
           </button>
           <button
             autoFocus
@@ -2145,12 +2141,12 @@ function AchievementsWindow({ onClose }: { onClose: () => void }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Yutuqlar"
+        aria-label={t("ach.aria")}
         className="fit-screen m-auto flex w-[min(94vw,520px)] flex-col overflow-hidden border-4 border-border bg-card text-[9px] sm:text-[10px] leading-4"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="shrink-0 px-4 pb-3 pt-4 text-primary text-xs sm:text-sm">
-          YUTUQLAR {got.size}/{ACHIEVEMENTS.length}
+          {t("m.achN", { n: got.size, total: ACHIEVEMENTS.length })}
         </h2>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -2185,7 +2181,7 @@ function AchievementsWindow({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** "Yangiliklar" oynasidagi rasmli karta: rasm kod bilan chiziladi. */
+/** t("news.aria") oynasidagi rasmli karta: rasm kod bilan chiziladi. */
 function NewsCard({
   title,
   text,
@@ -2229,22 +2225,34 @@ const NEWS_2_0: readonly {
   draw: (c: CanvasRenderingContext2D, hero: Hero) => void;
 }[] = [
   {
-    title: "SARGUZASHT XARITASI",
-    text: "3 dunyo yo'l bilan bog'langan: rekordlar, yutgan qahramonlar va qulflar.",
+    get title() {
+      return t("news.n.map.t");
+    },
+    get text() {
+      return t("news.n.map.x");
+    },
     width: 320,
     height: 240,
     draw: (c, hero) => renderMap(c, new MapState(), 1.2, hero),
   },
   {
-    title: "3-DUNYO: ZULMAT O'RMONI",
-    text: "4 ta yangi mob va O'rmon Shohi — qorong'ida faqat atrofingiz yorug'.",
+    get title() {
+      return t("news.n.w3.t");
+    },
+    get text() {
+      return t("news.n.w3.x");
+    },
     width: 160,
     height: 120,
     draw: (c) => drawForestCard(c, 1),
   },
   {
-    title: "YANGI QAHRAMON: OVCHI",
-    text: "O'q, teshuvchi kuchli o'q, orqaga sakrash va tuzoq.",
+    get title() {
+      return t("news.n.hunter.t");
+    },
+    get text() {
+      return t("news.n.hunter.x");
+    },
     width: 160,
     height: 120,
     draw: (c) => drawHunterCard(c),
@@ -2254,22 +2262,34 @@ const NEWS_2_0: readonly {
 /** 3.0 e'loni: Paladin, rollar va tank — katta rasmli kartalar. */
 const NEWS_3_0: typeof NEWS_2_0 = [
   {
-    title: "YANGI QAHRAMON: PALADIN",
-    text: "Qalqonsiz tank, ikki metrlik ulkan qilich. SHANG — yo'lakdagi hammani uloqtiradi. 8 yurak.",
+    get title() {
+      return t("news.n.paladin.t");
+    },
+    get text() {
+      return t("news.n.paladin.x");
+    },
     width: 160,
     height: 120,
     draw: (c) => drawPaladinCard(c),
   },
   {
-    title: "ROLLAR TIZIMI",
-    text: "Tank, jangchi, sehrgar va uzoqdan otuvchi — rol belgisi kartada va onlayn ism yonida.",
+    get title() {
+      return t("news.n.roles.t");
+    },
+    get text() {
+      return t("news.n.roles.x");
+    },
     width: 160,
     height: 120,
     draw: (c) => drawRolesCard(c),
   },
   {
-    title: "TANK BOSSNI USHLAYDI",
-    text: "Onlayn olamda boss eng xavfli o'yinchini quvadi. Qasam bilan tank uni o'ziga tortadi.",
+    get title() {
+      return t("news.n.tank.t");
+    },
+    get text() {
+      return t("news.n.tank.x");
+    },
     width: 160,
     height: 120,
     draw: (c) => drawTankCard(c),
@@ -2297,16 +2317,16 @@ function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Yangiliklar"
+        aria-label={t("news.aria")}
         className={`fit-screen m-auto flex ${big ? "w-[min(94vw,720px)]" : "w-[min(92vw,480px)]"} flex-col overflow-hidden border-4 border-primary bg-card text-[10px] sm:text-xs leading-5`}
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="shrink-0 px-4 pb-3 pt-4 text-primary">
-          {big ? `PIKSEL QAL'A ${entry.version.slice(0, 3)}!` : "YANGILIKLAR"} · v{entry.version}
+          {big ? `PIKSEL QAL'A ${entry.version.slice(0, 3)}!` : t("news.title")} · v{entry.version}
         </h2>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
           {cards && (
-            <ul aria-label="Katta yangiliklar" className="grid gap-3 sm:grid-cols-3">
+            <ul aria-label={t("news.bigAria")} className="grid gap-3 sm:grid-cols-3">
               {cards.map((n) => (
                 <NewsCard
                   key={n.title}
@@ -2334,7 +2354,7 @@ function NewsWindow({ onClose, hero }: { onClose: () => void; hero: Hero }) {
               "self-start px-4 py-2",
             )}
           >
-            O'YNASH
+            {t("news.play")}
           </button>
         </div>
       </div>
@@ -2407,11 +2427,11 @@ function CoachPanel({ hero }: { hero: Hero }) {
     setError("");
     setTip("");
     try {
-      const r = await getCombatTip({ data: { enemy, problem, hero } });
+      const r = await getCombatTip({ data: { enemy, problem, hero, lang: getLang() } });
       if (r.ok) setTip(r.text);
       else setError(r.error);
     } catch {
-      setError("Maslahat olishda xato yuz berdi.");
+      setError(t("coach.err"));
     } finally {
       setLoading(false);
     }
@@ -2421,49 +2441,49 @@ function CoachPanel({ hero }: { hero: Hero }) {
     <section className="w-full min-w-0 flex flex-col gap-3 text-[10px] sm:text-xs leading-5">
       <h2 className="text-primary">JANG MASLAHATCHISI (AI)</h2>
       <label className="flex flex-col gap-1 text-foreground">
-        Kim bilan qiynalyapsiz?
+        {t("coach.who")}
         <select
           value={enemy}
           onChange={(e) => setEnemy(e.target.value as typeof enemy)}
           className="bg-background text-foreground border-2 border-border p-2"
         >
-          <optgroup label="1-DUNYO: Olovli zindon">
-            <option value="slime">Slime</option>
-            <option value="bat">Ko'rshapalak</option>
-            <option value="skeleton">Skelet jangchi</option>
-            <option value="archer">Kamonchi skelet</option>
-            <option value="boss">Boss (iblis)</option>
+          <optgroup label={t("coach.w1")}>
+            <option value="slime">{t("coach.e.slime")}</option>
+            <option value="bat">{t("coach.e.bat")}</option>
+            <option value="skeleton">{t("coach.e.skeleton")}</option>
+            <option value="archer">{t("coach.e.archer")}</option>
+            <option value="boss">{t("coach.e.boss")}</option>
           </optgroup>
-          <optgroup label="2-DUNYO: Muz sardobasi">
-            <option value="iceblob">Muz slime</option>
-            <option value="frost">Muz ruhi</option>
-            <option value="golem">Qor odam</option>
-            <option value="shield">Muz qalqonli skelet</option>
-            <option value="wolf">Qor bo'risi</option>
-            <option value="queen">Qor Malikasi (Boss)</option>
+          <optgroup label={t("coach.w2")}>
+            <option value="iceblob">{t("coach.e.iceblob")}</option>
+            <option value="frost">{t("coach.e.frost")}</option>
+            <option value="golem">{t("coach.e.golem")}</option>
+            <option value="shield">{t("coach.e.shield")}</option>
+            <option value="wolf">{t("coach.e.wolf")}</option>
+            <option value="queen">{t("coach.e.queen")}</option>
           </optgroup>
-          <optgroup label="3-DUNYO: Zulmat o'rmoni">
-            <option value="spider">O'rmon o'rgimchagi</option>
-            <option value="shroom">Zaharli qo'ziqorin</option>
-            <option value="treant">Daraxt odam</option>
-            <option value="owl">Tungi boyo'g'li</option>
-            <option value="king">O'rmon Shohi (Boss)</option>
+          <optgroup label={t("coach.w3")}>
+            <option value="spider">{t("coach.e.spider")}</option>
+            <option value="shroom">{t("coach.e.shroom")}</option>
+            <option value="treant">{t("coach.e.treant")}</option>
+            <option value="owl">{t("coach.e.owl")}</option>
+            <option value="king">{t("coach.e.king")}</option>
           </optgroup>
-          <optgroup label="4-DUNYO: Sakura bog'i">
-            <option value="ninja">Ninja-soya</option>
-            <option value="tengu">Tengu-qush</option>
-            <option value="kitsune">Kitsune-olov</option>
-            <option value="oni">Oni (Boss)</option>
+          <optgroup label={t("coach.w4")}>
+            <option value="ninja">{t("coach.e.ninja")}</option>
+            <option value="tengu">{t("coach.e.tengu")}</option>
+            <option value="kitsune">{t("coach.e.kitsune")}</option>
+            <option value="oni">{t("coach.e.oni")}</option>
           </optgroup>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-foreground">
-        Nima qiyin? (ixtiyoriy)
+        {t("coach.what")}
         <textarea
           value={problem}
           onChange={(e) => setProblem(e.target.value.slice(0, 500))}
           rows={2}
-          placeholder="Masalan: bolta zarbasidan qochib ulgurmayapman"
+          placeholder={t("coach.ph")}
           className="bg-background text-foreground border-2 border-border p-2 resize-none"
         />
       </label>
@@ -2475,7 +2495,7 @@ function CoachPanel({ hero }: { hero: Hero }) {
           "self-start px-4 py-2 disabled:opacity-60 disabled:cursor-wait",
         )}
       >
-        {loading ? "O'YLAYAPTI..." : "MASLAHAT OLISH"}
+        {loading ? t("coach.thinking") : t("coach.ask")}
       </button>
       {error && <p className="text-destructive">{error}</p>}
       {tip && <p className="text-foreground whitespace-pre-wrap">{tip}</p>}

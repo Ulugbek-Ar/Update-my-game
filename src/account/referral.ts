@@ -5,6 +5,7 @@
  *   sayt:     <sayt>?ref=KOD
  *   Telegram: t.me/<bot>?start=ref_KOD (bot eslab qoladi) yoki Mini App start_param "ref_KOD"
  */
+import { t } from "@/i18n";
 import { SITE_URL } from "@/realm/net/config";
 import { telegramStartParam } from "@/lib/telegram";
 import { REF_KEY } from "./keys";
@@ -65,7 +66,10 @@ export function refBotLink(code: string, bot: string | null) {
 export const REF_SHARE_TEXT =
   "Piksel Qal'a — retro piksel RPG! Shu havola orqali kir, 1-to'lqinni tugat — ikkalamiz 100 oltin olamiz 🏰";
 
+/** Ulashish matni joriy tilda (REF_SHARE_TEXT — o'zbekcha asl) */
+export const refShareText = () => t("inv.shareText");
+
 /** Telegram'ning ulashish oynasi */
 export function refShareLink(link: string) {
-  return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(REF_SHARE_TEXT)}`;
+  return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(refShareText())}`;
 }

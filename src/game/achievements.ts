@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 /** Yutuqlar: o'yin davomida ochiladi, localStorage'da saqlanadi, menyuda ro'yxat. */
 export const ACHIEVEMENTS_KEY = "pixel-rpg-achievements";
 
@@ -40,48 +41,276 @@ export interface Achievement {
 }
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
-  { id: "first", name: "BIRINCHI G'ALABA", desc: "Birinchi dushmanni yeng" },
-  { id: "clean", name: "BENUQSON TO'LQIN", desc: "To'lqinni zarar olmasdan tozala" },
-  { id: "combo10", name: "KOMBO USTASI", desc: "10 kombo yig'" },
-  { id: "combo50", name: "50 KOMBO", desc: "Ketma-ket 50 kombo yig'" },
-  { id: "rich", name: "BOYVACHCHA", desc: "Bitta o'yinda 50 oltin ter" },
-  { id: "boss", name: "IBLISNI YENG", desc: "Bossni mag'lub et" },
-  { id: "winKnight", name: "RITSAR BILAN YUT", desc: "Ritsar bilan o'yinni yut" },
-  { id: "winMage", name: "SEHRGAR BILAN YUT", desc: "Sehrgar bilan o'yinni yut" },
-  { id: "winHunter", name: "OVCHI BILAN YUT", desc: "Ovchi bilan o'yinni yut" },
-  { id: "winGunner", name: "MERGAN BILAN YUT", desc: "Mergan bilan o'yinni yut" },
-  { id: "endless10", name: "CHEKSIZDA 10-TO'LQIN", desc: "Cheksiz rejimda 10-to'lqinga yet" },
-  { id: "daily", name: "KUNLIK SINOVCHI", desc: "Kunlik sinovda 3-to'lqinga yet" },
-  { id: "chests", name: "XAZINACHI", desc: "Bitta o'yinda 3 ta sandiq och" },
-  { id: "queen", name: "MUZNI ERITDI", desc: "Qor Malikasini yeng" },
-  { id: "noChill", name: "SOVUQQA CHIDAM", desc: "2-dunyoda sekinlashmasdan bitta to'lqin o't" },
-  { id: "twoChapters", name: "IKKI DUNYO", desc: "Bitta o'yinda o'lmasdan ikkala dunyoni yut" },
-  { id: "drumKills", name: "OLTI O'Q", desc: "Bitta barabandagi o'qlar bilan 6 ta dushmanni yeng" },
-  { id: "firstHero", name: "YANGI QAHRAMON", desc: "Do'kondan birinchi qahramonni sotib ol" },
-  { id: "loyal", name: "SODIQ O'YINCHI", desc: "Kunlik sovg'ani 7 kun ketma-ket ol" },
-  { id: "winPaladin", name: "PALADIN BILAN YUT", desc: "Paladin bilan o'yinni yut" },
-  { id: "shang4", name: "SHANG!", desc: "Bitta SHANG zarbasida 4 ta dushmanni yeng" },
+  {
+    id: "first",
+    get name() {
+      return t("ach.first.name");
+    },
+    get desc() {
+      return t("ach.first.desc");
+    },
+  },
+  {
+    id: "clean",
+    get name() {
+      return t("ach.clean.name");
+    },
+    get desc() {
+      return t("ach.clean.desc");
+    },
+  },
+  {
+    id: "combo10",
+    get name() {
+      return t("ach.combo10.name");
+    },
+    get desc() {
+      return t("ach.combo10.desc");
+    },
+  },
+  {
+    id: "combo50",
+    get name() {
+      return t("ach.combo50.name");
+    },
+    get desc() {
+      return t("ach.combo50.desc");
+    },
+  },
+  {
+    id: "rich",
+    get name() {
+      return t("ach.rich.name");
+    },
+    get desc() {
+      return t("ach.rich.desc");
+    },
+  },
+  {
+    id: "boss",
+    get name() {
+      return t("ach.boss.name");
+    },
+    get desc() {
+      return t("ach.boss.desc");
+    },
+  },
+  {
+    id: "winKnight",
+    get name() {
+      return t("ach.winKnight.name");
+    },
+    get desc() {
+      return t("ach.winKnight.desc");
+    },
+  },
+  {
+    id: "winMage",
+    get name() {
+      return t("ach.winMage.name");
+    },
+    get desc() {
+      return t("ach.winMage.desc");
+    },
+  },
+  {
+    id: "winHunter",
+    get name() {
+      return t("ach.winHunter.name");
+    },
+    get desc() {
+      return t("ach.winHunter.desc");
+    },
+  },
+  {
+    id: "winGunner",
+    get name() {
+      return t("ach.winGunner.name");
+    },
+    get desc() {
+      return t("ach.winGunner.desc");
+    },
+  },
+  {
+    id: "endless10",
+    get name() {
+      return t("ach.endless10.name");
+    },
+    get desc() {
+      return t("ach.endless10.desc");
+    },
+  },
+  {
+    id: "daily",
+    get name() {
+      return t("ach.daily.name");
+    },
+    get desc() {
+      return t("ach.daily.desc");
+    },
+  },
+  {
+    id: "chests",
+    get name() {
+      return t("ach.chests.name");
+    },
+    get desc() {
+      return t("ach.chests.desc");
+    },
+  },
+  {
+    id: "queen",
+    get name() {
+      return t("ach.queen.name");
+    },
+    get desc() {
+      return t("ach.queen.desc");
+    },
+  },
+  {
+    id: "noChill",
+    get name() {
+      return t("ach.noChill.name");
+    },
+    get desc() {
+      return t("ach.noChill.desc");
+    },
+  },
+  {
+    id: "twoChapters",
+    get name() {
+      return t("ach.twoChapters.name");
+    },
+    get desc() {
+      return t("ach.twoChapters.desc");
+    },
+  },
+  {
+    id: "drumKills",
+    get name() {
+      return t("ach.drumKills.name");
+    },
+    get desc() {
+      return t("ach.drumKills.desc");
+    },
+  },
+  {
+    id: "firstHero",
+    get name() {
+      return t("ach.firstHero.name");
+    },
+    get desc() {
+      return t("ach.firstHero.desc");
+    },
+  },
+  {
+    id: "loyal",
+    get name() {
+      return t("ach.loyal.name");
+    },
+    get desc() {
+      return t("ach.loyal.desc");
+    },
+  },
+  {
+    id: "winPaladin",
+    get name() {
+      return t("ach.winPaladin.name");
+    },
+    get desc() {
+      return t("ach.winPaladin.desc");
+    },
+  },
+  {
+    id: "shang4",
+    get name() {
+      return t("ach.shang4.name");
+    },
+    get desc() {
+      return t("ach.shang4.desc");
+    },
+  },
   {
     id: "wallNoShield",
-    name: "QALQONSIZ DEVOR",
-    desc: "Paladin bilan zarar olmasdan bossni yeng",
+    get name() {
+      return t("ach.wallNoShield.name");
+    },
+    get desc() {
+      return t("ach.wallNoShield.desc");
+    },
   },
-  { id: "collector", name: "KOLLEKTSIONER", desc: "Bitta o'yinda 5 ta artefakt yig'" },
-  { id: "synergy2", name: "SINERGIYA USTASI", desc: "Bitta o'yinda 2 ta sinergiya och" },
-  { id: "winSamurai", name: "SAMURAY BILAN YUT", desc: "Samuray bilan o'yinni yut" },
-  { id: "winShinobi", name: "NINJA BILAN YUT", desc: "Ninja bilan o'yinni yut" },
-  { id: "firstIai", name: "BIRINCHI IAI", desc: "Samuray bilan birinchi Iai zarbasini ber" },
+  {
+    id: "collector",
+    get name() {
+      return t("ach.collector.name");
+    },
+    get desc() {
+      return t("ach.collector.desc");
+    },
+  },
+  {
+    id: "synergy2",
+    get name() {
+      return t("ach.synergy2.name");
+    },
+    get desc() {
+      return t("ach.synergy2.desc");
+    },
+  },
+  {
+    id: "winSamurai",
+    get name() {
+      return t("ach.winSamurai.name");
+    },
+    get desc() {
+      return t("ach.winSamurai.desc");
+    },
+  },
+  {
+    id: "winShinobi",
+    get name() {
+      return t("ach.winShinobi.name");
+    },
+    get desc() {
+      return t("ach.winShinobi.desc");
+    },
+  },
+  {
+    id: "firstIai",
+    get name() {
+      return t("ach.firstIai.name");
+    },
+    get desc() {
+      return t("ach.firstIai.desc");
+    },
+  },
   {
     id: "dodge10",
-    name: "10 MUKAMMAL CHETLANISH",
-    desc: "Bitta o'yinda 10 marta mukammal chetlan",
+    get name() {
+      return t("ach.dodge10.name");
+    },
+    get desc() {
+      return t("ach.dodge10.desc");
+    },
   },
   {
     id: "parryBoss",
-    name: "BOSS ZARBASINI QAYTAR",
-    desc: "Samuray bilan boss zarbasini yoki olovini parry qil",
+    get name() {
+      return t("ach.parryBoss.name");
+    },
+    get desc() {
+      return t("ach.parryBoss.desc");
+    },
   },
-  { id: "winSakura", name: "SAKURA BOG'I", desc: "Samuray bilan Sakura bog'ini tugat" },
+  {
+    id: "winSakura",
+    get name() {
+      return t("ach.winSakura.name");
+    },
+    get desc() {
+      return t("ach.winSakura.desc");
+    },
+  },
 ];
 
 export function loadAchievements(): Set<AchievementId> {

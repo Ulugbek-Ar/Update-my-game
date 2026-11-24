@@ -2,6 +2,7 @@
  * Akkaunt oynalari uchun umumiy piksel komponentlar: oyna ramkasi (menyudagi boshqa oynalar
  * uslubida), qahramon avatari, tanga/kubok ikonkasi, QR kod va daraja belgisi.
  */
+import { t } from "@/i18n";
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { renderSprite, renderUpgradeIcon, heroView } from "@/game/sprites";
@@ -196,7 +197,7 @@ export function TelegramIcon({ size = 12 }: { size?: number }) {
 export function AuthorBadge({ className }: { className?: string }) {
   return (
     <span
-      title="O'yin muallifi"
+      title={t("px.author")}
       className={cn(
         "inline-flex shrink-0 items-center border-2 border-[#ff7ab6] bg-[#ff7ab6]/15 px-1 text-[8px] leading-3 text-[#ff9fcb]",
         className,
