@@ -6,7 +6,13 @@ import {
   DODGE_WINDOW_CARD,
   IAI_RANGE_CARD,
   KATANA_TIME,
+  BEAM_CARD,
+  BEAM_LEN,
+  MERCY_CARD,
+  PALM_TIME,
   SHURIKEN_CARD,
+  TRAIL_CARD,
+  TRAIL_LIFE,
   SHURIKEN_N,
   TWIN_TIME,
   VANISH_CARD,
@@ -144,6 +150,7 @@ export type Tag =
   | "nur"
   | "gul"
   | "soya"
+  | "lotos"
   // SUPER kartalari (v3.9): kam uchraydi, faqat superi bor qahramonda
   | "super";
 
@@ -187,6 +194,8 @@ export interface Upgrade {
   samurai?: HeroCard;
   /** Ninja uchun alohida karta */
   shinobi?: HeroCard;
+  /** Rohiba uchun alohida karta */
+  priestess?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
   /** SUPER kartasi: faqat shu superi (super.ts: id) ochiq bo'lgan qahramonga chiqadi */
@@ -210,9 +219,20 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
               ? u.samurai
               : p.hero === "shinobi"
                 ? u.shinobi
-                : undefined;
+                : p.hero === "priestess"
+                  ? u.priestess
+                  : undefined;
   if (!alt) return u;
-  const { mage: _m, hunter: _h, gunner: _g, paladin: _p, samurai: _s, shinobi: _n, ...base } = u;
+  const {
+    mage: _m,
+    hunter: _h,
+    gunner: _g,
+    paladin: _p,
+    samurai: _s,
+    shinobi: _n,
+    priestess: _r,
+    ...base
+  } = u;
   return { ...base, ...alt };
 }
 
@@ -352,6 +372,17 @@ export const UPGRADES: Upgrade[] = [
       color: "#fff2b0",
       icon: "greatblade",
     },
+    priestess: {
+      tags: ["zarar"],
+      get name() {
+        return t("up.blade.priestess.name");
+      },
+      get desc() {
+        return t("up.blade.priestess.desc");
+      },
+      color: "#ffd77a",
+      icon: "palm",
+    },
     shinobi: {
       tags: ["zarar"],
       get name() {
@@ -447,6 +478,19 @@ export const UPGRADES: Upgrade[] = [
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
       ok: (p) => p.reach < 30,
     },
+    priestess: {
+      tags: ["lotos"],
+      get name() {
+        return t("up.reach.priestess.name");
+      },
+      get desc() {
+        return t("up.reach.priestess.desc");
+      },
+      color: "#fff2b0",
+      icon: "palm",
+      apply: (p) => (p.reach += 4),
+      ok: (p) => p.reach < 25,
+    },
     shinobi: {
       tags: ["soya"],
       get name() {
@@ -538,6 +582,20 @@ export const UPGRADES: Upgrade[] = [
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
       ok: (p) => p.attackCd > 0.66,
     },
+    priestess: {
+      tags: ["zarar"],
+      get name() {
+        return t("up.haste.priestess.name");
+      },
+      get desc() {
+        return t("up.haste.priestess.desc");
+      },
+      color: "#ffd77a",
+      icon: "palm",
+      // zarba vaqtidan (0.14 s) qisqarmaydi
+      apply: (p) => (p.attackCd = Math.max(PALM_TIME + 0.01, p.attackCd * 0.75)),
+      ok: (p) => p.attackCd > 0.17,
+    },
     shinobi: {
       tags: ["zarar"],
       get name() {
@@ -625,6 +683,17 @@ export const UPGRADES: Upgrade[] = [
       },
       color: "#fff2b0",
       icon: "path",
+    },
+    priestess: {
+      tags: ["tezlik"],
+      get name() {
+        return t("up.wind.priestess.name");
+      },
+      get desc() {
+        return t("up.wind.priestess.desc");
+      },
+      color: "#fff2b0",
+      icon: "holytrail",
     },
     shinobi: {
       tags: ["tezlik"],
@@ -851,6 +920,17 @@ export const UPGRADES: Upgrade[] = [
       },
       color: "#f2c14e",
       icon: "hamla2",
+    },
+    priestess: {
+      tags: ["tezlik"],
+      get name() {
+        return t("up.dash2.priestess.name");
+      },
+      get desc() {
+        return t("up.dash2.priestess.desc");
+      },
+      color: "#fff2b0",
+      icon: "holytrail",
     },
     shinobi: {
       tags: ["tezlik"],
@@ -1283,6 +1363,102 @@ export const UPGRADES: Upgrade[] = [
     rare: SUPER_CARD_CHANCE,
     apply: (p) => (p.shadowTrail = true),
     ok: (p) => !p.shadowTrail,
+  },
+  // ---- Faqat Rohiba ----
+  {
+    id: "mercy",
+    get name() {
+      return t("up.mercy.name");
+    },
+    get desc() {
+      return t("up.mercy.desc");
+    },
+    color: "#ffb3c0",
+    tags: ["lotos"],
+    icon: "mercy",
+    hero: "priestess",
+    apply: (p) => (p.mercyHits = MERCY_CARD),
+    ok: (p) => p.mercyHits > MERCY_CARD,
+  },
+  {
+    id: "longbeam",
+    get name() {
+      return t("up.longbeam.name");
+    },
+    get desc() {
+      return t("up.longbeam.desc");
+    },
+    color: "#fff2b0",
+    tags: ["lotos"],
+    icon: "beam",
+    hero: "priestess",
+    apply: (p) => (p.beamLen += BEAM_CARD),
+    ok: (p) => p.beamLen < BEAM_LEN + BEAM_CARD,
+  },
+  {
+    id: "longtrail",
+    get name() {
+      return t("up.longtrail.name");
+    },
+    get desc() {
+      return t("up.longtrail.desc");
+    },
+    color: "#ffd77a",
+    tags: ["lotos"],
+    icon: "holytrail",
+    hero: "priestess",
+    apply: (p) => (p.trailLife += TRAIL_CARD),
+    ok: (p) => p.trailLife < TRAIL_LIFE + TRAIL_CARD,
+  },
+  {
+    id: "dazzle",
+    get name() {
+      return t("up.dazzle.name");
+    },
+    get desc() {
+      return t("up.dazzle.desc");
+    },
+    color: "#fffbe8",
+    tags: ["lotos"],
+    icon: "dazzle",
+    hero: "priestess",
+    apply: (p) => (p.beamStun = true),
+    ok: (p) => !p.beamStun,
+  },
+  // ---- SUPER kartalari (OLTIN LOTOS — Rohiba) ----
+  {
+    id: "lotusgrace",
+    get name() {
+      return t("up.lotusgrace.name");
+    },
+    get desc() {
+      return t("up.lotusgrace.desc");
+    },
+    color: "#ffd77a",
+    tags: ["super"],
+    icon: "lotus",
+    hero: "priestess",
+    super: "golden-lotus",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.lotusGrace = true),
+    ok: (p) => !p.lotusGrace,
+  },
+  {
+    id: "lightflow",
+    get name() {
+      return t("up.lightflow.name");
+    },
+    get desc() {
+      return t("up.lightflow.desc");
+    },
+    color: "#fff2b0",
+    tags: ["super"],
+    icon: "lightflow",
+    hero: "priestess",
+    super: "golden-lotus",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.lightFlow = true),
+    ok: (p) => !p.lightFlow,
   },
   // ---- SUPER kartalari (UFQ KESIMI — Ritsar) ----
   {

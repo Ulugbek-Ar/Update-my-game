@@ -462,7 +462,9 @@ export function heroBadge(
               ? ["#ff8fb8", "#2a1e3c", "#fff0ec"]
               : hero === "shinobi"
                 ? ["#1b1922", "#060508", "#d8283a"]
-                : ["#4f8a3a", "#1f4a24", "#c9a26b"];
+                : hero === "priestess"
+                  ? ["#f6f1e2", "#1a120c", "#f2b640"]
+                  : ["#4f8a3a", "#1f4a24", "#c9a26b"];
   px(c, "#000", x - 1, y - 1, 9, 9);
   if (hero === "knight") {
     px(c, main, x + 1, y, 5, 7);
@@ -497,6 +499,15 @@ export function heroBadge(
     px(c, hi, x + 2, y + 2, 1, 1);
     px(c, hi, x + 4, y + 2, 1, 1);
     px(c, hi, x, y + 5, 7, 1);
+  } else if (hero === "priestess") {
+    // oltin halo, qora soch tugini, yuz va oq libos yoqasi oltin hoshiya bilan
+    px(c, hi, x, y, 7, 1);
+    px(c, hi, x, y, 1, 3);
+    px(c, hi, x + 6, y, 1, 3);
+    px(c, dark, x + 2, y + 1, 3, 2);
+    px(c, "#e8b890", x + 2, y + 3, 3, 2);
+    px(c, main, x + 1, y + 5, 5, 2);
+    px(c, hi, x + 3, y + 5, 1, 1);
   } else if (hero === "mage") {
     px(c, dark, x, y + 5, 7, 2);
     px(c, dark, x + 1, y + 3, 5, 2);

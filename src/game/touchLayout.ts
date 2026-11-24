@@ -276,6 +276,16 @@ export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> 
         },
         dash: { text: tr("tb.smoke"), aria: tr("tb.smokeA"), icon: "dash" },
       };
+    case "priestess":
+      return {
+        attack: {
+          text: tr("tb.palm"),
+          sub: tr("tb.palmS"),
+          aria: tr("tb.palmA"),
+          icon: "sword",
+        },
+        dash: { text: tr("tb.step"), aria: tr("tb.stepA"), icon: "dash" },
+      };
     case "gunner":
       return {
         attack: { text: tr("tb.shoot"), aria: tr("tb.shootA"), icon: "bullet" },

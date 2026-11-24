@@ -44,10 +44,10 @@ function winCampaign(hero: "knight" | "mage") {
 }
 
 describe("Yutuqlar ro'yxati", () => {
-  it("has 30 achievements with unique ids and Uzbek names", () => {
+  it("has 31 achievements with unique ids and Uzbek names", () => {
     // v3.8: + Samuray (5 ta): Samuray bilan yut, Birinchi Iai, 10 mukammal chetlanish, boss
     // zarbasini qaytar, Sakura bog'i
-    expect(ACHIEVEMENTS.length).toBe(30);
+    expect(ACHIEVEMENTS.length).toBe(31);
     expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
     const names = ACHIEVEMENTS.map((a) => a.name);
     for (const n of [

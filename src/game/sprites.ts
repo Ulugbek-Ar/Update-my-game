@@ -1,6 +1,7 @@
 import type { AnimState } from "./animation";
 import { ONI_GRID, drawSakura } from "./sakuraSprites";
 import { SHINOBI_GRID, drawShinobi } from "./shinobiSprites";
+import { PRIESTESS_GRID, drawPriestess } from "./priestessSprites";
 import { currentSettings } from "./settings";
 
 export type SpriteKind =
@@ -11,6 +12,7 @@ export type SpriteKind =
   | "paladin"
   | "samurai"
   | "shinobi"
+  | "priestess"
   | "skeleton"
   | "archer"
   | "shield"
@@ -254,6 +256,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Ninja (qahramon): siyoh (kontur, kamar, ko'z tirqishi), qora kiyim, ko'mir burmalar va bog'ichlar,
   // qizil sharf (dasta o'rami va porlagan ko'zlar ham), po'lat tig'lar va shuriken
   shinobi: ["#060508", "#1b1922", "#45414f", "#d8283a", "#d4d8e2"],
+  // Rohiba (qahramon): siyoh (kontur, qora soch, ko'zlar), oq libos, iliq kulrang burmalar va sandal,
+  // oltin (halo, kamar, bilaguzuklar, etak hoshiyasi, kaft nuri), teri
+  priestess: ["#1a120c", "#f6f1e2", "#b8a47c", "#f2b640", "#e8b890"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -5255,11 +5260,13 @@ export function spriteGrid(kind: SpriteKind) {
       ? SAMURAI_GRID
       : kind === "shinobi"
         ? SHINOBI_GRID
-        : kind === "ashking"
-          ? KING_GRID
-          : kind === "oni"
-            ? ONI_GRID
-            : 32;
+        : kind === "priestess"
+          ? PRIESTESS_GRID
+          : kind === "ashking"
+            ? KING_GRID
+            : kind === "oni"
+              ? ONI_GRID
+              : 32;
 }
 
 export function spritePixels(
@@ -5280,6 +5287,11 @@ export function spritePixels(
   if (kind === "shinobi") {
     const p = new Pixels(SHINOBI_GRID);
     drawShinobi(p, state, frame, back);
+    return p.outlined();
+  }
+  if (kind === "priestess") {
+    const p = new Pixels(PRIESTESS_GRID);
+    drawPriestess(p, state, frame, back);
     return p.outlined();
   }
   if (kind === "ashking") return kingPixels(state, frame);
@@ -5595,7 +5607,11 @@ export function renderSprite(
  * Samurayning katanasi 32 px ga sig'maydi — ularda kattaroq (tana biroz kichrayadi).
  */
 export function heroView(kind: SpriteKind) {
-  return kind === "paladin" ? 48 : kind === "samurai" || kind === "shinobi" ? 40 : 32;
+  return kind === "paladin"
+    ? 48
+    : kind === "samurai" || kind === "shinobi" || kind === "priestess"
+      ? 40
+      : 32;
 }
 
 /** Chizilgan o'lcham (px) */
@@ -5611,24 +5627,27 @@ export function spriteSize(kind: SpriteKind) {
         : kind === "shinobi"
           ? // Ninja: tana 32 px, katta to'r — ikki katana va sharf uchun
             SHINOBI_GRID
-          : kind === "oni"
-            ? // Oni: 40x40 to'r, boshqa bosslardek 2 baravar — ulardan kattaroq ko'rinadi
-              ONI_GRID * 2
-            : kind === "demon" || kind === "queen" || kind === "king"
-              ? 64
-              : kind === "golem" || kind === "treant"
-                ? 40
-                : kind === "slime" ||
-                    kind === "bat" ||
-                    kind === "imp" ||
-                    kind === "frost" ||
-                    kind === "iceblob" ||
-                    kind === "spider" ||
-                    kind === "owl"
-                  ? 26
-                  : kind === "shroom"
-                    ? 28
-                    : 32)
+          : kind === "priestess"
+            ? // Rohiba: tana 32 px, katta to'r — halo, kaft nuri va super ko'tarilishi uchun
+              PRIESTESS_GRID
+            : kind === "oni"
+              ? // Oni: 40x40 to'r, boshqa bosslardek 2 baravar — ulardan kattaroq ko'rinadi
+                ONI_GRID * 2
+              : kind === "demon" || kind === "queen" || kind === "king"
+                ? 64
+                : kind === "golem" || kind === "treant"
+                  ? 40
+                  : kind === "slime" ||
+                      kind === "bat" ||
+                      kind === "imp" ||
+                      kind === "frost" ||
+                      kind === "iceblob" ||
+                      kind === "spider" ||
+                      kind === "owl"
+                    ? 26
+                    : kind === "shroom"
+                      ? 28
+                      : 32)
   );
 }
 
@@ -5687,6 +5706,105 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "............",
   ],
   // Ninja kartalari: ikki katana, shuriken, tutun, orqadan zarba, zaharli shuriken, super kartalari
+  // Rohiba kartalari: kaft, nur kafti, muqaddas iz, rahm, ko'zni qamashtiruvchi nur, lotos, nur oqimi
+  palm: [
+    "....X.X.....",
+    "..X.X.X.X...",
+    "..X.X.X.X...",
+    "..X.X.X.X...",
+    "..XXXXXXX.X.",
+    "..XXXXXXXXX.",
+    "..XXXXXXXX..",
+    "..XXXXXXX...",
+    "...XXXXX....",
+    "...AAAAA....",
+    "...AQQQA....",
+    "............",
+  ],
+  beam: [
+    "............",
+    "...U........",
+    "..UAU.......",
+    ".UAXXAAAAAAU",
+    "UAXooXXXXXXo",
+    ".UAXXAAAAAAU",
+    "..UAU.......",
+    "...U........",
+    "............",
+    "....U...U...",
+    "...UAU.UAU..",
+    "....U...U...",
+  ],
+  holytrail: [
+    "..........U.",
+    ".........UAU",
+    "......X...U.",
+    ".....XXX....",
+    ".....XXX..U.",
+    "......X..UAU",
+    "..X.......U.",
+    ".XXX........",
+    ".XXX....U...",
+    "..X....UAU..",
+    "........U...",
+    "............",
+  ],
+  mercy: [
+    "............",
+    "..XX...XX...",
+    ".XXXX.XXXX..",
+    "XXXXXXXXXXX.",
+    "XXXXXoXXXXX.",
+    "XXXXoooXXXX.",
+    ".XXXXoXXXX..",
+    "..XXXXXXX...",
+    "...XXXXX....",
+    "....XXX.....",
+    ".....X......",
+    "............",
+  ],
+  dazzle: [
+    ".....A......",
+    "..A..A..A...",
+    "...A...A....",
+    ".....XX.....",
+    "..XXXXXXXX..",
+    ".XXooooooXX.",
+    "XXoooAAoooXX",
+    ".XXooooooXX.",
+    "..XXXXXXXX..",
+    "...A...A....",
+    "..A..A..A...",
+    ".....A......",
+  ],
+  lotus: [
+    ".....XX.....",
+    "....XUUX....",
+    "..X.XUUX.X..",
+    ".XUXXUUXXUX.",
+    ".XUUXUUXUUX.",
+    "XXUUUXXUUUXX",
+    "XUXUUUUUUXUX",
+    ".XXXUUUUXXX.",
+    "..XXXXXXXX..",
+    "AAAAAAAAAAAA",
+    ".QQQQQQQQQQ.",
+    "............",
+  ],
+  lightflow: [
+    ".....U......",
+    "....UAU.....",
+    "...UAXAU....",
+    "..U.AXA.U...",
+    ".....X......",
+    "..U..X..U...",
+    ".UAU.X.UAU..",
+    "..X..X..X...",
+    "..X..X..X...",
+    "..X.....X...",
+    ".AAAAAAAAA..",
+    "............",
+  ],
   twinblades: [
     "o..........o",
     "oX........Xo",

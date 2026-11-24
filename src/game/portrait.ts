@@ -39,6 +39,11 @@ import {
   SHINOBI_PORTRAIT_GRID,
   shinobiPortraitPixels,
 } from "./shinobiPortrait";
+import {
+  PRIESTESS_PORTRAIT_COLORS,
+  PRIESTESS_PORTRAIT_GRID,
+  priestessPortraitPixels,
+} from "./priestessPortrait";
 
 /** Portret to'ri (kvadrat): Ritsar, Paladin va Samurayda 96 (katta, batafsil) */
 export function portraitGrid(hero: Hero) {
@@ -54,7 +59,9 @@ export function portraitGrid(hero: Hero) {
             ? GUNNER_PORTRAIT_GRID
             : hero === "shinobi"
               ? SHINOBI_PORTRAIT_GRID
-              : PALADIN_PORTRAIT_GRID;
+              : hero === "priestess"
+                ? PRIESTESS_PORTRAIT_GRID
+                : PALADIN_PORTRAIT_GRID;
 }
 
 /** Paladin portreti kadrlari: tirqishdagi nur kuchayib boradi, toj yaltiraydi */
@@ -77,6 +84,9 @@ export const GUNNER_PORTRAIT_VARIANTS = ["", "spin", "smoke"] as const;
 
 /** Ninja portreti kadrlari: ko'zlar xira → qizil yonadi → tig'lar yaltiraydi, ko'zdan chaqnash */
 export const SHINOBI_PORTRAIT_VARIANTS = ["", "glare", "flash"] as const;
+
+/** Rohiba portreti kadrlari: ibodat (ko'zlar yumuq) → halo yonadi → ko'zlar ochiladi, kaftdan nur */
+export const PRIESTESS_PORTRAIT_VARIANTS = ["", "glow", "light"] as const;
 
 const hex2 = (v: number) => Math.round(v).toString(16).padStart(2, "0");
 /** a va b ranglar aralashmasi (k — b ulushi) */
@@ -101,6 +111,8 @@ export function portraitColors(hero: Hero, palette?: SpritePalette): string[] {
   if (hero === "gunner") return [...GUNNER_PORTRAIT_COLORS];
   // Ninja: portretning o'z rang to'plami (qora mato, qizil oy, po'lat)
   if (hero === "shinobi") return [...SHINOBI_PORTRAIT_COLORS];
+  // Rohiba: portretning o'z rang to'plami (oq libos, oltin halo, teri)
+  if (hero === "priestess") return [...PRIESTESS_PORTRAIT_COLORS];
   if (hero !== "knight") return [...(palette?.colors ?? PALETTES[hero])];
   const base: string[] = [...KNIGHT_PORTRAIT_COLORS];
   const pc = palette?.colors;
@@ -157,6 +169,15 @@ export function portraitPixels(hero: Hero, variant = ""): Uint8Array | null {
       Math.max(
         0,
         GUNNER_PORTRAIT_VARIANTS.indexOf(variant as (typeof GUNNER_PORTRAIT_VARIANTS)[number]),
+      ),
+    );
+  if (hero === "priestess")
+    return priestessPortraitPixels(
+      Math.max(
+        0,
+        PRIESTESS_PORTRAIT_VARIANTS.indexOf(
+          variant as (typeof PRIESTESS_PORTRAIT_VARIANTS)[number],
+        ),
       ),
     );
   if (hero === "shinobi")

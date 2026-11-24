@@ -1349,7 +1349,7 @@ function selectedHeroFrame(
 ): readonly [AnimState, number, number] {
   // 110 ms lik taymer: nafas — har 5 tikda bir kadr
   // Samuray va Ninja: o'z kadrlari (4 nafas, 6 qadam), oraliq kadrsiz
-  const own = hero === "samurai" || hero === "shinobi";
+  const own = hero === "samurai" || hero === "shinobi" || hero === "priestess";
   if (!moving) return ["idle", Math.floor(tick / 5) % (own ? 4 : 2), 0];
   const n = visualFrames(hero, "walk", own ? 6 : 4);
   // 3 aylana yuradi, so'ng 8 tik nafas oladi

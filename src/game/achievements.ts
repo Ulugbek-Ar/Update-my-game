@@ -29,6 +29,7 @@ export type AchievementId =
   | "synergy2"
   | "winSamurai"
   | "winShinobi"
+  | "winPriestess"
   | "firstIai"
   | "dodge10"
   | "parryBoss"
@@ -273,6 +274,15 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     },
     get desc() {
       return t("ach.winShinobi.desc");
+    },
+  },
+  {
+    id: "winPriestess",
+    get name() {
+      return t("ach.winPriestess.name");
+    },
+    get desc() {
+      return t("ach.winPriestess.desc");
     },
   },
   {

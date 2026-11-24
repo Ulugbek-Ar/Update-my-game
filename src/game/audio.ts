@@ -889,6 +889,72 @@ class SoundFX {
     this.tone(2000, 0.05, "square", 0.035, 1300, 0.42);
   }
 
+  /** Rohiba kafti: yumshoq "vuf" va qo'ng'iroqcha — chap kaft pastroq, o'ng kaft balandroq */
+  palmStrike(left = false) {
+    const f = left ? 880 : 1046;
+    this.noise(0.05, 0.035, 2400);
+    this.tone(f, 0.09, "sine", 0.035, f * 1.5);
+  }
+
+  /** NUR KAFTI: ko'tariluvchi oltin "vuuung" va qo'ng'iroq */
+  palmBeam() {
+    this.tone(523, 0.28, "triangle", 0.045, 1046);
+    this.tone(1568, 0.22, "sine", 0.03, 2093, 0.04);
+    this.noise(0.18, 0.03, 3600);
+  }
+
+  /** Muqaddas qadam: engil shamol va yuqori "ding" */
+  holyStep() {
+    this.noise(0.12, 0.035, 2800);
+    this.tone(1318, 0.12, "sine", 0.025, 1760, 0.02);
+  }
+
+  /** Iz yoki zarba bilan jon tiklandi: ikki iliq nota */
+  mendChime() {
+    this.tone(784, 0.12, "sine", 0.04);
+    this.tone(1175, 0.16, "sine", 0.035, undefined, 0.08);
+  }
+
+  /** OLTIN LOTOS tayyorlanishi: Rohiba ko'tariladi — past "om" va ko'tariluvchi yorug' tovush */
+  lotusRise() {
+    this.tone(130, 0.9, "sine", 0.05, 196);
+    this.tone(261, 0.8, "triangle", 0.025, 392, 0.1);
+  }
+
+  /** Lotos ochiladi: arfa kabi yuqoriga ko'tariluvchi notalar */
+  lotusBloom(dur = 1.2) {
+    const notes = [523, 659, 784, 1046, 1318];
+    for (let i = 0; i < notes.length; i++)
+      this.tone(notes[i]!, 0.3, "sine", 0.03, undefined, (i * Math.max(0.3, dur)) / 10);
+  }
+
+  /** Gulbargdan nur chiqdi: qisqa "tin" */
+  lotusMark() {
+    this.tone(2093, 0.06, "sine", 0.02);
+  }
+
+  /** Nur tegdi: yorqin "ting" */
+  lotusRay() {
+    this.tone(1568, 0.1, "triangle", 0.03, 2349);
+    this.noise(0.04, 0.025, 6000);
+  }
+
+  /** Bossga nur: chuqur qo'ng'iroq */
+  lotusBossRay() {
+    this.tone(196, 0.4, "sine", 0.05, 147);
+    this.tone(1175, 0.3, "triangle", 0.035, 1568);
+  }
+
+  /** Oqibat: lotos yopiladi, iliq akkord — jon tiklanadi */
+  lotusEnd() {
+    for (const [f, d] of [
+      [523, 0],
+      [659, 0.06],
+      [784, 0.12],
+    ] as const)
+      this.tone(f, 0.5, "sine", 0.03, undefined, d);
+  }
+
   /** IAI kechikkan kesigi: qisqa "chiq" (har belgilangan dushmanga bittadan) */
   iaiCut() {
     this.noise(0.04, 0.07, 7000);

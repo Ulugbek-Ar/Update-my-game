@@ -1,6 +1,6 @@
 /**
  * Eski klientlar bilan moslik. Har yangi o'ynaladigan qahramon "qahramonlar versiyasi"ni bittaga
- * oshiradi (1 — Samuray, v3.8; 2 — Ninja). Yangi klient o'z versiyasini yuboradi: olam salomlashuvida `hv`
+ * oshiradi (1 — Samuray, v3.8; 2 — Ninja; 3 — Rohiba). Yangi klient o'z versiyasini yuboradi: olam salomlashuvida `hv`
  * maydoni, akkaunt so'rovida `?hv=` parametri. Yubormagan klient — eski (v3.7 va undan oldingi).
  *
  * Eski klient o'zi bilmagan qahramon spraytini chiza olmaydi (palitra topilmay, chizish sikli
@@ -11,7 +11,7 @@
 import type { Hero } from "./hero";
 
 /** Joriy klientning qahramonlar versiyasi */
-export const HERO_VERSION = 2;
+export const HERO_VERSION = 3;
 /** Akkaunt so'rovlaridagi URL parametri */
 export const HERO_MARK = "hv";
 
@@ -24,6 +24,7 @@ export const HERO_SINCE: Readonly<Record<Hero, number>> = {
   paladin: 0,
   samurai: 1,
   shinobi: 2,
+  priestess: 3,
 };
 
 const isHero = (s: unknown): s is Hero =>

@@ -69,7 +69,16 @@ export const getCombatTip = createServerFn({ method: "POST" })
         ]),
         problem: z.string().max(500),
         hero: z
-          .enum(["knight", "mage", "hunter", "gunner", "paladin", "samurai", "shinobi"])
+          .enum([
+            "knight",
+            "mage",
+            "hunter",
+            "gunner",
+            "paladin",
+            "samurai",
+            "shinobi",
+            "priestess",
+          ])
           .default("knight"),
         // o'yin tili: maslahat shu tilda yoziladi
         lang: z.enum(["uz", "ru", "en"]).default("uz"),
@@ -116,7 +125,7 @@ export const getCombatTip = createServerFn({ method: "POST" })
           data.lang === "uz"
             ? MECHANICS
             : `${MECHANICS}\nMUHIM: javobni o'zbek tilida emas, faqat ${data.lang === "ru" ? "rus" : "ingliz"} tilida yoz.`,
-        prompt: `Qahramon: ${data.hero === "mage" ? "Sehrgar (shar, halqa, teleport)" : data.hero === "hunter" ? "Ovchi (o'q, teshuvchi o'q, orqaga sakrash, tuzoq)" : data.hero === "gunner" ? "Mergan (to'pponcha o'qi, barabanni bo'shatish, sirpanish, tutun bombasi, qayta o'qlash)" : data.hero === "shinobi" ? "Ninja (ikki katana: tez chap-o'ng zarbalar, zarari past; hujumni bosib turib qo'yib yuborsa 3 ta shuriken yelpig'ich bo'lib uchadi; dash — tutun bombasi: tutun qoldirib sakraydi va 1 s ko'rinmas bo'ladi, dushmanlar uni yo'qotadi; ko'rinmaslikdan keyingi birinchi zarba 2 baravar — orqadan zarba; 4 yurak)" : data.hero === "samurai" ? "Samuray qiz (katana: tez 3 zarbali kombo, 3-zarba keng; hujumni bosib turib qo'yib yuborsa IAI — chaqmoqdek sirpanib o'tadi va yo'lidagilarni 0.25 s dan keyin kesadi; zarba tegishidan sal oldin dash — MUKAMMAL CHETLANISH: vaqt sekinlashadi, keyingi zarba kritik; zarba tegayotgan lahzada hujum — PARRY: zarba bekor, snaryad egasiga qaytadi; 4 yurak, tez)" : data.hero === "paladin" ? "Paladin — tank (ulkan qilich: SHANG yo'lak zarbasi 0.4s tayyorgarlik bilan, Osmon hukmi — 360° to'lqin va gangitish, Muqaddas hamla — himoyali yugurish, Qasam — dushmanlarni o'ziga tortib zararni yarmiga kamaytiradi; 8 yurak, sekin)" : "Ritsar (qilich, aylana zarba, dash)"}.\nQiynalayotgan raqib: ${names[data.enemy]}.\nO'yinchi muammosi: ${data.problem.trim() || "(izoh yo'q)"}`,
+        prompt: `Qahramon: ${data.hero === "mage" ? "Sehrgar (shar, halqa, teleport)" : data.hero === "hunter" ? "Ovchi (o'q, teshuvchi o'q, orqaga sakrash, tuzoq)" : data.hero === "gunner" ? "Mergan (to'pponcha o'qi, barabanni bo'shatish, sirpanish, tutun bombasi, qayta o'qlash)" : data.hero === "priestess" ? "Rohiba — davolovchi jangchi (kaft zarbalari: qisqa masofaga chap-o'ng oltin nur to'lqini; hujumni bosib turib qo'yib yuborsa NUR KAFTI — oldinga uzun oltin nur, yo'lidagilarni teshib o'tadi; dash — MUQADDAS QADAM: sakraydi va ortida 2 s yonib turuvchi oltin iz qoldiradi, izda tursa sekin jon tiklaydi; har 10 ta zarbada 1 yurak tiklaydi; 6 yurak)" : data.hero === "shinobi" ? "Ninja (ikki katana: tez chap-o'ng zarbalar, zarari past; hujumni bosib turib qo'yib yuborsa 3 ta shuriken yelpig'ich bo'lib uchadi; dash — tutun bombasi: tutun qoldirib sakraydi va 1 s ko'rinmas bo'ladi, dushmanlar uni yo'qotadi; ko'rinmaslikdan keyingi birinchi zarba 2 baravar — orqadan zarba; 4 yurak)" : data.hero === "samurai" ? "Samuray qiz (katana: tez 3 zarbali kombo, 3-zarba keng; hujumni bosib turib qo'yib yuborsa IAI — chaqmoqdek sirpanib o'tadi va yo'lidagilarni 0.25 s dan keyin kesadi; zarba tegishidan sal oldin dash — MUKAMMAL CHETLANISH: vaqt sekinlashadi, keyingi zarba kritik; zarba tegayotgan lahzada hujum — PARRY: zarba bekor, snaryad egasiga qaytadi; 4 yurak, tez)" : data.hero === "paladin" ? "Paladin — tank (ulkan qilich: SHANG yo'lak zarbasi 0.4s tayyorgarlik bilan, Osmon hukmi — 360° to'lqin va gangitish, Muqaddas hamla — himoyali yugurish, Qasam — dushmanlarni o'ziga tortib zararni yarmiga kamaytiradi; 8 yurak, sekin)" : "Ritsar (qilich, aylana zarba, dash)"}.\nQiynalayotgan raqib: ${names[data.enemy]}.\nO'yinchi muammosi: ${data.problem.trim() || "(izoh yo'q)"}`,
         providerOptions: {
           openai: {
             forceReasoning: true,

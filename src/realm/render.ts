@@ -10,6 +10,7 @@ import { DANGER } from "@/game/danger";
 import { skinLook, skinPalette } from "@/game/skins";
 import { DEFAULT_THEME, renderFlair, type SkinLook } from "@/game/skinFx";
 import { renderShuriken } from "@/game/shinobiFx";
+import { renderBeam, renderTrail } from "@/game/priestessFx";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
 import {
@@ -584,6 +585,10 @@ export class RealmRenderer {
           if (TALL[sim.tileAt(tx, ty)] && (ty + 1) * TILE > foot)
             occluders.add(ty * sim.map.w + tx);
     };
+    // Rohiba izlari: yerda yonib turuvchi oltin nuqtalar (hamma ko'radi — ittifoqchi ham davolanadi)
+    for (const rp of sim.players.values())
+      if (rp.p.priestess && rp.p.trail.length && inView(rp.p.x, rp.p.y, camX, camY, 120))
+        renderTrail(c, rp.p.trail, rp.p.trailLife, v.time, lookOf(rp).theme, v.fx.isReduced());
     // super sahnalari: yerdagi belgilar (personajlar ostida)
     v.superLayer?.(c, "ground", { x: camX, y: camY, w: VIEW_W, h: VIEW_H });
     // moblar (tartib — oyoq bo'yicha)
@@ -616,6 +621,8 @@ export class RealmRenderer {
           // skin: qayta tug'ilishda Player yangilanadi — har chizishda RealmPlayer'dan
           p.skin = rp.skin ? skinPalette(rp.hero, rp.skin) : undefined;
           p.render(c);
+          // Rohiba NUR KAFTI — boshqalar ham ko'radi
+          if (p.priestess && p.spinning && !p.dead) renderBeam(c, p, v.time, look.theme);
           // afsonaviy skin animatsiyasi — boshqalar ham ko'radi
           renderFlair(c, look, p, v.time, v.fx.isReduced());
           c.restore();

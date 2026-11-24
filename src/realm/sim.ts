@@ -13,6 +13,7 @@ import {
   PARRY_BOOST,
   PARRY_STUN,
   Player,
+  inTrail,
   SKY_RADIUS,
   SKY_STUN,
   VOW_RADIUS,
@@ -1599,6 +1600,14 @@ export class RealmSim {
     // Ninja tutundan sakrab chiqadi — ko'rinmasligi o'z vaqti bilan tugaydi
     if (p.hidden && !p.shinobi && !this.inSmoke(p)) p.hideT = 0;
     if (p.shinobi) p.ambushed = p.threw = false;
+    if (p.priestess) {
+      p.beamed = false;
+      if (p.mended) {
+        p.mended = false;
+        this.events.push({ type: "heal", pid: rp.id, x: p.x, y: p.y });
+      }
+    }
+    this.blessFromTrails(rp, dt);
     this.updateLava(rp, dt);
 
     if (p.paladin) this.updatePaladin(rp);
@@ -1778,6 +1787,30 @@ export class RealmSim {
    * Paladin olamda: SHANG/OSMON HUKMI voqealari, QASAM — atrofdagi moblarni majburan o'ziga tortadi,
    * MUQADDAS HAMLA yo'lidagilarni itaradi, MUQADDAS AURA yaqin do'stlarni ham davolaydi.
    */
+  /**
+   * Rohiba izi ittifoqchilarni ham davolaydi (server tekshiradi): boshqa o'yinchi biror Rohibaning
+   * yonib turgan izida TRAIL_HEAL_TIME tursa +1 yurak, davolash chegarasi bilan (Player.bless).
+   */
+  private blessFromTrails(rp: RealmPlayer, dt: number) {
+    const p = rp.p;
+    if (p.priestess || p.dead) return;
+    const foot = { x: p.x, y: p.y + 4 };
+    let on = false;
+    for (const o of this.players.values())
+      if (o !== rp && o.p.priestess && !o.p.dead && inTrail(o.p.trail, foot)) {
+        on = true;
+        break;
+      }
+    if (!on) {
+      p.blessT = 0;
+      return;
+    }
+    if (p.bless(dt)) {
+      p.mended = false;
+      this.events.push({ type: "heal", pid: rp.id, x: p.x, y: p.y });
+    }
+  }
+
   private updatePaladin(rp: RealmPlayer) {
     const p = rp.p;
     if (p.slammed) {

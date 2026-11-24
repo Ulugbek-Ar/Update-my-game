@@ -50,6 +50,7 @@ const SUPER_HEROES: Hero[] = [
   "hunter",
   "gunner",
   "shinobi",
+  "priestess",
 ];
 
 function makeGame(hero: Hero = "paladin") {

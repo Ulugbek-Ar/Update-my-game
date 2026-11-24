@@ -17,6 +17,7 @@ import {
   PALADIN_PORTRAIT_VARIANTS,
   SAMURAI_PORTRAIT_VARIANTS,
   SHINOBI_PORTRAIT_VARIANTS,
+  PRIESTESS_PORTRAIT_VARIANTS,
   superPortrait,
 } from "@/game/portrait";
 import type { SkinLook } from "@/game/skinFx";
@@ -294,4 +295,5 @@ const PORTRAIT_FRAMES: Record<Hero, readonly string[]> = {
   paladin: PALADIN_PORTRAIT_VARIANTS,
   samurai: SAMURAI_PORTRAIT_VARIANTS,
   shinobi: SHINOBI_PORTRAIT_VARIANTS,
+  priestess: PRIESTESS_PORTRAIT_VARIANTS,
 };

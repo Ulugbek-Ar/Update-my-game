@@ -31,7 +31,8 @@ export type ArtifactId =
   | "lastshot"
   | "vowlight"
   | "iaireset"
-  | "smokecharm";
+  | "smokecharm"
+  | "prayerbeads";
 
 export interface Artifact {
   id: ArtifactId;
@@ -497,6 +498,29 @@ export const ARTIFACTS: readonly Artifact[] = [
       ".kXXXXXk.",
       "..kkYkk..",
       "....k....",
+    ],
+  },
+  {
+    id: "prayerbeads",
+    get name() {
+      return tr("art.prayerbeads.name");
+    },
+    get desc() {
+      return tr("art.prayerbeads.desc");
+    },
+    color: "#ffd77a",
+    dark: "#b0781e",
+    hero: "priestess",
+    icon: [
+      "...kkk...",
+      "..kXwXk..",
+      ".kX...Xk.",
+      "kXk...kXk",
+      "kX.....Xk",
+      "kXk...kXk",
+      ".kXk.kXk.",
+      "..kXYXk..",
+      "...kYk...",
     ],
   },
 ];

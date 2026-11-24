@@ -154,6 +154,11 @@ const THEMES: Record<string, ThemeRow> = {
   "shinobi-bamboo": ["#9ad05a", "#3a6a2a", "#e8f4d0", "#c8e890", "#1a2a14", "#e8f4d0", "#9ad05a", "#c8e890", "#b0d878", "#3a4a30", "#a8c088", "#ffffff", "#060a06", "#1a2a1a", "#c8d8b8"],
   // Oq arvoh: oq tutun, moviy sharf va oy kumushi
   "shinobi-ghost": ["#5ad0ff", "#1e6a8a", "#f4f8ff", "#bfeaff", "#14283a", "#ffffff", "#5ad0ff", "#d8f2ff", "#a8e0ff", "#7a8aa8", "#d8e2f0", "#ffffff", "#0a0c12", "#3a4458", "#e8eef8"],
+  // Rohiba: Tong lotosi — pushti-oltin tong nuri; Jade rohiba — yashil nefrit nur; Oy rohibasi —
+  // kumush-moviy oy nuri va oq tutun
+  "priestess-dawn": ["#ffc89a", "#a8782a", "#fff0e0", "#ffd8c0", "#3a2818", "#fff6ec", "#ffc89a", "#ffe0cc", "#ffd8b0", "#a8782a", "#ffe0cc", "#ffffff", "#1a0c08", "#3a2018", "#ffe8d8"],
+  "priestess-jade": ["#7ee0b0", "#2a7a5a", "#e8fff4", "#b8f0d8", "#12302a", "#f0fff8", "#7ee0b0", "#c8f8e4", "#a8ecd0", "#2a7a5a", "#c8f8e4", "#ffffff", "#06140e", "#12302a", "#d8fff0"],
+  "priestess-moon": ["#a8c8ff", "#5a5a8a", "#f4f8ff", "#d0e0ff", "#141e38", "#ffffff", "#a8c8ff", "#e0ecff", "#c0d8ff", "#5a5a8a", "#e0ecff", "#ffffff", "#080c18", "#141e38", "#e8f0ff"],
   // Olov Paladin: oltin-sariq alanga, oq yadro (xavf zonasining qizilidan uzoq)
   "paladin-flame": ["#ffc24a", "#b8620a", "#fff0b0", "#ffc24a", "#3a1e08", "#fffbe8", "#ffd870", "#ffe08a", "#fff0b0", "#b8620a", "#fff0b0", "#ffffff", "#170602", "#4a1a06", "#ffd870"],
 };
@@ -201,6 +206,12 @@ const DEFS: Record<Hero, readonly Def[]> = {
     ["ash", "KUL NINJA", ["#08090c", "#4a4c56", "#8a8e9a", "#3f8fe0", "#e8ecf2"]],
     ["bamboo", "BAMBUK SOYASI", ["#060a06", "#1a2a1a", "#3e5a3a", "#9ad05a", "#dfe8d8"]],
     ["ghost", "OQ ARVOH", ["#0a0c12", "#e4e8f0", "#8a94aa", "#3ab8f0", "#ffffff"]],
+  ],
+  // Rohiba: kontur va soch, libos, burmalar, oltin (halo, kamar, bilaguzuk), teri
+  priestess: [
+    ["dawn", "TONG LOTOSI", ["#1a0e0c", "#fff0ea", "#d8a090", "#ff9a6a", "#eab896"]],
+    ["jade", "NEFRIT ROHIBA", ["#08140e", "#e8f6ee", "#7aa890", "#3ec890", "#e2b48e"]],
+    ["moon", "OY ROHIBASI", ["#0a0e1a", "#2a3456", "#5a6a9a", "#c8dcff", "#e8c8b0"]],
   ],
 };
 
@@ -323,6 +334,23 @@ const FX: Record<string, SkinFx> = {
     particle: "leaf",
     trail: "leaf",
     bits: ["#c8e890", "#e8f4d0"],
+  },
+  // NOYOB: nefrit — yashil barglar va nur izi
+  "priestess-jade": {
+    ...PLAIN_FX,
+    particle: "leaf",
+    trail: "sparkle",
+    bits: ["#c8f8e4", "#7ee0b0"],
+  },
+  // AFSONAVIY: oy rohibasi — kumush yulduzchalar, nur izi, yarim oy zarbasi, halo atrofida aylanuvchi
+  // oy nurlari, sokin qo'ng'iroq ohangi
+  "priestess-moon": {
+    particle: "star",
+    trail: "sparkle",
+    bits: ["#ffffff", "#c8dcff"],
+    impact: "lotus",
+    flair: "nimbus",
+    tone: "temple",
   },
   // AFSONAVIY: oq arvoh — oy kumushi yulduzchalari, soya izi, yarim oy kesigi, hilpiragan sharf,
   // tungi ohang

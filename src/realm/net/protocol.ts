@@ -84,6 +84,7 @@ const HERO_IDS = [
   "paladin",
   "samurai",
   "shinobi",
+  "priestess",
 ] as const satisfies readonly Hero[];
 const num = z.number().finite();
 const axis = num.min(-1).max(1);
@@ -255,7 +256,12 @@ export const PF_DASH = 1,
    * Ninja: chap qo'l qilichi uradi (aks holda — o'ng). Shuriken zaryadi — PF_CHARGE bilan. Eski
    * klient Ninjani Ritsar ko'radi (heroCompat.ts) — bu bitni o'qimaydi.
    */
-  PF_LEFT = 128;
+  PF_LEFT = 128,
+  /**
+   * Rohiba: NUR KAFTI otilmoqda (bit PF_IAI bilan bir xil — bayroq qahramonga qarab o'qiladi).
+   * Chap kaft — PF_LEFT, zaryad — PF_CHARGE. Eski klient Rohibani Ritsar ko'radi.
+   */
+  PF_BEAM = 16;
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,

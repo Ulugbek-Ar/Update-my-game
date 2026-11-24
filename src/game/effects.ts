@@ -470,6 +470,25 @@ export class Effects {
           c.lineTo(m.x + Math.cos(an + 0.5) * r * 0.35, m.y + Math.sin(an + 0.5) * r * 0.35);
         }
         c.stroke();
+      } else if (m.kind === "lotus") {
+        // nur lotosi: oltita gulbarg (bodomsimon halqalar), aylanib ochiladi
+        for (let i = 0; i < 6; i++) {
+          const an = m.rot + (i * Math.PI) / 3;
+          c.moveTo(m.x, m.y);
+          c.quadraticCurveTo(
+            m.x + Math.cos(an + 0.45) * r * 0.8,
+            m.y + Math.sin(an + 0.45) * r * 0.8,
+            m.x + Math.cos(an) * r,
+            m.y + Math.sin(an) * r,
+          );
+          c.quadraticCurveTo(
+            m.x + Math.cos(an - 0.45) * r * 0.8,
+            m.y + Math.sin(an - 0.45) * r * 0.8,
+            m.x,
+            m.y,
+          );
+        }
+        c.stroke();
       } else if (m.kind === "crescent") {
         // tungi o'roq: ikki qavat yarim oy
         c.arc(m.x, m.y, r * 0.8, m.rot, m.rot + Math.PI * 1.1);

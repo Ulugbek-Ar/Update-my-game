@@ -37,6 +37,7 @@ import {
   PF_CHARGE,
   PF_PARRY,
   PF_LEFT,
+  PF_BEAM,
   MARK_KINDS,
   ROOM_CAP,
   SNAPSHOT_EVERY,
@@ -677,7 +678,9 @@ export function netPlayer(
         (p.parryPose > 0 ? PF_PARRY : 0)
       : hero === "shinobi"
         ? (p.blade ? PF_LEFT : 0) | (p.charge >= 0.2 ? PF_CHARGE : 0)
-        : 0);
+        : hero === "priestess"
+          ? (p.palm ? PF_LEFT : 0) | (p.charge >= 0.2 ? PF_CHARGE : 0) | (p.spinning ? PF_BEAM : 0)
+          : 0);
   const out: NetPlayer = [
     o.id,
     hero,

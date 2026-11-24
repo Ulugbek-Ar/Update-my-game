@@ -261,4 +261,14 @@ export function applyRealmSuper(sim: RealmSim, rp: RealmPlayer, rc: RealmCast) {
     for (const m of aim) if (m) strike(m, realmBoss(m) ? V.bossPower : 1);
   } else for (const m of list) strike(m);
   if (def.heal > 0 && p.heal(def.heal)) sim.event({ type: "heal", pid: rp.id, x: p.x, y: p.y });
+  // OLTIN LOTOS: yaqin ittifoqchilar ham tiklanadi (yaqinlari ko'proq)
+  const ally = def.allyHeal;
+  if (ally)
+    for (const o of sim.players.values()) {
+      if (o === rp || o.p.dead) continue;
+      const d = Math.hypot(o.p.x - p.x, o.p.y - p.y);
+      if (d > def.healRadius) continue;
+      if (o.p.heal(d <= ally.nearR ? ally.near : ally.far))
+        sim.event({ type: "heal", pid: o.id, x: o.p.x, y: o.p.y });
+    }
 }

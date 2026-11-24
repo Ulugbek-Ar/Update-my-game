@@ -72,7 +72,13 @@ export type SuperSound =
   | "stormBlink"
   | "stormSlash"
   | "stormBossCut"
-  | "stormSheathe";
+  | "stormSheathe"
+  | "lotusRise"
+  | "lotusBloom"
+  | "lotusMark"
+  | "lotusRay"
+  | "lotusBossRay"
+  | "lotusEnd";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -245,6 +251,11 @@ export interface SuperDef {
   /** Oqibatda tiklanadigan jon va (onlayn) ittifoqchilarga yetadigan radius */
   heal: number;
   healRadius: number;
+  /**
+   * Onlaynda healRadius ichidagi ittifoqchilarga: nearR dan yaqinlarga `near`, qolganlariga `far`
+   * yurak (OLTIN LOTOS). Yo'q — ittifoqchilar tiklanmaydi.
+   */
+  allyHeal?: { near: number; far: number; nearR: number };
   after: SuperAftermath;
   /**
    * Zarbalar oqibat bosqichining shu soniyasida BIRDAN tushadi (MING KESIM: katana qinga qaytgan
@@ -686,6 +697,52 @@ const SHADOW_STORM: SuperDef = {
   fx: "storm",
 };
 
+/**
+ * OLTIN LOTOS (Rohiba).
+ * Tayyorlanish (1 s): Rohiba ko'zlarini yumib kaftlarini birlashtiradi va havoga ko'tariladi, ostida
+ * ulkan oltin lotos guli ochiladi. Zarba (≤1.5 s): gulbarglardan ekrandagi HAR dushmanga oltin nur
+ * uriladi (Paladinning osmondan tushuvchi nur ustunlaridan farqli — nurlar lotosdan tarqaladi).
+ * Oqibat (0.9 s): lotos yopilib so'nadi, Rohiba yerga tushadi va 3 yurak tiklaydi (onlaynda yaqin
+ * ittifoqchilar 2, uzoqroqdagilar 1 yurak).
+ *
+ * Zaryad 20. Bossga: maksimal jonining 8% i, jami 10% dan oshmaydi (kartalar ham oshirmaydi).
+ * Kartalar: LOTOS BARAKASI (+1 yurak), NUR OQIMI (Nur kafti va muqaddas qadam darhol tayyor).
+ */
+const GOLDEN_LOTUS: SuperDef = {
+  id: "golden-lotus",
+  hero: "priestess",
+  get name() {
+    return t("super.priestess.name");
+  },
+  get desc() {
+    return t("super.priestess.desc");
+  },
+  color: "#ffd77a",
+  charge: 20,
+  time: 3.4,
+  params: {},
+  open: true,
+  stages: { prep: 1, strike: 1.5, after: 0.9 },
+  slow: { prep: 0.2, strike: 0.06, after: 0.4 },
+  strike: { mark: 0.16, gap: 0.11, tail: 0.35, min: 0.9 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 3,
+  healRadius: 120,
+  allyHeal: { near: 2, far: 1, nearR: 60 },
+  after: { flat: 0.4, dust: 0.5, bossKneel: 0.9 },
+  card: { time: 0.7, short: 0.25, sub: "ROHIBA SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "lotusRise",
+    mark: "lotusMark",
+    hit: "lotusRay",
+    bossHit: "lotusBossRay",
+    end: "lotusEnd",
+    strike: "lotusBloom",
+  },
+  fx: "lotus",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
@@ -695,6 +752,7 @@ export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   hunter: TEN_ARROWS,
   gunner: ENDLESS_LEAD,
   shinobi: SHADOW_STORM,
+  priestess: GOLDEN_LOTUS,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */

@@ -145,7 +145,8 @@ export function samuraiPose(k: number, sheathe: boolean): SamuraiPose {
 }
 
 /** Yaqin jangchilar nishon yonida turadi va dashda orqaga sirpanadi; uzoqdan otuvchilar — chapda */
-const melee = (h: Hero) => h === "knight" || h === "paladin" || h === "samurai" || h === "shinobi";
+const melee = (h: Hero) =>
+  h === "knight" || h === "paladin" || h === "samurai" || h === "shinobi" || h === "priestess";
 const homeOf = (h: Hero) => (h === "samurai" ? SAM_DEMO.home : melee(h) ? 80 : 30);
 
 export class SkinDemo {

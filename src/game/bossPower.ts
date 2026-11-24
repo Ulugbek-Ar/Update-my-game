@@ -29,6 +29,10 @@
  *     shuriken yelpig'ichidan bitta nishonga bittasi tegadi (1 × zarar) har (spinCd + 0.45 s) da.
  *     Orqadan zarba (ko'rinmaslikdan keyin ×2) — mahorat: formulaga kirmaydi.
  *
+ *   Rohiba:
+ *     kaft zarbalari = 0.6 × zarar / zarba_orasi (0.25 s) = 2.4, NUR KAFTI (strongMul × zarar) har
+ *     (spinCd + 0.5 s) da — sikl ≈ 2.69: Paladin va Ritsar oralig'ida. Davolash — formulaga kirmaydi.
+ *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
@@ -41,7 +45,7 @@
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
  */
-import { KATANA_MUL, SHURIKEN_MUL, TWIN_MUL, type Player } from "./player";
+import { KATANA_MUL, PALM_MUL, SHURIKEN_MUL, TWIN_MUL, type Player } from "./player";
 
 /** Ideal urib turishda boss shuncha soniyada o'ladi */
 export const BOSS_FIGHT_TIME = 60;
@@ -95,6 +99,11 @@ export function heroDps(p: Player) {
     const basic = (TWIN_MUL * p.damage) / p.attackCd;
     // bitta nishonga yelpig'ichdan bitta shuriken tegadi
     const cycle = (basic * p.spinCd + SHURIKEN_MUL * p.damage) / (p.spinCd + p.chargeTime);
+    return Math.max(basic, cycle);
+  }
+  if (p.priestess) {
+    const basic = (PALM_MUL * p.damage) / p.attackCd;
+    const cycle = (basic * p.spinCd + p.strongMul * p.damage) / (p.spinCd + p.chargeTime);
     return Math.max(basic, cycle);
   }
   const multi = Math.max(1, p.multishot);

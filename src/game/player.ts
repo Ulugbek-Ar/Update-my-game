@@ -10,6 +10,7 @@ import {
 import type { Input } from "./input";
 import { SAMURAI_FRAME, SAMURAI_FRAMES, renderSprite, type SpritePalette } from "./sprites";
 import { SHINOBI_FRAME, SHINOBI_FRAMES } from "./shinobiSprites";
+import { PRIESTESS_FRAME, PRIESTESS_FRAMES } from "./priestessSprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
 import type { FlairKind, ToneKind } from "./skinFx";
@@ -197,6 +198,66 @@ export const AMBUSH_CARD = 2.5;
 export const AMBUSH_GRACE = 0.5;
 /** TUTUN PARDASI (super kartasi): superdan keyin shuncha soniya ko'rinmaydi */
 export const SMOKE_VEIL_TIME = 2;
+
+/**
+ * ROHIBA (id "priestess"): 6 yurak, tezlik 95 — Paladindek og'ir tank emas, chaqqon qo'l jangchisi.
+ * KAFT ZARBALARI: chap va o'ng kaft navbat bilan, qisqa masofaga oltin nur to'lqini: 0.25 s da bir
+ * zarba, har biri Ritsarnikining 60% i. DPS = 0.6 / 0.25 = 2.4, NUR KAFTI bilan ≈ 2.69 — Paladin
+ * (≈ 2.38) va Ritsar (≈ 2.78) oralig'ida (bossPower.ts).
+ */
+export const PRIESTESS_MAX_HP = 6;
+export const PRIESTESS_SPEED = 95;
+export const PALM_CD = 0.25;
+export const PALM_TIME = 0.14;
+export const PALM_REACH = 17;
+export const PALM_MUL = 0.6;
+/**
+ * NUR KAFTI (kuchli hujum): bosib turib qo'yib yuborilsa — oldinga uzun oltin nur yo'lagi
+ * (uzunligi BEAM_LEN, eni BEAM_W), yo'lidagi hammani teshib o'tadi, zarari strongMul (2.2x).
+ */
+export const BEAM_LEN = 84;
+/** UZUN NUR kartasi: nur shuncha uzayadi */
+export const BEAM_CARD = 36;
+export const BEAM_W = 12;
+export const BEAM_TIME = 0.22;
+export const BEAM_CD = 3;
+export const BEAM_CHARGE = 0.5;
+export const BEAM_MUL = 2.2;
+/** KO'ZNI QAMASHTIRUVCHI NUR kartasi: nur tekkan dushman shuncha soniya gangiydi */
+export const BEAM_STUN = 0.6;
+/**
+ * MUQADDAS QADAM (dash): sakraydi, ortida TRAIL_LIFE soniya yonib turuvchi oltin iz qoladi (har
+ * TRAIL_STEP px da bir nuqta, radiusi TRAIL_R). Izda TRAIL_HEAL_TIME soniya turgan Rohiba (onlaynda
+ * ittifoqchilar ham) +1 yurak tiklaydi.
+ */
+export const PRIESTESS_DASH_CD = 1.2;
+export const TRAIL_LIFE = 2;
+/** UZOQ IZ kartasi: iz shuncha uzoqroq yonadi */
+export const TRAIL_CARD = 1;
+export const TRAIL_R = 10;
+export const TRAIL_STEP = 6;
+export const TRAIL_HEAL_TIME = 1.2;
+/** RAHM: har shuncha zarbada +1 yurak (RAHM kartasi bilan — MERCY_CARD) */
+export const MERCY_HITS = 10;
+export const MERCY_CARD = 7;
+/**
+ * DAVOLASH CHEGARASI: zarba va iz bilan tiklanish orasida kamida MEND_GAP soniya — Rohiba bossni
+ * cheksiz "tank" qila olmaydi (superning 3 yuragi bundan mustaqil).
+ */
+export const MEND_GAP = 4;
+/** LOTOS BARAKASI (super kartasi): super shuncha qo'shimcha yurak tiklaydi */
+export const LOTUS_GRACE = 1;
+
+export interface TrailDot {
+  x: number;
+  y: number;
+  life: number;
+}
+
+/** Nuqta Rohiba izining ustidami (radius TRAIL_R) */
+export function inTrail(trail: readonly TrailDot[], b: { x: number; y: number }) {
+  return trail.some((d) => d.life > 0 && Math.hypot(b.x - d.x, b.y - d.y) < TRAIL_R);
+}
 
 /** Muz qamoq: tugmalarni shuncha marta bosmasa ham shuncha soniyadan keyin o'zi eriydi */
 export const ENCASE_MAX = 3.5;
@@ -519,6 +580,29 @@ export class Player implements Body {
   /** Shu kadrda shurikenlar otildi (Game ovoz va effekt) */
   threw = false;
   /**
+   * Rohiba: qaysi kaft uradi (true — chap), NUR KAFTI uzunligi, oltin iz va uning umri, necha zarbada
+   * bir yurak (RAHM) va yig'ilgan zarbalar soni.
+   */
+  palm = false;
+  beamLen = BEAM_LEN;
+  trail: TrailDot[] = [];
+  trailLife = TRAIL_LIFE;
+  mercyHits = MERCY_HITS;
+  mercyN = 0;
+  /** Kartalar: KO'ZNI QAMASHTIRUVCHI NUR; super kartalari LOTOS BARAKASI va NUR OQIMI */
+  beamStun = false;
+  lotusGrace = false;
+  lightFlow = false;
+  /** Shu kadrda NUR KAFTI otildi (Game ovoz va effekt) */
+  beamed = false;
+  /**
+   * Rohiba izida turgan vaqt va davolash chegarasi taymeri — HAR qahramonda (onlaynda Rohiba izi
+   * ittifoqchini ham davolaydi). mended — shu kadrda iz yoki zarba bilan tiklandi (effekt).
+   */
+  blessT = 0;
+  mendT = 0;
+  mended = false;
+  /**
    * Afsonaviy skin animatsiyasi (skinFx.ts; null — yo'q). "moon" (Qizil oy): IAI dan keyin katanani
    * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
    */
@@ -640,6 +724,29 @@ export class Player implements Body {
       };
       this.anim.defs.attack = { frames: 3, frameTime: TWIN_TIME / 3, loop: false };
     }
+    if (hero === "priestess") {
+      this.hp = this.maxHp = PRIESTESS_MAX_HP;
+      this.speed = PRIESTESS_SPEED;
+      this.attackCd = PALM_CD;
+      this.attackTime = PALM_TIME;
+      this.reach = PALM_REACH;
+      this.dashCd = PRIESTESS_DASH_CD;
+      this.spinCd = BEAM_CD;
+      this.chargeTime = BEAM_CHARGE;
+      this.strongMul = BEAM_MUL;
+      // libos etagi va halo tebranadi: ko'proq kadr, umumiy davomiylik o'sha (1 s, 0.48 s)
+      this.anim.defs.idle = {
+        frames: PRIESTESS_FRAMES.idle,
+        frameTime: 1 / PRIESTESS_FRAMES.idle,
+        loop: true,
+      };
+      this.anim.defs.walk = {
+        frames: PRIESTESS_FRAMES.walk,
+        frameTime: 0.48 / PRIESTESS_FRAMES.walk,
+        loop: true,
+      };
+      this.anim.defs.attack = { frames: 3, frameTime: PALM_TIME / 3, loop: false };
+    }
   }
 
   get mage() {
@@ -664,6 +771,42 @@ export class Player implements Body {
 
   get shinobi() {
     return this.hero === "shinobi";
+  }
+
+  get priestess() {
+    return this.hero === "priestess";
+  }
+
+  /**
+   * Davolash chegarasi bilan tiklanish (Rohiba zarbasi va izi): oldingisidan MEND_GAP soniya o'tmagan
+   * bo'lsa yoki jon to'la bo'lsa — yo'q.
+   */
+  mend(n = 1) {
+    if (this.mendT > 0 || this.dead || !this.heal(n)) return false;
+    this.mendT = MEND_GAP;
+    this.mended = true;
+    return true;
+  }
+
+  /** Rohiba izida turish (har qahramon — onlaynda ittifoqchi ham): TRAIL_HEAL_TIME to'lsa +1 yurak */
+  bless(dt: number) {
+    this.blessT += dt;
+    if (this.blessT < TRAIL_HEAL_TIME) return false;
+    if (!this.mend(1)) {
+      this.blessT = TRAIL_HEAL_TIME;
+      return false;
+    }
+    this.blessT = 0;
+    return true;
+  }
+
+  /** Rohiba zarbasi tegdi (Game): har mercyHits zarbada +1 yurak (chegara bilan). true — tiklandi. */
+  landHit() {
+    if (!this.priestess) return false;
+    this.mercyN = Math.min(this.mercyHits, this.mercyN + 1);
+    if (this.mercyN < this.mercyHits || !this.mend(1)) return false;
+    this.mercyN = 0;
+    return true;
   }
 
   /** Ninja: keyingi zarba — orqadan zarba (ko'rinmaslik yoki undan keyingi qisqa oyna) */
@@ -736,6 +879,8 @@ export class Player implements Body {
     if (this.samurai) return this.damage * KATANA_MUL;
     // ikki katana: har zarba yengil, orqadan zarba — ko'paytuvchi bilan
     if (this.shinobi) return this.damage * TWIN_MUL * this.ambushHit;
+    // kaft: yengil, NUR KAFTI — kuchli zarba ko'paytuvchisi bilan
+    if (this.priestess) return this.damage * (this.spinning ? this.strongMul : PALM_MUL);
     return this.spinning ? this.damage * this.strongMul : this.damage;
   }
 
@@ -928,6 +1073,7 @@ export class Player implements Body {
 
   attackBox(): Body | null {
     if (this.paladin) return this.paladinBox();
+    if (this.priestess && this.spinning) return this.beamBox();
     // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
     if (this.spinning && !this.hunter && !this.gunner && !this.shinobi)
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
@@ -938,6 +1084,20 @@ export class Player implements Body {
     const off = this.reach * (wide ? 0.55 : 0.75);
     const size = wide ? this.reach * COMBO_WIDE : this.reach;
     return { x: this.x + this.fx * off, y: this.y + this.fy * off, size } as Body;
+  }
+
+  /** NUR KAFTI: qarab turgan tomonga uzun yo'lak (uzunligi beamLen, eni BEAM_W), tanadan boshlab */
+  beamBox(): Body {
+    const len = this.beamLen;
+    const c = len / 2 + 4;
+    const horiz = this.fx !== 0;
+    return {
+      x: this.x + this.fx * c,
+      y: this.y + this.fy * c,
+      size: BEAM_W,
+      w: horiz ? len : BEAM_W,
+      h: horiz ? BEAM_W : len,
+    } as unknown as Body;
   }
 
   /**
@@ -984,6 +1144,8 @@ export class Player implements Body {
     if (this.gunner) this.updateGun(dt, input);
     if (this.samurai) this.tickSamurai(dt);
     if (this.shinobi && this.ambushT > 0) this.ambushT -= dt;
+    if (this.mendT > 0) this.mendT -= dt;
+    if (this.priestess) this.tickTrail(dt);
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
@@ -1085,6 +1247,11 @@ export class Player implements Body {
       this.charge = 0;
       // Ninja: TUTUN BOMBASI — chiqqan joyda tutun, ko'rinmaslik va orqadan zarba oynasi
       if (this.shinobi) this.vanish();
+      // Rohiba: MUQADDAS QADAM — chiqqan joydan iz boshlanadi (davomi dash bo'ylab, tickTrail)
+      if (this.priestess) {
+        this.trail.push({ x: this.x, y: this.y + 4, life: this.trailLife });
+        sfx.holyStep();
+      }
       // Samuray: mukammal chetlanish oynasi shu lahzadan; dash parry oynasini yopadi
       if (this.samurai) {
         this.dashAge = 0;
@@ -1144,6 +1311,11 @@ export class Player implements Body {
           // shurikenlar: qisqa otish pozasi, bossga ham uchadi
           this.spinTimer = THROW_TIME;
           this.throwStars();
+        } else if (this.priestess) {
+          // NUR KAFTI: ikki kaft oldinga — uzun oltin nur (zarba maydoni — beamBox)
+          this.spinTimer = BEAM_TIME;
+          this.beamed = true;
+          sfx.palmBeam();
         } else if (this.paladin) {
           // OSMON HUKMI: qilich yerga tushdi — to'lqin va gangitish (Game)
           sfx.judgment();
@@ -1186,7 +1358,11 @@ export class Player implements Body {
       this.hitSet.clear();
       if (this.samurai) this.startSlash();
       else if (this.shinobi) this.startTwin();
-      else if (this.gunner) sfx.gunshot();
+      else if (this.priestess) {
+        // kaftlar navbat bilan: o'ng, chap, o'ng...
+        this.palm = !this.palm;
+        sfx.palmStrike(this.palm);
+      } else if (this.gunner) sfx.gunshot();
       else sfx.attack();
       if (this.tone) sfx.skinTone(this.tone);
       this.anim.set("attack", true);
@@ -1254,6 +1430,22 @@ export class Player implements Body {
     this.hideT = Math.max(this.hideT, this.vanishTime);
     this.ambushT = this.vanishTime + AMBUSH_GRACE;
     sfx.smokeBomb();
+  }
+
+  /**
+   * Rohiba izi: dash paytida har TRAIL_STEP px da yangi nuqta, nuqtalar so'nadi; izda turgan Rohiba
+   * sekin jon tiklaydi (bless — chegara bilan).
+   */
+  private tickTrail(dt: number) {
+    for (const d of this.trail) d.life -= dt;
+    if (this.trail.some((d) => d.life <= 0)) this.trail = this.trail.filter((d) => d.life > 0);
+    if (this.dashing) {
+      const last = this.trail[this.trail.length - 1];
+      if (!last || Math.hypot(this.x - last.x, this.y + 4 - last.y) >= TRAIL_STEP)
+        this.trail.push({ x: this.x, y: this.y + 4, life: this.trailLife });
+    }
+    if (inTrail(this.trail, { x: this.x, y: this.y + 4 })) this.bless(dt);
+    else this.blessT = 0;
   }
 
   /** Ko'rinmaslikdan keyingi birinchi hujum: ko'paytuvchi qaytadi, ko'rinmaslik buziladi. */
@@ -1689,9 +1881,11 @@ export class Player implements Body {
       if (this.iai) this.renderAfterimages(ctx, state, frame);
     }
     if (this.shinobi) [state, frame] = this.shinobiFrame();
+    if (this.priestess) [state, frame] = this.priestessFrame();
     // vizual qatlam (heroAnim.ts): oraliq kadr, burilish va zarba siqilishi — faqat ko'rinish
     const plain = state === this.anim.state && frame === this.anim.frame;
-    const sub = plain && !this.samurai && !this.shinobi ? subFrame(this.anim) : 0;
+    const sub =
+      plain && !this.samurai && !this.shinobi && !this.priestess ? subFrame(this.anim) : 0;
     const [sx, sy] = plain ? heroScale(this.vis, this.anim) : [1, 1];
     const scaled = sx !== 1 || sy !== 1;
     if (scaled) {
@@ -1758,6 +1952,22 @@ export class Player implements Body {
     if (this.spinTimer > 0) return ["attack", F.throw];
     if (this.charge >= Math.min(0.2, this.chargeTime)) return ["attack", F.aim];
     if (a.state === "attack") return ["attack", (this.blade ? F.left : 0) + Math.min(2, a.frame)];
+    return [a.state, a.frame];
+  }
+
+  /**
+   * Rohiba kadri: o'ng (0..2) yoki chap (3..5) kaft zarbasi, NUR KAFTI zaryadi/otishi, muqaddas qadam.
+   * Faqat Animator holati, `palm`, `charge` va `spinTimer` dan — onlayn ko'zgu ham shu bilan chizadi.
+   */
+  priestessFrame(): [AnimState, number] {
+    const F = PRIESTESS_FRAME;
+    const a = this.anim;
+    if (this.casting && this.superFrame >= 0 && !this.dead) return ["attack", this.superFrame];
+    if (this.dead || a.state === "hurt") return [a.state, a.frame];
+    if (this.dashing) return ["attack", F.dash];
+    if (this.spinTimer > 0) return ["attack", F.beam];
+    if (this.charge >= Math.min(0.2, this.chargeTime)) return ["attack", F.aim];
+    if (a.state === "attack") return ["attack", (this.palm ? F.left : 0) + Math.min(2, a.frame)];
     return [a.state, a.frame];
   }
 

@@ -1,6 +1,7 @@
 import { t } from "@/i18n";
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
-export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai" | "shinobi";
+export type Hero =
+  "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai" | "shinobi" | "priestess";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -81,6 +82,16 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     trail: "rgba(90,84,104,0.8)",
     uiText: "#ff8a94",
     empty: "#2a1418",
+  },
+  // Rohiba (id "priestess"): oq-oltin ruhoniy libos va nur halqasi. Paladinning to'q oltinidan farqli —
+  // och, iliq oltin (shafaq) va deyarli oq porlash; izi — oltin nur
+  priestess: {
+    accent: "#ffd77a",
+    accentDark: "#b0781e",
+    glow: "#fffbe8",
+    trail: "rgba(255,215,122,0.8)",
+    uiText: "#ffe9a8",
+    empty: "#3a2e14",
   },
 };
 
@@ -184,6 +195,12 @@ export const SAMURAI_PRICE = 600;
  */
 export const SHINOBI_PRICE = 600;
 
+/**
+ * Rohiba narxi: Samuray va Ninja bilan bir qatorda (600 oltin ≈ 3 ta uch dunyoli o'yin). Davolovchi
+ * jangchi — yolg'iz o'yinda ham zarba bilan jon tiklaydi, onlaynda ittifoqchilarni davolaydi.
+ */
+export const PRIESTESS_PRICE = 600;
+
 export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
@@ -267,6 +284,18 @@ export const HERO_LIST: readonly HeroInfo[] = [
     price: SHINOBI_PRICE,
     get desc() {
       return t("hero.shinobi.desc");
+    },
+  },
+  {
+    id: "priestess",
+    role: "warrior",
+    get name() {
+      return t("hero.priestess.name");
+    },
+    theme: HERO_THEME.priestess,
+    price: PRIESTESS_PRICE,
+    get desc() {
+      return t("hero.priestess.desc");
     },
   },
 ];

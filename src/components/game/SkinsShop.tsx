@@ -146,13 +146,17 @@ export function SkinShowcase({
           ? t("sk.iai")
           : hero === "shinobi"
             ? t("sk.shuriken")
-            : t("sk.strong")
+            : hero === "priestess"
+              ? t("sk.beam")
+              : t("sk.strong")
         : phase === "dash"
           ? hero === "mage"
             ? t("sk.teleport")
             : hero === "shinobi"
               ? t("sk.smoke")
-              : t("sk.dash")
+              : hero === "priestess"
+                ? t("sk.step")
+                : t("sk.dash")
           : t("sk.idle");
   return (
     <figure className="flex flex-col items-center gap-1" aria-label={t("sk.previewAria")}>
