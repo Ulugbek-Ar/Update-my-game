@@ -80,6 +80,8 @@ import { friends, useFriends } from "@/account/friends";
 import type { FriendInfo } from "@/account/protocol";
 import { checkLevelUp } from "@/account/progression";
 import { XP, addXp, type LevelUp } from "@/account/xp";
+import { LANGS, getLang, initLang, setLang, t, tk } from "@/i18n";
+import { useLang } from "@/i18n/react";
 
 /** Telegram Mini App API (faqat Telegram ichida mavjud) */
 interface TelegramWebApp {
@@ -144,6 +146,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  // til o'zgarsa butun menyu qayta chiziladi; til klientda aniqlanadi (gidratsiya o'zbekcha)
+  useLang();
+  useEffect(() => initLang(), []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
   const [started, setStarted] = useState(false);
@@ -1868,6 +1873,26 @@ function SettingsWindow({
         <div className="settings-body flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-4 pb-4 pt-2">
           {tab === "general" ? (
             <>
+              <div className="flex flex-col gap-2 text-foreground">
+                <span>{t("settings.lang")}</span>
+                <div role="radiogroup" aria-label={t("settings.lang")} className="flex flex-wrap gap-2">
+                  {LANGS.map((l) => (
+                    <button
+                      key={l.id}
+                      role="radio"
+                      aria-checked={getLang() === l.id}
+                      onClick={() => setLang(l.id)}
+                      className={`border-2 px-2 py-1 ${pixelPress} ${pixelFocus} ${
+                        getLang() === l.id
+                          ? "border-primary text-primary"
+                          : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {slider("music", "Musiqa ovozi", () => sfx.wave())}
               {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
               <Toggle
