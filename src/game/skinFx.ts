@@ -94,13 +94,31 @@ export type TrailKind =
   "square" | "snow" | "smoke" | "sparkle" | "ember" | "sand" | "shadow" | "leaf";
 /** Afsonaviy: zarba tekkanda ekranda kichik shakl */
 export type ImpactKind =
-  "crystal" | "flare" | "crescent" | "gust" | "phoenix" | "moon" | "eclipse" | "shuriken" | "lotus";
+  | "crystal"
+  | "flare"
+  | "crescent"
+  | "gust"
+  | "phoenix"
+  | "moon"
+  | "eclipse"
+  | "shuriken"
+  | "lotus"
+  | "fang";
 /** Afsonaviy: turganda o'ziga xos harakat (ko'z porlashi, aura...) va hujumdagi "flourish" */
 export type FlairKind =
-  "frost" | "halo" | "eyes" | "scarf" | "embers" | "moon" | "eclipse" | "wraith" | "nimbus";
+  | "frost"
+  | "halo"
+  | "eyes"
+  | "scarf"
+  | "embers"
+  | "moon"
+  | "eclipse"
+  | "wraith"
+  | "nimbus"
+  | "lunar";
 /** Afsonaviy: hujum ovoziga qo'shiladigan o'z ohangi (Web Audio) */
 export type ToneKind =
-  "chime" | "sun" | "night" | "steppe" | "flame" | "moon" | "eclipse" | "ghost" | "temple";
+  "chime" | "sun" | "night" | "steppe" | "flame" | "moon" | "eclipse" | "ghost" | "temple" | "howl";
 
 export interface SkinFx {
   particle: ParticleShape;
@@ -280,6 +298,21 @@ export const DEFAULT_THEME: Record<Hero, SkinTheme> = {
     shade: "#3a2e14",
     mist: "#fff2d0",
   },
+  // panja izi va ruhiy bo'rilar — ko'kish-kumush (accent) va oq-ko'k yadro (glow, edge), uchqun —
+  // och ko'k, sakrash halqasi — po'lat (core, rim), yoriq/chang — tungi ko'k va mo'yna oqi (mist)
+  wolf: {
+    ...HERO_THEME.wolf,
+    edge: "#e4f0ff",
+    inner: "#7fb0ff",
+    spark: "#c8e0ff",
+    hot: "#b8d4ff",
+    core: "#5a74a8",
+    rim: "#d6dae2",
+    glint: "#ffffff",
+    ink: "#0e1424",
+    shade: "#16203a",
+    mist: "#d6dae2",
+  },
 };
 
 const DEFAULT_LOOKS = Object.fromEntries(
@@ -340,6 +373,7 @@ const HEAD_Y: Record<Hero, number> = {
   samurai: -7,
   shinobi: -7,
   priestess: -9,
+  wolf: -8,
 };
 
 /** Flair chizishi uchun kerakli o'yinchi maydonlari (Player va onlayn RealmPlayer.p) */
@@ -479,6 +513,16 @@ export function renderFlair(
       px(c, withAlpha(t.glint, 0.9), x + dir * 1, hy + 1, 1, 1);
       px(c, withAlpha(t.glint, 0.9), x + dir * 4, hy + 1, 1, 1);
     }
+  } else if (kind === "lunar") {
+    // oy bo'risi: bosh tepasida kichik oy o'rog'i va quloq uchlarida kumush yaltirash
+    const mx = x - dir * 6;
+    px(c, withAlpha(t.accent, f ? 0.9 : 0.6), mx, hy - 9, 2, 1);
+    px(c, withAlpha(t.accent, f ? 0.9 : 0.6), mx - 1, hy - 8, 1, 2);
+    px(c, withAlpha(t.accent, f ? 0.9 : 0.6), mx, hy - 6, 2, 1);
+    if (!reduced) {
+      px(c, withAlpha(t.glint, 0.8), x - dir * 2, hy - 5, 1, 1);
+      px(c, withAlpha(t.glint, 0.8), x + dir * 3, hy - 5, 1, 1);
+    }
   } else if (kind === "nimbus") {
     // oy rohibasi: bosh atrofida aylanuvchi uchta kumush nur zarrasi va tepada sokin yorug'lik
     for (let i = 0; i < 3; i++) {
@@ -542,6 +586,11 @@ export const TONES: Record<ToneKind, readonly [number, number, OscillatorType, n
   ghost: [
     [1318, 0.14, "sine", 0],
     [988, 0.18, "sine", 0.07],
+  ],
+  // uzoq uvlash: ko'tariluvchi ikki nota
+  howl: [
+    [440, 0.22, "sine", 0],
+    [660, 0.2, "sine", 0.08],
   ],
   // ibodatxona qo'ng'irog'i: past va yuqori sokin nota
   temple: [

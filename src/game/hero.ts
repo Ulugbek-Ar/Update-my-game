@@ -1,7 +1,15 @@
 import { t } from "@/i18n";
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
 export type Hero =
-  "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai" | "shinobi" | "priestess";
+  | "knight"
+  | "mage"
+  | "hunter"
+  | "gunner"
+  | "paladin"
+  | "samurai"
+  | "shinobi"
+  | "priestess"
+  | "wolf";
 
 export const HERO_KEY = "pixel-rpg-hero";
 
@@ -92,6 +100,16 @@ export const HERO_THEME: Record<Hero, HeroTheme> = {
     trail: "rgba(255,215,122,0.8)",
     uiText: "#ffe9a8",
     empty: "#3a2e14",
+  },
+  // Bo'ri-qiz Varvar (id "wolf"): oy nuridagi ruhiy bo'rilar — sovuq ko'kish-kumush; g'azabda ko'zlari
+  // qizil porlaydi (o'sha rang — sprayt va effektlarda alohida)
+  wolf: {
+    accent: "#7fb0ff",
+    accentDark: "#2a4a8a",
+    glow: "#e4f0ff",
+    trail: "rgba(127,176,255,0.8)",
+    uiText: "#b8d4ff",
+    empty: "#16203a",
   },
 };
 
@@ -201,6 +219,12 @@ export const SHINOBI_PRICE = 600;
  */
 export const PRIESTESS_PRICE = 600;
 
+/**
+ * Bo'ri-qiz Varvar narxi: Samuray, Ninja va Rohiba bilan bir qatorda (600 oltin). Eng yaqin masofa
+ * va eng tez qo'l jangchisi — g'azab to'planganda hujumi yanada tezlashadi.
+ */
+export const WOLF_PRICE = 600;
+
 export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
@@ -296,6 +320,18 @@ export const HERO_LIST: readonly HeroInfo[] = [
     price: PRIESTESS_PRICE,
     get desc() {
       return t("hero.priestess.desc");
+    },
+  },
+  {
+    id: "wolf",
+    role: "warrior",
+    get name() {
+      return t("hero.wolf.name");
+    },
+    theme: HERO_THEME.wolf,
+    price: WOLF_PRICE,
+    get desc() {
+      return t("hero.wolf.desc");
     },
   },
 ];

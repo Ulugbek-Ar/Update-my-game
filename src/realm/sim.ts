@@ -14,6 +14,9 @@ import {
   PARRY_STUN,
   Player,
   inTrail,
+  LEAP_STUN,
+  RUSH_MUL,
+  RUSH_KNOCK,
   SKY_RADIUS,
   SKY_STUN,
   VOW_RADIUS,
@@ -1607,6 +1610,7 @@ export class RealmSim {
         this.events.push({ type: "heal", pid: rp.id, x: p.x, y: p.y });
       }
     }
+    if (p.wolf) this.updateWolf(rp);
     this.blessFromTrails(rp, dt);
     this.updateLava(rp, dt);
 
@@ -1625,6 +1629,10 @@ export class RealmSim {
             m.stun = Math.max(m.stun, SKY_STUN);
             m.holy = true;
           }
+          // Bo'ri-qiz: BO'RI SAKRASHI qo'nishi gangitadi; har zarba g'azab to'playdi
+          if (p.wolf && p.spinning && !m.evading && m.kind !== "ashking")
+            m.stun = Math.max(m.stun, LEAP_STUN);
+          if (p.wolf) p.clawHit();
           // Samuray: mukammal chetlanishdan keyingi zarba — kritik (2 baravar)
           const crit = p.samurai && p.critReady;
           if (crit) p.critReady = false;
@@ -1808,6 +1816,28 @@ export class RealmSim {
     if (p.bless(dt)) {
       p.mended = false;
       this.events.push({ type: "heal", pid: rp.id, x: p.x, y: p.y });
+    }
+  }
+
+  /**
+   * Bo'ri-qiz olamda: voqea bayroqlari, QON SO'RASH yuragi va YOVVOYI YUGURISH — yo'lidagi moblarni
+   * yelkasi bilan itarib o'tadi (har mobga bir marta).
+   */
+  private updateWolf(rp: RealmPlayer) {
+    const p = rp.p;
+    p.pounced = p.furied = false;
+    if (p.mended) {
+      p.mended = false;
+      this.events.push({ type: "heal", pid: rp.id, x: p.x, y: p.y });
+    }
+    if (p.dashing) {
+      const ram = { x: p.x + p.dashX * 4, y: p.y + p.dashY * 4, size: p.size + 6 } as Body;
+      for (const m of this.mobs) {
+        if (m.dead || m.under || p.rammed.has(m) || !overlap(ram, m)) continue;
+        p.rammed.add(m);
+        this.hit(rp, m, RUSH_MUL * p.damage, RUSH_KNOCK);
+        p.clawHit();
+      }
     }
   }
 

@@ -159,6 +159,10 @@ const THEMES: Record<string, ThemeRow> = {
   "priestess-dawn": ["#ffc89a", "#a8782a", "#fff0e0", "#ffd8c0", "#3a2818", "#fff6ec", "#ffc89a", "#ffe0cc", "#ffd8b0", "#a8782a", "#ffe0cc", "#ffffff", "#1a0c08", "#3a2018", "#ffe8d8"],
   "priestess-jade": ["#7ee0b0", "#2a7a5a", "#e8fff4", "#b8f0d8", "#12302a", "#f0fff8", "#7ee0b0", "#c8f8e4", "#a8ecd0", "#2a7a5a", "#c8f8e4", "#ffffff", "#06140e", "#12302a", "#d8fff0"],
   "priestess-moon": ["#a8c8ff", "#5a5a8a", "#f4f8ff", "#d0e0ff", "#141e38", "#ffffff", "#a8c8ff", "#e0ecff", "#c0d8ff", "#5a5a8a", "#e0ecff", "#ffffff", "#080c18", "#141e38", "#e8f0ff"],
+  // Varvar: Kul bo'ri — kulrang-kumush; Qor bo'risi — muzli ko'k-oq; Oy bo'risi — oy oltini va tungi ko'k
+  "wolf-ash": ["#c0c0c8", "#5a5a62", "#f0f0f4", "#d8d8e0", "#1a1a20", "#ffffff", "#c0c0c8", "#e0e0e8", "#d0d0d8", "#6a6a72", "#d8d8e0", "#ffffff", "#0c0c10", "#2a2a30", "#e0e0e8"],
+  "wolf-frost": ["#9ad0f0", "#2f7f8f", "#f4faff", "#c8e8ff", "#14283a", "#ffffff", "#9ad0f0", "#d8f0ff", "#b8e0ff", "#2f7f8f", "#d8f0ff", "#ffffff", "#0a1420", "#14283a", "#e8f6ff"],
+  "wolf-moon": ["#f4e8a0", "#8a7a3a", "#fffbe8", "#fff2c0", "#2a2410", "#ffffff", "#f4e8a0", "#fff6d0", "#ffeeb0", "#2a3a6a", "#c8d4f0", "#ffffff", "#0a0e1a", "#1a2440", "#e8eef8"],
   // Olov Paladin: oltin-sariq alanga, oq yadro (xavf zonasining qizilidan uzoq)
   "paladin-flame": ["#ffc24a", "#b8620a", "#fff0b0", "#ffc24a", "#3a1e08", "#fffbe8", "#ffd870", "#ffe08a", "#fff0b0", "#b8620a", "#fff0b0", "#ffffff", "#170602", "#4a1a06", "#ffd870"],
 };
@@ -212,6 +216,12 @@ const DEFS: Record<Hero, readonly Def[]> = {
     ["dawn", "TONG LOTOSI", ["#1a0e0c", "#fff0ea", "#d8a090", "#ff9a6a", "#eab896"]],
     ["jade", "NEFRIT ROHIBA", ["#08140e", "#e8f6ee", "#7aa890", "#3ec890", "#e2b48e"]],
     ["moon", "OY ROHIBASI", ["#0a0e1a", "#2a3456", "#5a6a9a", "#c8dcff", "#e8c8b0"]],
+  ],
+  // Varvar: kontur va soch, zirh (va ko'zlar), mo'yna, oltin taqinchoq, teri
+  wolf: [
+    ["ash", "KUL BO'RI", ["#0c0c10", "#6a6a72", "#c0c0c8", "#d8a02a", "#d8a07a"]],
+    ["frost", "QOR BO'RISI", ["#0a1420", "#4a90c8", "#f4faff", "#c8e8ff", "#e8c8b0"]],
+    ["moon", "OY BO'RISI", ["#0a0e1a", "#2a3a6a", "#c8d4f0", "#f4e8a0", "#e8c8b0"]],
   ],
 };
 
@@ -341,6 +351,23 @@ const FX: Record<string, SkinFx> = {
     particle: "leaf",
     trail: "sparkle",
     bits: ["#c8f8e4", "#7ee0b0"],
+  },
+  // NOYOB: qor bo'risi — qor zarralari va qor izi
+  "wolf-frost": {
+    ...PLAIN_FX,
+    particle: "shard",
+    trail: "snow",
+    bits: ["#d8f0ff", "#9ad0f0"],
+  },
+  // AFSONAVIY: oy bo'risi — kumush yulduzchalar, soya izi, yarim oy zarbasi, porlovchi ko'zlar va
+  // uzoq uvlash ohangi
+  "wolf-moon": {
+    particle: "star",
+    trail: "shadow",
+    bits: ["#ffffff", "#f4e8a0"],
+    impact: "fang",
+    flair: "lunar",
+    tone: "howl",
   },
   // AFSONAVIY: oy rohibasi — kumush yulduzchalar, nur izi, yarim oy zarbasi, halo atrofida aylanuvchi
   // oy nurlari, sokin qo'ng'iroq ohangi

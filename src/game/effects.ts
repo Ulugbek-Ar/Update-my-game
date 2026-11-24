@@ -470,6 +470,18 @@ export class Effects {
           c.lineTo(m.x + Math.cos(an + 0.5) * r * 0.35, m.y + Math.sin(an + 0.5) * r * 0.35);
         }
         c.stroke();
+      } else if (m.kind === "fang") {
+        // bo'ri jag'i: yuqori va pastki ikki yoy, ichida tishlar
+        c.arc(m.x, m.y - r * 0.25, r, Math.PI * 0.15, Math.PI * 0.85);
+        c.moveTo(m.x + r * Math.cos(Math.PI * 1.15), m.y + r * 0.25 + r * Math.sin(Math.PI * 1.15));
+        c.arc(m.x, m.y + r * 0.25, r, Math.PI * 1.15, Math.PI * 1.85);
+        for (const dx of [-0.4, 0, 0.4]) {
+          c.moveTo(m.x + dx * r, m.y + r * 0.7);
+          c.lineTo(m.x + dx * r, m.y + r * 0.4);
+          c.moveTo(m.x + dx * r, m.y - r * 0.7);
+          c.lineTo(m.x + dx * r, m.y - r * 0.4);
+        }
+        c.stroke();
       } else if (m.kind === "lotus") {
         // nur lotosi: oltita gulbarg (bodomsimon halqalar), aylanib ochiladi
         for (let i = 0; i < 6; i++) {

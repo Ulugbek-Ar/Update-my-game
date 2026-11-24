@@ -915,6 +915,74 @@ class SoundFX {
     this.tone(1175, 0.16, "sine", 0.035, undefined, 0.08);
   }
 
+  /** Bo'ri-qiz panjasi: qisqa "shirt" tirnash — chap panja pastroq; g'azabda o'tkirroq */
+  clawSwipe(left = false, fury = false) {
+    this.noise(0.06, fury ? 0.05 : 0.04, left ? 3200 : 4200);
+    this.tone(left ? 330 : 392, 0.05, "sawtooth", 0.02, left ? 220 : 262);
+  }
+
+  /** Bo'ri sakrashi: tez ko'tariluvchi "vush" */
+  wolfLeap() {
+    this.noise(0.18, 0.04, 1800);
+    this.tone(180, 0.18, "triangle", 0.035, 360);
+  }
+
+  /** Qo'nish: yerga og'ir zarba */
+  wolfLand() {
+    this.tone(90, 0.25, "sine", 0.07, 45);
+    this.noise(0.16, 0.06, 900);
+  }
+
+  /** Yovvoyi yugurish: past shamol va panja shitiri */
+  wolfRush() {
+    this.noise(0.16, 0.045, 1400);
+    this.tone(140, 0.12, "triangle", 0.03, 110);
+  }
+
+  /** G'azab yondi: qisqa o'kirik (pastga tushuvchi arra ohangi) */
+  wolfFury() {
+    this.tone(220, 0.3, "sawtooth", 0.035, 110);
+    this.tone(330, 0.22, "square", 0.015, 165, 0.03);
+  }
+
+  /** BO'RI UVLASHI: uzun, ko'tarilib-tushuvchi uvlash (ikki ovoz) */
+  wolfHowl(dur = 1.1) {
+    const d = Math.max(0.5, dur);
+    this.tone(392, d * 0.55, "sine", 0.05, 587);
+    this.tone(587, d * 0.45, "sine", 0.045, 440, d * 0.5);
+    this.tone(196, d, "triangle", 0.02, 294);
+  }
+
+  /** To'da paydo bo'ldi: yengil shamol va bir nechta qisqa vovullash */
+  wolfPack(dur = 1.2) {
+    this.noise(Math.max(0.3, dur * 0.4), 0.03, 1200);
+    for (let i = 0; i < 4; i++)
+      this.tone(260 + i * 30, 0.08, "square", 0.015, 200, (i * Math.max(0.3, dur)) / 6);
+  }
+
+  /** Ruhiy bo'ri nishonni ko'rdi: qisqa "hrr" */
+  wolfMark() {
+    this.tone(150, 0.06, "sawtooth", 0.012, 120);
+  }
+
+  /** Tishlash: "kirt" */
+  wolfBite() {
+    this.noise(0.05, 0.05, 5200);
+    this.tone(523, 0.05, "square", 0.02, 262);
+  }
+
+  /** Bossni tishlash: og'irroq */
+  wolfBossBite() {
+    this.noise(0.1, 0.07, 3000);
+    this.tone(130, 0.3, "sawtooth", 0.04, 82);
+  }
+
+  /** Bo'rilar tumanga aylanadi: yuqoridan pastga sokin shivir */
+  wolfMist() {
+    this.noise(0.6, 0.03, 2400);
+    this.tone(880, 0.5, "sine", 0.02, 440);
+  }
+
   /** OLTIN LOTOS tayyorlanishi: Rohiba ko'tariladi — past "om" va ko'tariluvchi yorug' tovush */
   lotusRise() {
     this.tone(130, 0.9, "sine", 0.05, 196);

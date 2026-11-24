@@ -33,6 +33,10 @@
  *     kaft zarbalari = 0.6 × zarar / zarba_orasi (0.25 s) = 2.4, NUR KAFTI (strongMul × zarar) har
  *     (spinCd + 0.5 s) da — sikl ≈ 2.69: Paladin va Ritsar oralig'ida. Davolash — formulaga kirmaydi.
  *
+ *   Bo'ri-qiz Varvar:
+ *     panja zarbalari = 0.41 × zarar / zarba_orasi (0.17 s) ≈ 2.41, BO'RI SAKRASHI (strongMul × zarar)
+ *     har (spinCd + 0.45 s) da — sikl ≈ 2.68: Paladin va Ritsar oralig'ida. G'AZAB — mahorat.
+ *
  * Kartalar (O'TKIR QILICH, CHAQQON QO'L, UCH SHAR ...) va do'kon (CHARXLANGAN TIG') Player
  * ko'rsatkichlarini o'zgartiradi — formula ularni Player'dan o'qiydi, shuning uchun hammasi hisobda.
  *
@@ -45,7 +49,7 @@
  * BOSS_FIGHT_TIME = 60 s: toza urib turganda ham ~60 s kerak (qochish, faza daxlsizligi va gullar
  * bilan amalda 70–110 s). Asosiy jon (30/40/50) — pastki chegara.
  */
-import { KATANA_MUL, PALM_MUL, SHURIKEN_MUL, TWIN_MUL, type Player } from "./player";
+import { CLAW_MUL, KATANA_MUL, PALM_MUL, SHURIKEN_MUL, TWIN_MUL, type Player } from "./player";
 
 /** Ideal urib turishda boss shuncha soniyada o'ladi */
 export const BOSS_FIGHT_TIME = 60;
@@ -99,6 +103,12 @@ export function heroDps(p: Player) {
     const basic = (TWIN_MUL * p.damage) / p.attackCd;
     // bitta nishonga yelpig'ichdan bitta shuriken tegadi
     const cycle = (basic * p.spinCd + SHURIKEN_MUL * p.damage) / (p.spinCd + p.chargeTime);
+    return Math.max(basic, cycle);
+  }
+  if (p.wolf) {
+    // G'AZAB (hujum tezligi) — mahorat, formulaga kirmaydi
+    const basic = (CLAW_MUL * p.damage) / p.attackCd;
+    const cycle = (basic * p.spinCd + p.strongMul * p.damage) / (p.spinCd + p.chargeTime);
     return Math.max(basic, cycle);
   }
   if (p.priestess) {

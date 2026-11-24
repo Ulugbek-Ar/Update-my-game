@@ -26,6 +26,7 @@ import { ArrowScene } from "./arrowsFx";
 import { FrenzyScene } from "./frenzyFx";
 import { StormScene } from "./stormFx";
 import { LotusScene } from "./lotusFx";
+import { HowlScene } from "./howlFx";
 
 /** Sahna har kadr oladigan muhit: egasi (o'yinchi) joyi, skin ranglari, zarrachalar */
 export interface SceneCtx {
@@ -189,6 +190,7 @@ export const SUPER_SCENES: Record<string, () => SuperScene> = {
   frenzy: () => new FrenzyScene(),
   storm: () => new StormScene(),
   lotus: () => new LotusScene(),
+  howl: () => new HowlScene(),
 };
 
 /** Super sahnasi (o'z sahnasi yo'q bo'lsa — oddiy) */

@@ -85,6 +85,7 @@ const HERO_IDS = [
   "samurai",
   "shinobi",
   "priestess",
+  "wolf",
 ] as const satisfies readonly Hero[];
 const num = z.number().finite();
 const axis = num.min(-1).max(1);
@@ -261,7 +262,14 @@ export const PF_DASH = 1,
    * Rohiba: NUR KAFTI otilmoqda (bit PF_IAI bilan bir xil — bayroq qahramonga qarab o'qiladi).
    * Chap kaft — PF_LEFT, zaryad — PF_CHARGE. Eski klient Rohibani Ritsar ko'radi.
    */
-  PF_BEAM = 16;
+  PF_BEAM = 16,
+  /**
+   * Bo'ri-qiz (qahramonlar versiyasi 4): BO'RI SAKRASHI (bit PF_IAI bilan bir xil) va G'AZAB (bit
+   * PF_PARRY bilan bir xil) — bayroq qahramonga qarab o'qiladi. Chap panja — PF_LEFT, zaryad —
+   * PF_CHARGE. Eski klient Varvarni Ritsar ko'radi.
+   */
+  PF_LEAP = 16,
+  PF_FURY = 64;
 
 /**
  * [id, qahramon, ism, x, y, jon, max jon, fx, fy, anim, kadr (-1 — klient o'zi aylantiradi), bayroqlar,

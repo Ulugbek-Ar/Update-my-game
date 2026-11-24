@@ -19,7 +19,7 @@ const CAST: readonly { kind: SpriteKind; x: number; y: number; flip: boolean; ph
   { kind: "samurai", x: 87, y: GROUND - 14, flip: false, phase: 0.45 },
   { kind: "skeleton", x: 226, y: GROUND - 14, flip: true, phase: 0.2 },
   { kind: "slime", x: 247, y: GROUND - 8, flip: true, phase: 0.5 },
-  { kind: "wolf", x: 268, y: GROUND - 13, flip: true, phase: 0.1 },
+  { kind: "icewolf", x: 268, y: GROUND - 13, flip: true, phase: 0.1 },
   { kind: "treant", x: 294, y: GROUND - 19, flip: true, phase: 0.4 },
 ];
 
@@ -98,7 +98,7 @@ export function castPose(
 ): { state: "idle" | "walk" | "attack"; frame: number; sub: number } {
   const cyc = t * 2 + phase * 2;
   const idle =
-    kind === "samurai" || kind === "shinobi" || kind === "priestess"
+    kind === "samurai" || kind === "shinobi" || kind === "priestess" || kind === "wolf"
       ? { state: "idle" as const, frame: Math.floor(t * 4 + phase * 4) % 4, sub: 0 }
       : {
           state: "idle" as const,
@@ -112,7 +112,7 @@ export function castPose(
     const hop = (t + 1.3) % 5;
     return hop < 0.56 ? { state: "walk", frame: Math.floor(hop / 0.14), sub: 0 } : idle;
   }
-  if (kind === "wolf" || kind === "treant") return idle;
+  if (kind === "icewolf" || kind === "treant") return idle;
   return act < ACT_TIME
     ? { state: "attack", frame: Math.min(2, Math.floor(act / (ACT_TIME / 3))), sub: 0 }
     : idle;

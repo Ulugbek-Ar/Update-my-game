@@ -11,6 +11,7 @@ import type { Input } from "./input";
 import { SAMURAI_FRAME, SAMURAI_FRAMES, renderSprite, type SpritePalette } from "./sprites";
 import { SHINOBI_FRAME, SHINOBI_FRAMES } from "./shinobiSprites";
 import { PRIESTESS_FRAME, PRIESTESS_FRAMES } from "./priestessSprites";
+import { WOLF_FRAME, WOLF_FRAMES, renderWolfEyes } from "./wolfSprites";
 import { sfx } from "./audio";
 import type { Hero } from "./hero";
 import type { FlairKind, ToneKind } from "./skinFx";
@@ -247,6 +248,64 @@ export const MERCY_CARD = 7;
 export const MEND_GAP = 4;
 /** LOTOS BARAKASI (super kartasi): super shuncha qo'shimcha yurak tiklaydi */
 export const LOTUS_GRACE = 1;
+
+/**
+ * BO'RI-QIZ VARVAR (id "wolf"): 7 yurak, tezlik 112 — eng tez va eng yaqin masofadagi qo'l jangchisi.
+ * PANJA ZARBALARI: chap-o'ng-chap temir panjalar, juda qisqa masofa (CLAW_REACH): 0.17 s da bir zarba
+ * (eng tez), har biri Ritsarnikining 41% i. DPS = 0.41 / 0.17 ≈ 2.41, BO'RI SAKRASHI bilan ≈ 2.68 — Paladin
+ * (≈ 2.38) va Ritsar (≈ 2.78) oralig'ida (bossPower.ts). G'AZAB (hujum tezligi) — mahorat, formulaga
+ * kirmaydi.
+ */
+export const WOLF_MAX_HP = 7;
+export const WOLF_SPEED = 112;
+export const CLAW_CD = 0.17;
+export const CLAW_TIME = 0.11;
+export const CLAW_REACH = 12;
+export const CLAW_MUL = 0.41;
+/**
+ * BO'RI SAKRASHI (kuchli hujum): bosib turib qo'yib yuborilsa — oldinga sakraydi (havoda daxlsiz),
+ * yerga tushganda atrofidagi (radius leapR) hammaga strongMul zarar va LEAP_STUN gangitish.
+ */
+export const LEAP_CD = 3;
+export const LEAP_CHARGE = 0.45;
+export const LEAP_MUL = 2;
+/** Butun sakrash (uchish + qo'nish) va oxiridagi qo'nish zarbasi oynasi */
+export const LEAP_TIME = 0.34;
+export const LEAP_LAND = 0.1;
+export const LEAP_SPEED = 170;
+export const LEAP_R = 22;
+/** KENG SAKRASH kartasi: qo'nish radiusi shuncha kattalashadi */
+export const LEAP_CARD = 10;
+export const LEAP_STUN = 0.5;
+/**
+ * YOVVOYI YUGURISH (dash): qisqa tez yugurish, yo'lidagilarni yelkasi bilan itarib o'tadi (RUSH_MUL
+ * zarar, har dushmanga bir marta).
+ */
+export const WOLF_DASH_CD = 0.9;
+export const RUSH_TIME = 0.22;
+export const RUSH_SPEED = 230;
+export const RUSH_MUL = 0.4;
+export const RUSH_KNOCK = 260;
+/** BO'RI TISHI artefakti: yugurish tekkan dushman shuncha soniya gangiydi */
+export const RUSH_STUN = 0.8;
+/**
+ * G'AZAB: har tekkan zarba RAGE_HIT (G'AZAB OLOVI kartasi bilan ×RAGE_CARD), zarba yeganda RAGE_HURT;
+ * to'lganda RAGE_TIME soniya hujumlar orasi RAGE_HASTE marta (tezroq), ko'zlari qizil porlaydi.
+ * RAGE_IDLE soniya jang bo'lmasa g'azab sekin so'nadi (RAGE_DECAY / s).
+ */
+export const RAGE_HIT = 0.1;
+export const RAGE_CARD = 1.5;
+export const RAGE_HURT = 0.2;
+export const RAGE_TIME = 5;
+/** UZOQ G'AZAB kartasi: g'azab shuncha uzoqroq */
+export const RAGE_TIME_CARD = 2;
+export const RAGE_HASTE = 0.65;
+export const RAGE_IDLE = 2;
+export const RAGE_DECAY = 0.12;
+/** QON SO'RASH kartasi: har shuncha zarbada +1 yurak (davolash chegarasi MEND_GAP bilan) */
+export const BLOOD_HITS = 15;
+/** OY G'AZABI (super kartasi): superdan keyingi g'azab shuncha uzoqroq */
+export const MOON_RAGE = 3;
 
 export interface TrailDot {
   x: number;
@@ -603,6 +662,29 @@ export class Player implements Body {
   mendT = 0;
   mended = false;
   /**
+   * Bo'ri-qiz: kombo qadami (0 — chap, 1 — o'ng, 2 — chap), sakrash yo'nalishi va qo'nish radiusi,
+   * g'azab (0..1), g'azab vaqti, jangsiz o'tgan vaqt, g'azab to'planishi va davomiyligi, QON SO'RASH.
+   */
+  clawStep = 2;
+  leapX = 1;
+  leapY = 0;
+  leapR = LEAP_R;
+  rage = 0;
+  furyT = 0;
+  rageIdle = 0;
+  rageGain = RAGE_HIT;
+  rageTime = RAGE_TIME;
+  bloodHits = 0;
+  bloodN = 0;
+  /** Super kartalari: OY G'AZABI, TO'DA YUGURISHI */
+  moonRage = false;
+  packRun = false;
+  /** Shu kadrda: sakrab yerga tushdi, g'azab yondi (Game ovoz va effekt) */
+  pounced = false;
+  furied = false;
+  /** Joriy sakrash yerga tushdi (bir sakrashda bir marta) */
+  leapLanded = true;
+  /**
    * Afsonaviy skin animatsiyasi (skinFx.ts; null — yo'q). "moon" (Qizil oy): IAI dan keyin katanani
    * qinga qaytarish kadri. Faqat ko'rinish — satr (son/mantiqiy emas): skin kuch bermaydi
    */
@@ -747,6 +829,29 @@ export class Player implements Body {
       };
       this.anim.defs.attack = { frames: 3, frameTime: PALM_TIME / 3, loop: false };
     }
+    if (hero === "wolf") {
+      this.hp = this.maxHp = WOLF_MAX_HP;
+      this.speed = WOLF_SPEED;
+      this.attackCd = CLAW_CD;
+      this.attackTime = CLAW_TIME;
+      this.reach = CLAW_REACH;
+      this.dashCd = WOLF_DASH_CD;
+      this.spinCd = LEAP_CD;
+      this.chargeTime = LEAP_CHARGE;
+      this.strongMul = LEAP_MUL;
+      // plash mo'ynasi va soch tebranadi: ko'proq kadr, umumiy davomiylik o'sha (1 s, 0.48 s)
+      this.anim.defs.idle = {
+        frames: WOLF_FRAMES.idle,
+        frameTime: 1 / WOLF_FRAMES.idle,
+        loop: true,
+      };
+      this.anim.defs.walk = {
+        frames: WOLF_FRAMES.walk,
+        frameTime: 0.42 / WOLF_FRAMES.walk,
+        loop: true,
+      };
+      this.anim.defs.attack = { frames: 3, frameTime: CLAW_TIME / 3, loop: false };
+    }
   }
 
   get mage() {
@@ -775,6 +880,78 @@ export class Player implements Body {
 
   get priestess() {
     return this.hero === "priestess";
+  }
+
+  get wolf() {
+    return this.hero === "wolf";
+  }
+
+  /** Bo'ri-qiz g'azabda (hujum tezroq, ko'zlar qizil) */
+  get fury() {
+    return this.furyT > 0;
+  }
+
+  /** Bo'ri-qiz havoda (sakrashning uchish qismi) — zarba tegmaydi */
+  get airborne() {
+    return this.wolf && this.spinTimer > LEAP_LAND;
+  }
+
+  /** G'azab to'planadi (zarba yoki zarba yeyish); g'azab paytida to'planmaydi */
+  addRage(n: number) {
+    if (!this.wolf || this.dead) return false;
+    this.rageIdle = 0;
+    if (this.furyT > 0) return false;
+    this.rage = Math.min(1, this.rage + n);
+    // suzuvchi nuqta: 10 × 0.1 aniq 1 bo'lmasligi mumkin
+    if (this.rage >= 1 - 1e-6) this.startFury();
+    return true;
+  }
+
+  /** G'azab yonadi: hujum tezligi oshadi, ko'zlar qizil (super oxirida ham — to'la g'azab) */
+  startFury(time = this.rageTime) {
+    if (!this.wolf) return;
+    this.rage = 1;
+    this.rageIdle = 0;
+    this.furyT = Math.max(this.furyT, time);
+    this.furied = true;
+  }
+
+  /** Bo'ri-qiz zarbasi tegdi (Game, olam): g'azab va QON SO'RASH. true — jon tiklandi. */
+  clawHit() {
+    if (!this.wolf) return false;
+    this.addRage(this.rageGain);
+    if (this.bloodHits <= 0) return false;
+    this.bloodN = Math.min(this.bloodHits, this.bloodN + 1);
+    if (this.bloodN < this.bloodHits || !this.mend(1)) return false;
+    this.bloodN = 0;
+    return true;
+  }
+
+  /** G'azab vaqti va so'nishi (jang bo'lmasa sekin) */
+  private tickRage(dt: number) {
+    if (this.furyT > 0) {
+      this.furyT -= dt;
+      if (this.furyT <= 0) this.furyT = this.rage = 0;
+      return;
+    }
+    this.rageIdle += dt;
+    if (this.rageIdle > RAGE_IDLE && this.rage > 0)
+      this.rage = Math.max(0, this.rage - RAGE_DECAY * dt);
+  }
+
+  /** Sakrash: uchish qismida oldinga siljiydi, qo'nish lahzasida — zarba (pounced, Game) */
+  private tickLeap(dt: number) {
+    if (this.spinTimer > LEAP_LAND) {
+      this.x += this.leapX * LEAP_SPEED * dt;
+      this.y += this.leapY * LEAP_SPEED * dt;
+      this.clamp(this);
+    }
+    if (!this.leapLanded && this.spinTimer - dt <= LEAP_LAND) {
+      this.leapLanded = true;
+      this.pounced = true;
+      this.hitSet.clear();
+      sfx.wolfLand();
+    }
   }
 
   /**
@@ -860,7 +1037,7 @@ export class Player implements Body {
 
   /** Dash/teleport/sakrash paytida yoki undan keyingi himoya dumida daxlsiz. */
   get evading() {
-    return this.dashing || this.guarded;
+    return this.dashing || this.guarded || this.airborne;
   }
 
   get spinning() {
@@ -881,6 +1058,8 @@ export class Player implements Body {
     if (this.shinobi) return this.damage * TWIN_MUL * this.ambushHit;
     // kaft: yengil, NUR KAFTI — kuchli zarba ko'paytuvchisi bilan
     if (this.priestess) return this.damage * (this.spinning ? this.strongMul : PALM_MUL);
+    // panja: yengil va tez, BO'RI SAKRASHI — kuchli zarba ko'paytuvchisi bilan
+    if (this.wolf) return this.damage * (this.spinning ? this.strongMul : CLAW_MUL);
     return this.spinning ? this.damage * this.strongMul : this.damage;
   }
 
@@ -943,6 +1122,8 @@ export class Player implements Body {
       }
     }
     this.hp -= dmg;
+    // Bo'ri-qiz: zarba yeganda g'azab ko'proq to'planadi
+    if (this.wolf && this.hp > 0) this.addRage(RAGE_HURT);
     if (this.hp <= 0) sfx.death();
     else sfx.hurt();
     this.flash = 0.4;
@@ -1057,6 +1238,8 @@ export class Player implements Body {
     this.invuln = 0;
     this.guardAge = -1;
     this.charge = 0;
+    // Bo'ri-qiz: BO'RI UVLASHI tugagach g'azab to'la (OY G'AZABI kartasi bilan uzoqroq)
+    if (this.wolf && !this.dead) this.startFury(this.rageTime + (this.moonRage ? MOON_RAGE : 0));
   }
 
   heal(n: number) {
@@ -1074,6 +1257,11 @@ export class Player implements Body {
   attackBox(): Body | null {
     if (this.paladin) return this.paladinBox();
     if (this.priestess && this.spinning) return this.beamBox();
+    // BO'RI SAKRASHI: havoda zarba yo'q, qo'nishda — atrofdagi keng maydon
+    if (this.wolf && this.spinning)
+      return this.spinTimer <= LEAP_LAND
+        ? ({ x: this.x, y: this.y + 2, size: this.leapR * 2 } as Body)
+        : null;
     // aylana zarba — o'yinchi atrofidagi katta maydon (Ovchida kuchli o'q, Merganda o'qlar uchadi)
     if (this.spinning && !this.hunter && !this.gunner && !this.shinobi)
       return { x: this.x, y: this.y, size: this.reach * 2.4 } as Body;
@@ -1146,10 +1334,12 @@ export class Player implements Body {
     if (this.shinobi && this.ambushT > 0) this.ambushT -= dt;
     if (this.mendT > 0) this.mendT -= dt;
     if (this.priestess) this.tickTrail(dt);
+    if (this.wolf) this.tickRage(dt);
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
     if (this.dashCooldown <= 0) this.dashCharges = this.dashMax;
     if (this.attackTimer > 0) this.attackTimer -= dt;
+    if (this.wolf && this.spinTimer > 0) this.tickLeap(dt);
     if (this.spinTimer > 0) this.spinTimer -= dt;
     if (this.paladin) this.updateSlam(dt);
     if (this.aura) {
@@ -1200,7 +1390,9 @@ export class Player implements Body {
             ? SLIDE_SPEED
             : this.paladin
               ? HAMLA_SPEED
-              : DASH_SPEED;
+              : this.wolf
+                ? RUSH_SPEED
+                : DASH_SPEED;
       // IAI masofasi aniq: oxirgi kadrda faqat qolgan vaqtcha siljiydi (oddiy dash o'zgarmagan)
       const adv = this.iai ? Math.min(dt, left) : dt;
       this.x += this.dashX * sp * adv;
@@ -1227,6 +1419,7 @@ export class Player implements Body {
       !this.hunter &&
       !this.gunner &&
       !this.paladin &&
+      !(this.wolf && this.spinning) &&
       this.dashCharges > 0 &&
       this.hurtTimer <= 0 &&
       this.snare <= 0
@@ -1240,7 +1433,7 @@ export class Player implements Body {
       const l = Math.hypot(dx, dy) || 1;
       this.dashX = dx / l;
       this.dashY = dy / l;
-      this.dashTimer = DASH_TIME;
+      this.dashTimer = this.wolf ? RUSH_TIME : DASH_TIME;
       this.dashCharges--;
       this.dashCooldown = this.dashCd;
       this.attackTimer = 0;
@@ -1251,6 +1444,11 @@ export class Player implements Body {
       if (this.priestess) {
         this.trail.push({ x: this.x, y: this.y + 4, life: this.trailLife });
         sfx.holyStep();
+      }
+      // Bo'ri-qiz: YOVVOYI YUGURISH — yo'lidagilar yangidan itariladi (Game, olam)
+      if (this.wolf) {
+        this.rammed.clear();
+        sfx.wolfRush();
       }
       // Samuray: mukammal chetlanish oynasi shu lahzadan; dash parry oynasini yopadi
       if (this.samurai) {
@@ -1316,6 +1514,20 @@ export class Player implements Body {
           this.spinTimer = BEAM_TIME;
           this.beamed = true;
           sfx.palmBeam();
+        } else if (this.wolf) {
+          // BO'RI SAKRASHI: qarab turgan (yoki joystik) tomonga sakraydi, qo'nishda zarba (tickLeap)
+          this.spinTimer = LEAP_TIME;
+          this.leapLanded = false;
+          let dx = x,
+            dy = y;
+          if (!dx && !dy) {
+            dx = this.fx;
+            dy = this.fy;
+          }
+          const l = Math.hypot(dx, dy) || 1;
+          this.leapX = dx / l;
+          this.leapY = dy / l;
+          sfx.wolfLeap();
         } else if (this.paladin) {
           // OSMON HUKMI: qilich yerga tushdi — to'lqin va gangitish (Game)
           sfx.judgment();
@@ -1349,7 +1561,11 @@ export class Player implements Body {
       loaded
     ) {
       this.attackTimer = this.attackTime;
-      this.cooldown = this.attackCd;
+      // Bo'ri-qiz g'azabda: zarbalar orasi qisqaradi (zarba vaqtidan qisqa emas)
+      this.cooldown =
+        this.wolf && this.fury
+          ? Math.max(this.attackTime + 0.01, this.attackCd * RAGE_HASTE)
+          : this.attackCd;
       if (this.frenzy && this.gunner) {
         // tez otish: oraliq qisqa, otish harakatni to'xtatmaydi (yurib otadi)
         this.cooldown = this.attackCd * this.frenzyRate;
@@ -1362,6 +1578,10 @@ export class Player implements Body {
         // kaftlar navbat bilan: o'ng, chap, o'ng...
         this.palm = !this.palm;
         sfx.palmStrike(this.palm);
+      } else if (this.wolf) {
+        // panjalar: chap, o'ng, chap...
+        this.clawStep = (this.clawStep + 1) % 3;
+        sfx.clawSwipe(this.clawLeft, this.fury);
       } else if (this.gunner) sfx.gunshot();
       else sfx.attack();
       if (this.tone) sfx.skinTone(this.tone);
@@ -1882,10 +2102,13 @@ export class Player implements Body {
     }
     if (this.shinobi) [state, frame] = this.shinobiFrame();
     if (this.priestess) [state, frame] = this.priestessFrame();
+    if (this.wolf) [state, frame] = this.wolfFrame();
     // vizual qatlam (heroAnim.ts): oraliq kadr, burilish va zarba siqilishi — faqat ko'rinish
     const plain = state === this.anim.state && frame === this.anim.frame;
     const sub =
-      plain && !this.samurai && !this.shinobi && !this.priestess ? subFrame(this.anim) : 0;
+      plain && !this.samurai && !this.shinobi && !this.priestess && !this.wolf
+        ? subFrame(this.anim)
+        : 0;
     const [sx, sy] = plain ? heroScale(this.vis, this.anim) : [1, 1];
     const scaled = sx !== 1 || sy !== 1;
     if (scaled) {
@@ -1911,7 +2134,33 @@ export class Player implements Body {
       sub,
     );
     if (scaled) ctx.restore();
+    // Bo'ri-qiz g'azabda: ko'zlari qizil porlaydi
+    if (this.wolf && this.fury && !this.dead)
+      renderWolfEyes(ctx, state, frame, this.x, this.y, this.fx < 0, this.fy < 0);
     ctx.globalAlpha = 1;
+  }
+
+  /** Bo'ri-qiz: shu zarba chap panja bilan (kombo chap-o'ng-chap) */
+  get clawLeft() {
+    return this.clawStep !== 1;
+  }
+
+  /**
+   * Bo'ri-qiz kadri: chap (3..5) yoki o'ng (0..2) panja, sakrash zaryadi, havoda, qo'nish, yovvoyi
+   * yugurish. Faqat Animator holati, `clawStep`, `charge` va `spinTimer` dan — onlayn ko'zgu ham shu
+   * bilan chizadi.
+   */
+  wolfFrame(): [AnimState, number] {
+    const F = WOLF_FRAME;
+    const a = this.anim;
+    if (this.casting && this.superFrame >= 0 && !this.dead) return ["attack", this.superFrame];
+    if (this.dead || a.state === "hurt") return [a.state, a.frame];
+    if (this.dashing) return ["attack", F.rush];
+    if (this.spinTimer > 0) return ["attack", this.spinTimer > LEAP_LAND ? F.leap : F.land];
+    if (this.charge >= Math.min(0.2, this.chargeTime)) return ["attack", F.aim];
+    if (a.state === "attack")
+      return ["attack", (this.clawLeft ? F.left : 0) + Math.min(2, a.frame)];
+    return [a.state, a.frame];
   }
 
   /**

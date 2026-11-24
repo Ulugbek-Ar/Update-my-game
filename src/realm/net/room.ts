@@ -38,6 +38,8 @@ import {
   PF_PARRY,
   PF_LEFT,
   PF_BEAM,
+  PF_LEAP,
+  PF_FURY,
   MARK_KINDS,
   ROOM_CAP,
   SNAPSHOT_EVERY,
@@ -680,7 +682,12 @@ export function netPlayer(
         ? (p.blade ? PF_LEFT : 0) | (p.charge >= 0.2 ? PF_CHARGE : 0)
         : hero === "priestess"
           ? (p.palm ? PF_LEFT : 0) | (p.charge >= 0.2 ? PF_CHARGE : 0) | (p.spinning ? PF_BEAM : 0)
-          : 0);
+          : hero === "wolf"
+            ? (p.clawLeft ? PF_LEFT : 0) |
+              (p.charge >= 0.2 ? PF_CHARGE : 0) |
+              (p.spinning ? PF_LEAP : 0) |
+              (p.fury ? PF_FURY : 0)
+            : 0);
   const out: NetPlayer = [
     o.id,
     hero,

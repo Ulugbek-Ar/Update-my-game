@@ -8,7 +8,7 @@
 import { isSkinId } from "@/game/skins";
 import type { Hero } from "@/game/hero";
 import type { Animator, AnimState } from "@/game/animation";
-import { BEAM_TIME, IAI_MIN, TRAIL_STEP, type IaiDash } from "@/game/player";
+import { BEAM_TIME, IAI_MIN, LEAP_LAND, TRAIL_STEP, type IaiDash } from "@/game/player";
 import { RealmPlayer, RealmSim, TICK_DT, type RealmEvent, type RealmPlayerSave } from "../sim";
 import { RING_MAX, RING_SPEED, RealmMob, type Mark } from "../mobs";
 import type { RealmData } from "../schema";
@@ -24,6 +24,8 @@ import {
   PF_PARRY,
   PF_LEFT,
   PF_BEAM,
+  PF_LEAP,
+  PF_FURY,
   MARK_KINDS,
   type NetMe,
   type NetMob,
@@ -309,6 +311,16 @@ export class RealmMirror {
         const last = p.trail[p.trail.length - 1];
         if (p.dashing && (!last || Math.hypot(p.x - last.x, p.y + 4 - last.y) >= TRAIL_STEP))
           p.trail.push({ x: p.x, y: p.y + 4, life: p.trailLife });
+      }
+      if (p.wolf) {
+        // Bo'ri-qiz: qaysi panja, sakrash zaryadi, sakrash (havodan qo'nishgacha), g'azab ko'zlari
+        p.clawStep = a[11] & PF_LEFT ? 0 : 1;
+        p.charge = a[11] & PF_CHARGE ? 0.2 : 0;
+        const leaping = !!(a[11] & PF_LEAP);
+        if (!leaping) p.spinTimer = 0;
+        else if (p.spinTimer <= 0) p.spinTimer = LEAP_LAND * 2.4;
+        else p.spinTimer = Math.max(0.01, p.spinTimer - dt);
+        p.furyT = a[11] & PF_FURY ? 1 : 0;
       }
       p.flash = a[12];
       rp.titles = a[13] ? [a[13]] : [];

@@ -104,6 +104,10 @@ import {
   BEAM_STUN,
   LOTUS_GRACE,
   inTrail,
+  LEAP_STUN,
+  RUSH_MUL,
+  RUSH_KNOCK,
+  RUSH_STUN,
   type Bolt,
   type Target,
 } from "./player";
@@ -124,6 +128,8 @@ import {
 } from "./samuraiFx";
 import { renderShuriken, renderTwinArc, renderVanishEyes } from "./shinobiFx";
 import { renderBeam, renderPalmWave, renderTrail } from "./priestessFx";
+import { renderClaw, renderLeap, renderRush } from "./wolfFx";
+import { WOLF_FURY_EYES as WOLF_RAGE_COLOR } from "./wolfSprites";
 import {
   CRACK_LIFE,
   QUAKE_LIFE,
@@ -199,6 +205,7 @@ import {
   SAMURAI_PORTRAIT_VARIANTS,
   SHINOBI_PORTRAIT_VARIANTS,
   PRIESTESS_PORTRAIT_VARIANTS,
+  WOLF_PORTRAIT_VARIANTS,
   superPortrait,
 } from "./portrait";
 import { renderSunShield } from "./divineFx";
@@ -773,6 +780,11 @@ const POWER_KEYS = [
   "trailLife",
   "mercyHits",
   "beamStun",
+  // Bo'ri-qiz kartalari
+  "leapR",
+  "rageGain",
+  "rageTime",
+  "bloodHits",
   // SUPER kartalari
   "sunShieldCard",
   "secondJudgment",
@@ -790,6 +802,8 @@ const POWER_KEYS = [
   "shadowTrail",
   "lotusGrace",
   "lightFlow",
+  "moonRage",
+  "packRun",
   // sinergiya bonuslari (synergy.ts)
   "spinCd",
   "chargeTime",
@@ -2622,6 +2636,7 @@ export class Game {
     if (p.samurai) this.updateSamurai(dt, px0, py0);
     if (p.shinobi) this.updateShinobi();
     if (p.priestess) this.updatePriestess();
+    if (p.wolf) this.updateWolf();
     if (this.hints.length) {
       if (p.attackTimer > 0) this.doneHint("attack");
       if (p.spinning || p.iai) this.doneHint("spin");
@@ -2975,7 +2990,14 @@ export class Game {
             if (t instanceof Enemy) t.stun = Math.max(t.stun, BEAM_STUN);
             else t.slow = Math.max(t.slow, BEAM_STUN);
           }
+          // Bo'ri-qiz: BO'RI SAKRASHI qo'nishi atrofdagilarni gangitadi
+          if (p.wolf && p.spinning && !t.dead) {
+            if (t instanceof Enemy) t.stun = Math.max(t.stun, LEAP_STUN);
+            else t.slow = Math.max(t.slow, LEAP_STUN);
+          }
           this.strike(t, blocked ? 1 : p.hitDamage, heavy ? 340 : true);
+          // Bo'ri-qiz: G'AZAB to'planadi, QON SO'RASH (effekt — updateWolf)
+          if (p.wolf) p.clawHit();
           // Rohiba: RAHM — har mercyHits zarbada +1 yurak (davolash chegarasi bilan; effekt — updatePriestess)
           if (p.priestess) p.landHit();
           if (heavy && !p.spinning && wasAlive && t.dead && t instanceof Enemy) this.slamKill();
@@ -3127,7 +3149,9 @@ export class Game {
                           ? "winShinobi"
                           : this.hero === "priestess"
                             ? "winPriestess"
-                            : "winKnight",
+                            : this.hero === "wolf"
+                              ? "winWolf"
+                              : "winKnight",
             );
             // dunyo yutildi: xaritada keyingi dunyo ochiladi (kunlik sinov ham hisob)
             recordWorldWin(this.chapter, this.hero);
@@ -4127,7 +4151,57 @@ export class Game {
       p.dashCharges = p.dashMax;
       this.fx.text(p.x, p.y - 32, tr("up.lightflow.name"), this.theme.accent);
     }
+    if (p.packRun) {
+      // TO'DA YUGURISHI (karta): bo'ri sakrashi va yovvoyi yugurish darhol tayyor
+      p.spinCooldown = 0;
+      p.dashCooldown = 0;
+      p.dashCharges = p.dashMax;
+      this.fx.text(p.x, p.y - 32, tr("up.packrun.name"), this.theme.accent);
+    }
     this.input.clearQueued();
+  }
+
+  /**
+   * Bo'ri-qiz: qo'nish zarbasi (silkinish, chang), g'azab yonishi, QON SO'RASH yuragi va YOVVOYI
+   * YUGURISH — yo'lidagilarni yelkasi bilan itarib o'tadi (BO'RI TISHI artefakti — gangitadi).
+   */
+  private updateWolf() {
+    const p = this.player;
+    if (p.pounced) {
+      p.pounced = false;
+      this.fx.addShake(0.18);
+      if (!this.fx.isReduced()) this.fx.burst(p.x, p.y + 10, this.theme.mist, 10, 70, 1);
+    }
+    if (p.furied) {
+      p.furied = false;
+      sfx.wolfFury();
+      this.fx.text(p.x, p.y - 24, tr("g.wolfRage"), WOLF_RAGE_COLOR);
+      this.hb(p.x, p.y - 6, WOLF_RAGE_COLOR, 8, 70, 1);
+    }
+    if (p.mended) {
+      p.mended = false;
+      sfx.mendChime();
+      this.fx.text(p.x, p.y - 22, tr("g.plusHearts", { n: 1 }), this.theme.glow);
+      this.cfx.fly("heart", p.x, p.y - 8, 8 + (p.hp - 1) * 10, 7, this.fx.isReduced());
+    }
+    if (p.dashing) {
+      const ram = { x: p.x + p.dashX * 4, y: p.y + p.dashY * 4, size: p.size + 6 } as Body;
+      const targets: (Enemy | Boss)[] = this.enemies.filter((e) => e.active);
+      if (this.boss?.active) targets.push(this.boss);
+      for (const t of targets) {
+        if (p.rammed.has(t) || !overlap(ram, t)) continue;
+        p.rammed.add(t);
+        sfx.hit();
+        this.fx.addShake(0.08);
+        this.hb(t.x, t.y, this.theme.accent, 5, 60, 1);
+        if (this.hasArtifact("wolffang") && !t.dead) {
+          if (t instanceof Enemy) t.stun = Math.max(t.stun, RUSH_STUN);
+          else t.slow = Math.max(t.slow, RUSH_STUN);
+        }
+        this.strike(t, RUSH_MUL * p.damage, RUSH_KNOCK);
+        p.clawHit();
+      }
+    }
   }
 
   /**
@@ -5109,6 +5183,12 @@ export class Game {
       if (p.spinning) return renderBeam(c, p, this.time, T);
       return renderPalmWave(c, p, T);
     }
+    // Bo'ri-qiz: shamol chiziqlari, sakrash soyasi / qo'nish halqasi yoki uchta tirnoq izi
+    if (p.wolf) {
+      renderRush(c, p, this.time, T);
+      if (p.spinning) return renderLeap(c, p, T);
+      return renderClaw(c, p, T);
+    }
     if (p.spinning && p.mage) {
       // sehrli halqa: kengayib boruvchi qizil-qora to'lqin
       const k = p.spinTimer / SPIN_TIME;
@@ -6022,6 +6102,18 @@ export class Game {
         px(c, t.glow, 38, 21, 5, 1);
       }
     }
+    if (p.wolf) {
+      // G'AZAB: to'planishi (skin rangida) yoki yonib turgan g'azab (qizil, miltillaydi) va ikki ko'z
+      const t = this.theme;
+      const rk = p.fury ? Math.min(1, p.furyT / p.rageTime) : p.rage;
+      px(c, "#000", 4, 21, 32, 3);
+      const blink = Math.floor(this.time * 10) % 2 === 0;
+      px(c, p.fury ? (blink ? WOLF_RAGE_COLOR : "#ff8a8a") : t.accent, 5, 22, 30 * rk, 1);
+      if (p.fury || rk >= 1) {
+        px(c, WOLF_RAGE_COLOR, 38, 21, 2, 1);
+        px(c, WOLF_RAGE_COLOR, 41, 21, 2, 1);
+      }
+    }
 
     this.text(
       isBossWave(this.wave)
@@ -6260,7 +6352,11 @@ export class Game {
                       ? PRIESTESS_PORTRAIT_VARIANTS[
                           Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
                         ]
-                      : "",
+                      : this.hero === "wolf"
+                        ? WOLF_PORTRAIT_VARIANTS[
+                            Math.min(2, Math.floor((cast.t / Math.max(0.01, cast.cardTime)) * 3.4))
+                          ]
+                        : "",
         ),
         text,
         this.fx.isReduced(),
@@ -6311,9 +6407,10 @@ export class Game {
 
   /** Pauzadagi boshqaruv qatori: telefonda — tugma nomlari, kompyuterda — belgilangan tugmalar. */
   private controlsLine() {
-    const { mage, hunter, gunner, paladin, samurai, shinobi, priestess } = this.player;
+    const { mage, hunter, gunner, paladin, samurai, shinobi, priestess, wolf } = this.player;
     if (this.touch && paladin) return tr("g.ctl.paladin");
     if (this.touch && priestess) return tr("g.ctl.priestess");
+    if (this.touch && wolf) return tr("g.ctl.wolf");
     if (this.touch && samurai) return tr("g.ctl.samurai");
     if (this.touch && shinobi) return tr("g.ctl.shinobi");
     if (this.touch)
@@ -6332,6 +6429,7 @@ export class Game {
     if (samurai) return tr("g.kb.samurai", { M, A, D });
     if (shinobi) return tr("g.kb.shinobi", { M, A, D });
     if (priestess) return tr("g.kb.priestess", { M, A, D });
+    if (wolf) return tr("g.kb.wolf", { M, A, D });
     return mage
       ? tr("g.kb.mage", { M, A, D })
       : hunter
@@ -6343,10 +6441,11 @@ export class Game {
 
   /** Qobiliyat nomi: dash / teleport / orqaga sakrash / sirpanish */
   private dashName() {
-    const { mage, hunter, gunner, paladin, shinobi, priestess } = this.player;
+    const { mage, hunter, gunner, paladin, shinobi, priestess, wolf } = this.player;
     if (paladin) return tr("g.dn.paladin");
     if (shinobi) return tr("g.dn.shinobi");
     if (priestess) return tr("g.dn.priestess");
+    if (wolf) return tr("g.dn.wolf");
     return tr(mage ? "g.dn.mage" : hunter ? "g.dn.hunter" : gunner ? "g.dn.gunner" : "g.dn.knight");
   }
 
@@ -6361,6 +6460,7 @@ export class Game {
     if (paladin) return tr("g.btn.paladin", { button });
     if (this.player.shinobi) return tr("g.btn.shinobi", { button });
     if (this.player.priestess) return tr("g.btn.priestess", { button });
+    if (this.player.wolf) return tr("g.btn.wolf", { button });
     return tr("g.btn.other", {
       button,
       act: mage
@@ -6376,7 +6476,7 @@ export class Game {
   /** Birinchi o'yin ko'rsatmalari: HUD chiziqlari ostida, chap tomonda. */
   private renderHints() {
     const c = this.ctx;
-    const { mage, hunter, gunner, paladin, samurai, shinobi, priestess } = this.player;
+    const { mage, hunter, gunner, paladin, samurai, shinobi, priestess, wolf } = this.player;
     const k = this.input.keyBinds;
     const A = actionKey(k, "attack"),
       D = actionKey(k, "dash");
@@ -6392,85 +6492,93 @@ export class Game {
           dodge: tr("g.hk.s.dodge", { D }),
           parry: tr("g.hk.s.parry", { A }),
         };
-    const base: Record<"attack" | "spin" | "dash", string> = priestess
+    const base: Record<"attack" | "spin" | "dash", string> = wolf
       ? this.touch
-        ? {
-            attack: tr("g.h.r.attack"),
-            spin: tr("g.h.r.spin"),
-            dash: tr("g.h.r.dash"),
-          }
+        ? { attack: tr("g.h.w.attack"), spin: tr("g.h.w.spin"), dash: tr("g.h.w.dash") }
         : {
-            attack: tr("g.hk.r.attack", { A }),
-            spin: tr("g.hk.r.spin", { A }),
-            dash: tr("g.hk.r.dash", { D }),
+            attack: tr("g.hk.w.attack", { A }),
+            spin: tr("g.hk.w.spin", { A }),
+            dash: tr("g.hk.w.dash", { D }),
           }
-      : shinobi
+      : priestess
         ? this.touch
           ? {
-              attack: tr("g.h.n.attack"),
-              spin: tr("g.h.n.spin"),
-              dash: tr("g.h.n.dash"),
+              attack: tr("g.h.r.attack"),
+              spin: tr("g.h.r.spin"),
+              dash: tr("g.h.r.dash"),
             }
           : {
-              attack: tr("g.hk.n.attack", { A }),
-              spin: tr("g.hk.n.spin", { A }),
-              dash: tr("g.hk.n.dash", { D }),
+              attack: tr("g.hk.r.attack", { A }),
+              spin: tr("g.hk.r.spin", { A }),
+              dash: tr("g.hk.r.dash", { D }),
             }
-        : samurai
+        : shinobi
           ? this.touch
-            ? { attack: tr("g.h.s.attack"), spin: tips.iai, dash: tr("g.h.s.dash") }
-            : { attack: tr("g.hk.s.attack", { A }), spin: tips.iai, dash: tr("g.hk.dash", { D }) }
-          : paladin
+            ? {
+                attack: tr("g.h.n.attack"),
+                spin: tr("g.h.n.spin"),
+                dash: tr("g.h.n.dash"),
+              }
+            : {
+                attack: tr("g.hk.n.attack", { A }),
+                spin: tr("g.hk.n.spin", { A }),
+                dash: tr("g.hk.n.dash", { D }),
+              }
+          : samurai
             ? this.touch
-              ? {
-                  attack: tr("g.h.p.attack"),
-                  spin: tr("g.h.p.spin"),
-                  dash: tr("g.h.p.dash"),
-                }
-              : {
-                  attack: tr("g.hk.p.attack", { A }),
-                  spin: tr("g.hk.p.spin", { A }),
-                  dash: tr("g.hk.p.dash", { D }),
-                }
-            : this.touch
-              ? gunner
+              ? { attack: tr("g.h.s.attack"), spin: tips.iai, dash: tr("g.h.s.dash") }
+              : { attack: tr("g.hk.s.attack", { A }), spin: tips.iai, dash: tr("g.hk.dash", { D }) }
+            : paladin
+              ? this.touch
                 ? {
-                    attack: tr("g.h.g.attack"),
-                    spin: tr("g.h.g.spin"),
-                    dash: tr("g.h.g.dash"),
+                    attack: tr("g.h.p.attack"),
+                    spin: tr("g.h.p.spin"),
+                    dash: tr("g.h.p.dash"),
                   }
-                : hunter
-                  ? {
-                      attack: tr("g.h.h.attack"),
-                      spin: tr("g.h.h.spin"),
-                      dash: tr("g.h.h.dash"),
-                    }
-                  : {
-                      attack: mage ? tr("g.h.m.attack") : tr("g.h.k.attack"),
-                      spin: mage ? tr("g.h.m.spin") : tr("g.h.k.spin"),
-                      dash: mage ? tr("g.h.m.dash") : tr("g.h.k.dash"),
-                    }
-              : gunner
-                ? {
-                    attack: tr("g.hk.g.attack", { A, R: actionKey(k, "reload") }),
-                    spin: tr("g.hk.g.spin", { A }),
-                    dash: tr("g.hk.g.dash", { D }),
+                : {
+                    attack: tr("g.hk.p.attack", { A }),
+                    spin: tr("g.hk.p.spin", { A }),
+                    dash: tr("g.hk.p.dash", { D }),
                   }
-                : hunter
+              : this.touch
+                ? gunner
                   ? {
-                      attack: tr("g.hk.h.attack", { A }),
-                      spin: tr("g.hk.h.spin", { A }),
-                      dash: tr("g.hk.h.dash", { D }),
+                      attack: tr("g.h.g.attack"),
+                      spin: tr("g.h.g.spin"),
+                      dash: tr("g.h.g.dash"),
                     }
-                  : {
-                      attack: mage ? tr("g.hk.m.attack", { A }) : tr("g.hk.k.attack", { A }),
-                      spin: mage ? tr("g.hk.m.spin", { A }) : tr("g.hk.k.spin", { A }),
-                      dash: `${D} — ${this.dashName()}`,
-                    };
+                  : hunter
+                    ? {
+                        attack: tr("g.h.h.attack"),
+                        spin: tr("g.h.h.spin"),
+                        dash: tr("g.h.h.dash"),
+                      }
+                    : {
+                        attack: mage ? tr("g.h.m.attack") : tr("g.h.k.attack"),
+                        spin: mage ? tr("g.h.m.spin") : tr("g.h.k.spin"),
+                        dash: mage ? tr("g.h.m.dash") : tr("g.h.k.dash"),
+                      }
+                : gunner
+                  ? {
+                      attack: tr("g.hk.g.attack", { A, R: actionKey(k, "reload") }),
+                      spin: tr("g.hk.g.spin", { A }),
+                      dash: tr("g.hk.g.dash", { D }),
+                    }
+                  : hunter
+                    ? {
+                        attack: tr("g.hk.h.attack", { A }),
+                        spin: tr("g.hk.h.spin", { A }),
+                        dash: tr("g.hk.h.dash", { D }),
+                      }
+                    : {
+                        attack: mage ? tr("g.hk.m.attack", { A }) : tr("g.hk.k.attack", { A }),
+                        spin: mage ? tr("g.hk.m.spin", { A }) : tr("g.hk.k.spin", { A }),
+                        dash: `${D} — ${this.dashName()}`,
+                      };
     const label: Record<Hint, string> = { ...base, ...tips };
     // Ovchida HUD'da uchinchi (tuzoq) chizig'i, Merganda tutun chizig'i va baraban bor —
     // ko'rsatmalar pastroqda
-    const top = gunner ? 40 : hunter || paladin || samurai ? 28 : 24;
+    const top = gunner ? 40 : hunter || paladin || samurai || wolf ? 28 : 24;
     const w = Math.max(...this.hints.map((h) => label[h].length)) * 5 + 12;
     px(c, "rgba(8,4,16,0.6)", 4, top, w, this.hints.length * 10 + 4);
     const blink = Math.floor(this.time * 3) % 2 ? "#ffcc33" : "#8a6a1a";

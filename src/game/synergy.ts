@@ -191,6 +191,18 @@ export const TAGS: Record<Tag, TagDef> = {
       return tr("syn.three.priestess");
     },
   },
+  bori: {
+    get name() {
+      return tr("syn.bori");
+    },
+    color: "#7fb0ff",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.wolf");
+    },
+  },
   // SUPER kartalari kam (har superda 2 ta) — ikkalasi yig'ilsa sinergiya ochiladi (TAG_NEED)
   super: {
     get name() {
@@ -217,6 +229,7 @@ export const HERO_TAG: Record<Hero, Tag> = {
   samurai: "gul",
   shinobi: "soya",
   priestess: "lotos",
+  wolf: "bori",
 };
 
 export const ALL_TAGS = Object.keys(TAGS) as Tag[];
@@ -269,6 +282,7 @@ function applyThree(tag: Tag, p: Player) {
   else if (p.hero === "gunner") p.fanPierce = true;
   else if (p.hero === "shinobi") p.ambushMul = Math.max(p.ambushMul, 3);
   else if (p.hero === "priestess") p.strongMul = 3;
+  else if (p.hero === "wolf") p.strongMul = 3;
   // Sehrgar: teleport portlashi — Game
 }
 
@@ -314,6 +328,8 @@ export const TAG_ICONS: Record<Tag, readonly string[]> = {
   soya: ["...k...", "..kXk..", "kkkXkkk", "kXXkXXk", "kkkXkkk", "..kXk..", "...k..."],
   // lotos guli
   lotos: ["...k...", "..kXk..", "k.kXk.k", "kXkwkXk", "kXXwXXk", ".kXXXk.", "kkkkkkk"],
+  // bo'ri boshi: ikki quloq va ko'zlar
+  bori: ["k.....k", "kXk.kXk", "kXXXXXk", "kXwXwXk", ".kXXXk.", "..kXk..", "...k..."],
   // super shari: shisha shar ichida suyuqlik
   super: [".kkkkk.", "kw....k", "k.w...k", "kXXXXXk", "kXXwXXk", "kXXXXXk", ".kkkkk."],
 };

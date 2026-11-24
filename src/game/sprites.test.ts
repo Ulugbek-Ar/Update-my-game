@@ -26,7 +26,7 @@ describe("Code-drawn character frames", () => {
     "frost",
     "golem",
     "iceblob",
-    "wolf",
+    "icewolf",
     "queen",
     "spider",
     "shroom",

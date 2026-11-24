@@ -148,7 +148,9 @@ export function SkinShowcase({
             ? t("sk.shuriken")
             : hero === "priestess"
               ? t("sk.beam")
-              : t("sk.strong")
+              : hero === "wolf"
+                ? t("sk.leap")
+                : t("sk.strong")
         : phase === "dash"
           ? hero === "mage"
             ? t("sk.teleport")
@@ -156,7 +158,9 @@ export function SkinShowcase({
               ? t("sk.smoke")
               : hero === "priestess"
                 ? t("sk.step")
-                : t("sk.dash")
+                : hero === "wolf"
+                  ? t("sk.rush")
+                  : t("sk.dash")
           : t("sk.idle");
   return (
     <figure className="flex flex-col items-center gap-1" aria-label={t("sk.previewAria")}>

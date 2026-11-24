@@ -25,6 +25,7 @@ import {
   SAMURAI_MAX_HP,
   SAMURAI_SPEED,
   HUNTER_SPEED,
+  WOLF_SPEED,
 } from "./player";
 import { ROOM } from "./animation";
 import {
@@ -128,10 +129,11 @@ describe("Samuray: ko'rsatkichlar", () => {
     expect(p.samurai).toBe(true);
     expect(p.maxHp).toBe(SAMURAI_MAX_HP);
     expect(SAMURAI_MAX_HP).toBeLessThan(PLAYER_MAX_HP);
-    // Ovchidan keyingi eng tez qahramon
+    // Bo'ri-qiz va Ovchidan keyingi eng tez qahramon
     const speeds = HERO_LIST.map((h) => new Player(h.id).speed).sort((a, b) => b - a);
-    expect(speeds[0]).toBe(HUNTER_SPEED);
-    expect(speeds[1]).toBe(SAMURAI_SPEED);
+    expect(speeds[0]).toBe(WOLF_SPEED);
+    expect(speeds[1]).toBe(HUNTER_SPEED);
+    expect(speeds[2]).toBe(SAMURAI_SPEED);
     const k = new Player("knight");
     expect(p.attackCd).toBe(KATANA_CD);
     expect(p.attackCd).toBeLessThan(k.attackCd);
@@ -611,6 +613,7 @@ describe("Super MING KESIM: ochiq (v4.0)", () => {
           "gunner",
           "shinobi",
           "priestess",
+          "wolf",
         ].includes(h.id)
       )
         expect(superFor(h.id)).toBeNull();

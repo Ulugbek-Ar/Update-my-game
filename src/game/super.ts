@@ -78,7 +78,13 @@ export type SuperSound =
   | "lotusMark"
   | "lotusRay"
   | "lotusBossRay"
-  | "lotusEnd";
+  | "lotusEnd"
+  | "wolfHowl"
+  | "wolfPack"
+  | "wolfMark"
+  | "wolfBite"
+  | "wolfBossBite"
+  | "wolfMist";
 
 /** Zarba naqshi: nishonlarga navbat bilan tushadigan zarbalar */
 export interface SuperStrike {
@@ -743,6 +749,50 @@ const GOLDEN_LOTUS: SuperDef = {
   fx: "lotus",
 };
 
+/**
+ * BO'RI UVLASHI (Bo'ri-qiz Varvar).
+ * Tayyorlanish (1.1 s): dunyo tungi ko'kka botadi, osmonda katta oy chiqadi, Varvar boshini ko'tarib
+ * uvlaydi — tovush halqalari tarqaladi. Zarba (≤1.5 s): yonida 4–6 ta ruhiy ko'kish bo'ri paydo
+ * bo'ladi, ular ekran bo'ylab yugurib HAR dushmanni tishlab o'tadi. Oqibat (0.8 s): bo'rilar tumanga
+ * aylanib yo'qoladi; super tugagach Varvarning G'AZABI to'la (Player.endCast).
+ *
+ * Zaryad 20. Bossga: maksimal jonining 8% i, jami 10% dan oshmaydi (kartalar ham oshirmaydi).
+ * Kartalar: OY G'AZABI (g'azab +3 s), TO'DA YUGURISHI (sakrash va yugurish darhol tayyor).
+ */
+const WOLF_HOWL: SuperDef = {
+  id: "wolf-howl",
+  hero: "wolf",
+  get name() {
+    return t("super.wolf.name");
+  },
+  get desc() {
+    return t("super.wolf.desc");
+  },
+  color: "#7fb0ff",
+  charge: 20,
+  time: 3.4,
+  params: {},
+  open: true,
+  stages: { prep: 1.1, strike: 1.5, after: 0.8 },
+  slow: { prep: 0.2, strike: 0.06, after: 0.4 },
+  strike: { mark: 0.16, gap: 0.11, tail: 0.35, min: 0.9 },
+  dmg: { kill: true, boss: 0.08, bossCap: 0.1 },
+  heal: 0,
+  healRadius: 0,
+  after: { flat: 0.4, dust: 0.5, bossKneel: 0.9 },
+  card: { time: 0.7, short: 0.25, sub: "VARVAR SUPERI", scale: 1.5 },
+  sounds: {
+    card: "superCard",
+    prep: "wolfHowl",
+    mark: "wolfMark",
+    hit: "wolfBite",
+    bossHit: "wolfBossBite",
+    end: "wolfMist",
+    strike: "wolfPack",
+  },
+  fx: "howl",
+};
+
 /** Hamma superlar (yopiqlari ham — sinov va keyingi versiya ishlanmasi uchun) */
 export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   paladin: DIVINE_JUDGMENT,
@@ -753,6 +803,7 @@ export const SUPERS: Partial<Record<Hero, SuperDef>> = {
   gunner: ENDLESS_LEAD,
   shinobi: SHADOW_STORM,
   priestess: GOLDEN_LOTUS,
+  wolf: WOLF_HOWL,
 };
 
 /** Qahramonning superi; super yo'q yoki hali yopiq bo'lsa — null: hech qayerda ko'rinmaydi. */

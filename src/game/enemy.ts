@@ -246,7 +246,8 @@ export const ENEMY_SPRITE: Record<EnemyKind, SpriteKind> = {
   frost: "frost",
   golem: "golem",
   iceblob: "iceblob",
-  wolf: "wolf",
+  // muz bo'ri: sprayt nomi "icewolf" — "wolf" Bo'ri-qiz Varvar qahramoniniki
+  wolf: "icewolf",
   spider: "spider",
   shroom: "shroom",
   treant: "treant",

@@ -32,7 +32,8 @@ export type ArtifactId =
   | "vowlight"
   | "iaireset"
   | "smokecharm"
-  | "prayerbeads";
+  | "prayerbeads"
+  | "wolffang";
 
 export interface Artifact {
   id: ArtifactId;
@@ -521,6 +522,29 @@ export const ARTIFACTS: readonly Artifact[] = [
       ".kXk.kXk.",
       "..kXYXk..",
       "...kYk...",
+    ],
+  },
+  {
+    id: "wolffang",
+    get name() {
+      return tr("art.wolffang.name");
+    },
+    get desc() {
+      return tr("art.wolffang.desc");
+    },
+    color: "#d6dae2",
+    dark: "#5a74a8",
+    hero: "wolf",
+    icon: [
+      "k.......k",
+      "kXk...kXk",
+      "kwXk.kXwk",
+      ".kwXkXwk.",
+      ".kwXXXwk.",
+      "..kwXwk..",
+      "..kwXwk..",
+      "...kwk...",
+      "....k....",
     ],
   },
 ];

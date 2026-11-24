@@ -2,6 +2,7 @@ import type { AnimState } from "./animation";
 import { ONI_GRID, drawSakura } from "./sakuraSprites";
 import { SHINOBI_GRID, drawShinobi } from "./shinobiSprites";
 import { PRIESTESS_GRID, drawPriestess } from "./priestessSprites";
+import { WOLF_GRID, WOLF_TUFT, drawWolf, wolfTuft } from "./wolfSprites";
 import { currentSettings } from "./settings";
 
 export type SpriteKind =
@@ -13,6 +14,7 @@ export type SpriteKind =
   | "samurai"
   | "shinobi"
   | "priestess"
+  | "wolf"
   | "skeleton"
   | "archer"
   | "shield"
@@ -22,7 +24,7 @@ export type SpriteKind =
   | "frost"
   | "golem"
   | "iceblob"
-  | "wolf"
+  | "icewolf"
   | "queen"
   | "spider"
   | "shroom"
@@ -259,6 +261,9 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Rohiba (qahramon): siyoh (kontur, qora soch, ko'zlar), oq libos, iliq kulrang burmalar va sandal,
   // oltin (halo, kamar, bilaguzuklar, etak hoshiyasi, kaft nuri), teri
   priestess: ["#1a120c", "#f6f1e2", "#b8a47c", "#f2b640", "#e8b890"],
+  // Bo'ri-qiz Varvar (qahramon): siyoh (kontur, qora soch, etik), ko'kish po'lat (zirh, qo'lqop, ko'k
+  // ko'zlar), oq-kulrang mo'yna (plash, panja uchlari), oltin (bo'yin va bilak taqinchog'i), teri
+  wolf: ["#120e14", "#5a74a8", "#d6dae2", "#e8b030", "#dca47c"],
   skeleton: ["#101015", "#747b82", "#d6d9cf", "#935331", "#bd8250"],
   // Kamonchi — "qora suyak": ko'mir suyak, binafsha polda ko'rinadigan yaltiroq, to'q yog'och, qizil ko'z
   archer: ["#050507", "#1d1c26", "#8a88a3", "#4a2c18", "#ff3b3b"],
@@ -274,7 +279,7 @@ export const PALETTES: Record<SpriteKind, readonly string[]> = {
   // Muz slime: to'q muz, och ko'k shaffof tana, yaltiroq, ichidagi kristall
   iceblob: ["#0b1a2e", "#3f86c2", "#a3dcf7", "#eefaff", "#2fc6f0"],
   // Qor bo'risi: to'q kulrang yag'ir, kulrang, oq ko'krak, muz ko'k ko'z
-  wolf: ["#13161d", "#5a6372", "#a7b0bd", "#eef2f6", "#5fe3ff"],
+  icewolf: ["#13161d", "#5a6372", "#a7b0bd", "#eef2f6", "#5fe3ff"],
   // Qor Malikasi: siyoh, to'q ko'k soch va burmalar, oqish-ko'k ko'ylak, oq teri va mo'yna, muz toj
   queen: ["#0e1626", "#4a6fa5", "#a9cdee", "#eef7ff", "#7fe9ff"],
   // 3-dunyo. O'rmon o'rgimchagi: siyoh, to'q binafsha-qora, tana, och tukchalar, qizil ko'zlar
@@ -5262,11 +5267,13 @@ export function spriteGrid(kind: SpriteKind) {
         ? SHINOBI_GRID
         : kind === "priestess"
           ? PRIESTESS_GRID
-          : kind === "ashking"
-            ? KING_GRID
-            : kind === "oni"
-              ? ONI_GRID
-              : 32;
+          : kind === "wolf"
+            ? WOLF_GRID
+            : kind === "ashking"
+              ? KING_GRID
+              : kind === "oni"
+                ? ONI_GRID
+                : 32;
 }
 
 export function spritePixels(
@@ -5292,6 +5299,11 @@ export function spritePixels(
   if (kind === "priestess") {
     const p = new Pixels(PRIESTESS_GRID);
     drawPriestess(p, state, frame, back);
+    return p.outlined();
+  }
+  if (kind === "wolf") {
+    const p = new Pixels(WOLF_GRID);
+    drawWolf(p, state, frame, back);
     return p.outlined();
   }
   if (kind === "ashking") return kingPixels(state, frame);
@@ -5385,7 +5397,7 @@ export function spritePixels(
     iceblob(p, state, frame);
     return p.outlined();
   }
-  if (kind === "golem" || kind === "wolf") {
+  if (kind === "golem" || kind === "icewolf") {
     const f = Math.min(2, Math.max(0, frame));
     if (state === "death") {
       if (kind === "golem") snowmanFallen(p, f);
@@ -5589,6 +5601,12 @@ export function renderSprite(
         }
         raster.fillRect(px, py, 1, 1);
       }
+    // Bo'ri-qiz: qora soch ichidagi qizil tutam (faqat soch piksellari ustida)
+    if (kind === "wolf" && !dissolve) {
+      raster.fillStyle = flash ? "#ffffff" : WOLF_TUFT;
+      for (const [tx, ty] of wolfTuft(state, frame, back))
+        if (data[ty * n + tx] === 1) raster.fillRect(tx, ty, 1, 1);
+    }
     cache.set(key, canvas);
   }
   const size = spriteSize(kind);
@@ -5609,7 +5627,7 @@ export function renderSprite(
 export function heroView(kind: SpriteKind) {
   return kind === "paladin"
     ? 48
-    : kind === "samurai" || kind === "shinobi" || kind === "priestess"
+    : kind === "samurai" || kind === "shinobi" || kind === "priestess" || kind === "wolf"
       ? 40
       : 32;
 }
@@ -5630,24 +5648,27 @@ export function spriteSize(kind: SpriteKind) {
           : kind === "priestess"
             ? // Rohiba: tana 32 px, katta to'r — halo, kaft nuri va super ko'tarilishi uchun
               PRIESTESS_GRID
-            : kind === "oni"
-              ? // Oni: 40x40 to'r, boshqa bosslardek 2 baravar — ulardan kattaroq ko'rinadi
-                ONI_GRID * 2
-              : kind === "demon" || kind === "queen" || kind === "king"
-                ? 64
-                : kind === "golem" || kind === "treant"
-                  ? 40
-                  : kind === "slime" ||
-                      kind === "bat" ||
-                      kind === "imp" ||
-                      kind === "frost" ||
-                      kind === "iceblob" ||
-                      kind === "spider" ||
-                      kind === "owl"
-                    ? 26
-                    : kind === "shroom"
-                      ? 28
-                      : 32)
+            : kind === "wolf"
+              ? // Bo'ri-qiz: tana 32 px, katta to'r — panjalar, sakrash va uvlash uchun
+                WOLF_GRID
+              : kind === "oni"
+                ? // Oni: 40x40 to'r, boshqa bosslardek 2 baravar — ulardan kattaroq ko'rinadi
+                  ONI_GRID * 2
+                : kind === "demon" || kind === "queen" || kind === "king"
+                  ? 64
+                  : kind === "golem" || kind === "treant"
+                    ? 40
+                    : kind === "slime" ||
+                        kind === "bat" ||
+                        kind === "imp" ||
+                        kind === "frost" ||
+                        kind === "iceblob" ||
+                        kind === "spider" ||
+                        kind === "owl"
+                      ? 26
+                      : kind === "shroom"
+                        ? 28
+                        : 32)
   );
 }
 
@@ -5706,6 +5727,91 @@ export const UPGRADE_ICONS: Record<string, readonly string[]> = {
     "............",
   ],
   // Ninja kartalari: ikki katana, shuriken, tutun, orqadan zarba, zaharli shuriken, super kartalari
+  // Bo'ri-qiz kartalari: panja, sakrash, g'azab, qon so'rash, oy g'azabi, to'da
+  claw: [
+    "..S...S...S.",
+    "..S...S...S.",
+    "..SS..SS..SS",
+    "...S...S...S",
+    "...SS..SS..S",
+    "..XXXXXXXXX.",
+    ".XXXXXXXXXX.",
+    ".XXoXXXXXXX.",
+    ".XXXXXXXXX..",
+    "..XXXXXXX...",
+    "...KKKKK....",
+    "............",
+  ],
+  wolfleap: [
+    "........SS..",
+    ".......SXXS.",
+    "......SXXXS.",
+    ".....SXXS...",
+    "....SXXS....",
+    "...SXXS.....",
+    "..SXXS......",
+    "............",
+    ".o..o..o..o.",
+    "..oXXXXXXo..",
+    ".XXXXXXXXXX.",
+    "............",
+  ],
+  rage: [
+    "............",
+    ".X........X.",
+    ".XX......XX.",
+    ".XXX....XXX.",
+    "..XXXXXXXX..",
+    "..XrrXXrrX..",
+    "..XrrXXrrX..",
+    "..XXXXXXXX..",
+    "...XKKKKX...",
+    "...XoKoKX...",
+    "....XXXX....",
+    "............",
+  ],
+  bloodclaw: [
+    "............",
+    "..rr...rr...",
+    ".rrrr.rrrr..",
+    "rrrrrrrrrrr.",
+    "rrSrrrSrrrr.",
+    "rrSrrrSrrSr.",
+    ".rSrrrSrrSr.",
+    "..rrrrrrrS..",
+    "...rrrrrr...",
+    "....rrrr....",
+    ".....rr.....",
+    "............",
+  ],
+  moonhowl: [
+    "......XXXX..",
+    ".....XXooXX.",
+    "....XXo..XX.",
+    "....XX....X.",
+    "....XXo..XX.",
+    ".....XXooXX.",
+    "..K...XXXX..",
+    ".KK.........",
+    ".KKK........",
+    "KKKKK.......",
+    "KKKKKK......",
+    "............",
+  ],
+  pack: [
+    "............",
+    ".X.X....X.X.",
+    ".XXX....XXX.",
+    ".XoX....XoX.",
+    "XXXXX..XXXXX",
+    "XXXX....XXXX",
+    "..XXXXXXXX..",
+    "..XXXXXXXX..",
+    "..X..X.X..X.",
+    "..X..X.X..X.",
+    ".o.o..o.o.o.",
+    "............",
+  ],
   // Rohiba kartalari: kaft, nur kafti, muqaddas iz, rahm, ko'zni qamashtiruvchi nur, lotos, nur oqimi
   palm: [
     "....X.X.....",

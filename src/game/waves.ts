@@ -13,6 +13,14 @@ import {
   SHURIKEN_CARD,
   TRAIL_CARD,
   TRAIL_LIFE,
+  CLAW_TIME,
+  LEAP_CARD,
+  LEAP_R,
+  RAGE_CARD,
+  RAGE_HIT,
+  RAGE_TIME,
+  RAGE_TIME_CARD,
+  BLOOD_HITS,
   SHURIKEN_N,
   TWIN_TIME,
   VANISH_CARD,
@@ -151,6 +159,7 @@ export type Tag =
   | "gul"
   | "soya"
   | "lotos"
+  | "bori"
   // SUPER kartalari (v3.9): kam uchraydi, faqat superi bor qahramonda
   | "super";
 
@@ -196,6 +205,8 @@ export interface Upgrade {
   shinobi?: HeroCard;
   /** Rohiba uchun alohida karta */
   priestess?: HeroCard;
+  /** Bo'ri-qiz uchun alohida karta */
+  wolf?: HeroCard;
   /** Faqat shu qahramonga chiqadi */
   hero?: Hero;
   /** SUPER kartasi: faqat shu superi (super.ts: id) ochiq bo'lgan qahramonga chiqadi */
@@ -221,7 +232,9 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
                 ? u.shinobi
                 : p.hero === "priestess"
                   ? u.priestess
-                  : undefined;
+                  : p.hero === "wolf"
+                    ? u.wolf
+                    : undefined;
   if (!alt) return u;
   const {
     mage: _m,
@@ -231,6 +244,7 @@ export function cardFor(u: Upgrade, p: Player): Upgrade {
     samurai: _s,
     shinobi: _n,
     priestess: _r,
+    wolf: _w,
     ...base
   } = u;
   return { ...base, ...alt };
@@ -372,6 +386,17 @@ export const UPGRADES: Upgrade[] = [
       color: "#fff2b0",
       icon: "greatblade",
     },
+    wolf: {
+      tags: ["zarar"],
+      get name() {
+        return t("up.blade.wolf.name");
+      },
+      get desc() {
+        return t("up.blade.wolf.desc");
+      },
+      color: "#d6dae2",
+      icon: "claw",
+    },
     priestess: {
       tags: ["zarar"],
       get name() {
@@ -478,6 +503,19 @@ export const UPGRADES: Upgrade[] = [
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
       ok: (p) => p.reach < 30,
     },
+    wolf: {
+      tags: ["bori"],
+      get name() {
+        return t("up.reach.wolf.name");
+      },
+      get desc() {
+        return t("up.reach.wolf.desc");
+      },
+      color: "#7fb0ff",
+      icon: "claw",
+      apply: (p) => (p.reach += 3),
+      ok: (p) => p.reach < 18,
+    },
     priestess: {
       tags: ["lotos"],
       get name() {
@@ -582,6 +620,20 @@ export const UPGRADES: Upgrade[] = [
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
       ok: (p) => p.attackCd > 0.66,
     },
+    wolf: {
+      tags: ["zarar"],
+      get name() {
+        return t("up.haste.wolf.name");
+      },
+      get desc() {
+        return t("up.haste.wolf.desc");
+      },
+      color: "#d6dae2",
+      icon: "claw",
+      // zarba vaqtidan (0.11 s) qisqarmaydi
+      apply: (p) => (p.attackCd = Math.max(CLAW_TIME + 0.01, p.attackCd * 0.75)),
+      ok: (p) => p.attackCd > 0.13,
+    },
     priestess: {
       tags: ["zarar"],
       get name() {
@@ -683,6 +735,17 @@ export const UPGRADES: Upgrade[] = [
       },
       color: "#fff2b0",
       icon: "path",
+    },
+    wolf: {
+      tags: ["tezlik"],
+      get name() {
+        return t("up.wind.wolf.name");
+      },
+      get desc() {
+        return t("up.wind.wolf.desc");
+      },
+      color: "#7fb0ff",
+      icon: "pack",
     },
     priestess: {
       tags: ["tezlik"],
@@ -920,6 +983,17 @@ export const UPGRADES: Upgrade[] = [
       },
       color: "#f2c14e",
       icon: "hamla2",
+    },
+    wolf: {
+      tags: ["tezlik"],
+      get name() {
+        return t("up.dash2.wolf.name");
+      },
+      get desc() {
+        return t("up.dash2.wolf.desc");
+      },
+      color: "#7fb0ff",
+      icon: "pack",
     },
     priestess: {
       tags: ["tezlik"],
@@ -1363,6 +1437,102 @@ export const UPGRADES: Upgrade[] = [
     rare: SUPER_CARD_CHANCE,
     apply: (p) => (p.shadowTrail = true),
     ok: (p) => !p.shadowTrail,
+  },
+  // ---- Faqat Bo'ri-qiz ----
+  {
+    id: "ragefire",
+    get name() {
+      return t("up.ragefire.name");
+    },
+    get desc() {
+      return t("up.ragefire.desc");
+    },
+    color: "#ff6a6a",
+    tags: ["bori"],
+    icon: "rage",
+    hero: "wolf",
+    apply: (p) => (p.rageGain = RAGE_HIT * RAGE_CARD),
+    ok: (p) => p.rageGain < RAGE_HIT * RAGE_CARD,
+  },
+  {
+    id: "wideleap",
+    get name() {
+      return t("up.wideleap.name");
+    },
+    get desc() {
+      return t("up.wideleap.desc");
+    },
+    color: "#7fb0ff",
+    tags: ["bori"],
+    icon: "wolfleap",
+    hero: "wolf",
+    apply: (p) => (p.leapR += LEAP_CARD),
+    ok: (p) => p.leapR < LEAP_R + LEAP_CARD,
+  },
+  {
+    id: "bloodclaw",
+    get name() {
+      return t("up.bloodclaw.name");
+    },
+    get desc() {
+      return t("up.bloodclaw.desc");
+    },
+    color: "#ff4d6d",
+    tags: ["bori"],
+    icon: "bloodclaw",
+    hero: "wolf",
+    apply: (p) => (p.bloodHits = BLOOD_HITS),
+    ok: (p) => p.bloodHits <= 0,
+  },
+  {
+    id: "longrage",
+    get name() {
+      return t("up.longrage.name");
+    },
+    get desc() {
+      return t("up.longrage.desc");
+    },
+    color: "#ff8a8a",
+    tags: ["bori"],
+    icon: "rage",
+    hero: "wolf",
+    apply: (p) => (p.rageTime += RAGE_TIME_CARD),
+    ok: (p) => p.rageTime < RAGE_TIME + RAGE_TIME_CARD,
+  },
+  // ---- SUPER kartalari (BO'RI UVLASHI — Bo'ri-qiz) ----
+  {
+    id: "moonrage",
+    get name() {
+      return t("up.moonrage.name");
+    },
+    get desc() {
+      return t("up.moonrage.desc");
+    },
+    color: "#f4e8a0",
+    tags: ["super"],
+    icon: "moonhowl",
+    hero: "wolf",
+    super: "wolf-howl",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.moonRage = true),
+    ok: (p) => !p.moonRage,
+  },
+  {
+    id: "packrun",
+    get name() {
+      return t("up.packrun.name");
+    },
+    get desc() {
+      return t("up.packrun.desc");
+    },
+    color: "#7fb0ff",
+    tags: ["super"],
+    icon: "pack",
+    hero: "wolf",
+    super: "wolf-howl",
+    rare: SUPER_CARD_CHANCE,
+    apply: (p) => (p.packRun = true),
+    ok: (p) => !p.packRun,
   },
   // ---- Faqat Rohiba ----
   {

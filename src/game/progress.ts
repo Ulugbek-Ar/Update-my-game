@@ -76,6 +76,7 @@ export function worldWins(): Record<MapWorld, Hero[]> {
   if (ach.has("winSamurai")) add(1, "samurai");
   if (ach.has("winShinobi")) add(1, "shinobi");
   if (ach.has("winPriestess")) add(1, "priestess");
+  if (ach.has("winWolf")) add(1, "wolf");
   for (const h of HEROES) {
     if (Number(get(bestKey(2, h))) > 0) add(2, h);
     if (Number(get(bestKey(3, h))) > 0) add(3, h);

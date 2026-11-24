@@ -67,6 +67,7 @@ describe("Paladin do'konda", () => {
       samurai: "warrior",
       shinobi: "warrior",
       priestess: "warrior",
+      wolf: "warrior",
     });
     expect(ROLE_INFO.tank.name).toBe("TANK");
     expect(ROLE_INFO.warrior.name).toBe("JANGCHI");

@@ -81,12 +81,14 @@ afterEach(() => {
 });
 
 describe("Eski klientlar bilan moslik (qahramonlar versiyasi)", () => {
-  it("the Samurai (1), the Ninja (2) and the Priestess (3) are new; heroFor turns unknown heroes into the knight", () => {
-    expect(HERO_VERSION).toBe(3);
+  it("the Samurai (1), the Ninja (2), the Priestess (3) and the Wolf girl (4) are new; heroFor turns unknown heroes into the knight", () => {
+    expect(HERO_VERSION).toBe(4);
     for (const h of HEROES)
       expect(HERO_SINCE[h]).toBe(
-        h === "samurai" ? 1 : h === "shinobi" ? 2 : h === "priestess" ? 3 : 0,
+        h === "samurai" ? 1 : h === "shinobi" ? 2 : h === "priestess" ? 3 : h === "wolf" ? 4 : 0,
       );
+    expect(heroFor("wolf", 3)).toBe("knight");
+    expect(heroFor("wolf", 4)).toBe("wolf");
     expect(heroFor("priestess", 2)).toBe("knight");
     expect(heroFor("priestess", 3)).toBe("priestess");
     expect(heroFor("shinobi", 1)).toBe("knight");
