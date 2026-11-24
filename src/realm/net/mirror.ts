@@ -303,7 +303,11 @@ export class RealmMirror {
       }
       if (p.priestess) {
         // Rohiba: qaysi kaft, nur zaryadi, NUR KAFTI va muqaddas qadam izi (klient o'zi tiklaydi)
-        p.palm = !!(a[11] & PF_LEFT);
+        const left = !!(a[11] & PF_LEFT);
+        // kaft almashdi — yangi zarba: kaft izi va har 3-zarbada ikki kaftli to'lqin (faqat ko'rinish)
+        if (left !== p.palm) p.startPalmFx();
+        p.palm = left;
+        p.tickPalmFx(dt);
         p.charge = a[11] & PF_CHARGE ? 0.2 : 0;
         p.spinTimer = a[11] & PF_BEAM ? BEAM_TIME * 0.6 : 0;
         for (const d of p.trail) d.life -= dt;

@@ -213,6 +213,14 @@ export const PALM_TIME = 0.14;
 export const PALM_REACH = 17;
 export const PALM_MUL = 0.6;
 /**
+ * Faqat ko'rinish (zarar/masofa/tezlikka ta'sir qilmaydi): KAFT IZI shuncha soniya kattalashib so'nadi,
+ * zarbalar orasi PALM_CHAIN dan oshmasa — ketma-ket; har uchinchi ketma-ket zarbada PALM_BURST soniyalik
+ * ikki kaftli nur to'lqini.
+ */
+export const PALM_FX = 0.2;
+export const PALM_CHAIN = 0.45;
+export const PALM_BURST = 0.32;
+/**
  * NUR KAFTI (kuchli hujum): bosib turib qo'yib yuborilsa — oldinga uzun oltin nur yo'lagi
  * (uzunligi BEAM_LEN, eni BEAM_W), yo'lidagi hammani teshib o'tadi, zarari strongMul (2.2x).
  */
@@ -643,6 +651,11 @@ export class Player implements Body {
    * bir yurak (RAHM) va yig'ilgan zarbalar soni.
    */
   palm = false;
+  /** Faqat ko'rinish: kaft izi taymeri, ketma-ket zarbalar soni, ikki kaftli to'lqin va dam vaqti */
+  palmFxT = 0;
+  palmCombo = 0;
+  palmBurstT = 0;
+  palmRest = 9;
   beamLen = BEAM_LEN;
   trail: TrailDot[] = [];
   trailLife = TRAIL_LIFE;
@@ -975,6 +988,20 @@ export class Player implements Body {
     }
     this.blessT = 0;
     return true;
+  }
+
+  /** Kaft zarbasi boshlandi (faqat ko'rinish; onlayn ko'zgu ham kaft almashganda chaqiradi) */
+  startPalmFx() {
+    this.palmCombo = this.palmRest <= PALM_CHAIN ? this.palmCombo + 1 : 1;
+    this.palmRest = 0;
+    this.palmFxT = PALM_FX;
+    if (this.palmCombo % 3 === 0) this.palmBurstT = PALM_BURST;
+  }
+
+  tickPalmFx(dt: number) {
+    if (this.palmFxT > 0) this.palmFxT -= dt;
+    if (this.palmBurstT > 0) this.palmBurstT -= dt;
+    this.palmRest += dt;
   }
 
   /** Rohiba zarbasi tegdi (Game): har mercyHits zarbada +1 yurak (chegara bilan). true — tiklandi. */
@@ -1333,7 +1360,10 @@ export class Player implements Body {
     if (this.samurai) this.tickSamurai(dt);
     if (this.shinobi && this.ambushT > 0) this.ambushT -= dt;
     if (this.mendT > 0) this.mendT -= dt;
-    if (this.priestess) this.tickTrail(dt);
+    if (this.priestess) {
+      this.tickTrail(dt);
+      this.tickPalmFx(dt);
+    }
     if (this.wolf) this.tickRage(dt);
     if (this.chill > 0) this.chill -= dt;
     if (this.snare > 0) this.snare -= dt;
@@ -1577,6 +1607,7 @@ export class Player implements Body {
       else if (this.priestess) {
         // kaftlar navbat bilan: o'ng, chap, o'ng...
         this.palm = !this.palm;
+        this.startPalmFx();
         sfx.palmStrike(this.palm);
       } else if (this.wolf) {
         // panjalar: chap, o'ng, chap...

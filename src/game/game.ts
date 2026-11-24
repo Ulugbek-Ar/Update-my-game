@@ -127,7 +127,14 @@ import {
   type Streak,
 } from "./samuraiFx";
 import { renderShuriken, renderTwinArc, renderVanishEyes } from "./shinobiFx";
-import { renderBeam, renderPalmWave, renderTrail } from "./priestessFx";
+import {
+  LOTUS_LIFE,
+  renderBeam,
+  renderLotusFlashes,
+  renderPalmStrike,
+  renderTrail,
+  type LotusFlash,
+} from "./priestessFx";
 import { renderClaw, renderLeap, renderRush } from "./wolfFx";
 import { WOLF_FURY_EYES as WOLF_RAGE_COLOR } from "./wolfSprites";
 import {
@@ -1074,6 +1081,8 @@ export class Game {
   /** Birinchi o'yinda 1-to'lqindagi hali bajarilmagan harakat ko'rsatmalari */
   hints: Hint[] = [];
   private freeze = 0;
+  /** Rohiba kafti tekkan joylardagi oltin lotos chaqnashlari (faqat ko'rinish) */
+  private lotus: LotusFlash[] = [];
   private raf = 0;
   private last = 0;
   private ctx: CanvasRenderingContext2D;
@@ -2479,6 +2488,10 @@ export class Game {
     this.time += dt;
     // super paytida zarrachalar sekinlashmaydi (nur uchqunlari jonli qolsin)
     this.fx.update(cast ? raw : dt);
+    if (this.lotus.length) {
+      for (const l of this.lotus) l.life -= dt;
+      this.lotus = this.lotus.filter((l) => l.life > 0);
+    }
     this.cfx.update(cast ? raw : dt);
     this.pfx.update(cast ? raw : dt);
     if (this.scene) {
@@ -2999,7 +3012,15 @@ export class Game {
           // Bo'ri-qiz: G'AZAB to'planadi, QON SO'RASH (effekt — updateWolf)
           if (p.wolf) p.clawHit();
           // Rohiba: RAHM — har mercyHits zarbada +1 yurak (davolash chegarasi bilan; effekt — updatePriestess)
-          if (p.priestess) p.landHit();
+          if (p.priestess) {
+            p.landHit();
+            // MUQADDAS KAFT: lotos bargi chaqnashi va "om" qo'ng'irog'i (bir zarbada bir marta)
+            if (!p.spinning) {
+              if (this.lotus.length >= 6) this.lotus.shift();
+              this.lotus.push({ x: t.x, y: t.y - 4, life: LOTUS_LIFE, rot: p.palm ? -0.25 : 0.25 });
+              if (p.hitSet.size === 1) sfx.palmOm(p.palm);
+            }
+          }
           if (heavy && !p.spinning && wasAlive && t.dead && t instanceof Enemy) this.slamKill();
         }
       }
@@ -5181,7 +5202,8 @@ export class Game {
     // Rohiba: kaft to'lqini (chap-o'ng) yoki NUR KAFTI yo'lagi
     if (p.priestess) {
       if (p.spinning) return renderBeam(c, p, this.time, T);
-      return renderPalmWave(c, p, T);
+      renderLotusFlashes(c, this.lotus, T, this.fx.isReduced());
+      return renderPalmStrike(c, p, T, this.fx.isReduced());
     }
     // Bo'ri-qiz: shamol chiziqlari, sakrash soyasi / qo'nish halqasi yoki uchta tirnoq izi
     if (p.wolf) {

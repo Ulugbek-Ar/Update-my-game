@@ -84,11 +84,12 @@ const WALK: readonly Pose[] = [
 const ATTACK: readonly Pose[] = [
   // o'ng kaft: tortish → oldinga zarba (oltin nur) → qaytish
   { bob: 0, lean: -1, hem: 0, lf: 12, rf: 19, hand: [18, 16], off: [14, 19] },
-  { bob: 1, lean: 2, low: 1, hem: -1, lf: 11, rf: 20, hand: [28, 15], off: [13, 19], glow: "r" },
+  // zarba: qo'l oldinga to'liq cho'zilgan, kaft ochiq (barmoqlar tepaga), ortida qisqa oltin iz
+  { bob: 1, lean: 2, low: 1, hem: -1, lf: 11, rf: 20, hand: [30, 15], off: [13, 19], glow: "r" },
   { bob: 1, lean: 1, hem: 0, lf: 11, rf: 20, hand: [24, 17], off: [13, 19] },
   // chap kaft: orqa qo'l oldinga o'tib uradi
   { bob: 0, lean: -1, hem: 0, lf: 12, rf: 19, hand: [20, 20], off: [16, 15] },
-  { bob: 1, lean: 2, low: 1, hem: -1, lf: 11, rf: 20, hand: [19, 20], off: [28, 17], glow: "l" },
+  { bob: 1, lean: 2, low: 1, hem: -1, lf: 11, rf: 20, hand: [19, 20], off: [30, 16], glow: "l" },
   { bob: 1, lean: 1, hem: 0, lf: 11, rf: 20, hand: [19, 20], off: [24, 18] },
   // 6: NUR KAFTI zaryadi — ikki kaft ko'krak oldida, orasida oltin shar
   { bob: 1, lean: -1, low: 1, hem: 0, lf: 11, rf: 19, hand: [21, 15], off: [20, 18], orb: [22, 16] },
@@ -143,14 +144,21 @@ function sleeve(p: Pixels, from: Point, hand: Point, glow: boolean) {
     uy = dy / len;
   p.line(2, from, [Math.round(hx - ux * 2), Math.round(hy - uy * 2)], 3);
   p.rect(4, Math.round(hx - ux * 2) - 1, Math.round(hy - uy * 2) - 1, 2, 2);
-  p.rect(5, hx - 1, hy - 1, 2, 2);
-  if (glow) {
-    // kaft oldida oltin nur chaqnashi (plyus shakli)
-    const cx = Math.round(hx + ux * 3),
-      cy = Math.round(hy + uy * 3);
-    p.rect(4, cx - 1, cy, 3, 1);
-    p.rect(4, cx, cy - 1, 1, 3);
+  if (!glow) {
+    p.rect(5, hx - 1, hy - 1, 2, 2);
+    return;
   }
+  // ochiq kaft: tik turgan kaft va barmoqlar (oldinga qaragan), yon tomonda bosh barmoq
+  p.rect(5, hx - 1, hy - 3, 2, 5);
+  p.rect(5, hx - 2, hy, 1, 1);
+  // kaft ortida qisqa oltin iz (qo'l ustida va ostida ikki chiziq)
+  const bx = Math.round(hx - ux * 4),
+    by = Math.round(hy - uy * 4);
+  p.line(4, [bx, by - 2], [Math.round(bx - ux * 6), by - 2], 1);
+  p.line(4, [bx - 1, by + 2], [Math.round(bx - 1 - ux * 4), by + 2], 1);
+  // kaft oldida oltin nur chaqnashi (tik chiziq — kaft izi)
+  const cx = Math.round(hx + ux * 2);
+  p.rect(4, cx, hy - 3, 1, 5);
 }
 
 /** Yotib qolgan Rohiba: yonboshlab yotgan oq libos, oltin kamar, halo yerda xiralashgan */

@@ -10,7 +10,7 @@ import { DANGER } from "@/game/danger";
 import { skinLook, skinPalette } from "@/game/skins";
 import { DEFAULT_THEME, renderFlair, type SkinLook } from "@/game/skinFx";
 import { renderShuriken } from "@/game/shinobiFx";
-import { renderBeam, renderTrail } from "@/game/priestessFx";
+import { renderBeam, renderPalmStrike, renderTrail } from "@/game/priestessFx";
 import { renderClaw, renderLeap } from "@/game/wolfFx";
 import { drawRoleIcon } from "@/game/roles";
 import { VOW_TIME } from "@/game/player";
@@ -622,8 +622,11 @@ export class RealmRenderer {
           // skin: qayta tug'ilishda Player yangilanadi — har chizishda RealmPlayer'dan
           p.skin = rp.skin ? skinPalette(rp.hero, rp.skin) : undefined;
           p.render(c);
-          // Rohiba NUR KAFTI — boshqalar ham ko'radi
-          if (p.priestess && p.spinning && !p.dead) renderBeam(c, p, v.time, look.theme);
+          // Rohiba NUR KAFTI va MUQADDAS KAFT izi — boshqalar ham ko'radi
+          if (p.priestess && !p.dead) {
+            if (p.spinning) renderBeam(c, p, v.time, look.theme);
+            else renderPalmStrike(c, p, look.theme, v.fx.isReduced());
+          }
           // Bo'ri-qiz: sakrash halqasi va panja izi — boshqalar ham ko'radi
           if (p.wolf && !p.dead) {
             if (p.spinning) renderLeap(c, p, look.theme);

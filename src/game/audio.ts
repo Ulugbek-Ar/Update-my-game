@@ -896,6 +896,18 @@ class SoundFX {
     this.tone(f, 0.09, "sine", 0.035, f * 1.5);
   }
 
+  /**
+   * Kaft dushmanga tegdi: "om" uslubidagi yengil qo'ng'iroq — past g'uvillash, asosiy nota va
+   * qo'ng'iroq obertonlari (chap kaft biroz pastroq).
+   */
+  palmOm(left = false) {
+    const f = left ? 392 : 440;
+    this.tone(f / 2, 0.32, "sine", 0.03, f / 2.1);
+    this.tone(f, 0.38, "sine", 0.026);
+    this.tone(f * 2.76, 0.2, "sine", 0.01, undefined, 0.01);
+    this.tone(f * 5.4, 0.1, "sine", 0.005, undefined, 0.01);
+  }
+
   /** NUR KAFTI: ko'tariluvchi oltin "vuuung" va qo'ng'iroq */
   palmBeam() {
     this.tone(523, 0.28, "triangle", 0.045, 1046);
