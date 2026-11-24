@@ -1,37 +1,103 @@
 [
   {
     "title": "Русский язык",
-    "text": "Bosh menyu rus tilida — til Sozlamalarda tanlanadi.",
-    "target": "screen",
+    "text": "O'yin endi uch tilda — o'zbek, rus va ingliz. Til Sozlamalarda tanlanadi.",
+    "zoom": false,
     "steps": [
       {
         "storage": {
           "pixel-rpg-tutorial-done": "1",
           "pixel-rpg-seen-version": "3.21.0",
-          "pixel-rpg-lang": "ru",
-          "pixel-rpg-daily-last": "2099-01-01"
+          "pixel-rpg-hero": "shinobi",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner",
+            "shinobi"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ],
+          "pixel-rpg-lang": "ru"
         }
       },
       {
-        "wait": 2500
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
       }
     ]
   },
   {
     "title": "English",
-    "text": "Bosh menyu ingliz tilida.",
-    "target": "screen",
+    "text": "O'yin endi uch tilda — o'zbek, rus va ingliz. Til Sozlamalarda tanlanadi.",
+    "zoom": false,
     "steps": [
       {
         "storage": {
           "pixel-rpg-tutorial-done": "1",
           "pixel-rpg-seen-version": "3.21.0",
-          "pixel-rpg-lang": "en",
-          "pixel-rpg-daily-last": "2099-01-01"
+          "pixel-rpg-hero": "shinobi",
+          "pixel-rpg-unlocked-heroes": [
+            "paladin",
+            "samurai",
+            "gunner",
+            "shinobi"
+          ],
+          "pixel-rpg-super-tip-done": "1",
+          "pixel-rpg-achievements": [
+            "first",
+            "clean"
+          ],
+          "pixel-rpg-lang": "en"
         }
       },
       {
-        "wait": 2500
+        "start": true
+      },
+      {
+        "wave": 2
+      },
+      {
+        "spawn": {
+          "kind": "blob",
+          "px": 150,
+          "py": 150,
+          "dx": 62,
+          "dy": 4,
+          "speed": 0.4
+        }
+      },
+      {
+        "eval": "const E = g.enemies[0].constructor; for (const [k, x, y] of [['rammer', 86, 92], ['archer', 262, 72], ['wisp', 202, 204], ['blob', 68, 192], ['rammer', 252, 182], ['wisp', 122, 62], ['blob', 150, 222]]) { const e = new E(k, x, y); e.spawn = 0; e.speedMul = 0.4; g.enemies.push(e); } g.player.fx = 1; g.player.fy = 0; g.superMeter.add(999);"
+      },
+      {
+        "wait": 700
+      },
+      {
+        "eval": "setTimeout(() => g.useSuper(), 1100);"
       }
     ]
   }

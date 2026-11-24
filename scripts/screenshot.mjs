@@ -76,7 +76,7 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   await page.waitForFunction(
     () => {
       const b = [...document.querySelectorAll("button")].find(
-        (x) => x.textContent?.trim() === "BOSHLASH",
+        (x) => ["BOSHLASH", "НАЧАТЬ", "START"].includes(x.textContent?.trim() ?? ""),
       );
       return b && !b.disabled;
     },
@@ -111,9 +111,9 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
       if (step.hover)
         await page.getByRole("button", { name: step.hover, exact: true }).first().hover();
       if (step.start) {
-        await page.getByRole("button", { name: "BOSHLASH" }).click();
+        await page.getByRole("button", { name: /^(BOSHLASH|НАЧАТЬ|START)$/ }).click();
         // v2.0: BOSHLASH dan keyin sarguzasht xaritasi — tanlangan dunyoga kiriladi
-        const enter = page.getByRole("button", { name: "KIRISH", exact: true });
+        const enter = page.getByRole("button", { name: /^(KIRISH|ВОЙТИ|ENTER)$/ });
         const map = await enter.waitFor({ state: "visible", timeout: 3000 }).then(
           () => true,
           () => false,
