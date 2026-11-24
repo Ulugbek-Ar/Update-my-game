@@ -17,13 +17,13 @@ import type { SuperCast, SuperStage } from "./super";
 import type { SceneCtx, SceneTarget, SuperScene } from "./superScene";
 
 /** Lotos o'lchami (ochilganda): yarim eni va perspektivadagi yarim balandligi */
-export const LOTUS_R = 30;
+export const LOTUS_R = 40;
 export const LOTUS_TILT = 0.38;
 /** Tashqi va ichki gulbarglar soni */
 export const LOTUS_PETALS = 8;
 export const LOTUS_INNER = 6;
 /** Nur yashash vaqti va davolash halqasi umri (s) */
-export const RAY_LIFE = 0.4;
+export const RAY_LIFE = 0.55;
 export const HEAL_RING_LIFE = 0.8;
 /** Ko'tariluvchi nur zarralari (oddiy va kamaytirilgan) */
 export const LOTUS_MOTES = 14;
@@ -222,7 +222,7 @@ export class LotusScene implements SuperScene {
     const T = ctx.theme;
     const k = this.open;
     // ostidagi nur dog'i
-    c.fillStyle = withAlpha(T.glow, 0.18 * k);
+    c.fillStyle = withAlpha(T.accent, 0.24 * k);
     c.beginPath();
     c.ellipse(
       this.cx,
@@ -241,14 +241,14 @@ export class LotusScene implements SuperScene {
       edge = withAlpha(T.accentDark, 0.95);
     // orqa yarmi (tepada) — avval
     for (const i of order.slice(0, LOTUS_PETALS / 2))
-      this.petal(c, i, LOTUS_PETALS, LOTUS_R, 7, fill, edge);
+      this.petal(c, i, LOTUS_PETALS, LOTUS_R, 10, fill, edge);
     for (let i = 0; i < LOTUS_INNER; i++)
       this.petal(
         c,
         i,
         LOTUS_INNER,
         LOTUS_R * 0.6,
-        5,
+        7,
         withAlpha(T.glow, 0.95),
         withAlpha(T.accent, 0.9),
       );
@@ -260,7 +260,7 @@ export class LotusScene implements SuperScene {
     c.fillStyle = withAlpha(T.glow, 0.9);
     c.fillRect(Math.round(this.cx) - 1, Math.round(this.cy) - 2, 3, 1);
     for (const i of order.slice(LOTUS_PETALS / 2))
-      this.petal(c, i, LOTUS_PETALS, LOTUS_R, 7, fill, edge);
+      this.petal(c, i, LOTUS_PETALS, LOTUS_R, 10, fill, edge);
   }
 
   /** Super tugagach (so'nish) lotos personajlar ostida qoladi */
@@ -272,7 +272,7 @@ export class LotusScene implements SuperScene {
     const T = ctx.theme;
     const V = ctx.view;
     // 1) dunyo iliq oltin-qoramtirga botadi; lotos va Rohiba yorug'likda
-    if (this.dim > 0.01) px(c, `rgba(22,14,4,${0.55 * this.dim})`, V.x, V.y, V.w, V.h);
+    if (this.dim > 0.01) px(c, `rgba(22,14,4,${0.68 * this.dim})`, V.x, V.y, V.w, V.h);
     if (cast) {
       this.renderLotus(c, ctx);
       if (!this.hidden() && ctx.drawOwner) ctx.drawOwner(c);
@@ -285,14 +285,14 @@ export class LotusScene implements SuperScene {
         y1 = r.y0 + (r.y1 - r.y0) * grow;
       c.save();
       c.lineCap = "round";
-      c.strokeStyle = withAlpha(T.accent, 0.55 * k);
-      c.lineWidth = (r.big ? 6 : 4) * (0.5 + k * 0.5);
+      c.strokeStyle = withAlpha(T.accent, 0.85 * k);
+      c.lineWidth = (r.big ? 8 : 5) * (0.5 + k * 0.5);
       c.beginPath();
       c.moveTo(r.x0, r.y0);
       c.lineTo(x1, y1);
       c.stroke();
       c.strokeStyle = withAlpha(T.glow, k);
-      c.lineWidth = r.big ? 2 : 1;
+      c.lineWidth = r.big ? 3 : 2;
       c.beginPath();
       c.moveTo(r.x0, r.y0);
       c.lineTo(x1, y1);

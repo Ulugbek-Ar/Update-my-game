@@ -29,12 +29,12 @@ export function renderPalmWave(
     cy = p.y - 2 + p.fy * d + p.fx * side;
   const r = 5 + prog * 5;
   c.save();
-  c.strokeStyle = withAlpha(T.accent, 0.5 * k + 0.2);
+  c.strokeStyle = withAlpha(T.accent, 0.75 * k + 0.25);
   c.lineWidth = 3;
   c.beginPath();
   c.arc(cx - p.fx * r, cy - p.fy * r, r, ang - 0.9, ang + 0.9);
   c.stroke();
-  c.strokeStyle = withAlpha(T.glow, 0.8 * k + 0.2);
+  c.strokeStyle = withAlpha(T.glow, 0.9 * k + 0.1);
   c.lineWidth = 1;
   c.beginPath();
   c.arc(cx - p.fx * r, cy - p.fy * r, r, ang - 0.8, ang + 0.8);
@@ -100,7 +100,7 @@ export function renderTrail(
     const k = Math.max(0, Math.min(1, d.life / Math.max(0.01, life)));
     if (k <= 0) continue;
     const a = Math.min(1, d.life * 2);
-    c.fillStyle = withAlpha(T.accent, 0.22 * a);
+    c.fillStyle = withAlpha(T.accent, 0.4 * a);
     c.beginPath();
     c.ellipse(
       d.x,
@@ -112,7 +112,7 @@ export function renderTrail(
       Math.PI * 2,
     );
     c.fill();
-    c.fillStyle = withAlpha(T.glow, 0.5 * a);
+    c.fillStyle = withAlpha(T.glow, 0.85 * a);
     c.beginPath();
     c.ellipse(d.x, d.y, 3 + 2 * k, 1.4 + k, 0, 0, Math.PI * 2);
     c.fill();
