@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.21.0";
+export const GAME_VERSION = "3.22.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.22.0",
+    date: "2026-11-24",
+    notes:
+      "Yangi qahramon — Rohiba. Kaft zarbalari bilan oltin nur to'lqinlarini otadi va jang paytida o'zini davolaydi. Muqaddas qadami ortida davolovchi nur izi qoladi. Superi — Oltin lotos: ulkan gul ochilib, barcha dushmanlarni nur bilan uradi va jonni tiklaydi.",
+  },
   {
     version: "3.21.0",
     date: "2026-11-24",
