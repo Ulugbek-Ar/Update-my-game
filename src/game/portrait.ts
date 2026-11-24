@@ -85,7 +85,7 @@ export const HUNTER_PORTRAIT_VARIANTS = ["", "drawn", "flash"] as const;
 /** Mergan portreti kadrlari: tinch, baraban aylanadi, tutun va gilzalar */
 export const GUNNER_PORTRAIT_VARIANTS = ["", "spin", "smoke"] as const;
 
-/** Ninja portreti kadrlari: ko'zlar xira → qizil yonadi → tig'lar yaltiraydi, ko'zdan chaqnash */
+/** Ninja portreti kadrlari: ko'zlar yonadi → tig'larda yaltirash → sharf uchlari shamolda ko'tariladi */
 export const SHINOBI_PORTRAIT_VARIANTS = ["", "glare", "flash"] as const;
 
 /** Rohiba portreti kadrlari: ibodat (ko'zlar yumuq) → halo yonadi → ko'zlar ochiladi, kaftdan nur */
@@ -174,8 +174,14 @@ const SKIN_TINTS: Partial<Record<Hero, readonly SkinTint[]>> = {
     g(28, 28, [3], 0.6),
     g(30, 30, [3], 0.6),
   ],
-  // Ninja: qora mato, sharf/dasta o'rami va ko'z nuri skin rangida; oy (fon) va po'lat qoladi
-  shinobi: [g(2, 5, [1, 2], 0.8), g(15, 17, [3], 0.85), g(18, 18, 3, 0.75), g(19, 19, 3, 0.3)],
+  // Ninja: qora mato, sharf va ko'z nuri skin rangida; qizil oy (fon), uning rim light'i, po'lat qoladi
+  shinobi: [
+    g(2, 6, [1, 2], 0.8),
+    g(16, 19, [3], 0.85),
+    g(20, 20, 3, 0.75),
+    g(21, 21, 3, 0.3),
+    g(25, 25, 3, 0.6),
+  ],
   // Rohiba: libos, halo va oltin hoshiya skin rangida; teri, soch, lab qoladi
   priestess: [g(2, 5, [1, 2], 0.75), g(6, 10, [3], 0.8), g(11, 13, [3], 0.75)],
   // Bo'ri-qiz: po'lat zirh, mo'yna va oltin skin rangida; oy (fon), teri, soch, ko'zlar qoladi

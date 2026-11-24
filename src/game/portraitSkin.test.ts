@@ -14,7 +14,7 @@ const CASES = [
   ["mage", MAGE_PORTRAIT_COLORS, [1, 16, 17, 18, 19, 20, 21, 22, 23]],
   ["hunter", HUNTER_PORTRAIT_COLORS, [1, 11, 12, 13, 14, 19]],
   ["gunner", GUNNER_PORTRAIT_COLORS, [1, 11, 12, 13, 14, 34]],
-  ["shinobi", SHINOBI_PORTRAIT_COLORS, [1, 6, 7, 8, 9, 14]],
+  ["shinobi", SHINOBI_PORTRAIT_COLORS, [1, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24]],
   ["priestess", PRIESTESS_PORTRAIT_COLORS, [1, 14, 15, 16, 17, 18, 19, 20]],
   ["wolf", WOLF_PORTRAIT_COLORS, [1, 2, 3, 4, 5, 17, 18, 19]],
 ] as const;
