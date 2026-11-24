@@ -2088,7 +2088,7 @@ function JoinRoomWindow({
               "px-4 py-2 disabled:opacity-50",
             )}
           >
-            KIRISH
+            {t("map.enter")}
           </button>
           <button
             onClick={onClose}
@@ -2521,13 +2521,13 @@ function MapScreen({
   );
   // xona 4:3 — 16:9 ekranning chap va o'ng chetidagi bo'sh joyda tugmalar
   return (
-    <div aria-label="Sarguzasht xaritasi" className="pointer-events-none absolute inset-0">
+    <div aria-label={t("map.aria")} className="pointer-events-none absolute inset-0">
       <div className="absolute inset-y-0 left-[1%] flex w-[10.5%] flex-col items-center justify-center gap-3">
         <button className={cn(btn, "pointer-events-auto w-full")} onClick={onBack}>
-          ORQAGA
+          {t("map.back")}
         </button>
         <button
-          aria-label="Chapdagi dunyo"
+          aria-label={t("map.leftAria")}
           className={cn(btn, "pointer-events-auto w-full")}
           onClick={() => mapRef.current?.move(-1)}
         >
@@ -2536,7 +2536,7 @@ function MapScreen({
       </div>
       <div className="absolute inset-y-0 right-[1%] flex w-[10.5%] flex-col items-center justify-center gap-3">
         <button
-          aria-label="O'ngdagi dunyo"
+          aria-label={t("map.rightAria")}
           className={cn(btn, "pointer-events-auto w-full")}
           onClick={() => mapRef.current?.move(1)}
         >
@@ -2549,7 +2549,7 @@ function MapScreen({
           )}
           onClick={() => mapRef.current?.enter()}
         >
-          KIRISH
+          {t("map.enter")}
         </button>
       </div>
     </div>

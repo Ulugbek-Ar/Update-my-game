@@ -4,7 +4,7 @@
  * Qurilmaga xos kalitlar (boshqaruv joylashuvi, ovoz, dev, ko'rilgan versiya) kodga kirmaydi.
  */
 import { ACCOUNT_DEVICE_KEYS } from "@/account/keys";
-import { LANG_KEY, reloadLang } from "@/i18n";
+import { LANG_KEY, reloadLang, t } from "@/i18n";
 import { ACHIEVEMENTS, ACHIEVEMENTS_KEY } from "./achievements";
 import { MUTE_KEY } from "./audio";
 import { HERO_LIST, bestKeys, type Hero } from "./hero";
@@ -363,19 +363,18 @@ export interface TransferData {
 
 export type ReadResult = { ok: true; data: TransferData } | { ok: false; error: string };
 
-const bad = (error = BAD_CODE): ReadResult => ({ ok: false, error });
+const bad = (error = t("tr.badCode")): ReadResult => ({ ok: false, error });
 
 /** Kodni tekshiradi va o'qiydi (localStorage'ga tegmaydi). Qismlar ketma-ket qo'yilsa ham bo'ladi. */
 export async function readCode(text: string): Promise<ReadResult> {
   let s = text.replace(/\s+/g, "");
-  if (!s) return bad("Avval kodni kiriting");
+  if (!s) return bad(t("tr.empty"));
   // qismlar teskari tartibda qo'yilgan bo'lsa ham
   const at = s.indexOf(TRANSFER_PREFIX);
   if (at > 0) s = s.slice(at) + s.slice(0, at);
   const m = /^PQ(\d+)-(.+)-([0-9a-f]{8})$/i.exec(s);
   if (!m) return bad();
-  if (Number(m[1]) > FORMAT)
-    return bad("Bu kod o'yinning yangiroq versiyasidan. Avval o'yinni yangilang");
+  if (Number(m[1]) > FORMAT) return bad(t("tr.newer"));
   const body = m[2]!.replace(/[^A-Za-z0-9_-]/g, "");
   if (Number(m[1]) !== FORMAT || crc32(body) !== m[3]!.toLowerCase()) return bad();
   let p: Payload;
@@ -388,8 +387,7 @@ export async function readCode(text: string): Promise<ReadResult> {
     return bad();
   }
   if (!p || typeof p !== "object" || typeof p.f !== "number") return bad();
-  if (p.f > FORMAT)
-    return bad(`Bu kod o'yinning yangiroq versiyasidan (v${p.g}). Avval o'yinni yangilang`);
+  if (p.f > FORMAT) return bad(t("tr.newerV", { v: p.g }));
   if (p.f !== FORMAT || typeof p.j !== "object" || typeof p.t !== "object" || !p.j || !p.t)
     return bad();
   const keys: Record<string, string> = {};
@@ -405,8 +403,7 @@ export async function readCode(text: string): Promise<ReadResult> {
     return bad();
   }
   const sv = Number(keys[SAVE_VERSION_KEY] ?? 1);
-  if (sv > SAVE_VERSION)
-    return bad(`Bu kod o'yinning yangiroq versiyasidan (v${p.g}). Avval o'yinni yangilang`);
+  if (sv > SAVE_VERSION) return bad(t("tr.newerV", { v: p.g }));
   return {
     ok: true,
     data: { keys, game: String(p.g ?? ""), summary: summarize((k) => keys[k] ?? null) },

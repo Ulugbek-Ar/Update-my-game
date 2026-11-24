@@ -8,6 +8,7 @@
  * Sotib olingan va tanlangan skinlar SKINS_KEY da (pixel-rpg- kaliti — ko'chirish kodi va bulutli
  * saqlanishga o'zi kiradi). Onlayn olamda skin id'si yuboriladi; server faqat mavjud id'ni oladi.
  */
+import { tk } from "@/i18n";
 import { HEROES as HERO_IDS, type Hero } from "./hero";
 import { PALETTES } from "./sprites";
 import {
@@ -335,16 +336,6 @@ const FX: Record<string, SkinFx> = {
   },
 };
 
-const DEFAULT_NAME: Record<Hero, string> = {
-  shinobi: "ODDIY NINJA",
-  knight: "ODDIY RITSAR",
-  mage: "ODDIY SEHRGAR",
-  hunter: "ODDIY OVCHI",
-  gunner: "ODDIY MERGAN",
-  paladin: "ODDIY PALADIN",
-  samurai: "ODDIY SAMURAY",
-};
-
 /** Har qahramon skinlari: birinchisi — default (bepul) */
 export const SKINS: Record<Hero, readonly Skin[]> = Object.fromEntries(
   HERO_IDS.map((h) => [
@@ -353,20 +344,24 @@ export const SKINS: Record<Hero, readonly Skin[]> = Object.fromEntries(
       {
         id: DEFAULT_SKIN,
         hero: h,
-        name: DEFAULT_NAME[h],
+        get name() {
+          return tk(`skin.${h}.default`);
+        },
         price: 0,
         colors: PALETTES[h],
         tier: "default",
         theme: DEFAULT_THEME[h],
         fx: PLAIN_FX,
       },
-      ...DEFS[h].map(([id, name, colors], i) => {
+      ...DEFS[h].map(([id, , colors], i) => {
         const price = SKIN_PRICES[i] ?? 250;
         const sid = `${h}-${id}`;
         return {
           id: sid,
           hero: h,
-          name,
+          get name() {
+            return tk(`skin.${sid}`);
+          },
           price,
           colors,
           tier: tierOfPrice(price),
@@ -392,7 +387,9 @@ export const REWARD_SKINS: Partial<Record<Hero, readonly Skin[]>> = {
     {
       id: REFERRAL_SKIN,
       hero: "knight",
-      name: "CHAQIRUVCHI",
+      get name() {
+        return tk("skin.referral");
+      },
       price: 0,
       reward: "referral",
       // kontur, zirh soyasi, zirh, yaltiroq, chaqnash: zumrad-firuza jarchi zirhi

@@ -21,7 +21,7 @@ const SIZES = [
 const SCENES = ["qasr", "iblis", "olam"];
 
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage({ locale: "uz-UZ" });
 await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
 await mkdir("store/wallpapers", { recursive: true });
 

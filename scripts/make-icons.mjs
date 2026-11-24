@@ -15,7 +15,7 @@ const RES = "android/app/src/main/res";
 const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
 
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage({ locale: "uz-UZ" });
 await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
 const icons = await page.evaluate(async (densities) => {
   const { renderSprite } = await import("/src/game/sprites.ts");

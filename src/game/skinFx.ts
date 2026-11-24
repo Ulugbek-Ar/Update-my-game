@@ -11,6 +11,7 @@
  *
  * Xavf ranglari (danger.ts) dushmanniki: skin effekt ranglari ularga o'xshamasin (test bor).
  */
+import { t } from "@/i18n";
 import { px } from "./animation";
 import { HERO_THEME, withAlpha, type Hero, type HeroTheme } from "./hero";
 import type { Effects } from "./effects";
@@ -116,9 +117,15 @@ export interface SkinFx {
 export type SkinTier = "default" | "common" | "rare" | "legendary";
 
 export const TIER_NAME: Record<Exclude<SkinTier, "default">, string> = {
-  common: "ODDIY",
-  rare: "NOYOB",
-  legendary: "AFSONAVIY",
+  get common() {
+    return t("tier.common");
+  },
+  get rare() {
+    return t("tier.rare");
+  },
+  get legendary() {
+    return t("tier.legendary");
+  },
 };
 
 export const TIER_COLOR: Record<Exclude<SkinTier, "default">, string> = {

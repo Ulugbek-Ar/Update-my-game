@@ -2,6 +2,7 @@
  * SOZLAMALAR -> BOSHQARUV: telefon (joystik, tugmalar, joylashuv, tebranish) va kompyuter
  * (tugmalarni qayta belgilash). O'zgarish darhol saqlanadi va o'yinda qo'llanadi.
  */
+import { t } from "@/i18n";
 import { superFor } from "@/game/super";
 import { SuperOrbFace } from "./SuperOrbButton";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -30,8 +31,8 @@ export function Toggle({
   on,
   label,
   onChange,
-  yes = "YOQIQ",
-  no = "O'CHIQ",
+  yes = t("ctl.on"),
+  no = t("ctl.off"),
 }: {
   on: boolean;
   label: string;
@@ -171,7 +172,7 @@ export function ControlsPreview({ hero, ts }: { hero: Hero; ts: TouchSettings })
   return (
     <div
       ref={box}
-      aria-label="Boshqaruv ko'rinishi"
+      aria-label={t("ctl.view")}
       className="controls-preview relative w-full overflow-hidden border-2 border-border bg-black"
       style={{ height: vp.h * k }}
     >
@@ -217,27 +218,27 @@ export function TouchSettingsPanel({ hero }: { hero: Hero }) {
   return (
     <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-2 sm:sticky sm:top-0 sm:self-start">
-        <span className="text-muted-foreground">Jonli ko'rinish</span>
+        <span className="text-muted-foreground">{t("ctl.live")}</span>
         <ControlsPreview hero={hero} ts={ts} />
         <button
           onClick={() => setEditing(true)}
           className={`border-2 border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground ${pixelPress} ${pixelFocus}`}
         >
-          JOYLASHUVNI TAHRIRLASH
+          {t("ctl.editLayout")}
         </button>
         {Object.keys(ts.layout).length > 0 && (
-          <span className="text-muted-foreground">Tugmalar siz joylashtirgan joyda</span>
+          <span className="text-muted-foreground">{t("ctl.yourLayout")}</span>
         )}
       </div>
       <div className="flex flex-col gap-3">
         <Slider
-          label="Joystik o'lchami"
+          label={t("ctl.stickSize")}
           value={ts.stickSize}
           range={SIZE_RANGE}
           onChange={(v) => setTouchSettings({ stickSize: v })}
         />
         <Slider
-          label="Tugmalar o'lchami"
+          label={t("ctl.btnSize")}
           value={ts.buttonSize}
           range={SIZE_RANGE}
           onChange={(v) => setTouchSettings({ buttonSize: v })}
@@ -249,34 +250,33 @@ export function TouchSettingsPanel({ hero }: { hero: Hero }) {
           onChange={(v) => setTouchSettings({ opacity: v })}
         />
         <Segmented
-          label="Joystik turi"
+          label={t("ctl.stickType")}
           value={ts.stickMode}
           options={[
-            ["fixed", "QO'ZG'ALMAS"],
-            ["floating", "SUZUVCHI"],
+            ["fixed", t("ctl.fixed")],
+            ["floating", t("ctl.floating")],
           ]}
           onChange={(v) => setTouchSettings({ stickMode: v })}
         />
         {ts.stickMode === "floating" && (
           <span className="text-muted-foreground">
-            Ekranning {ts.leftHanded ? "o'ng" : "chap"} yarmiga tegining — joystik barmoq ostida
-            paydo bo'ladi
+            {t(ts.leftHanded ? "ctl.floatNoteR" : "ctl.floatNoteL")}
           </span>
         )}
         <Slider
-          label="Sezgirlik (o'lik zona)"
+          label={t("ctl.deadzone")}
           value={ts.deadzone}
           range={DEADZONE_RANGE}
-          note="kam — sezgirroq"
+          note={t("ctl.deadzoneNote")}
           onChange={(v) => setTouchSettings({ deadzone: v })}
         />
         <Toggle
-          label="Chapaqay rejimi"
+          label={t("ctl.left")}
           on={ts.leftHanded}
           onChange={(v) => setTouchSettings({ leftHanded: v })}
         />
         <Toggle
-          label={canVibrate ? "Tebranish" : "Tebranish (qurilma qo'llamaydi)"}
+          label={canVibrate ? "Tebranish" : t("ctl.vibrate")}
           on={ts.vibrate}
           onChange={(v) => setTouchSettings({ vibrate: v })}
         />
@@ -284,7 +284,7 @@ export function TouchSettingsPanel({ hero }: { hero: Hero }) {
           onClick={() => setTouchSettings({ ...DEFAULT_TOUCH, layout: {} })}
           className={`self-start border-2 border-border px-3 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
         >
-          ASL HOLIGA QAYTARISH
+          {t("ctl.reset")}
         </button>
       </div>
       {editing && <LayoutEditor hero={hero} onClose={() => setEditing(false)} />}
@@ -311,9 +311,9 @@ export function ControlsSettings({ hero, touch }: { hero: Hero; touch: boolean }
   );
   return (
     <div className="flex flex-col gap-3">
-      <div role="tablist" aria-label="Boshqaruv turi" className="flex gap-2">
-        {tab("touch", "TELEFON")}
-        {tab("keys", "KOMPYUTER")}
+      <div role="tablist" aria-label={t("ctl.type")} className="flex gap-2">
+        {tab("touch", t("ctl.phone"))}
+        {tab("keys", t("ctl.pc"))}
       </div>
       {part === "touch" ? <TouchSettingsPanel hero={hero} /> : <KeyBindsPanel />}
     </div>

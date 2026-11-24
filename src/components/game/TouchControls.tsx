@@ -2,6 +2,7 @@
  * Telefon (sensor) boshqaruvi: joystik va tugmalar. O'lcham, shaffoflik, joystik turi, o'lik zona,
  * chapaqay rejimi va joylashuv SOZLAMALAR -> BOSHQARUV dan olinadi va darhol qo'llanadi.
  */
+import { t } from "@/i18n";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Game } from "@/game/game";
 import { sfx } from "@/game/audio";
@@ -257,7 +258,7 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
       {game.player.gunner &&
         button(
           "reload",
-          { text: "", aria: "Qayta o'qlash", icon: "bullet" },
+          { text: "", aria: t("tb.reloadA"), icon: "bullet" },
           () => game.input.pressReload(),
           undefined,
           <TouchIconSvg

@@ -16,7 +16,7 @@ const versionSrc = await readFile("src/game/version.ts", "utf8");
 const gameVersion = versionSrc.match(/GAME_VERSION\s*=\s*"([^"]+)"/)?.[1];
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+const ctx = await browser.newContext({ locale: "uz-UZ", viewport: { width: 1280, height: 720 } });
 await ctx.addInitScript((v) => {
   localStorage.setItem("pixel-rpg-seen-version", v);
   localStorage.setItem("pixel-rpg-tutorial-done", "1");

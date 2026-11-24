@@ -2,6 +2,7 @@
  * SOZLAMALAR -> UMUMIY -> PROGRESSNI KO'CHIRISH: kodni olish (nusxalash), kodni kiritish,
  * ko'rib chiqish va o'yin ichidagi tasdiqlash, kod qo'llanishidan oldingi holatga qaytarish.
  */
+import { t } from "@/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { buttonVariants } from "@/components/ui/button";
@@ -33,12 +34,24 @@ type View =
   | { kind: "restored" };
 
 const TITLES: Record<View["kind"], string> = {
-  export: "KODNI OLISH",
-  import: "KODNI KIRITISH",
-  preview: "KODNI QO'LLASH",
-  done: "PROGRESS KO'CHIRILDI",
-  restore: "OLDINGI HOLATGA QAYTARISH",
-  restored: "OLDINGI HOLAT TIKLANDI",
+  get export() {
+    return t("tr.t.export");
+  },
+  get import() {
+    return t("tr.t.import");
+  },
+  get preview() {
+    return t("tr.t.preview");
+  },
+  get done() {
+    return t("tr.t.done");
+  },
+  get restore() {
+    return t("tr.t.restore");
+  },
+  get restored() {
+    return t("tr.t.restored");
+  },
 };
 
 const btn = (variant: "pixel" | "pixelOutline", extra = "") =>
@@ -93,28 +106,28 @@ export function TransferPanel({
   };
   return (
     <section
-      aria-label="Progressni ko'chirish"
+      aria-label={t("tr.title")}
       className="flex flex-col gap-2 border-t-2 border-border pt-3"
     >
       <h3 className="text-primary">PROGRESSNI KO'CHIRISH</h3>
       <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">
-        Kodni nusxalang, o'zingizga Telegram'da yuboring va boshqa qurilmada kiriting.
+        {t("tr.exportNote")}
       </p>
       <div className="flex flex-wrap gap-2">
         <button onClick={openExport} className={btn("pixelOutline")}>
-          KODNI OLISH
+          {t("tr.t.export")}
         </button>
         <button
           onClick={() => setView({ kind: "import" })}
           disabled={!canImport}
           className={btn("pixelOutline")}
         >
-          KODNI KIRITISH
+          {t("tr.t.import")}
         </button>
       </div>
       {!canImport && (
         <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">
-          Kodni kiritish — bosh menyuda.
+          {t("tr.importMenu")}
         </p>
       )}
       {backup && canImport && (
@@ -122,7 +135,7 @@ export function TransferPanel({
           onClick={() => setView({ kind: "restore", backup })}
           className={btn("pixelOutline", "self-start")}
         >
-          OLDINGI HOLATGA QAYTARISH
+          {t("tr.t.restore")}
         </button>
       )}
       {view && (
@@ -199,10 +212,10 @@ function TransferWindow({
           {view.kind === "preview" && (
             <Confirm
               code={view.data.summary}
-              codeLabel="KODDA"
-              warning="Hozirgi progress shu kod bilan almashtiriladi."
-              note="Hozirgi holat zaxiraga saqlanadi — keyin qaytarish mumkin."
-              yes="ALMASHTIRISH"
+              codeLabel={t("tr.inCode")}
+              warning={t("tr.warnReplace")}
+              note={t("tr.backupNote")}
+              yes={t("tr.replace")}
               onYes={() => {
                 if (!applyTransfer(view.data)) return false;
                 sfx.upgrade();
@@ -215,14 +228,12 @@ function TransferWindow({
           )}
           {view.kind === "done" && (
             <>
-              <p className="text-foreground">Oltin, qahramonlar va yutuqlar shu qurilmaga o'tdi.</p>
-              <SummaryTable rows={[["HOZIR", currentSummary()]]} />
-              <p className="text-muted-foreground">
-                Oldingi holat zaxirada. Adashgan bo'lsangiz — qaytaring.
-              </p>
+              <p className="text-foreground">{t("tr.doneNote")}</p>
+              <SummaryTable rows={[[t("tr.now"), currentSummary()]]} />
+              <p className="text-muted-foreground">{t("tr.backupKept")}</p>
               <div className="flex flex-wrap gap-2">
                 <button onClick={onClose} className={btn("pixel")}>
-                  YOPISH
+                  {t("common.close")}
                 </button>
                 <BackupButton setView={setView} />
               </div>
@@ -231,10 +242,10 @@ function TransferWindow({
           {view.kind === "restore" && (
             <Confirm
               code={summarize((k) => view.backup.keys[k] ?? null)}
-              codeLabel="ZAXIRA"
-              warning="Hozirgi progress kod qo'llanishidan oldingi holat bilan almashtiriladi."
-              note={`Zaxira vaqti: ${when(view.backup.time)}.`}
-              yes="QAYTARISH"
+              codeLabel={t("tr.backup")}
+              warning={t("tr.warnRestore")}
+              note={t("tr.backupTime", { t: when(view.backup.time) })}
+              yes={t("tr.restore")}
               onYes={() => {
                 if (!restoreBackup()) return false;
                 onChanged();
@@ -246,9 +257,9 @@ function TransferWindow({
           )}
           {view.kind === "restored" && (
             <>
-              <SummaryTable rows={[["HOZIR", currentSummary()]]} />
+              <SummaryTable rows={[[t("tr.now"), currentSummary()]]} />
               <button onClick={onClose} className={btn("pixel", "self-start")}>
-                YOPISH
+                {t("common.close")}
               </button>
             </>
           )}
@@ -264,27 +275,24 @@ function BackupButton({ setView }: { setView: (v: View) => void }) {
   if (!b) return null;
   return (
     <button onClick={() => setView({ kind: "restore", backup: b })} className={btn("pixelOutline")}>
-      OLDINGI HOLATGA QAYTARISH
+      {t("tr.t.restore")}
     </button>
   );
 }
 
 function ExportView({ parts }: { parts: string[] | null }) {
-  if (!parts) return <p className="text-muted-foreground">Kod tayyorlanmoqda...</p>;
+  if (!parts) return <p className="text-muted-foreground">{t("tr.preparing")}</p>;
   const total = parts.reduce((n, p) => n + p.length, 0);
   return (
     <>
       <p className="text-foreground">
-        {parts.length > 1
-          ? `Kod uzun — ${parts.length} qismga bo'lindi. Har qismini alohida xabar qilib yuboring, kiritishda hammasini ketma-ket qo'ying.`
-          : "Kodni nusxalang va o'zingizga Telegram'da yuboring (masalan, «Saqlangan xabarlar»ga)."}
+        {parts.length > 1 ? t("tr.split", { n: parts.length }) : t("tr.copyNote")}
       </p>
       {parts.map((p, i) => (
-        <CodeBox key={i} code={p} label={parts.length > 1 ? `${i + 1}-QISM` : null} />
+        <CodeBox key={i} code={p} label={parts.length > 1 ? t("tr.part", { n: i + 1 }) : null} />
       ))}
       <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-4">
-        Kod uzunligi: {total} belgi. Sozlamalar (boshqaruv, ovoz) har qurilmada o'zi — kodga
-        kirmaydi.
+        {t("tr.lenNote", { n: total })}
       </p>
     </>
   );
@@ -301,7 +309,7 @@ function CodeBox({ code, label }: { code: string; label: string | null }) {
         readOnly
         value={code}
         rows={5}
-        aria-label={label ? `Kod, ${label}` : "Ko'chirish kodi"}
+        aria-label={label ? t("tr.codeAria", { l: label }) : t("tr.codeAria2")}
         onFocus={(e) => e.currentTarget.select()}
         className="w-full resize-none break-all border-2 border-border bg-background p-2 font-mono text-[10px] leading-4 text-foreground"
       />
@@ -313,13 +321,11 @@ function CodeBox({ code, label }: { code: string; label: string | null }) {
           }}
           className={btn("pixel")}
         >
-          NUSXALASH
+          {t("tr.copy")}
         </button>
         {status && (
           <span role="status" className={status === "ok" ? "text-primary" : "text-foreground"}>
-            {status === "ok"
-              ? "Nusxalandi!"
-              : "Nusxalab bo'lmadi — matn belgilandi, uni o'zingiz nusxalang."}
+            {status === "ok" ? t("tr.copied") : t("tr.copyFail")}
           </span>
         )}
       </div>
@@ -341,15 +347,12 @@ function ImportView({ onRead }: { onRead: (d: TransferData) => void }) {
   };
   return (
     <>
-      <p className="text-foreground">
-        Boshqa qurilmadan olingan kodni joylashtiring. Kod 2 qismga bo'lingan bo'lsa — ikkalasini
-        ketma-ket qo'ying.
-      </p>
+      <p className="text-foreground">{t("tr.pasteNote")}</p>
       <textarea
         ref={ref}
         value={text}
         rows={5}
-        aria-label="Ko'chirish kodini kiriting"
+        aria-label={t("tr.enterAria")}
         placeholder="PQ1-..."
         spellCheck={false}
         autoCapitalize="off"
@@ -376,15 +379,15 @@ function ImportView({ onRead }: { onRead: (d: TransferData) => void }) {
               if (t.trim()) void check(t);
             } catch {
               ref.current?.focus();
-              setError("Buferni ochib bo'lmadi — kodni maydonga bosib turib joylashtiring.");
+              setError(t("tr.clipFail"));
             }
           }}
           className={btn("pixelOutline")}
         >
-          JOYLASHTIRISH
+          {t("tr.paste")}
         </button>
         <button onClick={() => void check(text)} disabled={busy} className={btn("pixel")}>
-          {busy ? "TEKSHIRILMOQDA..." : "DAVOM ETISH"}
+          {busy ? t("tr.checking") : t("tr.continue")}
         </button>
       </div>
     </>
@@ -418,14 +421,14 @@ function Confirm({
       <SummaryTable
         rows={[
           [codeLabel, code],
-          ["HOZIR", currentSummary()],
+          [t("tr.now"), currentSummary()],
         ]}
       />
       <p className="border-2 border-primary px-2 py-1 text-primary">{warning}</p>
       <p className="text-muted-foreground">{note}</p>
       {failed && (
         <p role="alert" className="text-destructive">
-          Saqlab bo'lmadi: qurilmada joy yetarli emas. Progress o'zgarmadi.
+          {t("tr.noSpace")}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -433,7 +436,7 @@ function Confirm({
           {yes}
         </button>
         <button ref={noRef} onClick={onNo} className={btn("pixelOutline")}>
-          BEKOR QILISH
+          {t("tr.cancel")}
         </button>
       </div>
     </>
@@ -468,12 +471,12 @@ function SummaryTable({ rows }: { rows: [string, ProgressSummary][] }) {
         </thead>
       )}
       <tbody>
-        {line("Oltin", (s) => s.gold)}
-        {line("Qahramonlar", (s) =>
+        {line(t("tr.gold"), (s) => s.gold)}
+        {line(t("tr.heroes"), (s) =>
           s.heroes.map((h) => HERO_LIST.find((x) => x.id === h)?.name ?? h).join(", "),
         )}
-        {line("Yutuqlar", (s) => `${s.achievements}/${ACHIEVEMENTS.length}`)}
-        {line("Eng yaxshi rekord", (s) => s.best)}
+        {line(t("tr.ach"), (s) => `${s.achievements}/${ACHIEVEMENTS.length}`)}
+        {line(t("tr.best"), (s) => s.best)}
       </tbody>
     </table>
   );

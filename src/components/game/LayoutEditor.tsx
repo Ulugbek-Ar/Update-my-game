@@ -2,6 +2,7 @@
  * "JOYLASHUVNI TAHRIRLASH": joystik va har tugmani barmoq bilan surib joylashtirish.
  * Joy xavfsiz hudud o'lchamiga nisbatan (foizda) saqlanadi; tugma ekrandan chiqib ketmaydi.
  */
+import { t } from "@/i18n";
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { HERO_THEME, type Hero } from "@/game/hero";
 import {
@@ -28,15 +29,33 @@ import { TouchIconSvg } from "./TouchIcon";
 import { useViewport } from "./useViewport";
 
 const NAMES: Record<ControlId, string> = {
-  stick: "JOYSTIK",
-  attack: "HUJUM",
-  dash: "QOBILIYAT",
-  reload: "O'QLASH",
-  super: "SUPER",
-  pause: "PAUZA",
-  interact: "GAPLASH",
-  journal: "JURNAL",
-  map: "XARITA",
+  get stick() {
+    return t("lay.stick");
+  },
+  get attack() {
+    return t("lay.attack");
+  },
+  get dash() {
+    return t("lay.dash");
+  },
+  get reload() {
+    return t("lay.reload");
+  },
+  get super() {
+    return t("lay.super");
+  },
+  get pause() {
+    return t("lay.pause");
+  },
+  get interact() {
+    return t("lay.interact");
+  },
+  get journal() {
+    return t("lay.journal");
+  },
+  get map() {
+    return t("lay.map");
+  },
 };
 
 const TOOL =
@@ -76,7 +95,7 @@ export function LayoutEditor({ hero, onClose }: { hero: Hero; onClose: () => voi
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Joylashuvni tahrirlash"
+      aria-label={t("lay.title")}
       className="layout-editor fixed inset-0 z-[70] touch-none select-none bg-[#0c0814] font-pixel"
       style={heroVars(hero)}
     >
@@ -98,22 +117,22 @@ export function LayoutEditor({ hero, onClose }: { hero: Hero; onClose: () => voi
             onClick={save}
             className={`${TOOL} border-primary bg-primary text-primary-foreground`}
           >
-            SAQLASH
+            {t("lay.save")}
           </button>
           <button
             onClick={() => setDraft((d) => ({ ...d, layout: {} }))}
             className={`${TOOL} border-primary bg-card text-primary`}
           >
-            ASL HOLIGA QAYTARISH
+            {t("ctl.reset")}
           </button>
           <button onClick={onClose} className={`${TOOL} border-border bg-card text-foreground`}>
-            BEKOR
+            {t("lay.cancel")}
           </button>
         </div>
         <p className="pointer-events-none whitespace-nowrap text-[5px] leading-[8px] text-foreground/80">
-          Barmoq bilan surib joylashtiring
+          {t("lay.drag")}
           <br />
-          O'QLASH — Mergan, GAPLASH/JURNAL/XARITA — olamda
+          {t("lay.note")}
         </p>
       </div>
       {CONTROL_IDS.filter((id) => id !== "super" || superFor(hero)).map((id) => {

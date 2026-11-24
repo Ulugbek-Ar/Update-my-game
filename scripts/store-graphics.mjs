@@ -10,7 +10,7 @@ const { chromium } = require("playwright");
 const URL = process.env.GAME_URL ?? "http://127.0.0.1:5173";
 
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage({ locale: "uz-UZ" });
 await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
 const png = await page.evaluate(async () => {
   const { renderMenuScene, SCENE_W, SCENE_H } = await import("/src/game/menuScene.ts");

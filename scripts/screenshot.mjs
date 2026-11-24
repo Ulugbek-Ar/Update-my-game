@@ -46,6 +46,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   const video = Number(scene.video) || 0;
   // phone: { width, height } — sensorli telefon emulyatsiyasi (masalan vertikal Pixel 7: 412x915)
   const ctx = await browser.newContext({
+    // o'yin tili brauzer tilidan aniqlanadi — postlar va skrinshotlar o'zbekcha
+    locale: "uz-UZ",
     viewport: scene.phone ?? { width: 1280, height: 720 },
     // scale — piksel zichligi (Play Market uchun 2.4: 800x450 → 1920x1080)
     ...(scene.phone ? { isMobile: true, hasTouch: true, deviceScaleFactor: scene.scale ?? 2 } : {}),

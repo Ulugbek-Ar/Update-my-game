@@ -1,7 +1,8 @@
 /**
- * Kompyuter: tugmalarni qayta belgilash. Slot bosilsa "Tugmani bosing..." — keyingi bosilgan
+ * Kompyuter: tugmalarni qayta belgilash. Slot bosilsa t("kb.press") — keyingi bosilgan
  * tugma shu amalga beriladi. Bir tugma ikki amalga berilsa — ogohlantirish.
  */
+import { t, tk } from "@/i18n";
 import { useEffect, useState } from "react";
 import { pixelFocus, pixelPress } from "@/lib/pixel-ui";
 import {
@@ -19,10 +20,10 @@ import { loadSettings, saveSettings } from "@/game/settings";
 import { useSettings } from "./useSettings";
 
 const GROUPS: [title: string, actions: Action[]][] = [
-  ["YURISH", ["up", "down", "left", "right"]],
-  ["JANG", ["attack", "dash", "reload", "super"]],
-  ["O'YIN", ["pause", "mute"]],
-  ["ABADIYAT OLAMI", ["interact", "journal", "map"]],
+  ["kb.g.move", ["up", "down", "left", "right"]],
+  ["kb.g.combat", ["attack", "dash", "reload", "super"]],
+  ["kb.g.game", ["pause", "mute"]],
+  ["kb.g.realm", ["interact", "journal", "map"]],
 ];
 
 function setKeys(keys: KeyBinds) {
@@ -57,7 +58,11 @@ export function KeyBindsPanel() {
     return (
       <button
         {...(waiting && { "data-key-capture": "" })}
-        aria-label={`${ACTION_LABELS[action]}: ${i === 0 ? "asosiy" : "qo'shimcha"} tugma ${keyLabel(code)}`}
+        aria-label={t("kb.slotAria", {
+          a: ACTION_LABELS[action],
+          slot: i === 0 ? t("kb.main") : t("kb.extra"),
+          k: keyLabel(code),
+        })}
         onClick={() => setWait(waiting ? null : { action, slot: i })}
         onBlur={() => waiting && setWait(null)}
         className={`min-w-0 flex-1 truncate border-2 px-2 py-1 ${pixelPress} ${pixelFocus} ${
@@ -70,19 +75,17 @@ export function KeyBindsPanel() {
                 : "border-border/60 text-muted-foreground hover:border-foreground"
         }`}
       >
-        {waiting ? "Tugmani bosing..." : keyLabel(code)}
+        {waiting ? t("kb.press") : keyLabel(code)}
       </button>
     );
   };
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground">
-        Tugmani bosing, so'ng klaviaturada yangi tugmani bosing. Har amalga 2 tagacha tugma.
-      </p>
+      <p className="text-muted-foreground">{t("kb.help")}</p>
       {GROUPS.map(([title, actions]) => (
         <div key={title} className="flex flex-col gap-1">
-          <span className="text-primary">{title}</span>
+          <span className="text-primary">{tk(title)}</span>
           {actions.map((a) => (
             <div
               key={a}
@@ -92,7 +95,7 @@ export function KeyBindsPanel() {
               {slot(a, 0)}
               {slot(a, 1)}
               <button
-                aria-label={`${ACTION_LABELS[a]}: qo'shimcha tugmani olib tashlash`}
+                aria-label={t("kb.removeAria", { a: ACTION_LABELS[a] })}
                 disabled={keys[a].length < 2}
                 onClick={() => setKeys(clearAltKey(keys, a))}
                 className={`w-6 border-2 border-border py-1 text-muted-foreground hover:border-foreground hover:text-foreground disabled:opacity-30 ${pixelFocus}`}
@@ -116,14 +119,12 @@ export function KeyBindsPanel() {
           ))}
         </div>
       )}
-      <p className="text-muted-foreground">
-        Enter — menyularda tasdiqlash, 1–8 — olamda buyum ishlatish (o'zgarmaydi).
-      </p>
+      <p className="text-muted-foreground">{t("kb.fixed")}</p>
       <button
         onClick={() => setKeys(copyKeys(DEFAULT_KEYS))}
         className={`self-start border-2 border-border px-3 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
       >
-        ASL HOLIGA QAYTARISH
+        {t("ctl.reset")}
       </button>
     </div>
   );

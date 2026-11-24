@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 /**
  * Klaviatura tugmalarini qayta belgilash: amallar, asl tugmalar, tugma nomlari va ziddiyatlar.
  * Har amalga 2 tagacha tugma (asosiy va qo'shimcha). Tugmalar `KeyboardEvent.code` bo'yicha
@@ -58,19 +59,45 @@ export const DEFAULT_KEYS: KeyBinds = {
 };
 
 export const ACTION_LABELS: Record<Action, string> = {
-  up: "Yuqoriga",
-  down: "Pastga",
-  left: "Chapga",
-  right: "O'ngga",
-  attack: "Hujum",
-  dash: "Qobiliyat (dash)",
-  reload: "Qayta o'qlash (Mergan)",
-  super: "Super (shar to'lganda)",
-  pause: "Pauza",
-  mute: "Ovoz",
-  interact: "Gaplashish (olam)",
-  journal: "Jurnal (olam)",
-  map: "Xarita (olam)",
+  get up() {
+    return t("act.up");
+  },
+  get down() {
+    return t("act.down");
+  },
+  get left() {
+    return t("act.left");
+  },
+  get right() {
+    return t("act.right");
+  },
+  get attack() {
+    return t("act.attack");
+  },
+  get dash() {
+    return t("act.dash");
+  },
+  get reload() {
+    return t("act.reload");
+  },
+  get super() {
+    return t("act.super");
+  },
+  get pause() {
+    return t("act.pause");
+  },
+  get mute() {
+    return t("act.mute");
+  },
+  get interact() {
+    return t("act.interact");
+  },
+  get journal() {
+    return t("act.journal");
+  },
+  get map() {
+    return t("act.map");
+  },
 };
 
 export function copyKeys(k: KeyBinds): KeyBinds {

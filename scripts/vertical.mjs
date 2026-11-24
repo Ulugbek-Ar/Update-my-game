@@ -108,7 +108,7 @@ const { chromium } = require("playwright");
 const browser = await chromium.launch(
   process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {},
 );
-const page = await browser.newPage({ viewport: { width: W, height: H } });
+const page = await browser.newPage({ locale: "uz-UZ", viewport: { width: W, height: H } });
 const draw = async (body, file) => {
   await page.setContent(`<!doctype html><meta charset="utf-8"><style>${css}</style>${body}`);
   await page.evaluate(() => document.fonts.ready);

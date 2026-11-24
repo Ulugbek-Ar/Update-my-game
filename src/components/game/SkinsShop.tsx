@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { HERO_LIST, type Hero } from "@/game/hero";
 import { loadUnlockedHeroes } from "@/game/save";
@@ -139,22 +140,22 @@ export function SkinShowcase({
   }, [hero, skin]);
   const label =
     phase === "attack"
-      ? "HUJUM"
+      ? t("sk.attack")
       : phase === "charge" || phase === "strong"
         ? hero === "samurai"
-          ? "IAI"
+          ? t("sk.iai")
           : hero === "shinobi"
-            ? "SHURIKEN"
-            : "KUCHLI HUJUM"
+            ? t("sk.shuriken")
+            : t("sk.strong")
         : phase === "dash"
           ? hero === "mage"
-            ? "TELEPORT"
+            ? t("sk.teleport")
             : hero === "shinobi"
-              ? "TUTUN"
-              : "DASH"
-          : "TURISH";
+              ? t("sk.smoke")
+              : t("sk.dash")
+          : t("sk.idle");
   return (
-    <figure className="flex flex-col items-center gap-1" aria-label="Skin jonli ko'rinishi">
+    <figure className="flex flex-col items-center gap-1" aria-label={t("sk.previewAria")}>
       <canvas
         ref={ref}
         width={DEMO_W}
@@ -171,7 +172,8 @@ export function SkinShowcase({
 
 /** Daraja belgisi: ODDIY / NOYOB / AFSONAVIY */
 export function TierBadge({ tier }: { tier: SkinTier }) {
-  if (tier === "default") return <span className="text-[8px] text-muted-foreground">BEPUL</span>;
+  if (tier === "default")
+    return <span className="text-[8px] text-muted-foreground">{t("sk.free")}</span>;
   return (
     <span
       className="border px-1 text-[8px]"
@@ -239,12 +241,8 @@ export function SkinsShop({
   };
   return (
     <>
-      <p className="text-muted-foreground">
-        Skin qahramonning ranglari bilan birga qobiliyat effektlari, izlari va zarbalarini ham
-        o'zgartiradi. NOYOB — o'z zarrachalari va izi, AFSONAVIY — o'z animatsiyasi, zarba shakli va
-        ovozi. Kuchi o'zgarmaydi; menyuda, o'yinda va onlayn olamda ko'rinadi.
-      </p>
-      <div role="tablist" aria-label="Skin qahramoni" className="flex flex-wrap gap-2">
+      <p className="text-muted-foreground">{t("sk.note")}</p>
+      <div role="tablist" aria-label={t("sk.heroAria")} className="flex flex-wrap gap-2">
         {HERO_LIST.map((h) => (
           <button
             key={h.id}
@@ -286,7 +284,7 @@ export function SkinsShop({
               <div className="flex w-full flex-col items-center gap-2 bg-[#1f1730] p-2 text-center">
                 <button
                   onClick={() => setFocus(s.id)}
-                  aria-label={`${s.name} — jonli ko'rish`}
+                  aria-label={t("sk.liveAria", { name: s.name })}
                   aria-pressed={shown === s.id}
                   className={`${pixelFocus} border-2 ${shown === s.id ? "border-[#ffcc33]" : "border-transparent"}`}
                 >
@@ -300,7 +298,7 @@ export function SkinsShop({
                     className="w-full border-2 px-2 py-1"
                     style={{ borderColor: info.theme.accent, color: info.theme.uiText }}
                   >
-                    TANLANGAN
+                    {t("sk.chosen")}
                   </span>
                 ) : owned ? (
                   <button
@@ -311,29 +309,31 @@ export function SkinsShop({
                       "w-full px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
                     )}
                   >
-                    TANLASH
+                    {t("sk.pick")}
                   </button>
                 ) : s.reward ? (
                   // mukofot skini sotilmaydi: DO'STLAR -> CHAQIRISH
                   <span
                     className="flex w-full flex-col items-center gap-1 border-2 border-border px-2 py-1 text-muted-foreground"
-                    aria-label={`${s.name} — ${REF_SKIN_GOAL} ta do'st chaqirganlarga`}
+                    aria-label={t("sk.refAria", { name: s.name, n: REF_SKIN_GOAL })}
                   >
                     <Lock />
-                    <span className="whitespace-normal">{REF_SKIN_GOAL} DO'ST CHAQIRING</span>
+                    <span className="whitespace-normal">
+                      {t("sk.inviteN", { n: REF_SKIN_GOAL })}
+                    </span>
                   </span>
                 ) : (
                   <button
                     onClick={() => buy(s)}
                     disabled={!canBuy}
-                    aria-label={`${s.name} — sotib ol, ${s.price} oltin`}
+                    aria-label={t("sk.buyAria", { name: s.name, price: s.price })}
                     className={cn(
                       buttonVariants({ variant: "pixel", size: "none" }),
                       "w-full gap-1 whitespace-normal px-2 py-1 disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
                     )}
                   >
                     <span className="flex flex-col items-center gap-1">
-                      <span className="whitespace-nowrap">{open ? "SOTIB OL" : <Lock />}</span>
+                      <span className="whitespace-nowrap">{open ? t("sk.buy") : <Lock />}</span>
                       <span className="inline-flex items-center gap-1">
                         <Icon id="coin" color="#ffcc33" size={10} />
                         {s.price}

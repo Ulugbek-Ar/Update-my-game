@@ -1,4 +1,5 @@
 /** Sarguzasht xaritasi: bosh menyudan keyin dunyo tanlanadigan piksel ekran (kod bilan chiziladi). */
+import { t as tr } from "@/i18n";
 import { skinPalette } from "./skins";
 import { ROOM, px } from "./animation";
 import { gameKeysLocked } from "./input";
@@ -28,8 +29,12 @@ export interface MapNode {
 export const MAP_NODES: readonly MapNode[] = [
   {
     world: 1,
-    name: "OLOVLI ZINDON",
-    desc: "Slime, skeletlar va Iblis",
+    get name() {
+      return tr("map.w1.name");
+    },
+    get desc() {
+      return tr("map.w1.desc");
+    },
     lock: "",
     x: 64,
     y: 138,
@@ -37,18 +42,30 @@ export const MAP_NODES: readonly MapNode[] = [
   },
   {
     world: 2,
-    name: "MUZ SARDOBASI",
-    desc: "Muz moblari va Qor Malikasi",
-    lock: "Avval 1-dunyoni yuting",
+    get name() {
+      return tr("map.w2.name");
+    },
+    get desc() {
+      return tr("map.w2.desc");
+    },
+    get lock() {
+      return tr("map.w2.lock");
+    },
     x: 160,
     y: 84,
     color: "#9fd0ef",
   },
   {
     world: 3,
-    name: "ZULMAT O'RMONI",
-    desc: "O'rmon moblari va O'rmon Shohi",
-    lock: "Avval 2-dunyoni yuting",
+    get name() {
+      return tr("map.w3.name");
+    },
+    get desc() {
+      return tr("map.w3.desc");
+    },
+    get lock() {
+      return tr("map.w3.lock");
+    },
     x: 256,
     y: 138,
     color: "#a6f08e",
@@ -56,9 +73,15 @@ export const MAP_NODES: readonly MapNode[] = [
   {
     // Samuray qizning o'z dunyosi: oldingi dunyoni yutish shart emas — qahramon bilan birga ochiladi
     world: 4,
-    name: "SAKURA BOG'I",
-    desc: "Ninja, Tengu, Kitsune va Oni",
-    lock: "Samuray qizni oching",
+    get name() {
+      return tr("map.w4.name");
+    },
+    get desc() {
+      return tr("map.w4.desc");
+    },
+    get lock() {
+      return tr("map.w4.lock");
+    },
     x: 160,
     y: 156,
     color: "#ff8fb8",
@@ -129,7 +152,7 @@ export class MapState {
       return w;
     }
     this.shake = 0.3;
-    this.msg = this.open[w] ? "TEZ KUNDA" : "QULFLANGAN";
+    this.msg = this.open[w] ? tr("map.soon") : tr("map.locked");
     this.msgTimer = 1.4;
     return null;
   }
@@ -547,7 +570,7 @@ export function renderMap(
   path(c, n1, n2, -6, s.open[2]);
   path(c, n2, n3, -6, s.open[3]);
 
-  text(c, "SARGUZASHT XARITASI", ROOM.w / 2, 18, 9, "#ffcc33");
+  text(c, tr("map.title"), ROOM.w / 2, 18, 9, "#ffcc33");
 
   for (const n of MAP_NODES) {
     const open = s.open[n.world];
@@ -573,7 +596,7 @@ export function renderMap(
     // nom, rekord va yutgan qahramonlar
     text(c, `${n.world}`, x - 18, y - 20, 6, open ? n.color : "#6a6078");
     text(c, n.name, x, y + 14, 5, open ? n.color : "#6a6078");
-    if (open) text(c, `REKORD ${s.best[n.world]}`, x, y + 23, 5, "#e0d6ee");
+    if (open) text(c, tr("map.best", { n: s.best[n.world] }), x, y + 23, 5, "#e0d6ee");
     HEROES.forEach((h, i) =>
       heroBadge(
         c,
@@ -599,12 +622,23 @@ export function renderMap(
   // pastki panel: tanlangan dunyo
   const n = MAP_NODES.find((m) => m.world === s.sel)!;
   px(c, "rgba(8,4,16,0.78)", 0, 196, ROOM.w, 44);
-  text(c, `${n.world}-DUNYO: ${n.name}`, ROOM.w / 2, 210, 7, s.open[n.world] ? n.color : "#8a8098");
-  const status = !s.open[n.world] ? `QULF: ${n.lock}` : s.canEnter(n.world) ? n.desc : "Tez kunda";
+  text(
+    c,
+    tr("map.node", { w: n.world, name: n.name }),
+    ROOM.w / 2,
+    210,
+    7,
+    s.open[n.world] ? n.color : "#8a8098",
+  );
+  const status = !s.open[n.world]
+    ? tr("map.lock", { l: n.lock })
+    : s.canEnter(n.world)
+      ? n.desc
+      : tr("map.soon2");
   text(c, status, ROOM.w / 2, 222, 5, s.open[n.world] ? "#e0d6ee" : "#ff9a9a");
   text(
     c,
-    touch ? "Dunyoga bosing · yana bosing — kirish" : mapKeysHint(currentSettings().keys),
+    touch ? tr("map.help") : mapKeysHint(currentSettings().keys),
     ROOM.w / 2,
     234,
     5,

@@ -1,9 +1,10 @@
 /**
  * Telefondagi SUPER tugmasi — hujum tugmasi yonidagi shisha shar. O'yindagi super sharining o'zi
  * (superFx.ts: renderSuperOrb) shu tugma ichida chiziladi: suyuqlik zaryad bilan ko'tariladi,
- * chayqaladi, to'lganda porlaydi va ustida "TAYYOR!" chiqadi. Bosilsa — super (to'lgan bo'lsa).
+ * chayqaladi, to'lganda porlaydi va ustida t("g.ready") chiqadi. Bosilsa — super (to'lgan bo'lsa).
  * Faqat superi bor qahramonda ko'rinadi (TouchControls).
  */
+import { t } from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { sfx } from "@/game/audio";
 import type { Hero } from "@/game/hero";
@@ -114,7 +115,7 @@ export function SuperOrbButton({ game, p }: { game: SuperSource; p: Placed }) {
           className="super-ready pointer-events-none absolute bottom-full left-1/2 mb-1 -translate-x-1/2 whitespace-nowrap leading-none"
           style={{ fontSize: Math.max(6, Math.round(p.size / 7)), color: game.theme.glow }}
         >
-          TAYYOR!
+          {t("g.ready")}
         </span>
       )}
     </button>
