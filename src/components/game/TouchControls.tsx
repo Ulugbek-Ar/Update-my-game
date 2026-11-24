@@ -135,6 +135,14 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
   const steerRef = useRef(steer);
   steerRef.current = steer;
 
+  // Kuch kartasi tanlash oynasi ochiqmi (game.choices) — tugmalar yashiriladi
+  const [picking, setPicking] = useState(false);
+  useEffect(() => {
+    const g = game as { choices?: unknown[] };
+    const id = window.setInterval(() => setPicking((g.choices?.length ?? 0) > 0), 120);
+    return () => window.clearInterval(id);
+  }, [game]);
+
   // Suzuvchi joystik: ekranning chap yarmida (chapaqayda — o'ngida) barmoq qayerga tegsa — o'sha yerda
   useEffect(() => {
     if (ts.stickMode !== "floating") return;
@@ -146,6 +154,7 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
       const { ts, vp } = live.current;
       if (!inRect(floatingZone(ts, vp), e.clientX, e.clientY)) return;
       if (game.acceptsMove && !game.acceptsMove()) return;
+      if (((game as { choices?: unknown[] }).choices?.length ?? 0) > 0) return;
       if (game.touchUiAt?.(e.clientX, e.clientY)) return;
       const c = floatingCenter(e.clientX, e.clientY, placeControl("stick", ts, vp).size, vp);
       pointer.current = e.pointerId;
@@ -209,7 +218,12 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
   return (
     <div
       className="touch-controls pointer-events-none fixed inset-0 z-40 touch-none select-none"
-      style={{ ...heroVars(game.hero, theme), opacity: ts.opacity / 100 }}
+      style={{
+        ...heroVars(game.hero, theme),
+        opacity: ts.opacity / 100,
+        // kuch kartasi tanlanayotganda tugmalar kartalar ustida qolmasin va bosilmasin
+        visibility: picking ? "hidden" : undefined,
+      }}
     >
       <StickView
         p={stickP}
