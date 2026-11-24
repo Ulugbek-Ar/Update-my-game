@@ -75,8 +75,8 @@ for (const [i, scene] of scenes.slice(0, 9).entries()) {
   await page.goto(URL, { waitUntil: "networkidle", timeout: 120_000 });
   await page.waitForFunction(
     () => {
-      const b = [...document.querySelectorAll("button")].find(
-        (x) => ["BOSHLASH", "НАЧАТЬ", "START"].includes(x.textContent?.trim() ?? ""),
+      const b = [...document.querySelectorAll("button")].find((x) =>
+        ["BOSHLASH", "НАЧАТЬ", "START"].includes(x.textContent?.trim() ?? ""),
       );
       return b && !b.disabled;
     },
