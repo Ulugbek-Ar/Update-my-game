@@ -23,6 +23,8 @@ export const PACK_SIZE_REDUCED = 4;
 /** Bo'ri yugurish tezligi (px/s) va tumanga aylanish vaqti */
 export const SPIRIT_SPEED = 360;
 export const MIST_LIFE = 0.7;
+/** Ruhiy bo'ri siluetining kattalashtirilishi */
+export const WOLF_SCALE = 1.5;
 /** Oy radiusi va tovush halqasi umri */
 export const MOON_R = 20;
 export const HOWL_RING_LIFE = 0.7;
@@ -228,30 +230,37 @@ export class HowlScene implements SuperScene {
     const a = w.show * clamp01(w.fade);
     if (a <= 0.01) return;
     const d = w.dir;
-    const x = Math.round(w.x),
-      y = Math.round(w.y);
-    const X = (dx: number) => x + dx * d - (d < 0 ? 1 : 0);
+    // telefonda ham aniq ko'rinsin: siluet 1.5 baravar (oyoq nuqtasiga nisbatan)
+    c.save();
+    c.translate(Math.round(w.x), Math.round(w.y));
+    c.scale(WOLF_SCALE, WOLF_SCALE);
+    const x = 0,
+      y = 0;
+    // o'ngga qaragan shakl koordinatalari; chapga qaraganda to'rtburchak to'liq ko'zgulanadi
+    const R = (color: string, dx: number, dy: number, w: number, h: number) =>
+      px(c, color, d > 0 ? x + dx : x - dx - w, y + dy, w, h);
     const body = withAlpha(T.accent, 0.75 * a),
       edge = withAlpha(T.glow, 0.9 * a),
       dark = withAlpha(T.accentDark, 0.7 * a);
     const leg = Math.floor(w.step) % 2;
     // dum
-    px(c, body, X(-9), y - 6, 3, 1);
-    px(c, body, X(-11), y - 7, 2, 1);
+    R(body, -9, -6, 3, 1);
+    R(body, -11, -7, 2, 1);
     // tana
-    px(c, body, X(-7), y - 6, 11, 4);
-    px(c, edge, X(-7), y - 7, 10, 1);
+    R(body, -7, -6, 11, 4);
+    R(edge, -7, -7, 10, 1);
     // bosh va tumshuq, quloqlar
-    px(c, body, X(3), y - 9, 4, 4);
-    px(c, body, X(6), y - 7, 3, 2);
-    px(c, edge, X(3), y - 11, 1, 2);
-    px(c, edge, X(5), y - 11, 1, 2);
-    px(c, edge, X(5), y - 8, 1, 1);
+    R(body, 3, -9, 4, 4);
+    R(body, 6, -7, 3, 2);
+    R(edge, 3, -11, 1, 2);
+    R(edge, 5, -11, 1, 2);
+    R(edge, 5, -8, 1, 1);
     // oyoqlar
-    px(c, dark, X(leg ? -6 : -5), y - 2, 1, 3);
-    px(c, dark, X(leg ? 2 : 1), y - 2, 1, 3);
-    px(c, body, X(leg ? -4 : -7), y - 2, 1, 2);
-    px(c, body, X(leg ? 3 : 0), y - 2, 1, 2);
+    R(dark, leg ? -6 : -5, -2, 1, 3);
+    R(dark, leg ? 2 : 1, -2, 1, 3);
+    R(body, leg ? -4 : -7, -2, 1, 2);
+    R(body, leg ? 3 : 0, -2, 1, 2);
+    c.restore();
   }
 
   renderAir(c: CanvasRenderingContext2D, cast: SuperCast | null, ctx: SceneCtx) {
