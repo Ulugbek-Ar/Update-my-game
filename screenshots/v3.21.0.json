@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Русский язык",
+    "text": "Bosh menyu rus tilida — til Sozlamalarda tanlanadi.",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.21.0",
+          "pixel-rpg-lang": "ru",
+          "pixel-rpg-daily-last": "2099-01-01"
+        }
+      },
+      {
+        "wait": 2500
+      }
+    ]
+  },
+  {
+    "title": "English",
+    "text": "Bosh menyu ingliz tilida.",
+    "target": "screen",
+    "steps": [
+      {
+        "storage": {
+          "pixel-rpg-tutorial-done": "1",
+          "pixel-rpg-seen-version": "3.21.0",
+          "pixel-rpg-lang": "en",
+          "pixel-rpg-daily-last": "2099-01-01"
+        }
+      },
+      {
+        "wait": 2500
+      }
+    ]
+  }
+]
