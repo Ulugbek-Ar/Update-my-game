@@ -4,7 +4,7 @@
  * Qurilmaga xos kalitlar (boshqaruv joylashuvi, ovoz, dev, ko'rilgan versiya) kodga kirmaydi.
  */
 import { ACCOUNT_DEVICE_KEYS } from "@/account/keys";
-import { LANG_KEY, initLang } from "@/i18n";
+import { LANG_KEY, reloadLang } from "@/i18n";
 import { ACHIEVEMENTS, ACHIEVEMENTS_KEY } from "./achievements";
 import { MUTE_KEY } from "./audio";
 import { HERO_LIST, bestKeys, type Hero } from "./hero";
@@ -64,7 +64,7 @@ function replace(keys: Record<string, string>) {
   for (const k of Object.keys(collect())) localStorage.removeItem(k);
   for (const [k, v] of Object.entries(keys)) if (isProgressKey(k)) localStorage.setItem(k, v);
   if (lang && !(LANG_KEY in keys)) localStorage.setItem(LANG_KEY, lang);
-  initLang();
+  reloadLang();
 }
 
 /** Bulutli saqlanish uchun: hozirgi progress kalitlari (qurilmaga xoslarisiz) */

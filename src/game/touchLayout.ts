@@ -4,6 +4,7 @@
  * Foydalanuvchi joylashtirgan elementlar xavfsiz hudud o'lchamiga nisbatan (0–1) saqlanadi —
  * boshqa o'lchamli telefonda ham shu nisbatda turadi.
  */
+import { t as tr } from "@/i18n";
 import type { Hero } from "./hero";
 import type { ControlId, ControlPos, TouchSettings } from "./settings";
 
@@ -232,38 +233,58 @@ export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> 
   switch (hero) {
     case "mage":
       return {
-        attack: { text: "SHAR", aria: "Sehrli shar", icon: "orb" },
-        dash: { text: "TELEPORT", aria: "Teleport", icon: "teleport" },
+        attack: { text: tr("tb.orb"), aria: tr("tb.orbA"), icon: "orb" },
+        dash: { text: tr("tb.tp"), aria: tr("tb.tpA"), icon: "teleport" },
       };
     case "hunter":
       return {
-        attack: { text: "O'Q", aria: "O'q", icon: "arrow" },
-        dash: { text: "SAKRASH", sub: "tursa: tuzoq", aria: "Sakrash", icon: "jump" },
+        attack: { text: tr("tb.shoot"), aria: tr("tb.shootA"), icon: "arrow" },
+        dash: { text: tr("tb.leap"), sub: tr("tb.leapS"), aria: tr("tb.leapA"), icon: "jump" },
       };
     case "paladin":
       return {
-        attack: { text: "SHANG", sub: "tursa: hukm", aria: "Shang zarbasi", icon: "sword" },
-        dash: { text: "HAMLA", sub: "tursa: qasam", aria: "Muqaddas hamla", icon: "dash" },
+        attack: {
+          text: tr("tb.smite"),
+          sub: tr("tb.smiteS"),
+          aria: tr("tb.smiteA"),
+          icon: "sword",
+        },
+        dash: {
+          text: tr("tb.charge"),
+          sub: tr("tb.chargeS"),
+          aria: tr("tb.chargeA"),
+          icon: "dash",
+        },
       };
     case "samurai":
       return {
-        attack: { text: "KATANA", sub: "tursa: iai", aria: "Katana zarbasi", icon: "sword" },
-        dash: { text: "DASH", aria: "Dash", icon: "dash" },
+        attack: {
+          text: tr("tb.katana"),
+          sub: tr("tb.katanaS"),
+          aria: tr("tb.katanaA"),
+          icon: "sword",
+        },
+        dash: { text: tr("tb.dash"), aria: tr("tb.dashA"), icon: "dash" },
       };
     case "shinobi":
       return {
-        attack: { text: "QILICH", sub: "tursa: shuriken", aria: "Ikki katana", icon: "sword" },
-        dash: { text: "TUTUN", aria: "Tutun bombasi", icon: "dash" },
+        attack: {
+          text: tr("tb.blades"),
+          sub: tr("tb.bladesS"),
+          aria: tr("tb.bladesA"),
+          icon: "sword",
+        },
+        dash: { text: tr("tb.smoke"), aria: tr("tb.smokeA"), icon: "dash" },
       };
     case "gunner":
       return {
-        attack: { text: "O'Q", aria: "O'q", icon: "bullet" },
-        dash: { text: "SIRPANISH", sub: "tursa: tutun", aria: "Sirpanish", icon: "slide" },
+        attack: { text: tr("tb.shoot"), aria: tr("tb.shootA"), icon: "bullet" },
+        dash: { text: tr("tb.slide"), sub: tr("tb.slideS"), aria: tr("tb.slideA"), icon: "slide" },
       };
     default:
       return {
-        attack: { text: "ZARBA", aria: "Hujum", icon: "sword" },
-        dash: { text: "DASH", aria: "Dash", icon: "dash" },
+        attack: { text: tr("tb.attack"), aria: tr("tb.attackA"), icon: "sword" },
+        dash: { text: tr("tb.dash"), aria: tr("tb.dashA"), icon: "dash" },
       };
   }
 }

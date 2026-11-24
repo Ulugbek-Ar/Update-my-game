@@ -39,7 +39,8 @@ export function detectLang(): Lang {
     }
   ).Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
   if (tg) return langFromCode(tg);
-  const nav = typeof navigator !== "undefined" ? navigator.languages?.[0] ?? navigator.language : "";
+  const nav =
+    typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "";
   return langFromCode(nav);
 }
 
@@ -71,6 +72,11 @@ export function initLang() {
   apply(stored() ?? detectLang());
 }
 
+/** Progress almashtirilgandan keyin (kod yoki bulut): saqlangan tanlov bo'lsa — shu, bo'lmasa joriy til */
+export function reloadLang() {
+  apply(stored() ?? current);
+}
+
 /** O'yinchi tanlovi: saqlanadi va hamma joy darhol yangilanadi */
 export function setLang(l: Lang) {
   try {
@@ -91,7 +97,9 @@ export function onLangChange(fn: (l: Lang) => void) {
 export type Params = Record<string, string | number>;
 
 function fill(s: string, params?: Params) {
-  return params ? s.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m)) : s;
+  return params
+    ? s.replace(/\{(\w+)\}/g, (m, k: string) => (k in params ? String(params[k]) : m))
+    : s;
 }
 
 /** Joriy tildagi matn; kalit yo'q bo'lsa — o'zbekcha, u ham yo'q bo'lsa — kalitning o'zi */

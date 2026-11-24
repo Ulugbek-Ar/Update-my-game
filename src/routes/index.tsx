@@ -389,7 +389,7 @@ function Index() {
   useEffect(() => {
     guild.onReward = (g) => {
       setGold(loadGold());
-      account.notify(`Gildiya topshirig'i sovg'asi: +${g} oltin`);
+      account.notify(t("m.guildGift", { n: g }));
     };
   }, []);
   // do'stdan tayyor ibora: olamda — o'yin ichida, menyuda — yuqorida yozuv
@@ -670,7 +670,7 @@ function Index() {
             </h1>
             {/* 10 tagacha qahramon: sig'masa gorizontal aylanadi */}
             <div
-              aria-label="Qahramon tanlash"
+              aria-label={t("m.heroSelect")}
               className="hero-row flex max-w-full shrink-0 snap-x gap-3 overflow-x-auto p-1"
             >
               {HERO_LIST.map(({ id: h, name, price }) => {
@@ -679,7 +679,7 @@ function Index() {
                   <button
                     key={h}
                     aria-pressed={hero === h}
-                    aria-label={locked ? `${name} — qulflangan, ${price} oltin` : undefined}
+                    aria-label={locked ? t("m.lockedAria", { name, price }) : undefined}
                     onClick={() => {
                       // sotib olinmagan qahramon: do'konning QAHRAMONLAR bo'limi ochiladi
                       if (locked) {
@@ -734,120 +734,65 @@ function Index() {
                   {touch ? (
                     <>
                       {/* telefonda — tugma nomlari (SOZLAMALAR -> BOSHQARUV ga mos) */}
-                      {ts.stickMode === "floating"
-                        ? `Ekranning ${ts.leftHanded ? "o'ng" : "chap"} yarmi — yurish`
-                        : `${ts.leftHanded ? "O'ngdagi" : "Chapdagi"} joystik — yurish`}
+                      {t(
+                        ts.stickMode === "floating"
+                          ? ts.leftHanded
+                            ? "hs.floatR"
+                            : "hs.floatL"
+                          : ts.leftHanded
+                            ? "hs.stickR"
+                            : "hs.stickL",
+                      )}
                       <br />
-                      {h === "paladin"
-                        ? "SHANG — qilich zarbasi, HAMLA — oldinga yugurish"
-                        : h === "samurai"
-                          ? "KATANA — tez kombo, DASH — chetlanish"
-                          : h === "shinobi"
-                            ? "QILICH — ikki katana, TUTUN — ko'rinmaslik"
-                            : h === "mage"
-                              ? "SHAR — sehrli shar, TELEPORT — sakrash"
-                              : h === "hunter"
-                                ? "O'Q — o'q otish, SAKRASH — orqaga sakrash"
-                                : h === "gunner"
-                                  ? "O'Q — otish, o'q belgisi — qayta o'qlash, SIRPANISH — +2 o'q"
-                                  : "ZARBA — hujum, DASH — sirpanish"}
+                      {tk(`hs.t1.${h}`)}
                       <br />
-                      {h === "paladin"
-                        ? "SHANG ni bosib turing — osmon hukmi, HAMLA ni — qasam"
-                        : h === "samurai"
-                          ? "KATANA ni bosib turing — Iai, o'z vaqtida bosing — parry"
-                          : h === "shinobi"
-                            ? "QILICH ni bosib turing — 3 ta shuriken"
-                            : h === "mage"
-                              ? "SHAR ni bosib turing — sehrli halqa"
-                              : h === "hunter"
-                                ? "O'Q ni bosib turing — teshuvchi o'q, SAKRASH ni — tuzoq"
-                                : h === "gunner"
-                                  ? "O'Q ni bosib turing — barabanni bo'shatish, SIRPANISH ni — tutun"
-                                  : "ZARBA ni bosib turing — aylana zarba"}
+                      {tk(`hs.t2.${h}`)}
                     </>
                   ) : (
                     <>
                       {/* kompyuterda — qayta belgilangan tugmalar */}
-                      {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} — yurish
+                      {[moveLabel(kb), moveLabel(kb, 1)].filter(Boolean).join(" / ")} —{" "}
+                      {t("hs.move")}
                       <br />
                       {actionKeys(kb, "attack")} —{" "}
-                      {h === "paladin"
-                        ? "SHANG (yo'lak bo'ylab zarba)"
-                        : h === "samurai"
-                          ? "katana, o'z vaqtida — parry"
-                          : h === "shinobi"
-                            ? "ikki katana (chap-o'ng)"
-                            : h === "mage"
-                              ? "sehrli shar"
-                              : h === "hunter"
-                                ? "o'q"
-                                : h === "gunner"
-                                  ? `o'q (barabanda 6 ta), ${actionKey(kb, "reload")} — qayta o'qlash`
-                                  : "hujum"}
+                      {tk(`hs.k1.${h}`, { R: actionKey(kb, "reload") })}
                       <br />
-                      {actionKey(kb, "attack")} ni bosib turish —{" "}
-                      {h === "paladin"
-                        ? "osmon hukmi (gangitadi)"
-                        : h === "samurai"
-                          ? "Iai (kesib o'tadi)"
-                          : h === "shinobi"
-                            ? "3 ta shuriken (yelpig'ich)"
-                            : h === "mage"
-                              ? "sehrli halqa"
-                              : h === "hunter"
-                                ? "teshuvchi o'q"
-                                : h === "gunner"
-                                  ? "barabanni bo'shatish"
-                                  : "aylana zarba"}
+                      {t("hs.hold", { k: actionKey(kb, "attack") })} {tk(`hs.k2.${h}`)}
                       <br />
-                      {actionKeys(kb, "dash")} —{" "}
-                      {h === "paladin"
-                        ? "muqaddas hamla, bosib turish — qasam"
-                        : h === "samurai"
-                          ? "dash, o'z vaqtida — chetlanish"
-                          : h === "shinobi"
-                            ? "tutun bombasi: 1 s ko'rinmaslik, keyin 2x zarba"
-                            : h === "mage"
-                              ? "teleport"
-                              : h === "hunter"
-                                ? "orqaga sakrash, bosib turish — tuzoq"
-                                : h === "gunner"
-                                  ? "sirpanish, bosib turish — tutun bombasi"
-                                  : "dash"}
+                      {actionKeys(kb, "dash")} — {tk(`hs.k3.${h}`)}
                       <br />
-                      {actionKey(kb, "pause")} — pauza, {actionKey(kb, "mute")} — ovoz
+                      {t("hs.pauseMute", { p: actionKey(kb, "pause"), m: actionKey(kb, "mute") })}
                     </>
                   )}
                 </p>
               ))}
             </div>
             <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
-              5 to'lqin · har to'lqindan so'ng kuch tanlang · oxirida Boss
+              {t("m.rules1")}
               <br />
-              Xaritada dunyolar: har birining o'z dushmanlari va Bossi
+              {t("m.rules2")}
               {best > 0 && (
                 <>
                   <br />
-                  <span className="text-primary">Rekord: {best}</span>
+                  <span className="text-primary">{t("m.best", { n: best })}</span>
                 </>
               )}
               {ch2Best > 0 && (
                 <>
                   <br />
-                  <span className="text-[#9fd0ef]">❄ 2-dunyo yutilgan rekord: {ch2Best}</span>
+                  <span className="text-[#9fd0ef]">{t("m.ch2Best", { n: ch2Best })}</span>
                 </>
               )}
               {endlessBest > 0 && (
                 <>
                   <br />
-                  <span className="text-primary">Cheksiz rekord: {endlessBest}</span>
+                  <span className="text-primary">{t("m.endlessBest", { n: endlessBest })}</span>
                 </>
               )}
               <br />
               <span className="inline-flex items-center gap-1 text-primary">
                 <PixelIcon id="coin" color="#ffcc33" size={12} />
-                Oltin: {gold}
+                {t("m.gold", { n: gold })}
               </span>
             </p>
             <Button
@@ -860,7 +805,7 @@ function Index() {
               variant="pixel"
               className="px-6 py-3 text-xs sm:text-sm disabled:opacity-60 disabled:cursor-wait"
             >
-              {ready ? "BOSHLASH" : "YUKLANMOQDA..."}
+              {ready ? t("m.start") : t("m.loading")}
             </Button>
             <div className="flex flex-wrap justify-center gap-3">
               <Button
@@ -873,7 +818,7 @@ function Index() {
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
-                DO'KON
+                {t("m.shop")}
               </Button>
               <Button
                 onClick={() => {
@@ -883,40 +828,32 @@ function Index() {
                   setStarted(true);
                 }}
                 disabled={!ready || !!daily}
-                title={daily ? "Bugungi urinish ishlatilgan — ertaga yangi sinov" : undefined}
+                title={daily ? t("m.dailyUsed") : undefined}
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
-                {daily ? `KUNLIK: ${daily.score}` : "KUNLIK SINOV"}
+                {daily ? t("m.dailyScore", { n: daily.score }) : t("m.daily")}
               </Button>
               <Button
                 onClick={() => {
                   const name = HERO_LIST.find((x) => x.id === (ex.hero ?? hero))?.name ?? "";
                   if (ex.hero)
                     void expedition.claim(true).then((r) => {
-                      if (!r) account.notify(`${name} qaytdi — 10 daqiqadan qisqa, o'ljasiz`);
+                      if (!r) account.notify(t("m.expBack", { name }));
                     });
                   else
                     void expedition
                       .send(hero)
                       .then((r) =>
-                        account.notify(
-                          r.ok
-                            ? `${name} ekspeditsiyaga ketdi — qaytganda oltin, XP va sovg'a olib keladi`
-                            : "Ekspeditsiyaga yuborib bo'lmadi (internet?)",
-                        ),
+                        account.notify(r.ok ? t("m.expSent", { name }) : t("m.expFail")),
                       );
                 }}
                 disabled={!ready}
-                title={
-                  ex.hero
-                    ? "Qahramonni qaytarish: to'plangan mukofot beriladi"
-                    : "Tanlangan qahramon sarguzashtga ketadi: o'yinda yo'qligingizda oltin, XP va sovg'a to'playdi (8 soatgacha)"
-                }
+                title={ex.hero ? t("m.expRecallT") : t("m.expSendT")}
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
-                {ex.hero ? "EKSPEDITSIYADAN QAYTARISH" : "EKSPEDITSIYAGA YUBORISH"}
+                {ex.hero ? t("m.expRecall") : t("m.expSend")}
               </Button>
               <Button
                 onClick={() => {
@@ -926,36 +863,36 @@ function Index() {
                   setRealm(true);
                 }}
                 disabled={!ready || !realmOpen}
-                aria-label={realmOpen ? "OLAM (SINOV)" : "OLAM — qulflangan: Iblisni yeng"}
-                title="Abadiyat olami: Iblis, Qor Malikasi va O'rmon Shohi shu olamdan kelgan"
+                aria-label={realmOpen ? t("m.realm") : t("m.realmLocked")}
+                title={t("m.realmT")}
                 variant="pixelOutline"
                 className="px-5 py-2 text-[10px] sm:text-xs"
               >
                 {!realmOpen && <LockIcon />}
-                OLAM (SINOV)
+                {t("m.realm")}
               </Button>
               {/* do'stning onlayn xonasiga kod bilan (server bo'lmagan build'da yashirin) */}
               {SERVER_URL && (
                 <Button
                   onClick={() => setJoinOpen(true)}
                   disabled={!ready}
-                  title="Do'st yuborgan 6 belgili xona kodini yozing"
+                  title={t("m.joinT")}
                   variant="pixelOutline"
                   className="px-5 py-2 text-[10px] sm:text-xs"
                 >
-                  XONAGA KIRISH
+                  {t("m.join")}
                 </Button>
               )}
             </div>
             <p className="max-w-sm text-muted-foreground text-[9px] sm:text-[10px] leading-5">
-              {realmOpen
-                ? "Bosslar Abadiyat olamidan kelgan — uch dunyo uning darvozalari"
-                : "Iblisni yeng — darvoza ochiladi"}
+              {realmOpen ? t("m.realmOpen") : t("m.realmHint")}
             </p>
             {daily && (
               <p className="text-muted-foreground text-[9px] sm:text-[10px] leading-5">
-                Bugungi sinov: {daily.score} ochko ·{" "}
-                {daily.won ? "yutildi" : `${daily.wave}-to'lqin`} · ertaga yana
+                {t("m.dailyToday", {
+                  s: daily.score,
+                  r: daily.won ? t("m.dailyWon") : t("m.dailyWave", { n: daily.wave }),
+                })}
               </p>
             )}
             <div className="flex flex-wrap justify-center gap-x-4">
@@ -963,26 +900,26 @@ function Index() {
               <Button
                 variant="pixelLink"
                 onClick={() => setGiftOpen(true)}
-                title={giftReady ? "Bugungi sovg'a sizni kutmoqda" : "Kunlik sovg'a"}
+                title={giftReady ? t("m.giftReady") : t("m.giftT")}
                 className={cn(
                   "gap-1 text-[9px] sm:text-[10px]",
                   giftReady && "gift-blink text-primary",
                 )}
               >
                 <PixelIcon id="gift" color="#ffcc33" size={12} />
-                SOVG'A
+                {t("m.gift")}
               </Button>
               {/* sovg'a qutisi: muallifdan sovg'a kutayotgan bo'lsa — kichik belgi */}
               {acc.me && box.pending > 0 && (
                 <Button
                   variant="pixelLink"
                   onClick={() => setInboxOpen(true)}
-                  aria-label={`SOVG'A QUTISI: ${box.pending} ta sovg'a`}
-                  title="Muallifdan sovg'a sizni kutmoqda"
+                  aria-label={t("m.giftBoxAria", { n: box.pending })}
+                  title={t("m.giftBoxT")}
                   className="gift-blink gap-1 text-[9px] text-[#ff9fcb] sm:text-[10px]"
                 >
                   <PixelIcon id="gift" color="#ff9fcb" size={12} />
-                  SOVG'A QUTISI ({box.pending})
+                  {t("m.giftBoxN", { n: box.pending })}
                 </Button>
               )}
               <Button
@@ -990,25 +927,25 @@ function Index() {
                 onClick={() => setSettingsOpen(true)}
                 className="text-[9px] sm:text-[10px]"
               >
-                SOZLAMALAR
+                {t("m.settings")}
               </Button>
               {/* do'stlar: kirgan o'yinchida (mehmon — kirish oynasi); yangi so'rov/xabar — nishon */}
               {account.enabled && (
                 <Button
                   variant="pixelLink"
                   onClick={() => (acc.me ? setFriendsOpen(true) : setLoginOpen(true))}
-                  aria-label="DO'STLAR"
+                  aria-label={t("m.friends")}
                   title={
                     acc.me && fr.requests + fr.unread > 0
-                      ? `Do'stlar: ${fr.requests + fr.unread} ta yangi so'rov yoki xabar`
-                      : "Do'stlar: kim onlayn, yoniga kirish, tez xabar"
+                      ? t("m.friendsNew", { n: fr.requests + fr.unread })
+                      : t("m.friendsT")
                   }
                   className={cn(
                     "gap-1 text-[9px] sm:text-[10px]",
                     fr.requests + fr.unread > 0 && "gift-blink text-primary",
                   )}
                 >
-                  DO'STLAR
+                  {t("m.friends")}
                   {acc.me && fr.requests + fr.unread > 0 ? ` (${fr.requests + fr.unread})` : ""}
                 </Button>
               )}
@@ -1021,15 +958,15 @@ function Index() {
                     setGuildTab("home");
                     setGuildOpen(true);
                   }}
-                  aria-label="GILDIYA"
+                  aria-label={t("m.guild")}
                   title={
                     acc.me && gv.pending > 0
-                      ? `Gildiya: ${gv.pending} ta yangi taklif yoki ariza`
+                      ? t("m.guildNew", { n: gv.pending })
                       : acc.me && gv.reward
-                        ? "Gildiya: topshiriq sovg'asi sizni kutmoqda"
+                        ? t("m.guildReward")
                         : acc.me && gv.unread
-                          ? "Gildiya: chatda yangi xabar"
-                          : "Gildiya: tuzish, qo'shilish, a'zolar, xazina va topshiriqlar"
+                          ? t("m.guildChat")
+                          : t("m.guildT")
                   }
                   className={cn(
                     "gap-1 text-[9px] sm:text-[10px]",
@@ -1038,7 +975,7 @@ function Index() {
                       "gift-blink text-primary",
                   )}
                 >
-                  GILDIYA
+                  {t("m.guild")}
                   {acc.me && gv.pending > 0 ? ` (${gv.pending})` : ""}
                   {acc.me && !gv.pending && (gv.reward || gv.unread) ? " •" : ""}
                 </Button>
@@ -1047,10 +984,10 @@ function Index() {
                 <Button
                   variant="pixelLink"
                   onClick={() => setBoardOpen(true)}
-                  title="Haftalik va umumiy reyting: har qahramon bo'yicha eng zo'rlar"
+                  title={t("m.rankT")}
                   className="text-[9px] sm:text-[10px]"
                 >
-                  REYTING
+                  {t("m.rank")}
                 </Button>
               )}
               <Button
@@ -1058,14 +995,14 @@ function Index() {
                 onClick={() => setAchOpen(true)}
                 className="text-[9px] sm:text-[10px]"
               >
-                YUTUQLAR {achCount}/{ACHIEVEMENTS.length}
+                {t("m.achN", { n: achCount, total: ACHIEVEMENTS.length })}
               </Button>
               <Button
                 variant="pixelLink"
                 onClick={() => setChangelogOpen(true)}
                 className="text-[9px] sm:text-[10px]"
               >
-                Yangilanishlar
+                {t("m.updates")}
               </Button>
               {/* AI server talab qiladi — GitHub Pages va ilovada yashirin */}
               {HAS_SERVER && (
@@ -1074,7 +1011,7 @@ function Index() {
                   onClick={() => setCoachOpen(true)}
                   className="text-[9px] sm:text-[10px]"
                 >
-                  Jang maslahatchisi (AI)
+                  {t("m.coachAi")}
                 </Button>
               )}
             </div>
@@ -1083,7 +1020,7 @@ function Index() {
                 sfx.unlock();
                 setMuted(sfx.toggleMute());
               }}
-              aria-label={muted ? "Ovozni yoqish" : "Ovozni o'chirish"}
+              aria-label={muted ? t("m.unmute") : t("m.mute")}
               className={`absolute bottom-2 left-2 text-sm sm:text-base ${pixelFocus}`}
             >
               {muted ? "🔇" : "🔊"}
@@ -1118,12 +1055,12 @@ function Index() {
       {touch && portrait && <RotateOverlay />}
       {newVersion && (
         <div className="fixed bottom-2 left-1/2 -translate-x-1/2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-2 border-primary bg-card px-3 py-2 text-[9px] sm:text-[10px] text-foreground max-w-full">
-          Yangi versiya v{newVersion} tayyor
+          {t("m.newVersion", { v: newVersion })}
           <button
             onClick={() => window.location.reload()}
             className={cn(buttonVariants({ variant: "pixel", size: "none" }), "px-3 py-1")}
           >
-            YANGILASH
+            {t("m.update")}
           </button>
         </div>
       )}
@@ -1132,7 +1069,7 @@ function Index() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Jang maslahatchisi"
+            aria-label={t("m.coach")}
             className="absolute inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-card p-4"
           >
             <Button
@@ -1141,7 +1078,7 @@ function Index() {
               onClick={() => setCoachOpen(false)}
               className="mb-3 px-4 py-2 text-[10px]"
             >
-              YOPISH
+              {t("common.close")}
             </Button>
             <CoachPanel hero={hero} />
           </div>
@@ -1218,7 +1155,7 @@ function Index() {
           onJoin={(f: FriendInfo) => {
             if (!f.room) return;
             if (!realmOpen) {
-              account.notify("Abadiyat olamiga kirish uchun avval Iblisni yeng");
+              account.notify(t("m.realmNeedDevil"));
               return;
             }
             sfx.unlock();
@@ -1302,7 +1239,7 @@ function RotateOverlay() {
     <div
       role="alertdialog"
       aria-modal="true"
-      aria-label="Telefonni aylantiring"
+      aria-label={t("m.rotate")}
       className="font-pixel fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-card px-6 text-center"
       style={{ textShadow: "1px 1px 0 #000" }}
     >
@@ -1602,22 +1539,22 @@ function ShopWindow({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Do'kon"
+        aria-label={t("shop.title")}
         className="fit-screen m-auto flex w-[min(94vw,640px)] flex-col overflow-hidden border-4 border-border bg-card text-[9px] sm:text-[10px] leading-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 flex-col gap-3 px-4 pb-3 pt-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-primary text-xs sm:text-sm">DO'KON</h2>
+            <h2 className="text-primary text-xs sm:text-sm">{t("m.shop")}</h2>
             <span className="inline-flex items-center gap-2 text-primary">
               <PixelIcon id="coin" color="#ffcc33" size={16} />
               {gold}
             </span>
           </div>
-          <div role="tablist" aria-label="Do'kon bo'limlari" className="flex flex-wrap gap-2">
-            {tabBtn("upgrades", "KUCHAYTIRISHLAR")}
-            {tabBtn("heroes", "QAHRAMONLAR")}
-            {tabBtn("skins", "SKINLAR")}
+          <div role="tablist" aria-label={t("shop.tabsAria")} className="flex flex-wrap gap-2">
+            {tabBtn("upgrades", t("shop.tabUpgrades"))}
+            {tabBtn("heroes", t("shop.tabHeroes"))}
+            {tabBtn("skins", t("shop.tabSkins"))}
           </div>
         </div>
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4">
@@ -1625,9 +1562,7 @@ function ShopWindow({
             <SkinsShop gold={gold} onGold={setGold} startHero={focusHero ?? loadPlayableHero()} />
           ) : tab === "upgrades" ? (
             <>
-              <p className="text-muted-foreground">
-                Doimiy kuchaytirishlar har yangi o'yin boshida beriladi.
-              </p>
+              <p className="text-muted-foreground">{t("shop.upgradesNote")}</p>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {SHOP_ITEMS.map((item) => {
                   const lvl = levels[item.id];
@@ -1648,7 +1583,7 @@ function ShopWindow({
                         </span>
                         <span
                           className="flex gap-1"
-                          aria-label={`Bosqich ${lvl}/${item.costs.length}`}
+                          aria-label={t("shop.level", { n: lvl, total: item.costs.length })}
                         >
                           {item.costs.map((_, i) => (
                             <span
@@ -1667,7 +1602,7 @@ function ShopWindow({
                           )}
                         >
                           {cost === null ? (
-                            "TO'LIQ"
+                            t("shop.maxed")
                           ) : (
                             <>
                               <PixelIcon id="coin" color="#ffcc33" size={10} />
@@ -1683,17 +1618,14 @@ function ShopWindow({
             </>
           ) : (
             <>
-              <p className="text-muted-foreground">
-                Dastlabki 3 qahramon bepul. 4-qahramondan boshlab har biri oltinga bir marta sotib
-                olinadi va doim ochiq qoladi.
-              </p>
+              <p className="text-muted-foreground">{t("shop.heroesNote")}</p>
               {award && (
                 <p
                   role="status"
                   className="inline-flex items-center gap-2 self-start border-2 border-primary px-2 py-1 text-primary"
                 >
                   <PixelIcon id="trophy" color="#ffcc33" size={12} />
-                  YUTUQ OCHILDI: {award}
+                  {t("shop.achUnlocked", { name: award })}
                 </p>
               )}
               <ul aria-label="Qahramonlar" className="grid gap-2 sm:grid-cols-2">
@@ -1721,7 +1653,7 @@ function ShopWindow({
                               className="self-start border-2 px-2 py-1"
                               style={{ borderColor: h.theme.accent, color: h.theme.uiText }}
                             >
-                              {h.price > 0 ? "OCHIQ" : "BEPUL · OCHIQ"}
+                              {h.price > 0 ? t("shop.owned") : t("shop.free")}
                             </span>
                           ) : (
                             <>
@@ -1733,13 +1665,13 @@ function ShopWindow({
                                   "w-full gap-1 whitespace-normal px-2 py-1 text-[9px] sm:text-[10px] disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100",
                                 )}
                               >
-                                SOTIB OLISH
+                                {t("shop.buy")}
                                 <PixelIcon id="coin" color="#ffcc33" size={10} />
                                 {h.price}
                               </button>
                               {short > 0 && (
                                 <span className="text-muted-foreground">
-                                  Yana {short} oltin kerak
+                                  {t("shop.needGold", { n: short })}
                                 </span>
                               )}
                             </>
@@ -1759,7 +1691,7 @@ function ShopWindow({
               "self-start px-4 py-2",
             )}
           >
-            YOPISH
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -1850,20 +1782,20 @@ function SettingsWindow({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Sozlamalar"
+        aria-label={t("set.aria")}
         className={`settings-window fit-screen m-auto flex flex-col overflow-hidden border-4 border-border bg-card text-[10px] sm:text-xs leading-5 ${
           tab === "controls" ? "w-[min(96vw,760px)]" : "w-[min(92vw,420px)]"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 pb-2 pt-4">
-          <h2 className="text-primary">SOZLAMALAR</h2>
-          <div role="tablist" aria-label="Sozlamalar bo'limlari" className="flex gap-2">
-            {tabBtn("general", "UMUMIY")}
-            {tabBtn("controls", "BOSHQARUV")}
+          <h2 className="text-primary">{t("m.settings")}</h2>
+          <div role="tablist" aria-label={t("set.tabsAria")} className="flex gap-2">
+            {tabBtn("general", t("set.general"))}
+            {tabBtn("controls", t("set.controls"))}
             <button
               onClick={onClose}
-              aria-label="Yopish"
+              aria-label={t("common.closeAria")}
               className={`border-2 border-border px-2 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
             >
               X
@@ -1875,7 +1807,11 @@ function SettingsWindow({
             <>
               <div className="flex flex-col gap-2 text-foreground">
                 <span>{t("settings.lang")}</span>
-                <div role="radiogroup" aria-label={t("settings.lang")} className="flex flex-wrap gap-2">
+                <div
+                  role="radiogroup"
+                  aria-label={t("settings.lang")}
+                  className="flex flex-wrap gap-2"
+                >
                   {LANGS.map((l) => (
                     <button
                       key={l.id}
@@ -1893,34 +1829,29 @@ function SettingsWindow({
                   ))}
                 </div>
               </div>
-              {slider("music", "Musiqa ovozi", () => sfx.wave())}
-              {slider("sfx", "Effektlar ovozi", () => sfx.pickup())}
+              {slider("music", t("set.music"), () => sfx.wave())}
+              {slider("sfx", t("set.sfx"), () => sfx.pickup())}
+              <Toggle label={t("set.shake")} on={s.shake} onChange={(v) => update({ shake: v })} />
               <Toggle
-                label="Ekran silkinishi"
-                on={s.shake}
-                onChange={(v) => update({ shake: v })}
-              />
-              <Toggle
-                label="Zarar raqamlari"
+                label={t("set.dmg")}
                 on={s.damageNumbers}
                 onChange={(v) => update({ damageNumbers: v })}
               />
               <Toggle
-                label="Effektlarni kamaytirish"
+                label={t("set.reduceFx")}
                 on={s.reduceFx}
                 onChange={(v) => update({ reduceFx: v })}
               />
               <p className="-mt-3 text-[8px] leading-4 text-muted-foreground">
-                Zarrachalar va miltillash kamayadi — sezgir ko'zlar va kuchsiz telefonlar uchun.
-                O'yin o'zgarmaydi.
+                {t("set.reduceFxNote")}
               </p>
               <Toggle
-                label="Super kartasini qisqartirish"
+                label={t("set.superShort")}
                 on={s.superCardShort}
                 onChange={(v) => update({ superCardShort: v })}
               />
               <p className="-mt-3 text-[8px] leading-4 text-muted-foreground">
-                Super ishlatilganda chiqadigan karta qisqaroq ko'rinadi.
+                {t("set.superShortNote")}
               </p>
               <TransferPanel canImport={canImport} onChanged={onProgressChanged} />
             </>
@@ -1934,12 +1865,10 @@ function SettingsWindow({
               "self-start px-4 py-2",
             )}
           >
-            YOPISH
+            {t("common.close")}
           </button>
           {/* pixelfx (MIT) — litsenziya talabi: muallif va litsenziya ko'rsatiladi */}
-          <p className="text-[8px] leading-4 text-muted-foreground">
-            Effektlar: pixelfx (patch-gg), MIT litsenziyasi
-          </p>
+          <p className="text-[8px] leading-4 text-muted-foreground">{t("set.pixelfx")}</p>
         </div>
       </div>
     </div>
@@ -1980,7 +1909,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Kunlik sovg'a"
+        aria-label={t("m.giftT")}
         className="fit-screen flex w-[min(94vw,600px)] flex-col gap-3 overflow-y-auto border-4 border-primary bg-card p-3 sm:p-4 text-[10px] sm:text-xs leading-5"
         onClick={(e) => e.stopPropagation()}
       >
@@ -1991,7 +1920,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
           </h2>
           <button
             onClick={onClose}
-            aria-label="Yopish"
+            aria-label={t("common.closeAria")}
             className={`border-2 border-border px-2 py-1 text-muted-foreground hover:border-foreground hover:text-foreground ${pixelPress} ${pixelFocus}`}
           >
             X
@@ -2082,7 +2011,7 @@ function GiftWindow({ onClose, onClaim }: { onClose: () => void; onClaim: () => 
               "px-4 py-2",
             )}
           >
-            YOPISH
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -2124,7 +2053,7 @@ function JoinRoomWindow({
         className="flex w-[min(92vw,380px)] flex-col items-center gap-3 border-4 border-border bg-card p-4 text-center text-[10px] sm:text-xs leading-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-primary">XONAGA KIRISH</h2>
+        <h2 className="text-primary">{t("m.join")}</h2>
         <p className="text-muted-foreground">
           Do'stingiz pauza menyusidagi DO'STNI CHAQIRISH oynasidan yuborgan xona kodini yozing.
         </p>
@@ -2248,7 +2177,7 @@ function AchievementsWindow({ onClose }: { onClose: () => void }) {
               "self-start px-4 py-2",
             )}
           >
-            YOPISH
+            {t("common.close")}
           </button>
         </div>
       </div>
@@ -2438,7 +2367,7 @@ function ChangelogWindow({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           className={cn(buttonVariants({ variant: "pixel", size: "none" }), "mt-4 px-4 py-2")}
         >
-          YOPISH
+          {t("common.close")}
         </button>
       </div>
     </div>

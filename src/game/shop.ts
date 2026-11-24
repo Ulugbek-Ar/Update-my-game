@@ -1,4 +1,5 @@
 /** Oltin va DO'KON: o'yinlar orasida saqlanadigan doimiy kuchaytirishlar va qahramonlar (localStorage). */
+import { t } from "@/i18n";
 import type { EnemyKind } from "./enemy";
 import type { Player } from "./player";
 import { HERO_LIST, type Hero } from "./hero";
@@ -47,32 +48,48 @@ export interface ShopItem {
 export const SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: "heart",
-    name: "QO'SHIMCHA YURAK",
-    desc: "Boshlang'ich yurak +1",
+    get name() {
+      return t("shop.heart.name");
+    },
+    get desc() {
+      return t("shop.heart.desc");
+    },
     color: "#ff4d6d",
     icon: "heart",
     costs: [30, 60, 100],
   },
   {
     id: "dash",
-    name: "YENGIL ETIK",
-    desc: "Dash/teleport/sakrash/sirpanish/hamla qaytishi 10% tez",
+    get name() {
+      return t("shop.boots.name");
+    },
+    get desc() {
+      return t("shop.boots.desc");
+    },
     color: "#a6f08e",
     icon: "wind",
     costs: [25, 50, 90],
   },
   {
     id: "blade",
-    name: "CHARXLANGAN TIG'",
-    desc: "Boshlang'ich zarar +1",
+    get name() {
+      return t("shop.blade.name");
+    },
+    get desc() {
+      return t("shop.blade.desc");
+    },
     color: "#68cde4",
     icon: "blade",
     costs: [80],
   },
   {
     id: "luck",
-    name: "OMAD TUMORI",
-    desc: "Yurak tushish ehtimoli +5%",
+    get name() {
+      return t("shop.luck.name");
+    },
+    get desc() {
+      return t("shop.luck.desc");
+    },
     color: "#ffcc33",
     icon: "luck",
     costs: [20, 40, 70],

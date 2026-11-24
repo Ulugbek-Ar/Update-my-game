@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 /** Qahramon tanlovi: bosh menyuda tanlanadi va localStorage'da saqlanadi. */
 export type Hero = "knight" | "mage" | "hunter" | "gunner" | "paladin" | "samurai" | "shinobi";
 
@@ -98,13 +99,41 @@ export interface RoleInfo {
 
 export const ROLE_INFO: Record<Role, RoleInfo> = {
   tank: {
-    name: "TANK",
+    get name() {
+      return t("role.tank.name");
+    },
     color: "#f2c14e",
-    desc: "Dushman va bossni o'ziga tortadi, zarbani ko'taradi",
+    get desc() {
+      return t("role.tank.desc");
+    },
   },
-  warrior: { name: "JANGCHI", color: "#68cde4", desc: "Yaqin jangda tez va chaqqon uradi" },
-  caster: { name: "SEHRGAR", color: "#ff4d4d", desc: "Sehr bilan katta zarar beradi" },
-  ranged: { name: "UZOQDAN", color: "#a6f08e", desc: "Masofadan turib otadi" },
+  warrior: {
+    get name() {
+      return t("role.warrior.name");
+    },
+    color: "#68cde4",
+    get desc() {
+      return t("role.warrior.desc");
+    },
+  },
+  caster: {
+    get name() {
+      return t("role.caster.name");
+    },
+    color: "#ff4d4d",
+    get desc() {
+      return t("role.caster.desc");
+    },
+  },
+  ranged: {
+    get name() {
+      return t("role.ranged.name");
+    },
+    color: "#a6f08e",
+    get desc() {
+      return t("role.ranged.desc");
+    },
+  },
 };
 
 /** Qahramon metadatasi. price > 0 bo'lsa do'kondan sotib olinadi (save.ts: unlockedHeroes). */
@@ -159,58 +188,86 @@ export const HERO_LIST: readonly HeroInfo[] = [
   {
     id: "knight",
     role: "warrior",
-    name: "RITSAR",
+    get name() {
+      return t("hero.knight.name");
+    },
     theme: HERO_THEME.knight,
     price: 0,
-    desc: "Qilich, aylana zarba va dash. 6 yurak — eng chidamli.",
+    get desc() {
+      return t("hero.knight.desc");
+    },
   },
   {
     id: "mage",
     role: "caster",
-    name: "SEHRGAR",
+    get name() {
+      return t("hero.mage.name");
+    },
     theme: HERO_THEME.mage,
     price: 0,
-    desc: "Sehrli shar, olovli halqa va teleport. Uzoqdan uradi.",
+    get desc() {
+      return t("hero.mage.desc");
+    },
   },
   {
     id: "hunter",
     role: "ranged",
-    name: "OVCHI",
+    get name() {
+      return t("hero.hunter.name");
+    },
     theme: HERO_THEME.hunter,
     price: 0,
-    desc: "O'q, teshuvchi o'q, orqaga sakrash va tuzoq. Eng tez yuradi.",
+    get desc() {
+      return t("hero.hunter.desc");
+    },
   },
   {
     id: "gunner",
     role: "ranged",
-    name: "MERGAN",
+    get name() {
+      return t("hero.gunner.name");
+    },
     theme: HERO_THEME.gunner,
     price: GUNNER_PRICE,
-    desc: "Chaqmoqtoshli to'pponcha: barabanda 6 o'q, bosib tursang hammasini yelpig'ich qilib otadi. Sirpanish va tutun bombasi.",
+    get desc() {
+      return t("hero.gunner.desc");
+    },
   },
   {
     id: "paladin",
     role: "tank",
-    name: "PALADIN",
+    get name() {
+      return t("hero.paladin.name");
+    },
     theme: HERO_THEME.paladin,
     price: PALADIN_PRICE,
-    desc: "Qalqonsiz tank: ikki metrlik ulkan qilich. SHANG — yo'lak bo'ylab zarba, Osmon hukmi gangitadi, Qasam dushmanlarni o'ziga tortadi. 8 yurak.",
+    get desc() {
+      return t("hero.paladin.desc");
+    },
   },
   {
     id: "samurai",
     role: "warrior",
-    name: "SAMURAY",
+    get name() {
+      return t("hero.samurai.name");
+    },
     theme: HERO_THEME.samurai,
     price: SAMURAI_PRICE,
-    desc: "Samuray qiz: tez katana kombosi. IAI — bosib tursang zaryadlanadi, qo'yib yuborsang chaqmoqdek kesib o'tadi. O'z vaqtida dash — vaqt sekinlashadi, o'z vaqtida zarba — dushman hujumi qaytadi. 4 yurak.",
+    get desc() {
+      return t("hero.samurai.desc");
+    },
   },
   {
     id: "shinobi",
     role: "warrior",
-    name: "NINJA",
+    get name() {
+      return t("hero.shinobi.name");
+    },
     theme: HERO_THEME.shinobi,
     price: SHINOBI_PRICE,
-    desc: "Yashirin qotil: ikki katana bilan tez chap-o'ng zarbalar. Bosib tursang — 3 ta shuriken yelpig'ich bo'lib uchadi. Dash — tutun bombasi: 1 s ko'rinmaysan, dushmanlar seni yo'qotadi, keyingi zarba 2 baravar (orqadan zarba). 4 yurak.",
+    get desc() {
+      return t("hero.shinobi.desc");
+    },
   },
 ];
 

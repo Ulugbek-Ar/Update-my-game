@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import { superFor } from "./super";
 import type { EnemyKind } from "./enemy";
 import {
@@ -225,8 +226,12 @@ export const SUPER_CARD_CHANCE = 0.4;
 export const UPGRADES: Upgrade[] = [
   {
     id: "heart",
-    name: "TEMIR YURAK",
-    desc: "+1 yurak va to'liq davolanish",
+    get name() {
+      return t("up.heart.name");
+    },
+    get desc() {
+      return t("up.heart.desc");
+    },
     color: "#ff4d6d",
     tags: ["himoya"],
     apply: (p) => {
@@ -236,104 +241,160 @@ export const UPGRADES: Upgrade[] = [
     ok: (p) => p.maxHp < 10,
     mage: {
       tags: ["himoya"],
-      name: "SEHRLI YURAK",
-      desc: "+1 yurak va to'liq davolanish",
+      get name() {
+        return t("up.heart.mage.name");
+      },
+      get desc() {
+        return t("up.heart.desc");
+      },
       color: "#c1121f",
       text: "#ff4d4d",
       icon: "mheart",
     },
     hunter: {
       tags: ["himoya"],
-      name: "OVCHI YURAGI",
-      desc: "+1 yurak va to'liq davolanish",
+      get name() {
+        return t("up.heart.hunter.name");
+      },
+      get desc() {
+        return t("up.heart.desc");
+      },
       color: "#7bd14f",
       icon: "hheart",
     },
     gunner: {
       tags: ["himoya"],
-      name: "QAYSAR YURAK",
-      desc: "+1 yurak va to'liq davolanish",
+      get name() {
+        return t("up.heart.gunner.name");
+      },
+      get desc() {
+        return t("up.heart.desc");
+      },
       color: "#c8743a",
       icon: "gheart",
     },
     paladin: {
       tags: ["himoya"],
-      name: "MUQADDAS YURAK",
-      desc: "+1 yurak va to'liq davolanish",
+      get name() {
+        return t("up.heart.paladin.name");
+      },
+      get desc() {
+        return t("up.heart.desc");
+      },
       color: "#f2c14e",
       icon: "pheart",
     },
     samurai: {
       tags: ["himoya"],
-      name: "SAKURA YURAGI",
-      desc: "+1 yurak va to'liq davolanish",
+      get name() {
+        return t("up.heart.samurai.name");
+      },
+      get desc() {
+        return t("up.heart.desc");
+      },
       color: "#ff8fb8",
       icon: "sheart",
     },
   },
   {
     id: "blade",
-    name: "O'TKIR QILICH",
-    desc: "Qilich zarari +1",
+    get name() {
+      return t("up.blade.name");
+    },
+    get desc() {
+      return t("up.blade.desc");
+    },
     color: "#68cde4",
     tags: ["zarar"],
     apply: (p) => p.damage++,
     ok: (p) => p.damage < 3,
     mage: {
       tags: ["zarar"],
-      name: "KUCHLI SEHR",
-      desc: "Shar va halqa zarari +1",
+      get name() {
+        return t("up.blade.mage.name");
+      },
+      get desc() {
+        return t("up.blade.mage.desc");
+      },
       color: "#ff9a3c",
       icon: "fireball",
     },
     hunter: {
-      name: "O'TKIR UCH",
-      desc: "O'q zarari +1",
+      get name() {
+        return t("up.blade.hunter.name");
+      },
+      get desc() {
+        return t("up.blade.hunter.desc");
+      },
       color: "#c9a26b",
       icon: "arrowhead",
       tags: ["zarar"],
     },
     gunner: {
-      name: "OG'IR O'Q",
-      desc: "O'q zarari +1",
+      get name() {
+        return t("up.blade.gunner.name");
+      },
+      get desc() {
+        return t("up.blade.hunter.desc");
+      },
       color: "#d9a441",
       icon: "slug",
       tags: ["zarar"],
     },
     paladin: {
       tags: ["zarar"],
-      name: "OG'IR TIG'",
-      desc: "SHANG va osmon hukmi zarari oshadi",
+      get name() {
+        return t("up.blade.paladin.name");
+      },
+      get desc() {
+        return t("up.blade.paladin.desc");
+      },
       color: "#fff2b0",
       icon: "greatblade",
     },
     shinobi: {
       tags: ["zarar"],
-      name: "O'TKIR TIG'LAR",
-      desc: "Ikki katana va shuriken zarari oshadi",
+      get name() {
+        return t("up.blade.shinobi.name");
+      },
+      get desc() {
+        return t("up.blade.shinobi.desc");
+      },
       color: "#e6e2ea",
       icon: "twinblades",
     },
     samurai: {
       tags: ["zarar"],
-      name: "O'TKIR KATANA",
-      desc: "Katana va Iai zarari oshadi",
+      get name() {
+        return t("up.blade.samurai.name");
+      },
+      get desc() {
+        return t("up.blade.samurai.desc");
+      },
       color: "#ffd6e6",
       icon: "katana",
     },
   },
   {
     id: "reach",
-    name: "UZUN TIG'",
-    desc: "Zarba maydoni kattaroq",
+    get name() {
+      return t("up.reach.name");
+    },
+    get desc() {
+      return t("up.reach.desc");
+    },
     color: "#c5e4ec",
     tags: ["polat"],
     apply: (p) => (p.reach += 5),
     ok: (p) => p.reach < 31,
     mage: {
       tags: ["sehr"],
-      name: "KENG HALQA",
-      desc: "Halqa kattaroq, shar biroz kattaroq",
+      get name() {
+        return t("up.reach.mage.name");
+      },
+      get desc() {
+        return t("up.reach.mage.desc");
+      },
       color: "#ff4d4d",
       icon: "ring",
       apply: (p) => {
@@ -343,8 +404,12 @@ export const UPGRADES: Upgrade[] = [
     },
     hunter: {
       tags: ["ov"],
-      name: "UZOQ NISHON",
-      desc: "O'qlar tezroq va kattaroq uchadi",
+      get name() {
+        return t("up.reach.hunter.name");
+      },
+      get desc() {
+        return t("up.reach.hunter.desc");
+      },
       color: "#a6f08e",
       icon: "scope",
       apply: (p) => {
@@ -355,8 +420,12 @@ export const UPGRADES: Upgrade[] = [
     },
     gunner: {
       tags: ["porox"],
-      name: "UZOQ NISHON",
-      desc: "O'q tezroq va uzoqroq uchadi",
+      get name() {
+        return t("up.reach.hunter.name");
+      },
+      get desc() {
+        return t("up.reach.gunner.desc");
+      },
       color: "#ffe2a0",
       icon: "sight",
       apply: (p) => {
@@ -367,8 +436,12 @@ export const UPGRADES: Upgrade[] = [
     },
     paladin: {
       tags: ["nur"],
-      name: "OSMON QILICHI",
-      desc: "SHANG yo'lagi uzunroq",
+      get name() {
+        return t("up.reach.paladin.name");
+      },
+      get desc() {
+        return t("up.reach.paladin.desc");
+      },
       color: "#fff2b0",
       icon: "skyblade",
       // 20 -> 25 -> 30: yo'lak 40 -> 50 -> 60 px
@@ -376,8 +449,12 @@ export const UPGRADES: Upgrade[] = [
     },
     shinobi: {
       tags: ["soya"],
-      name: "UZUN TIG'LAR",
-      desc: "Ikki katana uzoqroqqa yetadi, shurikenlar tezroq",
+      get name() {
+        return t("up.reach.shinobi.name");
+      },
+      get desc() {
+        return t("up.reach.shinobi.desc");
+      },
       color: "#e6e2ea",
       icon: "twinblades",
       apply: (p) => {
@@ -388,8 +465,12 @@ export const UPGRADES: Upgrade[] = [
     },
     samurai: {
       tags: ["gul"],
-      name: "UZUN IAI",
-      desc: "Iai uzoqroqqa sirpanadi",
+      get name() {
+        return t("up.reach.samurai.name");
+      },
+      get desc() {
+        return t("up.reach.samurai.desc");
+      },
       color: "#ff8fb8",
       icon: "longiai",
       apply: (p) => (p.iaiRange += IAI_RANGE_CARD),
@@ -399,30 +480,46 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "haste",
-    name: "CHAQQON QO'L",
-    desc: "Zarbalar orasi 25% qisqa",
+    get name() {
+      return t("up.haste.name");
+    },
+    get desc() {
+      return t("up.haste.desc");
+    },
     color: "#ffcc33",
     tags: ["zarar"],
     apply: (p) => (p.attackCd *= 0.75),
     ok: (p) => p.attackCd > 0.2,
     mage: {
-      name: "TEZ AFSUN",
-      desc: "Sharlar orasi 25% qisqa",
+      get name() {
+        return t("up.haste.mage.name");
+      },
+      get desc() {
+        return t("up.haste.mage.desc");
+      },
       color: "#ffd166",
       icon: "book",
       tags: ["zarar"],
     },
     hunter: {
-      name: "TEZ KAMON",
-      desc: "O'qlar orasi 25% qisqa",
+      get name() {
+        return t("up.haste.hunter.name");
+      },
+      get desc() {
+        return t("up.haste.hunter.desc");
+      },
       color: "#e8c37a",
       icon: "bow",
       tags: ["zarar"],
     },
     gunner: {
       tags: ["zarar"],
-      name: "TEZ QO'L",
-      desc: "Qayta o'qlash 30% tez",
+      get name() {
+        return t("up.haste.gunner.name");
+      },
+      get desc() {
+        return t("up.haste.gunner.desc");
+      },
       color: "#e0b04a",
       icon: "cylinder",
       apply: (p) => (p.reloadTime *= 0.7),
@@ -430,8 +527,12 @@ export const UPGRADES: Upgrade[] = [
     },
     paladin: {
       tags: ["zarar"],
-      name: "QAT'IYAT",
-      desc: "SHANG 25% tezroq qaytadi",
+      get name() {
+        return t("up.haste.paladin.name");
+      },
+      get desc() {
+        return t("up.haste.paladin.desc");
+      },
       color: "#f2c14e",
       icon: "resolve",
       // tayyorgarlik (0.4s) va zarba vaqtidan qisqarmaydi
@@ -439,8 +540,12 @@ export const UPGRADES: Upgrade[] = [
     },
     shinobi: {
       tags: ["zarar"],
-      name: "CHAQQON QO'LLAR",
-      desc: "Ikki katana zarbalari orasi 25% qisqa",
+      get name() {
+        return t("up.haste.shinobi.name");
+      },
+      get desc() {
+        return t("up.haste.shinobi.desc");
+      },
       color: "#ff8a94",
       icon: "twinblades",
       // zarba vaqtidan (0.12 s) qisqarmaydi
@@ -449,8 +554,12 @@ export const UPGRADES: Upgrade[] = [
     },
     samurai: {
       tags: ["zarar"],
-      name: "TEZ QIN",
-      desc: "Katana zarbalari orasi 25% qisqa",
+      get name() {
+        return t("up.haste.samurai.name");
+      },
+      get desc() {
+        return t("up.haste.samurai.desc");
+      },
       color: "#ffd6e6",
       icon: "quickdraw",
       // zarba vaqtidan (0.18 s) qisqarmaydi
@@ -460,8 +569,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "wind",
-    name: "SHAMOL QADAMI",
-    desc: "Tezlik +15%, dash tezroq qaytadi",
+    get name() {
+      return t("up.wind.name");
+    },
+    get desc() {
+      return t("up.wind.desc");
+    },
     color: "#a6f08e",
     tags: ["tezlik"],
     apply: (p) => {
@@ -471,43 +584,67 @@ export const UPGRADES: Upgrade[] = [
     ok: (p) => p.speed < 130,
     mage: {
       tags: ["tezlik"],
-      name: "EFIR QADAMI",
-      desc: "Tezlik +15%, teleport tezroq qaytadi",
+      get name() {
+        return t("up.wind.mage.name");
+      },
+      get desc() {
+        return t("up.wind.mage.desc");
+      },
       color: "#d9d4e0",
       icon: "wstar",
     },
     hunter: {
       tags: ["tezlik"],
-      name: "O'RMON QADAMI",
-      desc: "Tezlik +15%, sakrash tezroq qaytadi",
+      get name() {
+        return t("up.wind.hunter.name");
+      },
+      get desc() {
+        return t("up.wind.hunter.desc");
+      },
       color: "#7bd14f",
       icon: "leaf",
     },
     gunner: {
       tags: ["tezlik"],
-      name: "CHAQQON OYOQ",
-      desc: "Tezlik +15%, sirpanish tezroq qaytadi",
+      get name() {
+        return t("up.wind.gunner.name");
+      },
+      get desc() {
+        return t("up.wind.gunner.desc");
+      },
       color: "#b07a48",
       icon: "spur",
     },
     paladin: {
       tags: ["tezlik"],
-      name: "HAQ YO'LI",
-      desc: "Tezlik +15%, hamla tezroq qaytadi",
+      get name() {
+        return t("up.wind.paladin.name");
+      },
+      get desc() {
+        return t("up.wind.paladin.desc");
+      },
       color: "#fff2b0",
       icon: "path",
     },
     shinobi: {
       tags: ["tezlik"],
-      name: "SOYA QADAMI",
-      desc: "Tezlik +15%, tutun bombasi tezroq qaytadi",
+      get name() {
+        return t("up.wind.shinobi.name");
+      },
+      get desc() {
+        return t("up.wind.shinobi.desc");
+      },
       color: "#b0a8c0",
       icon: "vanish",
     },
     samurai: {
       tags: ["tezlik"],
-      name: "SHAMOL QADAMI",
-      desc: "Tezlik +15%, mukammal chetlanish oynasi kengroq",
+      get name() {
+        return t("up.wind.name");
+      },
+      get desc() {
+        return t("up.wind.samurai.desc");
+      },
       color: "#ffd6e6",
       icon: "windstep",
       apply: (p) => {
@@ -519,45 +656,69 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "vamp",
-    name: "QON TOMIRI",
-    desc: "Har bir necha o'ldirishda +1 yurak",
+    get name() {
+      return t("up.vamp.name");
+    },
+    get desc() {
+      return t("up.vamp.desc");
+    },
     color: "#b23238",
     tags: ["hayot"],
     apply: (p) => (p.lifesteal = p.lifesteal ? Math.max(3, p.lifesteal - 2) : 6),
     ok: (p) => p.lifesteal !== 3,
     mage: {
       tags: ["hayot"],
-      name: "RUH SO'RISH",
-      desc: "Har bir necha o'ldirishda +1 yurak",
+      get name() {
+        return t("up.vamp.mage.name");
+      },
+      get desc() {
+        return t("up.vamp.desc");
+      },
       color: "#c1121f",
       text: "#ff4d4d",
       icon: "spirit",
     },
     hunter: {
       tags: ["hayot"],
-      name: "OV O'LJASI",
-      desc: "Har bir necha o'ldirishda +1 yurak",
+      get name() {
+        return t("up.vamp.hunter.name");
+      },
+      get desc() {
+        return t("up.vamp.desc");
+      },
       color: "#c9a26b",
       icon: "fang",
     },
     gunner: {
       tags: ["hayot"],
-      name: "OV PULI",
-      desc: "Har bir necha o'ldirishda +1 yurak",
+      get name() {
+        return t("up.vamp.gunner.name");
+      },
+      get desc() {
+        return t("up.vamp.desc");
+      },
       color: "#d9a441",
       icon: "bounty",
     },
     paladin: {
       tags: ["hayot"],
-      name: "IMON NURI",
-      desc: "Har bir necha o'ldirishda +1 yurak",
+      get name() {
+        return t("up.vamp.paladin.name");
+      },
+      get desc() {
+        return t("up.vamp.desc");
+      },
       color: "#f2c14e",
       icon: "faith",
     },
     samurai: {
       tags: ["hayot"],
-      name: "TIG' TASHNALIGI",
-      desc: "Har bir necha o'ldirishda +1 yurak",
+      get name() {
+        return t("up.vamp.samurai.name");
+      },
+      get desc() {
+        return t("up.vamp.desc");
+      },
       color: "#d8324a",
       text: "#ff8fb8",
       icon: "thirst",
@@ -565,16 +726,24 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "thorns",
-    name: "TIKANLI ZIRH",
-    desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+    get name() {
+      return t("up.thorns.name");
+    },
+    get desc() {
+      return t("up.thorns.desc");
+    },
     color: "#c9a26b",
     tags: ["himoya"],
     apply: (p) => (p.thorns = true),
     ok: (p) => !p.thorns,
     mage: {
       tags: ["himoya"],
-      name: "MUZ QALQONI",
-      desc: "Jon yo'qotsang, atrofdagilar 1.5s sekinlashadi",
+      get name() {
+        return t("up.thorns.mage.name");
+      },
+      get desc() {
+        return t("up.thorns.mage.desc");
+      },
       color: "#d9d4e0",
       icon: "ice",
       apply: (p) => (p.frost = true),
@@ -582,29 +751,45 @@ export const UPGRADES: Upgrade[] = [
     },
     hunter: {
       tags: ["himoya"],
-      name: "TIKANLI PLASH",
-      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      get name() {
+        return t("up.thorns.hunter.name");
+      },
+      get desc() {
+        return t("up.thorns.desc");
+      },
       color: "#a6f08e",
       icon: "thorn",
     },
     gunner: {
       tags: ["himoya"],
-      name: "TEMIR KAMZUL",
-      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      get name() {
+        return t("up.thorns.gunner.name");
+      },
+      get desc() {
+        return t("up.thorns.desc");
+      },
       color: "#9a948a",
       icon: "vest",
     },
     paladin: {
       tags: ["himoya"],
-      name: "QASOS ZIRHI",
-      desc: "Zarba yesang, yaqin dushmanga 1 zarar",
+      get name() {
+        return t("up.thorns.paladin.name");
+      },
+      get desc() {
+        return t("up.thorns.desc");
+      },
       color: "#f2c14e",
       icon: "avenger",
     },
     samurai: {
       tags: ["himoya"],
-      name: "QAYTGAN PO'LAT",
-      desc: "Parry dan keyin 2 s tezlashasan",
+      get name() {
+        return t("up.thorns.samurai.name");
+      },
+      get desc() {
+        return t("up.thorns.samurai.desc");
+      },
       color: "#ffd6e6",
       icon: "steelback",
       apply: (p) => (p.parryBoost = true),
@@ -613,96 +798,148 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "dash2",
-    name: "IKKI KARRA DASH",
-    desc: "Ketma-ket 2 ta dash",
+    get name() {
+      return t("up.dash2.name");
+    },
+    get desc() {
+      return t("up.dash2.desc");
+    },
     color: "#7fd8ff",
     tags: ["tezlik"],
     apply: (p) => (p.dashMax = 2),
     ok: (p) => p.dashMax < 2,
     mage: {
       tags: ["tezlik"],
-      name: "IKKI KARRA TELEPORT",
-      desc: "Ketma-ket 2 ta teleport",
+      get name() {
+        return t("up.dash2.mage.name");
+      },
+      get desc() {
+        return t("up.dash2.mage.desc");
+      },
       color: "#ff4d4d",
       icon: "portal",
     },
     hunter: {
       tags: ["tezlik"],
-      name: "IKKI KARRA SAKRASH",
-      desc: "Ketma-ket 2 ta orqaga sakrash",
+      get name() {
+        return t("up.dash2.hunter.name");
+      },
+      get desc() {
+        return t("up.dash2.hunter.desc");
+      },
       color: "#e8c37a",
       icon: "boots",
     },
     gunner: {
       tags: ["tezlik"],
-      name: "IKKI KARRA SIRPANISH",
-      desc: "Ketma-ket 2 ta sirpanish",
+      get name() {
+        return t("up.dash2.gunner.name");
+      },
+      get desc() {
+        return t("up.dash2.gunner.desc");
+      },
       color: "#d9a441",
       icon: "slide2",
     },
     paladin: {
       tags: ["tezlik"],
-      name: "IKKI KARRA HAMLA",
-      desc: "Ketma-ket 2 ta muqaddas hamla",
+      get name() {
+        return t("up.dash2.paladin.name");
+      },
+      get desc() {
+        return t("up.dash2.paladin.desc");
+      },
       color: "#f2c14e",
       icon: "hamla2",
     },
     shinobi: {
       tags: ["tezlik"],
-      name: "IKKI TUTUN",
-      desc: "Ketma-ket 2 ta tutun bombasi",
+      get name() {
+        return t("up.dash2.shinobi.name");
+      },
+      get desc() {
+        return t("up.dash2.shinobi.desc");
+      },
       color: "#b0a8c0",
       icon: "vanish",
     },
     samurai: {
       tags: ["tezlik"],
-      name: "IKKI KARRA QADAM",
-      desc: "Ketma-ket 2 ta dash",
+      get name() {
+        return t("up.dash2.samurai.name");
+      },
+      get desc() {
+        return t("up.dash2.desc");
+      },
       color: "#ff8fb8",
       icon: "step2",
     },
   },
   {
     id: "mend",
-    name: "SHIFO",
-    desc: "Barcha yuraklarni tiklash",
+    get name() {
+      return t("up.mend.name");
+    },
+    get desc() {
+      return t("up.mend.desc");
+    },
     color: "#f2fbe4",
     tags: ["hayot"],
     apply: (p) => (p.hp = p.maxHp),
     ok: (p) => p.hp < p.maxHp,
     mage: {
       tags: ["hayot"],
-      name: "SHIFOBAXSH IKSIR",
-      desc: "Barcha yuraklarni tiklash",
+      get name() {
+        return t("up.mend.mage.name");
+      },
+      get desc() {
+        return t("up.mend.desc");
+      },
       color: "#c1121f",
       text: "#ff4d4d",
       icon: "elixir",
     },
     hunter: {
       tags: ["hayot"],
-      name: "SHIFOBAXSH O'T",
-      desc: "Barcha yuraklarni tiklash",
+      get name() {
+        return t("up.mend.hunter.name");
+      },
+      get desc() {
+        return t("up.mend.desc");
+      },
       color: "#7bd14f",
       icon: "herb",
     },
     gunner: {
       tags: ["hayot"],
-      name: "DORI SHISHASI",
-      desc: "Barcha yuraklarni tiklash",
+      get name() {
+        return t("up.mend.gunner.name");
+      },
+      get desc() {
+        return t("up.mend.desc");
+      },
       color: "#c8743a",
       icon: "flask",
     },
     paladin: {
       tags: ["hayot"],
-      name: "DUO",
-      desc: "Barcha yuraklarni tiklash",
+      get name() {
+        return t("up.mend.paladin.name");
+      },
+      get desc() {
+        return t("up.mend.desc");
+      },
       color: "#fff2b0",
       icon: "prayer",
     },
     samurai: {
       tags: ["hayot"],
-      name: "YASHIL CHOY",
-      desc: "Barcha yuraklarni tiklash",
+      get name() {
+        return t("up.mend.samurai.name");
+      },
+      get desc() {
+        return t("up.mend.desc");
+      },
       color: "#a6f08e",
       icon: "tea",
     },
@@ -710,8 +947,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Sehrgar ----
   {
     id: "triple",
-    name: "UCH SHAR",
-    desc: "Bir otishda yelpig'ich bo'lib 3 ta shar",
+    get name() {
+      return t("up.triple.name");
+    },
+    get desc() {
+      return t("up.triple.desc");
+    },
     color: "#ff4d4d",
     tags: ["sehr"],
     icon: "orbs",
@@ -721,8 +962,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "pierce",
-    name: "TESHUVCHI SHAR",
-    desc: "Shar 1 dushmandan o'tib, keyingisiga ham tegadi",
+    get name() {
+      return t("up.pierce.name");
+    },
+    get desc() {
+      return t("up.pierce.desc");
+    },
     color: "#ff4d4d",
     tags: ["sehr"],
     icon: "crystal",
@@ -733,8 +978,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Ovchi ----
   {
     id: "htriple",
-    name: "UCH O'Q",
-    desc: "Bir otishda yelpig'ich bo'lib 3 ta o'q",
+    get name() {
+      return t("up.htriple.name");
+    },
+    get desc() {
+      return t("up.htriple.desc");
+    },
     color: "#e8c37a",
     tags: ["ov"],
     icon: "arrows3",
@@ -744,8 +993,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "venom",
-    name: "ZAHARLI UCH",
-    desc: "O'q tekkan dushman 3s zaharlanadi: har soniya 1 zarar",
+    get name() {
+      return t("up.venom.name");
+    },
+    get desc() {
+      return t("up.venom.desc");
+    },
     color: "#a6f08e",
     tags: ["ov"],
     icon: "venom",
@@ -756,8 +1009,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Mergan ----
   {
     id: "drum",
-    name: "KATTA BARABAN",
-    desc: "Barabanda 8 ta o'q",
+    get name() {
+      return t("up.drum.name");
+    },
+    get desc() {
+      return t("up.drum.desc");
+    },
     color: "#d9a441",
     tags: ["porox"],
     icon: "drum",
@@ -771,8 +1028,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "ricochet",
-    name: "RIKOSHET",
-    desc: "O'q devordan 1 marta qaytadi",
+    get name() {
+      return t("up.ricochet.name");
+    },
+    get desc() {
+      return t("up.ricochet.desc");
+    },
     color: "#ffe2a0",
     tags: ["porox"],
     icon: "ricochet",
@@ -783,8 +1044,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Paladin ----
   {
     id: "shockwave",
-    name: "ZARB TO'LQINI",
-    desc: "SHANG zarbasidan keyin oldinga to'lqin uchadi",
+    get name() {
+      return t("up.shockwave.name");
+    },
+    get desc() {
+      return t("up.shockwave.desc");
+    },
     color: "#f2c14e",
     tags: ["nur"],
     icon: "shockwave",
@@ -794,8 +1059,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "aura",
-    name: "MUQADDAS AURA",
-    desc: "Har 15s da 1 yurak tiklanadi (onlayn — yaqin do'stlarga ham)",
+    get name() {
+      return t("up.aura.name");
+    },
+    get desc() {
+      return t("up.aura.desc");
+    },
     color: "#fff2b0",
     tags: ["nur"],
     icon: "aura",
@@ -806,8 +1075,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Samuray ----
   {
     id: "twincut",
-    name: "IKKI KESIM",
-    desc: "Iai har belgilangan dushmanni ikki marta kesadi",
+    get name() {
+      return t("up.twincut.name");
+    },
+    get desc() {
+      return t("up.twincut.desc");
+    },
     color: "#ff8fb8",
     tags: ["gul"],
     icon: "twincut",
@@ -817,8 +1090,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "petalstorm",
-    name: "GULBARG BO'RONI",
-    desc: "Mukammal chetlanishda atrofga gulbarg zarbasi",
+    get name() {
+      return t("up.petalstorm.name");
+    },
+    get desc() {
+      return t("up.petalstorm.desc");
+    },
     color: "#ffd6e6",
     tags: ["gul"],
     icon: "petalstorm",
@@ -828,8 +1105,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "coldblood",
-    name: "SOVUQ QON",
-    desc: "Joning 2 yoki kam bo'lsa — kritik imkoniyati ancha oshadi",
+    get name() {
+      return t("up.coldblood.name");
+    },
+    get desc() {
+      return t("up.coldblood.desc");
+    },
     color: "#9fd0ef",
     tags: ["gul"],
     icon: "coldblood",
@@ -840,8 +1121,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- Faqat Ninja ----
   {
     id: "manystars",
-    name: "KO'P SHURIKEN",
-    desc: "Bir otishda +2 shuriken (5 ta)",
+    get name() {
+      return t("up.manystars.name");
+    },
+    get desc() {
+      return t("up.manystars.desc");
+    },
     color: "#e6e2ea",
     tags: ["soya"],
     icon: "shuriken",
@@ -851,8 +1136,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "longshadow",
-    name: "UZUN SOYA",
-    desc: "Tutundan keyin ko'rinmaslik 0.6 s uzoqroq",
+    get name() {
+      return t("up.longshadow.name");
+    },
+    get desc() {
+      return t("up.longshadow.desc");
+    },
     color: "#b0a8c0",
     tags: ["soya"],
     icon: "vanish",
@@ -862,8 +1151,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "backstab",
-    name: "ORQADAN ZARBA",
-    desc: "Ko'rinmaslikdan keyingi zarba 2.5 baravar",
+    get name() {
+      return t("up.backstab.name");
+    },
+    get desc() {
+      return t("up.backstab.desc");
+    },
     color: "#ff6f91",
     tags: ["soya"],
     icon: "backstab",
@@ -873,8 +1166,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "poisonstar",
-    name: "ZAHARLI SHURIKEN",
-    desc: "Shurikenlar dushmanni zaharlaydi",
+    get name() {
+      return t("up.poisonstar.name");
+    },
+    get desc() {
+      return t("up.poisonstar.desc");
+    },
     color: "#a6f08e",
     tags: ["soya"],
     icon: "poisonstar",
@@ -885,8 +1182,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (ILOHIY HUKM — Paladin): kam uchraydi, "SUPER" tegli ----
   {
     id: "sunshield",
-    name: "QUYOSH QALQONI",
-    desc: "Superdan keyin 2 s oltin qalqon: zarba o'tmaydi",
+    get name() {
+      return t("up.sunshield.name");
+    },
+    get desc() {
+      return t("up.sunshield.desc");
+    },
     color: "#fff2b0",
     tags: ["super"],
     icon: "sunshield",
@@ -898,8 +1199,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "secondjudgment",
-    name: "IKKINCHI HUKM",
-    desc: "Ikkinchi nur to'lqini: bossga yana yarim zarba",
+    get name() {
+      return t("up.secondjudgment.name");
+    },
+    get desc() {
+      return t("up.secondjudgment.desc");
+    },
     color: "#fff2b0",
     tags: ["super"],
     icon: "secondjudgment",
@@ -912,8 +1217,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (MING KESIM — Samuray) ----
   {
     id: "secondbreath",
-    name: "IKKINCHI NAFAS",
-    desc: "Superdan keyin super sharining 25% i qaytadi",
+    get name() {
+      return t("up.secondbreath.name");
+    },
+    get desc() {
+      return t("up.secondbreath.desc");
+    },
     color: "#ffd6e6",
     tags: ["super"],
     icon: "secondbreath",
@@ -925,8 +1234,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "petalveil",
-    name: "GULBARG PARDASI",
-    desc: "Superdan keyin 2 s gulbarg pardasi: zarba o'tmaydi",
+    get name() {
+      return t("up.petalveil.name");
+    },
+    get desc() {
+      return t("up.petalveil.desc");
+    },
     color: "#ffd6e6",
     tags: ["super"],
     icon: "petalveil",
@@ -939,8 +1252,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (SOYA BO'RONI — Ninja) ----
   {
     id: "smokeveil",
-    name: "TUTUN PARDASI",
-    desc: "Superdan keyin 2 s ko'rinmaysan, keyingi zarba 2x",
+    get name() {
+      return t("up.smokeveil.name");
+    },
+    get desc() {
+      return t("up.smokeveil.desc");
+    },
     color: "#b0a8c0",
     tags: ["super"],
     icon: "smokeveil",
@@ -952,8 +1269,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "shadowtrail",
-    name: "SOYA IZI",
-    desc: "Superdan keyin shuriken va tutun darhol tayyor",
+    get name() {
+      return t("up.shadowtrail.name");
+    },
+    get desc() {
+      return t("up.shadowtrail.desc");
+    },
     color: "#ff6f91",
     tags: ["super"],
     icon: "shadowtrail",
@@ -966,8 +1287,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (UFQ KESIMI — Ritsar) ----
   {
     id: "doublehorizon",
-    name: "QO'SH UFQ",
-    desc: "Super orqaga ham ikkinchi kesim otadi",
+    get name() {
+      return t("up.doublehorizon.name");
+    },
+    get desc() {
+      return t("up.doublehorizon.desc");
+    },
     color: "#c5e4ec",
     tags: ["super"],
     icon: "doublehorizon",
@@ -979,8 +1304,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "wideblade",
-    name: "KENG TIG'",
-    desc: "Super kesimi 60% balandroq",
+    get name() {
+      return t("up.wideblade.name");
+    },
+    get desc() {
+      return t("up.wideblade.desc");
+    },
     color: "#c5e4ec",
     tags: ["super"],
     icon: "wideblade",
@@ -993,8 +1322,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (OSMON TOSHI — Sehrgar) ----
   {
     id: "meteorrain",
-    name: "METEOR YOMG'IRI",
-    desc: "Superdan keyin yana 3 ta kichik meteor tushadi",
+    get name() {
+      return t("up.meteorrain.name");
+    },
+    get desc() {
+      return t("up.meteorrain.desc");
+    },
     color: "#ff9a3c",
     tags: ["super"],
     icon: "meteorrain",
@@ -1006,8 +1339,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "eternalcrater",
-    name: "ABADIY KRATER",
-    desc: "Krater cho'g'i ikki baravardan ko'p turadi",
+    get name() {
+      return t("up.eternalcrater.name");
+    },
+    get desc() {
+      return t("up.eternalcrater.desc");
+    },
     color: "#ff9a3c",
     tags: ["super"],
     icon: "eternalcrater",
@@ -1020,8 +1357,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (O'N O'Q OVI — Ovchi) ----
   {
     id: "fifteenarrows",
-    name: "O'N BESH O'Q",
-    desc: "Superda 10 emas, 15 ta o'q uchadi",
+    get name() {
+      return t("up.fifteenarrows.name");
+    },
+    get desc() {
+      return t("up.fifteenarrows.desc");
+    },
     color: "#8fd14f",
     tags: ["super"],
     icon: "fifteenarrows",
@@ -1033,8 +1374,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "chainblast",
-    name: "ZANJIRLI PORTLASH",
-    desc: "Super o'qi portlashi atrofdagi dushmanlarga ham tegadi",
+    get name() {
+      return t("up.chainblast.name");
+    },
+    get desc() {
+      return t("up.chainblast.desc");
+    },
     color: "#8fd14f",
     tags: ["super"],
     icon: "chainblast",
@@ -1047,8 +1392,12 @@ export const UPGRADES: Upgrade[] = [
   // ---- SUPER kartalari (CHEKSIZ O'Q — Mergan) ----
   {
     id: "hotsteel",
-    name: "QIZIGAN PO'LAT",
-    desc: "Super o'qlari 1.5x kuchli va 2 dushmandan teshib o'tadi",
+    get name() {
+      return t("up.hotsteel.name");
+    },
+    get desc() {
+      return t("up.hotsteel.desc");
+    },
     color: "#ff9a3c",
     tags: ["super"],
     icon: "hotsteel",
@@ -1060,8 +1409,12 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: "longprairie",
-    name: "UZUN DASHT",
-    desc: "Cheksiz o'q 3.5 emas, 5 soniya davom etadi",
+    get name() {
+      return t("up.longprairie.name");
+    },
+    get desc() {
+      return t("up.longprairie.desc");
+    },
     color: "#ff9a3c",
     tags: ["super"],
     icon: "longprairie",

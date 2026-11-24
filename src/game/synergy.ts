@@ -8,6 +8,7 @@
  * Bonus va sinergiyalar Player ko'rsatkichlarini o'zgartirsa (strongMul, chargeTime, ...), boss joni
  * formulasi (bossPower.ts) ularni Player'dan o'qiydi — bosslar osonlashib qolmaydi.
  */
+import { t as tr } from "@/i18n";
 import type { Player } from "./player";
 import type { Hero } from "./hero";
 import type { Tag } from "./waves";
@@ -45,59 +46,154 @@ export interface TagDef {
   three: string;
 }
 
-const HERO_THREE: Record<Hero, string> = {
-  knight: "Aylana zarba 3 baravar zarar",
-  mage: "Teleport qilgan joyda olov portlaydi",
-  hunter: "Kuchli o'q 3 baravar zarar",
-  gunner: "Yelpig'ich o'qlari teshib o'tadi",
-  paladin: "OSMON HUKMI 4 baravar zarar",
-  samurai: "To'liq Iai 3 baravar zarar",
-  shinobi: "Orqadan zarba 3 baravar zarar",
-};
-
 export const TAGS: Record<Tag, TagDef> = {
   zarar: {
-    name: "ZARAR",
+    get name() {
+      return tr("syn.zarar");
+    },
     color: "#ff6a4d",
-    two: "Kuchli zarba 15% tezroq tayyor",
-    three: "Dushman o'lganda kichik portlash",
+    get two() {
+      return tr("syn.zarar.two");
+    },
+    get three() {
+      return tr("syn.zarar.three");
+    },
   },
   tezlik: {
-    name: "TEZLIK",
+    get name() {
+      return tr("syn.tezlik");
+    },
     color: "#7fd8ff",
-    two: "Tezlik +8%",
-    three: "Dashdan keyin 1 s tezlashish",
+    get two() {
+      return tr("syn.tezlik.two");
+    },
+    get three() {
+      return tr("syn.tezlik.three");
+    },
   },
   himoya: {
-    name: "HIMOYA",
+    get name() {
+      return tr("syn.himoya");
+    },
     color: "#9fb4c8",
-    two: "Zarbadan keyin uzoqroq daxlsizlik",
-    three: "Har 20 s da bir zarbani to'sadigan qalqon",
+    get two() {
+      return tr("syn.himoya.two");
+    },
+    get three() {
+      return tr("syn.himoya.three");
+    },
   },
   hayot: {
-    name: "HAYOT",
+    get name() {
+      return tr("syn.hayot");
+    },
     color: "#ff4d6d",
-    two: "Yurak ko'proq tushadi",
-    three: "Boss fazasi almashganda +1 yurak",
+    get two() {
+      return tr("syn.hayot.two");
+    },
+    get three() {
+      return tr("syn.hayot.three");
+    },
   },
-  polat: { name: "PO'LAT", color: "#68cde4", two: "", three: HERO_THREE.knight },
-  sehr: { name: "SEHR", color: "#ff4d4d", two: "", three: HERO_THREE.mage },
-  ov: { name: "OV", color: "#7bd14f", two: "", three: HERO_THREE.hunter },
-  porox: { name: "POROX", color: "#dba45a", two: "", three: HERO_THREE.gunner },
-  nur: { name: "NUR", color: "#f2c14e", two: "", three: HERO_THREE.paladin },
-  gul: { name: "SAKURA", color: "#ff8fb8", two: "", three: HERO_THREE.samurai },
-  soya: { name: "SOYA", color: "#ff6f91", two: "", three: HERO_THREE.shinobi },
+  polat: {
+    get name() {
+      return tr("syn.polat");
+    },
+    color: "#68cde4",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.knight");
+    },
+  },
+  sehr: {
+    get name() {
+      return tr("syn.sehr");
+    },
+    color: "#ff4d4d",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.mage");
+    },
+  },
+  ov: {
+    get name() {
+      return tr("syn.ov");
+    },
+    color: "#7bd14f",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.hunter");
+    },
+  },
+  porox: {
+    get name() {
+      return tr("syn.porox");
+    },
+    color: "#dba45a",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.gunner");
+    },
+  },
+  nur: {
+    get name() {
+      return tr("syn.nur");
+    },
+    color: "#f2c14e",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.paladin");
+    },
+  },
+  gul: {
+    get name() {
+      return tr("syn.gul");
+    },
+    color: "#ff8fb8",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.samurai");
+    },
+  },
+  soya: {
+    get name() {
+      return tr("syn.soya");
+    },
+    color: "#ff6f91",
+    get two() {
+      return tr("syn.heroTwo");
+    },
+    get three() {
+      return tr("syn.three.shinobi");
+    },
+  },
   // SUPER kartalari kam (har superda 2 ta) — ikkalasi yig'ilsa sinergiya ochiladi (TAG_NEED)
   super: {
-    name: "SUPER",
+    get name() {
+      return tr("syn.super");
+    },
     color: "#ffe9a8",
-    two: "Super shari 25% tez to'ladi",
-    three: "Super shari 25% tez to'ladi",
+    get two() {
+      return tr("syn.super.two");
+    },
+    get three() {
+      return tr("syn.super.two");
+    },
   },
 };
-// qahramon tegi 2: kuchli zarba zaryadi tezroq to'ladi
-for (const t of ["polat", "sehr", "ov", "porox", "nur", "gul", "soya"] as const)
-  TAGS[t].two = "Kuchli zarba zaryadi 20% tez";
+// qahramon tegi 2: kuchli zarba zaryadi tezroq to'ladi (syn.heroTwo — yuqorida)
 
 /** Har qahramonning o'z tegi */
 export const HERO_TAG: Record<Hero, Tag> = {

@@ -17,6 +17,7 @@
  * sekin vaqt, boss chegarasi va onlayn xabari shu tizimdan o'z-o'zidan ishlaydi.
  * Hamma superlarni o'chirish: SUPERS_ENABLED = false (superFor() null — hech qayerda ko'rinmaydi).
  */
+import { t } from "@/i18n";
 import type { Hero } from "./hero";
 
 /** Umumiy kalit: false bo'lsa superFor() hamma qahramonga null qaytaradi */
@@ -322,8 +323,12 @@ export const GAIN_HURT = 1;
 const DIVINE_JUDGMENT: SuperDef = {
   id: "divine-judgment",
   hero: "paladin",
-  name: "ILOHIY HUKM",
-  desc: "Osmondan har bir dushmanga quyosh nuri tushadi",
+  get name() {
+    return t("super.paladin.name");
+  },
+  get desc() {
+    return t("super.paladin.desc");
+  },
   color: "#f2c14e",
   charge: 20,
   time: 3.7,
@@ -363,8 +368,12 @@ const DIVINE_JUDGMENT: SuperDef = {
 const THOUSAND_CUTS: SuperDef = {
   id: "thousand-cuts",
   hero: "samurai",
-  name: "MING KESIM",
-  desc: "Ekran kesiklarga to'ladi — katana qinga qaytgach hamma dushman ikkiga bo'linadi",
+  get name() {
+    return t("super.samurai.name");
+  },
+  get desc() {
+    return t("super.samurai.desc");
+  },
   color: "#ff8fb8",
   charge: 20,
   time: 3,
@@ -409,8 +418,12 @@ const THOUSAND_CUTS: SuperDef = {
 const HORIZON_CUT: SuperDef = {
   id: "horizon-cut",
   hero: "knight",
-  name: "UFQ KESIMI",
-  desc: "Ulkan kesim to'lqini yo'lidagi hamma dushmanni ikkiga bo'ladi",
+  get name() {
+    return t("super.knight.name");
+  },
+  get desc() {
+    return t("super.knight.desc");
+  },
   color: "#9fd8f0",
   charge: 20,
   time: 2.1,
@@ -456,8 +469,12 @@ const HORIZON_CUT: SuperDef = {
 const SKY_STONE: SuperDef = {
   id: "sky-stone",
   hero: "mage",
-  name: "OSMON TOSHI",
-  desc: "Ulkan meteorit dushmanlar to'dasiga qulaydi",
+  get name() {
+    return t("super.mage.name");
+  },
+  get desc() {
+    return t("super.mage.desc");
+  },
   color: "#c070ff",
   charge: 20,
   time: 2.5,
@@ -510,8 +527,12 @@ const SKY_STONE: SuperDef = {
 const TEN_ARROWS: SuperDef = {
   id: "ten-arrows",
   hero: "hunter",
-  name: "O'N O'Q OVI",
-  desc: "O'nta o'q osmonga uchadi — har biri o'z nishonini o'zi topadi",
+  get name() {
+    return t("super.hunter.name");
+  },
+  get desc() {
+    return t("super.hunter.desc");
+  },
   color: "#8fd14f",
   charge: 20,
   time: 2.8,
@@ -566,8 +587,12 @@ const TEN_ARROWS: SuperDef = {
 const ENDLESS_LEAD: SuperDef = {
   id: "endless-lead",
   hero: "gunner",
-  name: "CHEKSIZ O'Q",
-  desc: "Uch yarim soniya baraban tugamaydi — o'qlashsiz tez otish",
+  get name() {
+    return t("super.gunner.name");
+  },
+  get desc() {
+    return t("super.gunner.desc");
+  },
   color: "#ff9a3c",
   charge: 20,
   time: 4.5,
@@ -629,8 +654,12 @@ export function frenzyTime(def: SuperDef, long = false) {
 const SHADOW_STORM: SuperDef = {
   id: "shadow-storm",
   hero: "shinobi",
-  name: "SOYA BO'RONI",
-  desc: "Ninja tutunga aylanadi — har dushman yonida soya-nusxa paydo bo'lib uni kesadi",
+  get name() {
+    return t("super.shinobi.name");
+  },
+  get desc() {
+    return t("super.shinobi.desc");
+  },
   color: "#ff6f91",
   charge: 20,
   time: 2.9,
