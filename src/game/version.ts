@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.22.0";
+export const GAME_VERSION = "3.23.0";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.23.0",
+    date: "2026-11-24",
+    notes:
+      "Yangi qahramon — Bo'ri-qiz varvar: panja zarbalari, bo'ri sakrashi va g'azab; superi — Bo'ri uvlashi, ruhiy bo'rilar har bir dushmanni tishlab o'tadi. O'yinning yangi ikonkasi — tosh arka ichidagi qorong'i portal. Rohibaning kaft zarbalari endi o'ziga xos: oltin kaft izi, lotos chaqnashi va qo'ng'iroq ovozi. Super portretlari tanlangan skin rangida chiqadi, Ninja portreti yangidan chizildi. Samuray superidagi qotish tuzatildi. Telefonda kuch kartasi tanlanayotganda tugmalar endi kartalarni yopmaydi.",
+  },
   {
     version: "3.22.0",
     date: "2026-11-24",
