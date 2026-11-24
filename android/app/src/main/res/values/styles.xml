@@ -20,7 +20,7 @@
         <item name="android:navigationBarColor">@color/game_background</item>
     </style>
 
-    <!-- Ochilish ekrani (splash): to'q fon va Ritsar ikonkasi.
+    <!-- Ochilish ekrani (splash): to'q fon va portal-arka ikonkasi.
          Android 12+ — SplashScreen API, eski versiyalarda — @drawable/splash. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/game_background</item>

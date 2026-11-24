@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Eski Android (12 dan past) ochilish ekrani: to'q fon, markazda Ritsar -->
+<!-- Eski Android (12 dan past) ochilish ekrani: to'q fon, markazda portal-arka -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/game_background" />
     <item>

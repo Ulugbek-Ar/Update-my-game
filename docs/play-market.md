@@ -24,7 +24,7 @@ ko'rsatadi. Ilova: **Piksel Qal'a**, paket nomi (appId): `com.ulugbek.pikselqala
 Rasmlarni qayta chizish (`bun run dev` ishlab turganda):
 
 ```sh
-node scripts/make-icons.mjs        # ikonkalar: sayt, Android, store/icon-512.png
+node scripts/make-icons.mjs        # ikonkalar (dev server kerak emas): sayt, Android, Windows, store/icon-512.png
 node scripts/store-graphics.mjs    # store/feature-graphic.png
 VITE_STATIC=1 bun run dev          # (skrinshot uchun: AI tugmasisiz)
 SHOT_FILE=store/screenshots.json SHOT_OUT=store/screenshots node scripts/screenshot.mjs
