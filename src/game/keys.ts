@@ -168,7 +168,7 @@ export function moveLabel(k: KeyBinds, slot: 0 | 1 = 0) {
   const keys = (["up", "left", "down", "right"] as const).map((a) => k[a][slot] ?? "");
   if (keys.some((c) => !c)) return "";
   if (keys.join() === "KeyW,KeyA,KeyS,KeyD") return "WASD";
-  if (keys.join() === "ArrowUp,ArrowLeft,ArrowDown,ArrowRight") return "Strelkalar";
+  if (keys.join() === "ArrowUp,ArrowLeft,ArrowDown,ArrowRight") return t("kb.arrows");
   return keys.map(keyLabel).join("/");
 }
 

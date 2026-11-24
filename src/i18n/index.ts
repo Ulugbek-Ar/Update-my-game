@@ -9,6 +9,7 @@
 import { uz, type Key } from "./uz";
 import { ru } from "./ru";
 import { en } from "./en";
+import { REALM_TEXT_FIELDS, REALM_TR } from "./realm";
 
 export type { Key };
 export type Lang = "uz" | "ru" | "en";
@@ -115,4 +116,24 @@ export function tk(key: string, params?: Params): string {
 /** Uch tildagi variantdan joriysi (ma'lumot jadvallari uchun: { uz, ru, en }) */
 export function pick<T>(v: Record<Lang, T>): T {
   return v[current];
+}
+
+/**
+ * Olam ma'lumotlarining nusxasi joriy tilda: REALM_TEXT_FIELDS dagi o'zbekcha matnlar
+ * REALM_TR bo'yicha almashtiriladi (o'zbek tilida — o'zi qaytadi, tarjimasi yo'q matn — o'zgarmaydi).
+ */
+export function translateRealmData<T>(data: T, lang: Lang = current): T {
+  if (lang === "uz") return data;
+  const i = lang === "ru" ? 0 : 1;
+  const walk = (v: unknown, field: string): unknown => {
+    if (typeof v === "string") return REALM_TEXT_FIELDS.has(field) ? (REALM_TR[v]?.[i] ?? v) : v;
+    if (Array.isArray(v)) return v.map((x) => walk(x, field));
+    if (v && typeof v === "object") {
+      const o: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v)) o[k] = walk(x, k);
+      return o;
+    }
+    return v;
+  };
+  return walk(data, "") as T;
 }

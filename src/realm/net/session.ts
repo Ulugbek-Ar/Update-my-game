@@ -6,6 +6,7 @@
  *
  * "busy" va "version" — qayta urinilmaydi (darhol oflayn); "full" (kod bilan) — avtomatik xonaga.
  */
+import { t as tr } from "@/i18n";
 import type { RealmCommand } from "../sim";
 import {
   ERR_TEXT,
@@ -212,7 +213,7 @@ export class NetSession {
     this.cleanup();
     if (reason === "full" && this.code && this.near) {
       // do'stning xonasi to'la — avtomatik xonaga
-      this.notice = `${ERR_TEXT.full} — boshqa xonaga ulandingiz`;
+      this.notice = tr("net.fullMoved", { full: ERR_TEXT.full });
       this.code = null;
       this.near = false;
       void this.connect();

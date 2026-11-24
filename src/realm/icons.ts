@@ -1,4 +1,5 @@
 /** Buyum ikonkalari (12x12) — kod bilan chiziladi, har biri ko'pi bilan 5 rang (siyoh bilan). */
+import { t as tr } from "@/i18n";
 import type { Rarity } from "./schema";
 
 /** Noyoblik rangi: oddiy — kulrang-oq, noyob — ko'k, afsonaviy — to'q sariq */
@@ -8,9 +9,15 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   legendary: "#ffb02e",
 };
 export const RARITY_NAME: Record<Rarity, string> = {
-  common: "ODDIY",
-  rare: "NOYOB",
-  legendary: "AFSONAVIY",
+  get common() {
+    return tr("tier.common");
+  },
+  get rare() {
+    return tr("tier.rare");
+  },
+  get legendary() {
+    return tr("tier.legendary");
+  },
 };
 
 interface Icon {

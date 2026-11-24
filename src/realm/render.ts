@@ -2,6 +2,7 @@
  * Ochiq olamni chizish: kamera, ekrandan tashqarini chizmaslik (culling), tun yorug'ligi,
  * HUD, mini-xarita, tuman va oynalar. Mantiqqa ta'sir qilmaydi — faqat RealmSim holatini o'qiydi.
  */
+import { t as tr } from "@/i18n";
 import { renderSprite, spriteFootOffset, type SpriteKind } from "@/game/sprites";
 import type { Effects } from "@/game/effects";
 import { HERO_ROLE, HERO_THEME, hudBarColors, withAlpha, type Hero } from "@/game/hero";
@@ -968,7 +969,7 @@ export class RealmRenderer {
         const where = dest ? sim.areaAt(tileCenter(dest.x), tileCenter(dest.y))?.name : undefined;
         text(
           c,
-          open ? (where ?? "TEZ ORADA") : "QULFLANGAN",
+          open ? (where ?? tr("rr.soon")) : tr("map.locked"),
           x,
           y - 26,
           4,
@@ -1082,27 +1083,27 @@ export class RealmRenderer {
     if (me.ui || v.panel !== "none" || me.p.dead) return;
     const t = sim.interactTarget(me);
     if (!t) return;
-    let label = "OCHISH";
-    if (t.kind === "npc") label = "GAPLASHISH";
+    let label = tr("rr.open");
+    if (t.kind === "npc") label = tr("rr.talk");
     else {
       const o = sim.object(t.id);
-      if (o?.type === "sign") label = "O'QISH";
-      else if (o?.type === "torch") label = "YOQISH";
-      else if (o?.type === "fragment") label = "OLISH";
-      else if (o?.type === "gate") label = "KO'RISH";
+      if (o?.type === "sign") label = tr("rr.read");
+      else if (o?.type === "torch") label = tr("rr.light");
+      else if (o?.type === "fragment") label = tr("rr.take");
+      else if (o?.type === "gate") label = tr("rr.look");
       else if (o?.type === "guild")
         label =
           o.what === "gate"
-            ? "ZALGA KIRISH"
+            ? tr("rr.enterHall")
             : o.what === "exit"
-              ? "CHIQISH"
+              ? tr("rr.exit")
               : o.what === "treasury"
-                ? "XAZINA"
+                ? tr("rr.treasury")
                 : o.what === "quests"
-                  ? "TOPSHIRIQLAR"
+                  ? tr("rr.quests")
                   : o.what === "members"
-                    ? "A'ZOLAR"
-                    : "KO'RISH";
+                    ? tr("rr.members")
+                    : tr("rr.look");
     }
     const s = v.touch ? label : `[${actionKey(v.keys, "interact")}] ${label}`;
     const w = s.length * 5 + 6;
@@ -1260,7 +1261,7 @@ export class RealmRenderer {
     coin(c, 4, 24);
     text(c, String(me.gold), 13, 30, 6, "#ffcc33");
     // kashfiyotlar chap ustunda: mini-xarita va KUN/TUN bilan to'qnashmaydi (umumiy son ko'rsatilmaydi)
-    text(c, `Kashfiyotlar: ${me.secrets.length}/?`, 4, 40, 5, "#c9a25a");
+    text(c, tr("rr.secrets", { n: me.secrets.length }), 4, 40, 5, "#c9a25a");
 
     // faol topshiriq
     const q = Object.entries(me.quests).find(([, s]) => s.status !== "done");
@@ -1270,7 +1271,7 @@ export class RealmRenderer {
       const step = def.steps[st.step];
       const line =
         st.status === "ready"
-          ? (def.back ?? "Oqsoqolga qayt")
+          ? (def.back ?? tr("rr.backElder"))
           : step
             ? step.type === "kill"
               ? `${step.text} ${st.progress}/${step.count}`
@@ -1312,7 +1313,14 @@ export class RealmRenderer {
       px(c, "#ffcc33", mx, my + mh + 4, 5, 5);
       px(c, "#fff2a8", mx + 1, my + mh + 5, 2, 2);
     }
-    text(c, night ? "TUN" : "KUN", mx + 8, my + mh + 9, 5, night ? "#9fd0ef" : "#ffe14d");
+    text(
+      c,
+      night ? tr("rr.night") : tr("rr.day"),
+      mx + 8,
+      my + mh + 9,
+      5,
+      night ? "#9fd0ef" : "#ffe14d",
+    );
     this.netBadge(c, v, VIEW_W - 4, my + mh + 19);
     if (v.net.mode === "online" && v.panel === "none" && !me.ui)
       this.netButtons(c, v, my + mh + 32);
@@ -1377,14 +1385,14 @@ export class RealmRenderer {
         ss = Math.floor(left % 60);
       text(
         c,
-        raid.enraged ? "G'AZAB!" : `G'AZAB ${mm}:${String(ss).padStart(2, "0")}`,
+        raid.enraged ? tr("g.fury") : tr("rr.furyT", { m: mm, s: String(ss).padStart(2, "0") }),
         bx + bw,
         by + 15,
         5,
         raid.enraged || left < 30 ? "#ff3b1a" : "#e0d6ee",
         "right",
       );
-      text(c, `JAMOA: ${raid.party}`, bx, by + 15, 5, "#e0d6ee");
+      text(c, tr("rr.party", { n: raid.party }), bx, by + 15, 5, "#e0d6ee");
     }
     // Sardor jon chizig'i
     const boss = sim.mobs.find((m) => m.kind === "warden" && m.target === me.id && !m.dead);
@@ -1424,12 +1432,12 @@ export class RealmRenderer {
     }
     if (p.dead) {
       px(c, "rgba(0,0,0,0.5)", 0, 96, VIEW_W, 40);
-      text(c, "HALOK BO'LDINGIZ", VIEW_W / 2, 114, 10, "#ff4d6d", "center");
+      text(c, tr("rr.dead"), VIEW_W / 2, 114, 10, "#ff4d6d", "center");
       const wait = Math.max(0, Math.ceil(KING_RESPAWN - (v.time - v.deadAt)));
       text(
         c,
         inRaid
-          ? `Zal kirishida qayta tug'ilasiz: ${wait} s — jang davom etmoqda`
+          ? tr("rr.respawn", { s: wait })
           : this.area?.id === "ashmount"
             ? "Kul darvozasi yonida o'zingizga kelasiz..."
             : "Qishloqda o'zingizga kelasiz...",
@@ -1442,11 +1450,11 @@ export class RealmRenderer {
     }
   }
 
-  /** O'ng yuqorida: "ONLAYN: N" va ping yoki "OFLAYN" */
+  /** O'ng yuqorida: "ONLAYN: N" va ping yoki tr("rr.offline") */
   private netBadge(c: CanvasRenderingContext2D, v: RealmView, x: number, y: number) {
     const n = v.net;
     if (n.mode === "online") {
-      const label = `ONLAYN: ${n.n}`;
+      const label = tr("rr.online", { n: n.n });
       px(c, "#7be07b", x - label.length * 5 - 6, y - 5, 4, 4);
       text(c, label, x, y, 5, "#7be07b", "right");
       if (n.ping > 0) {
@@ -1456,14 +1464,14 @@ export class RealmRenderer {
     } else if (n.mode === "connecting")
       text(
         c,
-        "ULANISH" + ".".repeat(1 + (Math.floor(v.time * 3) % 3)),
+        tr("rr.connecting") + ".".repeat(1 + (Math.floor(v.time * 3) % 3)),
         x,
         y,
         5,
         "#c9a25a",
         "right",
       );
-    else text(c, "OFLAYN", x, y, 5, "#8a7a9a", "right");
+    else text(c, tr("rr.offline"), x, y, 5, "#8a7a9a", "right");
   }
 
   /** Onlayn: DO'ST (chaqirish) va CHAT tugmalari, ochiq bo'lsa — tayyor iboralar */
@@ -1474,11 +1482,11 @@ export class RealmRenderer {
       text(c, label, x + w / 2, y + 9, 5, on ? "#7be07b" : "#e0d6ee", "center");
       v.buttons.push({ x, y, w, h: 12, act });
     };
-    btn("CHAT", VIEW_W - 4 - 30, 30, () => v.act.chat(), v.chatOpen);
+    btn(tr("rr.chat"), VIEW_W - 4 - 30, 30, () => v.act.chat(), v.chatOpen);
     // Gildiya zalida do'st chaqirilmaydi (faqat a'zolar) — o'rniga vodiyga qaytish
     if (v.sim?.region.indoor)
-      btn("VODIYGA", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.leaveHall?.());
-    else btn("+DO'ST", VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.invite());
+      btn(tr("rr.toValley"), VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.leaveHall?.());
+    else btn(tr("rr.addFriend"), VIEW_W - 4 - 30 - 4 - 38, 38, () => v.act.invite());
     if (!v.chatOpen) return;
     PHRASES.forEach((p, i) => {
       const w = 76,
@@ -1510,24 +1518,8 @@ export class RealmRenderer {
     px(c, "#ff6a1a", 0, 197, VIEW_W, 1);
     renderSprite(c, "ashking", "attack", 2, 46 - slide, 150, false);
     text(c, MOB_STATS.ashking.name, VIEW_W / 2 + 22 - slide, 170, 14, "#ff6a1a", "center");
-    text(
-      c,
-      "Iblisning otasi — lava va olov hukmdori",
-      VIEW_W / 2 + 22 + slide,
-      184,
-      5,
-      "#e0d6ee",
-      "center",
-    );
-    text(
-      c,
-      "REYD · 2–4 O'YINCHI · TANK KERAK",
-      VIEW_W / 2 + 22 + slide,
-      193,
-      4,
-      "#ffb02e",
-      "center",
-    );
+    text(c, tr("rr.kingSub"), VIEW_W / 2 + 22 + slide, 184, 5, "#e0d6ee", "center");
+    text(c, tr("rr.raidTag"), VIEW_W / 2 + 22 + slide, 193, 4, "#ffb02e", "center");
     c.globalAlpha = 1;
   }
 
@@ -1542,7 +1534,8 @@ export class RealmRenderer {
       if (s?.type === "tablet") this.textBox(c, v, s.lore[0] ?? "", s.lore.slice(1), "#c9a25a");
       return;
     }
-    if (ui?.kind === "sign") return this.textBox(c, v, ui.title ?? "YOZUV", ui.text, "#8a6a44");
+    if (ui?.kind === "sign")
+      return this.textBox(c, v, ui.title ?? tr("rr.sign"), ui.text, "#8a6a44");
     if (v.panel === "journal") return this.journal(c, v);
     if (v.panel === "map") return this.fullMap(c, v);
     if (v.panel === "pause") return this.pause(c, v);
@@ -1551,12 +1544,8 @@ export class RealmRenderer {
       return this.textBox(
         c,
         v,
-        "ABADIYAT OLAMI",
-        [
-          "Iblis, Qor Malikasi va O'rmon Shohi shu olamdan kelgan. Sening uch dunyong — Abadiyat olamidan ochilgan darvozalar. Iblisni yenganing uchun birinchi darvoza ochildi.",
-          v.touch ? touchIntro(v.me.hero) : keysIntro(v.keys),
-          "Qishloq oqsoqoli bilan gaplashing. Olamda yashirin sirlar bor — ularni o'zingiz toping.",
-        ],
+        tr("rr.realm"),
+        [tr("rr.intro1"), v.touch ? touchIntro(v.me.hero) : keysIntro(v.keys), tr("rr.intro2")],
         "#ffe14d",
       );
   }
@@ -1566,7 +1555,7 @@ export class RealmRenderer {
     v: RealmView,
     x: number,
     y: number,
-    label = "YOPISH",
+    label = tr("common.close"),
   ) {
     const w = label.length * 5 + 10;
     px(c, "#5c4a6e", x, y, w, 12);
@@ -1593,7 +1582,7 @@ export class RealmRenderer {
       v,
       VIEW_W / 2 - 25,
       y + h - 15,
-      v.touch ? "DAVOM" : `[${actionKey(v.keys, "interact")}] DAVOM`,
+      v.touch ? tr("rr.next") : tr("rr.nextKey", { k: actionKey(v.keys, "interact") }),
     );
   }
 
@@ -1634,10 +1623,10 @@ export class RealmRenderer {
     const { sim, me } = v;
     const list = sim.shopList(npc);
     panel(c, 14, 16, 292, 196, "#c9a25a");
-    text(c, "SAVDOGAR", 24, 30, 7, "#ffe14d");
+    text(c, tr("rr.merchant"), 24, 30, 7, "#ffe14d");
     coin(c, 236, 23);
     text(c, String(me.gold), 246, 30, 6, "#ffcc33");
-    text(c, "SOTIB OLISH", 24, 46, 5, "#c9a25a");
+    text(c, tr("shop.buy"), 24, 46, 5, "#c9a25a");
     list.forEach((id, i) => {
       const def = sim.data.items[id]!;
       const y = 52 + i * 20;
@@ -1650,7 +1639,7 @@ export class RealmRenderer {
       text(c, String(def.price ?? 0), 152, y + 11, 5, "#ffcc33", "right");
       v.buttons.push({ x: 22, y, w: 132, h: 18, act: () => v.act.buy(id) });
     });
-    text(c, "SOTISH (bosing)", 166, 46, 5, "#c9a25a");
+    text(c, tr("rr.sell"), 166, 46, 5, "#c9a25a");
     for (let i = 0; i < 8; i++) {
       const s = me.inv[i];
       const def = s ? sim.data.items[s.item] : undefined;
@@ -1692,14 +1681,14 @@ export class RealmRenderer {
   private journal(c: CanvasRenderingContext2D, v: RealmView) {
     const { sim, me } = v;
     panel(c, 14, 10, 292, 220, "#c9a25a");
-    text(c, "TOPSHIRIQLAR JURNALI", VIEW_W / 2, 26, 7, "#ffe14d", "center");
+    text(c, tr("rr.journal"), VIEW_W / 2, 26, 7, "#ffe14d", "center");
     let y = 42;
     const entries = Object.entries(me.quests).sort(
       (a, b) => Number(a[1].status === "done") - Number(b[1].status === "done"),
     );
     if (!entries.length) {
-      text(c, "Hozircha topshiriq yo'q.", 26, y, 5, "#b8a8cc");
-      text(c, "Qishloq oqsoqoli bilan gaplashing.", 26, y + 9, 5, "#b8a8cc");
+      text(c, tr("rr.noQuest"), 26, y, 5, "#b8a8cc");
+      text(c, tr("rr.talkElder"), 26, y + 9, 5, "#b8a8cc");
     }
     for (const [id, st] of entries) {
       const def = sim.data.quests[id];
@@ -1725,18 +1714,24 @@ export class RealmRenderer {
           y += 9;
         });
         if (st.status === "ready") {
-          text(c, `> ${def.back ?? "Oqsoqolga qayt"}ing`, 30, y + 2, 5, "#ffe14d");
+          text(c, `> ${def.back ?? tr("rr.backElder")}ing`, 30, y + 2, 5, "#ffe14d");
           y += 9;
         }
       }
       y += 6;
     }
-    text(c, `Kashfiyotlar: ${me.secrets.length}/?`, 24, 212, 5, "#c9a25a");
-    text(c, `Joylar: ${me.landmarks.length}`, 150, 212, 5, "#c9a25a");
+    text(c, tr("rr.secrets", { n: me.secrets.length }), 24, 212, 5, "#c9a25a");
+    text(c, tr("rr.places", { n: me.landmarks.length }), 150, 212, 5, "#c9a25a");
     // unvonlar (birinchi g'alabalar) — onlayn ism ostida ham ko'rinadi
     const titles = me.titles.map((t) => TITLE_TEXT[t]).filter(Boolean);
-    if (titles.length) text(c, `UNVON: ${titles.join(", ")}`, 24, 203, 5, "#ffb02e");
-    this.closeBtn(c, v, 248, 204, v.touch ? "YOPISH" : `[${actionKey(v.keys, "journal")}] YOPISH`);
+    if (titles.length) text(c, tr("rr.titles", { list: titles.join(", ") }), 24, 203, 5, "#ffb02e");
+    this.closeBtn(
+      c,
+      v,
+      248,
+      204,
+      v.touch ? tr("common.close") : tr("rr.closeKey", { k: actionKey(v.keys, "journal") }),
+    );
   }
 
   private fullMap(c: CanvasRenderingContext2D, v: RealmView) {
@@ -1776,21 +1771,21 @@ export class RealmRenderer {
   private pause(c: CanvasRenderingContext2D, v: RealmView) {
     px(c, "rgba(0,0,0,0.6)", 0, 0, VIEW_W, VIEW_H);
     panel(c, 80, 48, 160, 160, "#5c4a6e");
-    text(c, "PAUZA", VIEW_W / 2, 70, 8, "#ffe14d", "center");
+    text(c, tr("g.pause"), VIEW_W / 2, 70, 8, "#ffe14d", "center");
     const btn = (label: string, y: number, act: () => void) => {
       px(c, "#5c4a6e", 100, y, 120, 18);
       px(c, "#2b1c3e", 101, y + 1, 118, 16);
       text(c, label, VIEW_W / 2, y + 12, 6, "#e0d6ee", "center");
       v.buttons.push({ x: 100, y, w: 120, h: 18, act });
     };
-    btn("DAVOM ETISH", 82, () => v.act.panel("none"));
-    btn("SOZLAMALAR", 104, () => v.act.settings());
-    if (v.sim?.region.indoor) btn("ZALDAN CHIQISH", 126, () => v.act.leaveHall?.());
-    else btn("DO'STNI CHAQIRISH", 126, () => v.act.invite());
-    btn("BOSH MENYU", 148, () => v.act.exit());
+    btn(tr("rr.resume"), 82, () => v.act.panel("none"));
+    btn(tr("m.settings"), 104, () => v.act.settings());
+    if (v.sim?.region.indoor) btn(tr("rr.leaveHall"), 126, () => v.act.leaveHall?.());
+    else btn(tr("rr.invite"), 126, () => v.act.invite());
+    btn(tr("g.mainMenu"), 148, () => v.act.exit());
     text(
       c,
-      v.net.mode === "online" ? "Onlayn olam to'xtamaydi" : "Olam saqlanadi",
+      v.net.mode === "online" ? tr("rr.onlineGoes") : tr("rr.saved"),
       VIEW_W / 2,
       190,
       5,
@@ -1807,47 +1802,53 @@ export class RealmRenderer {
       y0 = 28,
       h = 186;
     panel(c, x0, y0, w, h, "#7be07b");
-    text(c, "DO'STNI CHAQIRISH", VIEW_W / 2, y0 + 18, 8, "#7be07b", "center");
+    text(c, tr("rr.invite"), VIEW_W / 2, y0 + 18, 8, "#7be07b", "center");
     const btn = (label: string, x: number, y: number, bw: number, act: () => void, hot = false) => {
       px(c, hot ? "#7be07b" : "#5c4a6e", x, y, bw, 16);
       px(c, "#2b1c3e", x + 1, y + 1, bw - 2, 14);
       text(c, label, x + bw / 2, y + 11, 5, hot ? "#7be07b" : "#e0d6ee", "center");
       v.buttons.push({ x, y, w: bw, h: 16, act });
     };
-    const close = () => btn("YOPISH", VIEW_W / 2 - 30, y0 + h - 24, 60, () => v.act.close());
+    const close = () =>
+      btn(tr("common.close"), VIEW_W / 2 - 30, y0 + h - 24, 60, () => v.act.close());
     const code = v.net.mode === "online" ? v.net.code : null;
     if (!code || !v.link) {
       const lines = v.canConnect
         ? [
-            "Do'st bilan o'ynash uchun onlayn bo'lish kerak.",
-            v.net.mode === "connecting"
-              ? "Serverga ulanmoqda..."
-              : "Internetni tekshiring va qayta ulaning.",
+            tr("rr.needOnline"),
+            v.net.mode === "connecting" ? "Serverga ulanmoqda..." : tr("rr.checkNet"),
           ]
-        : ["Bu versiyada onlayn o'yin yo'q."];
+        : [tr("rr.noOnline")];
       lines
         .flatMap((l) => wrap(l, 40))
         .forEach((l, i) => text(c, l, VIEW_W / 2, y0 + 50 + i * 10, 5, "#e0d6ee", "center"));
       if (v.canConnect && v.net.mode === "offline")
-        btn("QAYTA ULANISH", VIEW_W / 2 - 50, y0 + 100, 100, () => v.act.reconnect(), true);
+        btn(tr("rr.reconnect"), VIEW_W / 2 - 50, y0 + 100, 100, () => v.act.reconnect(), true);
       close();
       return;
     }
-    text(c, "XONA KODI", VIEW_W / 2, y0 + 36, 5, "#8a7a9a", "center");
+    text(c, tr("rr.roomCode"), VIEW_W / 2, y0 + 36, 5, "#8a7a9a", "center");
     text(c, code, VIEW_W / 2, y0 + 58, 16, "#ffe14d", "center");
-    text(c, `Xonada: ${v.net.n}/${ROOM_CAP}`, VIEW_W / 2, y0 + 72, 5, "#7be07b", "center");
-    wrap(
-      "Do'stingiz bosh menyuda XONAGA KIRISH ni bosib shu kodni yozsin yoki havolani ochsin.",
-      44,
-    ).forEach((l, i) => text(c, l, VIEW_W / 2, y0 + 88 + i * 9, 5, "#e0d6ee", "center"));
+    text(
+      c,
+      tr("rr.inRoom", { n: v.net.n, cap: ROOM_CAP }),
+      VIEW_W / 2,
+      y0 + 72,
+      5,
+      "#7be07b",
+      "center",
+    );
+    wrap(tr("rr.inviteHow"), 44).forEach((l, i) =>
+      text(c, l, VIEW_W / 2, y0 + 88 + i * 9, 5, "#e0d6ee", "center"),
+    );
     text(c, v.link.replace(/^https?:\/\//, ""), VIEW_W / 2, y0 + 116, 4, "#9fd0ef", "center");
     const bw = 112;
     // ulashish bo'lmasa — nusxalash markazda
     const cx = v.share ? VIEW_W / 2 - bw - 3 : VIEW_W / 2 - bw / 2;
-    btn("HAVOLANI NUSXALASH", cx, y0 + 126, bw, () => v.act.copy(), !v.share);
+    btn(tr("rr.copyLink"), cx, y0 + 126, bw, () => v.act.copy(), !v.share);
     if (v.share)
       btn(
-        v.share === "telegram" ? "TELEGRAMDA YUBORISH" : "ULASHISH",
+        v.share === "telegram" ? tr("rr.sendTg") : tr("rr.share"),
         VIEW_W / 2 + 3,
         y0 + 126,
         bw,
@@ -2176,13 +2177,20 @@ export function drawMark(c: CanvasRenderingContext2D, k: Mark, time: number, edg
 /** Olamga kirish matni (telefon): tugma nomlari bilan — qahramon tugmalari ham. */
 export function touchIntro(hero: Hero) {
   const l = touchLabels(hero);
-  return `Joystik — yurish, ${l.attack.text} — hujum, ${l.dash.text} — qobiliyat, GAPLASH — NPC va narsalar, JURNAL — topshiriqlar, XARITA — xarita.`;
+  return tr("rr.touchIntro", { a: l.attack.text, d: l.dash.text });
 }
 
 /** Olamga kirish matni (kompyuter): qayta belgilangan tugmalar bilan. */
 export function keysIntro(k: KeyBinds) {
   const a = (x: Parameters<typeof actionKey>[1]) => actionKey(k, x);
-  return `${moveLabel(k)} — yurish, ${a("attack")} — hujum, ${a("dash")} — qobiliyat, ${a("interact")} — gaplashish, ${a("journal")} — jurnal, ${a("map")} — xarita, 1-8 — buyum.`;
+  return tr("rr.keysIntro", {
+    M: moveLabel(k),
+    A: a("attack"),
+    D: a("dash"),
+    I: a("interact"),
+    J: a("journal"),
+    P: a("map"),
+  });
 }
 
 // ---------------- Gildiya (v3.3) ----------------
@@ -2204,11 +2212,21 @@ export const TROPHY_ORDER = ["devil", "queen", "king", "warden", "ashking"] as c
 const TROPHY_X = [HALL_CX - 68, HALL_CX + 68, HALL_CX - 116, HALL_CX + 116, HALL_CX];
 
 export const TROPHY_NAME: Record<string, string> = {
-  devil: "IBLIS",
-  queen: "QOR MALIKASI",
-  king: "O'RMON SHOHI",
-  warden: "XAROBA SARDORI",
-  ashking: "KUL QIROLI",
+  get devil() {
+    return tr("boss.devil.name");
+  },
+  get queen() {
+    return tr("boss.queen.name");
+  },
+  get king() {
+    return tr("boss.king.name");
+  },
+  get warden() {
+    return tr("mob.warden");
+  },
+  get ashking() {
+    return tr("mob.ashking");
+  },
 };
 
 /** Yengilgan boss boshi — yog'och taxtachada (16x16) */
@@ -2302,7 +2320,7 @@ export function drawHallDecor(c: CanvasRenderingContext2D, h: HallView, time: nu
   px(c, gold ? "#8a6a1a" : "#5a3a1e", HALL_CX - lw / 2, ly, lw, 10);
   px(c, gold ? "#e8b830" : "#8a5a34", HALL_CX - lw / 2, ly, lw, 1);
   text(c, label, HALL_CX, ly + 8, 5, gold ? "#fff2b0" : "#ffd97a", "center");
-  text(c, `${h.level}-DARAJA`, HALL_CX, ly + 18, 4, "#c8c0d8", "center");
+  text(c, tr("rr.level", { n: h.level }), HALL_CX, ly + 18, 4, "#c8c0d8", "center");
   if (gold) {
     // 10-daraja: lavha ustida oltin toj
     px(c, "#e8b830", HALL_CX - 5, ly - 6, 10, 3);
@@ -2337,7 +2355,7 @@ function drawGuildObject(
         px(c, "#1a1820", x - 6, y - 38, 12, 13);
         px(c, "#8a8692", x - 5, y - 37, 10, 11);
       }
-      text(c, "GILDIYA ZALI", x, y - 46, 4, "#ffd97a", "center");
+      text(c, tr("rc.hall"), x, y - 46, 4, "#ffd97a", "center");
       return;
     }
     case "flag": {
@@ -2357,7 +2375,7 @@ function drawGuildObject(
             drawEmblem(c, emblem, x + 2, y - 64, 2),
           );
         text(c, `[${champ.tag}]`, x + 18, y - 72, 5, "#ffd97a", "center");
-        text(c, "HAFTA G'OLIBI", x + 18, y - 22, 4, "#c8c0d8", "center");
+        text(c, tr("rs.weekWinner"), x + 18, y - 22, 4, "#c8c0d8", "center");
       } else {
         const blank = () => {
           px(c, "#1a1820", x + 2, y - 64, 26, 20);
@@ -2422,7 +2440,7 @@ function drawGuildObject(
       px(c, "#7a4a24", x - 11, y - 17, 22, 2);
       px(c, "#c9a25a", x - 3, y - 4, 2, 2);
       px(c, "#c9a25a", x + 2, y - 4, 2, 2);
-      text(c, "VODIYGA", x, y - 21, 4, "#c8c0d8", "center");
+      text(c, tr("rr.toValley"), x, y - 21, 4, "#c8c0d8", "center");
       return;
     }
   }
@@ -2461,7 +2479,7 @@ function drawDummy(c: CanvasRenderingContext2D, v: RealmView, m: RealmMob, x: nu
   const d = v.dps;
   if (d && v.time - d.last < DUMMY_RESET) {
     const secs = Math.max(1, d.last - d.start + 0.5);
-    text(c, `ZARAR: ${d.total}`, x, ground - 48, 4, "#ffe14d", "center");
+    text(c, tr("rr.dmg", { n: d.total }), x, ground - 48, 4, "#ffe14d", "center");
     text(
       c,
       `${(d.total / secs).toFixed(1)}/s · ${d.hits} zarba`,
@@ -2471,5 +2489,5 @@ function drawDummy(c: CanvasRenderingContext2D, v: RealmView, m: RealmMob, x: nu
       "#c8c0d8",
       "center",
     );
-  } else text(c, "MASHQ", x, ground - 42, 4, "#c8c0d8", "center");
+  } else text(c, tr("rr.training"), x, ground - 42, 4, "#c8c0d8", "center");
 }

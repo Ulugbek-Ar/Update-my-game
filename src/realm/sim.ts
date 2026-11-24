@@ -3,6 +3,7 @@
  * O'yinchi harakatlari buyruq (RealmCommand) bo'lib kiradi, holat va voqealar (RealmEvent) chiqadi.
  * Keyin aynan shu klass serverda ishlaydi: bir xil buyruqlar -> bir xil holat.
  */
+import { t as tr } from "@/i18n";
 import {
   AURA_RADIUS,
   HAMLA_DMG,
@@ -416,9 +417,15 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
 
 /** Darvoza kalitini beradigan boss */
 const GATE_BOSS: Record<"devil" | "queen" | "king", string> = {
-  devil: "Iblis (1-dunyo)",
-  queen: "Qor Malikasi (2-dunyo)",
-  king: "O'rmon Shohi (3-dunyo)",
+  get devil() {
+    return tr("rs.gate.devil");
+  },
+  get queen() {
+    return tr("rs.gate.queen");
+  },
+  get king() {
+    return tr("rs.gate.king");
+  },
 };
 
 /** Plitka markazi (px) */
@@ -859,7 +866,7 @@ export class RealmSim {
     const def = this.data.quests[id];
     if (!def || rp.quests[id]) return;
     rp.quests[id] = { status: "active", step: 0, progress: 0 };
-    this.events.push({ type: "quest", pid: rp.id, text: `Yangi topshiriq: ${def.name}` });
+    this.events.push({ type: "quest", pid: rp.id, text: tr("rs.newQuest", { name: def.name }) });
     this.checkQuestNow(rp, id);
   }
 
@@ -872,7 +879,7 @@ export class RealmSim {
     if (def.reward.gold)
       this.events.push({ type: "gold", pid: rp.id, n: def.reward.gold, x: rp.p.x, y: rp.p.y });
     for (const l of def.reward.items) this.give(rp, l.item, l.n, rp.p.x, rp.p.y);
-    this.events.push({ type: "quest", pid: rp.id, text: `Bajarildi: ${def.name}` });
+    this.events.push({ type: "quest", pid: rp.id, text: tr("rs.done", { name: def.name }) });
   }
 
   private onKillQuest(rp: RealmPlayer, kind: MobKind) {
@@ -941,11 +948,11 @@ export class RealmSim {
     if (rp.ui?.kind !== "shop" || !this.shopList(rp.ui.npc).includes(item)) return;
     const def = this.data.items[item];
     if (!def || def.price === undefined || rp.gold < def.price) {
-      this.events.push({ type: "toast", pid: rp.id, text: "Oltin yetmaydi" });
+      this.events.push({ type: "toast", pid: rp.id, text: tr("err.gold") });
       return;
     }
     if (this.addItem(rp, item, 1) > 0) {
-      this.events.push({ type: "toast", pid: rp.id, text: "Inventar to'la" });
+      this.events.push({ type: "toast", pid: rp.id, text: tr("rs.invFull") });
       return;
     }
     rp.gold -= def.price;
@@ -970,14 +977,14 @@ export class RealmSim {
     if (!def) return;
     if (def.heal) {
       if (rp.p.hp >= rp.p.maxHp) {
-        this.events.push({ type: "toast", pid: rp.id, text: "Jon to'la" });
+        this.events.push({ type: "toast", pid: rp.id, text: tr("rs.hpFull") });
         return;
       }
       rp.p.heal(def.heal);
       this.removeItem(rp, s.item, 1);
       this.events.push({ type: "heal", pid: rp.id, x: rp.p.x, y: rp.p.y });
     } else if (def.bonus) this.events.push({ type: "toast", pid: rp.id, text: def.desc });
-    else this.events.push({ type: "toast", pid: rp.id, text: "Savdogarga sotsa bo'ladi" });
+    else this.events.push({ type: "toast", pid: rp.id, text: tr("rs.sellable") });
   }
 
   // ---------- sirlar ----------
@@ -1030,7 +1037,7 @@ export class RealmSim {
           if (rp.secrets.includes(s.id)) continue;
           fresh = true;
           this.discover(rp, s.id, rp.p.x, rp.p.y);
-          this.events.push({ type: "toast", pid: rp.id, text: "Qurbongoh ochildi — birgalikda!" });
+          this.events.push({ type: "toast", pid: rp.id, text: tr("rs.altar") });
         }
         if (fresh) for (const t of s.tiles) this.setTile(t.x, t.y, TILE_IDS[t.tile]);
         continue;
@@ -1122,7 +1129,7 @@ export class RealmSim {
         if (dist(rp.p, { x, y }) < SUBMERGED_R) {
           this.discover(rp, s.id, x, y);
           this.openChest(rp, o);
-          this.events.push({ type: "toast", pid: rp.id, text: "Suv ostidan sandiq chiqdi!" });
+          this.events.push({ type: "toast", pid: rp.id, text: tr("rs.chest") });
           return;
         }
       }
@@ -1148,14 +1155,8 @@ export class RealmSim {
           kind: "sign",
           title: o.name,
           text: rp.keys.includes(o.key)
-            ? [
-                "Kalit qulfga mos keldi. Darvoza ortidan tanish dunyo shamoli esadi.",
-                "TEZ ORADA: bu yo'l keyingi yangilanishda ochiladi.",
-              ]
-            : [
-                "Darvoza qulflangan.",
-                `Kalitni ${GATE_BOSS[o.key]} beradi — uni asosiy o'yinda yeng.`,
-              ],
+            ? [tr("rs.keyFits"), tr("rs.soon")]
+            : [tr("rs.gateLocked"), tr("rs.keyFrom", { who: GATE_BOSS[o.key] })],
         };
         return;
       }
@@ -1168,17 +1169,10 @@ export class RealmSim {
           const c = this.champ;
           rp.ui = {
             kind: "sign",
-            title: "HAFTA G'OLIBI",
+            title: tr("rs.weekWinner"),
             text: c
-              ? [
-                  `[${c.tag}] ${c.name}`,
-                  `O'tgan haftada ${c.xp} gildiya XP to'pladi — eng kuchli gildiya.`,
-                  "Bayrog'i hafta davomida shu maydonda hilpiraydi.",
-                ]
-              : [
-                  "Bayroq hali bo'sh.",
-                  "Hafta yakunida eng ko'p gildiya XP to'plagan gildiya bayrog'i shu yerda hilpiraydi.",
-                ],
+              ? [`[${c.tag}] ${c.name}`, tr("rs.weekXp", { xp: c.xp }), tr("rs.flagWaves")]
+              : [tr("rs.flagEmpty"), tr("rs.flagRule")],
           };
           return;
         }
@@ -1193,7 +1187,7 @@ export class RealmSim {
           this.events.push({
             type: "toast",
             pid: rp.id,
-            text: "Eshik qimirlamaydi. Ustida oy belgisi o'yilgan.",
+            text: tr("rs.moonDoor"),
           });
           return;
         }
@@ -1262,7 +1256,7 @@ export class RealmSim {
       this.events.push({
         type: "toast",
         pid: rp.id,
-        text: `Qadimiy tosh yozuv bo'lagi (${have}/${s.fragments.length})`,
+        text: tr("rs.fragment", { n: have, total: s.fragments.length }),
       });
       if (have === s.fragments.length) {
         this.discover(rp, s.id, tileCenter(o.x), tileCenter(o.y));
@@ -1284,7 +1278,7 @@ export class RealmSim {
           this.events.push({
             type: "toast",
             pid: rp.id,
-            text: "Tosh siljib, yashirin joy ochildi!",
+            text: tr("rs.secret"),
           });
         }
       } else {
@@ -1574,7 +1568,11 @@ export class RealmSim {
     if (p.cutFree) p.cutFree = false;
     if (p.trapDenied) {
       p.trapDenied = false;
-      this.events.push({ type: "toast", pid: rp.id, text: `Tuzoq: ${Math.ceil(p.trapCooldown)}s` });
+      this.events.push({
+        type: "toast",
+        pid: rp.id,
+        text: tr("rs.trapCd", { s: Math.ceil(p.trapCooldown) }),
+      });
     }
     for (const t of p.traps) this.traps.push({ x: t.x, y: t.y, life: 20 });
     p.traps = [];
@@ -1595,7 +1593,7 @@ export class RealmSim {
       this.events.push({
         type: "toast",
         pid: rp.id,
-        text: `Tutun: ${Math.ceil(p.smokeCooldown)}s`,
+        text: tr("rs.smokeCd", { s: Math.ceil(p.smokeCooldown) }),
       });
     }
     // Ninja tutundan sakrab chiqadi — ko'rinmasligi o'z vaqti bilan tugaydi
@@ -1810,7 +1808,11 @@ export class RealmSim {
     }
     if (p.vowDenied) {
       p.vowDenied = false;
-      this.events.push({ type: "toast", pid: rp.id, text: `Qasam: ${Math.ceil(p.vowCooldown)}s` });
+      this.events.push({
+        type: "toast",
+        pid: rp.id,
+        text: tr("rs.oathCd", { s: Math.ceil(p.vowCooldown) }),
+      });
     }
     p.absorbed = false;
     if (p.auraPulse) {
@@ -2171,7 +2173,7 @@ export class RealmSim {
           if (this.boxBlocked(x, y, 10)) continue;
           this.drop(x, y, "star", 1);
           this.events.push({ type: "star", x, y });
-          this.events.push({ type: "toast", pid: rp.id, text: "Osmondan yulduz tushdi!" });
+          this.events.push({ type: "toast", pid: rp.id, text: tr("rs.star") });
           break;
         }
       }

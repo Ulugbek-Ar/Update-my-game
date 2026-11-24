@@ -2,6 +2,7 @@
  * Dala moblari va Xaroba Sardori: har birining o'z xatti-harakati, ko'rish radiusi (aggro) va
  * uydan uzoqlashsa qaytib ketish (leash). DOM'siz — RealmSim ichida qat'iy tick bilan yuradi.
  */
+import { t as tr } from "@/i18n";
 import { Animator, applyHit, type Body } from "@/game/animation";
 import { phaseFor } from "@/game/bossPower";
 import type { Player } from "@/game/player";
@@ -23,8 +24,26 @@ export interface MobStats {
 }
 
 export const MOB_STATS: Record<MobKind, MobStats> = {
-  boar: { hp: 5, speed: 42, size: 16, aggro: 90, leash: 170, name: "YOVVOYI TO'NG'IZ" },
-  rat: { hp: 2, speed: 64, size: 10, aggro: 72, leash: 130, name: "BOTQOQ KALAMUSHI" },
+  boar: {
+    hp: 5,
+    speed: 42,
+    size: 16,
+    aggro: 90,
+    leash: 170,
+    get name() {
+      return tr("mob.boar");
+    },
+  },
+  rat: {
+    hp: 2,
+    speed: 64,
+    size: 10,
+    aggro: 72,
+    leash: 130,
+    get name() {
+      return tr("mob.rat");
+    },
+  },
   sentinel: {
     hp: 7,
     speed: 30,
@@ -32,9 +51,21 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 52,
     leash: 120,
     heavy: true,
-    name: "XAROBA QO'RIQCHISI",
+    get name() {
+      return tr("mob.sentinel");
+    },
   },
-  wisp: { hp: 2, speed: 40, size: 10, aggro: 110, leash: 220, ghost: true, name: "SARSON RUH" },
+  wisp: {
+    hp: 2,
+    speed: 40,
+    size: 10,
+    aggro: 110,
+    leash: 220,
+    ghost: true,
+    get name() {
+      return tr("mob.wisp");
+    },
+  },
   warden: {
     hp: 40,
     speed: 40,
@@ -42,10 +73,21 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 120,
     leash: 230,
     heavy: true,
-    name: "XAROBA SARDORI",
+    get name() {
+      return tr("mob.warden");
+    },
   },
   // Kul tog'i
-  ashhound: { hp: 3, speed: 72, size: 14, aggro: 96, leash: 210, name: "KUL ITI" },
+  ashhound: {
+    hp: 3,
+    speed: 72,
+    size: 14,
+    aggro: 96,
+    leash: 210,
+    get name() {
+      return tr("mob.hound");
+    },
+  },
   lavaworm: {
     hp: 4,
     speed: 0,
@@ -53,7 +95,9 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 110,
     leash: 200,
     heavy: true,
-    name: "LAVA QURTI",
+    get name() {
+      return tr("mob.worm");
+    },
   },
   obsguard: {
     hp: 10,
@@ -62,7 +106,9 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 60,
     leash: 140,
     heavy: true,
-    name: "OBSIDIAN QO'RIQCHI",
+    get name() {
+      return tr("mob.guardian");
+    },
   },
   // Reyd boss (raid.ts boshqaradi) va u chaqiradigan kul ruhlari
   ashking: {
@@ -72,7 +118,9 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 0,
     leash: 9999,
     heavy: true,
-    name: "KUL QIROLI",
+    get name() {
+      return tr("mob.ashking");
+    },
   },
   ashspirit: {
     hp: 6,
@@ -81,7 +129,9 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 420,
     leash: 700,
     ghost: true,
-    name: "KUL RUHI",
+    get name() {
+      return tr("mob.ashspirit");
+    },
   },
   // Gildiya zali: mashq qo'g'irchog'i — joyidan qimirlamaydi, hujum qilmaydi, o'lmaydi (sim.ts)
   dummy: {
@@ -91,7 +141,9 @@ export const MOB_STATS: Record<MobKind, MobStats> = {
     aggro: 0,
     leash: 9999,
     heavy: true,
-    name: "MASHQ QO'G'IRCHOG'I",
+    get name() {
+      return tr("mob.dummy");
+    },
   },
 };
 

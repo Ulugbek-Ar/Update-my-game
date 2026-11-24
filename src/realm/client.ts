@@ -7,6 +7,7 @@
  * darhol ko'rsatiladi (net/predict.ts) va server bilan solishtirib tuzatiladi. Ulanish uzilsa —
  * o'sha joydan oflayn davom etadi; progress (inventar, topshiriqlar, oltin) yo'qolmaydi.
  */
+import { getLang, t as tr } from "@/i18n";
 import { DEFAULT_SKIN, selectedSkin, skinLook } from "@/game/skins";
 import { heroBurst, heroImpact, heroTrail, type SkinLook } from "@/game/skinFx";
 import { CUT_LIFE, MOON_LIFE, STREAK_LIFE } from "@/game/samuraiFx";
@@ -238,7 +239,8 @@ export class RealmClient {
     const settings = loadSettings();
     this.shakeOn = settings.shake;
     sfx.setVolumes(settings.music, settings.sfx);
-    this.sim = new RealmSim(this.hall ? loadHallData() : loadRealmData());
+    // ko'rinadigan matnlar (NPC, dialog, topshiriq, buyum) — tanlangan tilda
+    this.sim = new RealmSim(this.hall ? loadHallData(getLang()) : loadRealmData(getLang()));
     const save = loadRealmSave();
     if (save && !this.hall) this.sim.loadWorld(save.world);
     // zalda — eshik oldida (olamdagi joy realm saqlanishida qoladi)
@@ -325,7 +327,7 @@ export class RealmClient {
     for (const item of this.hall ? [] : takeRealmInbox()) {
       this.sim.grant(this.me, item);
       const def = this.sim.data.items[item];
-      if (def) this.toast(`Asosiy o'yindan keldi: ${def.name}`, RARITY_COLOR[def.rarity]);
+      if (def) this.toast(tr("rc.fromMain", { name: def.name }), RARITY_COLOR[def.rarity]);
     }
   }
 
@@ -408,7 +410,7 @@ export class RealmClient {
     }
     // Gildiya zali faqat onlayn: ulanib bo'lmadi yoki uzildi — vodiyga qaytiladi
     if (this.hall && s === "offline") {
-      this.leaveHall(net.notice ?? "Gildiya zali faqat onlayn ochiladi — internetni tekshiring");
+      this.leaveHall(net.notice ?? tr("rc.hallOnline"));
       return;
     }
     // uzildi yoki rad etildi: shu joydan oflayn davom etadi
@@ -416,7 +418,7 @@ export class RealmClient {
     if (s === "offline") {
       v.mode = "offline";
       if (net.notice) this.toast(net.notice, "#ff9a3c");
-      this.toast("Oflayn rejim", "#ff9a3c");
+      this.toast(tr("rc.offline"), "#ff9a3c");
     } else v.mode = "connecting";
   }
 
@@ -445,11 +447,11 @@ export class RealmClient {
     if (notice && this.net) this.net.notice = null;
     if (this.hall)
       this.banner(
-        "GILDIYA ZALI",
+        tr("rc.hall"),
         this.view.hall ? `[${this.view.hall.tag}] ${this.view.hall.name}` : "",
         "#ffd97a",
       );
-    else this.toast(notice ?? `Onlayn: ${code} xonasi`, notice ? "#ff9a3c" : "#7be07b");
+    else this.toast(notice ?? tr("rc.onlineRoom", { code }), notice ? "#ff9a3c" : "#7be07b");
   }
 
   /** Oflaynga o'tish: ko'zgudagi dunyo va progress bilan mahalliy RealmSim */
@@ -509,7 +511,7 @@ export class RealmClient {
   }
 
   private inviteText() {
-    return `Piksel Qal'a: Abadiyat olamida birga o'ynaymiz! Xona kodi: ${this.view.net.code}`;
+    return tr("rc.share", { code: this.view.net.code ?? "" });
   }
 
   /** Havolani nusxalash (bosish ichida — brauzer ruxsat beradi) */
@@ -535,10 +537,7 @@ export class RealmClient {
         /* nusxalab bo'lmadi */
       }
     }
-    this.toast(
-      ok ? "Havola nusxalandi" : "Nusxalab bo'lmadi — kodni ayting",
-      ok ? "#7be07b" : "#ff9a3c",
-    );
+    this.toast(ok ? tr("rc.copied") : tr("rc.copyFail"), ok ? "#7be07b" : "#ff9a3c");
   }
 
   /** Telegram ichida — Telegram ulashish oynasi, aks holda telefonning ulashish oynasi */
@@ -789,15 +788,9 @@ export class RealmClient {
   private enterHall() {
     if (this.hall) return;
     const g = cachedGuild();
-    if (!account.loggedIn)
-      return this.toast("Gildiya zali: avval Telegram bilan kiring", "#ff9a3c");
-    if (!g)
-      return this.toast(
-        "Gildiya darvozasi faqat gildiya a'zolari uchun — menyuda GILDIYA",
-        "#ff9a3c",
-      );
-    if (!SERVER_URL || !onlineWanted())
-      return this.toast("Gildiya zali faqat onlayn ochiladi", "#ff9a3c");
+    if (!account.loggedIn) return this.toast(tr("rc.hallLogin"), "#ff9a3c");
+    if (!g) return this.toast(tr("rc.hallMembers"), "#ff9a3c");
+    if (!SERVER_URL || !onlineWanted()) return this.toast(tr("rc.hallOnly"), "#ff9a3c");
     // olamdagi joy shu yerda saqlanadi — qaytganda darvoza oldida
     this.save();
     this.onEnterHall?.(g.id);
@@ -1152,24 +1145,14 @@ export class RealmClient {
         sfx.roar();
         return;
       case "phase":
-        if (e.phase === 2)
-          this.banner(
-            "LAVA TOSHQINI!",
-            "Zal yarmi lavaga to'ladi · kul ruhlarini uzoqdan uring",
-            "#ff5a1a",
-          );
-        else this.banner("KUL BO'RONI!", "Bo'ron oldidan hamma bitta doiraga yig'ilsin", "#ffb02e");
+        if (e.phase === 2) this.banner(tr("rc.lavaFlood"), tr("rc.lavaFloodS"), "#ff5a1a");
+        else this.banner(tr("rc.storm"), tr("rc.stormS"), "#ffb02e");
         fx.burst(e.x, e.y - 30, "#ff6a1a", 24, 110, 2);
         fx.addShake(0.35);
         sfx.roar();
         return;
       case "lava":
-        this.toast(
-          e.side === 0
-            ? "Chap tomon lavaga to'lmoqda — o'ngga o'ting!"
-            : "O'ng tomon lavaga to'lmoqda — chapga o'ting!",
-          "#ff5a1a",
-        );
+        this.toast(e.side === 0 ? tr("rc.lavaL") : tr("rc.lavaR"), "#ff5a1a");
         sfx.warn();
         return;
       case "flood":
@@ -1177,10 +1160,10 @@ export class RealmClient {
         sfx.stomp();
         return;
       case "spirits":
-        this.toast("Kul ruhlari! Uzoqdan otuvchilar — ularni yo'q qiling", "#b8b0aa");
+        this.toast(tr("rc.spirits"), "#b8b0aa");
         return;
       case "storm":
-        this.banner("KUL BO'RONI!", "Oltin doiraga yig'iling — zarar bo'linadi", "#ffb02e");
+        this.banner(tr("rc.storm"), tr("rc.stormGold"), "#ffb02e");
         sfx.warn();
         return;
       case "stormhit":
@@ -1199,20 +1182,20 @@ export class RealmClient {
         return;
       }
       case "enrage":
-        this.banner("G'AZAB!", "Kul qiroli hammani yondiradi — tezroq!", "#ff3b1a");
+        this.banner(tr("g.fury"), tr("rc.kingRage"), "#ff3b1a");
         fx.addShake(0.5);
         sfx.roar();
         return;
       case "win":
-        this.banner("KUL QIROLI YENGILDI!", "Lut har bir jangchiga alohida", "#ffb02e");
+        this.banner(tr("rc.kingDown"), tr("rc.lootEach"), "#ffb02e");
         fx.burst(e.x, e.y - 30, "#ffe08a", 40, 140, 2);
         sfx.victory();
         return;
       case "wipe":
-        this.banner("JAMOA HALOK BO'LDI", "Kul qiroli to'liq tiklandi", "#ff4d6d");
+        this.banner(tr("rc.wipe"), tr("rc.kingHeal"), "#ff4d6d");
         return;
       case "reset":
-        this.toast("Kul qiroli taxtiga qaytdi", "#e0d6ee");
+        this.toast(tr("rc.kingBack"), "#e0d6ee");
         return;
     }
   }
@@ -1300,7 +1283,7 @@ export class RealmClient {
           }
         }
         if (e.kind === "warden" && mine) {
-          this.banner("SARDOR YENGILDI!", "Xarobalar jim bo'ldi", "#ffb02e");
+          this.banner(tr("rc.wardenDown"), tr("rc.ruinsQuiet"), "#ffb02e");
           sfx.victory();
         }
         return;
@@ -1352,7 +1335,7 @@ export class RealmClient {
         sfx.fireball();
         return;
       case "howl":
-        fx.text(e.x, e.y - 12, "UVV!", "#b8b0aa");
+        fx.text(e.x, e.y - 12, tr("rc.uvv"), "#b8b0aa");
         sfx.warn();
         return;
       case "portal": {
@@ -1363,7 +1346,7 @@ export class RealmClient {
         this.portalT = this.time;
         this.banner(
           a?.name ?? "",
-          e.area === "ashmount" ? "Iblis tug'ilgan tog'" : "Boshlang'ich vodiy",
+          e.area === "ashmount" ? tr("rc.ashArea") : tr("rc.valleyArea"),
           "#ff7a2a",
         );
         fx.addShake(0.2);
@@ -1373,7 +1356,7 @@ export class RealmClient {
       case "burn":
         fx.burst(e.x, e.y + 4, "#ff5a1a", 6, 40, 1);
         fx.burst(e.x, e.y + 2, "#ffd36a", 3, 30, 1);
-        if (mine) fx.text(e.x, e.y - 14, "KUYDI", "#ff7a2a");
+        if (mine) fx.text(e.x, e.y - 14, tr("rc.burned"), "#ff7a2a");
         return;
       case "plate":
         fx.burst(e.x, e.y, "#9a8ac8", 8, 40, 1);
@@ -1387,20 +1370,19 @@ export class RealmClient {
         return;
       case "title":
         if (!mine) return;
-        this.banner("YANGI UNVON!", TITLE_TEXT[e.title] ?? e.title, "#ffb02e");
+        this.banner(tr("rc.newTitle"), TITLE_TEXT[e.title] ?? e.title, "#ffb02e");
         sfx.victory();
         return;
       case "raid":
         return this.onRaid(e);
       case "roar":
-        this.banner(MOB_STATS.warden.name, "Qadimiy qo'riqchi uyg'ondi!", "#ff7a2a");
+        this.banner(MOB_STATS.warden.name, tr("rc.guardWoke"), "#ff7a2a");
         fx.addShake(0.3);
         sfx.roar();
         return;
       case "rage":
-        if (e.phase === 3)
-          this.banner("TOSH QO'RIQCHILAR!", "Sardor qo'riqchilarni uyg'otdi", "#5fe0c8");
-        else this.banner("SARDOR G'AZABDA!", "Yer to'lqinidan dash bilan o'ting!", "#ff7a2a");
+        if (e.phase === 3) this.banner(tr("rc.stoneGuards"), tr("rc.stoneGuardsS"), "#5fe0c8");
+        else this.banner(tr("rc.wardenRage"), tr("rc.wardenRageS"), "#ff7a2a");
         fx.burst(e.x, e.y, "#ff7a2a", 20, 100, 2);
         fx.addShake(0.3);
         sfx.roar();
@@ -1408,14 +1390,14 @@ export class RealmClient {
       case "block":
         // Sardor qalqoni to'sdi: orqasidan urish kerak
         fx.burst(e.x, e.y, "#ffe14d", 8, 80, 1);
-        fx.text(e.x, e.y - 12, "QALQON!", "#c9a25a");
+        fx.text(e.x, e.y - 12, tr("rc.shield"), "#c9a25a");
         sfx.block();
         return;
       case "ring":
         fx.addShake(0.12);
         return;
       case "evade":
-        fx.text(e.x, e.y - 10, "QAYTDI", "#8a7a9a");
+        fx.text(e.x, e.y - 10, tr("rc.back"), "#8a7a9a");
         return;
       case "pickup": {
         if (!mine) return;
@@ -1432,7 +1414,7 @@ export class RealmClient {
         return;
       case "secret":
         if (!mine) return;
-        this.banner("KASHFIYOT!", `Kashfiyotlar: ${this.me.secrets.length}/?`, "#c9a25a");
+        this.banner(tr("rc.discovery"), tr("rr.secrets", { n: this.me.secrets.length }), "#c9a25a");
         fx.burst(e.x, e.y, "#ffe14d", 24, 100, 2);
         sfx.upgrade();
         return;
@@ -1469,10 +1451,10 @@ export class RealmClient {
         if (mine)
           this.toast(
             this.sim.raid?.active && this.sim.raid.inArena(this.me.p.x, this.me.p.y + 64)
-              ? "Zal kirishida tug'ildingiz — jangga qayting!"
+              ? tr("rc.respHall")
               : e.area === "ashmount"
-                ? "Kul darvozasi yonida o'zingizga keldingiz"
-                : "Qishloqda o'zingizga keldingiz",
+                ? tr("rc.respAsh")
+                : tr("rc.respVillage"),
             "#9fd0ef",
           );
         return;
@@ -1551,7 +1533,7 @@ export class RealmClient {
         const L = this.lookOf(e.pid);
         fx.burst(e.x, e.y, "#ffffff", 7, 110, 1, "star");
         hb(L, e.x, e.y, L.theme.glow, 5, 80, 1);
-        if (mine) fx.text(e.x, e.y - 18, "SHIK!", L.theme.glow);
+        if (mine) fx.text(e.x, e.y - 18, tr("g.shing"), L.theme.glow);
         sfx.parry();
         return;
       }
@@ -1562,7 +1544,7 @@ export class RealmClient {
         if (L.fx.flair === "moon")
           this.view.moons.push({ x: e.x, y: e.y - 12, life: MOON_LIFE, theme: t });
         if (mine) {
-          fx.text(e.x, e.y - 24, "CHETLANDI!", t.accent);
+          fx.text(e.x, e.y - 24, tr("g.dodged"), t.accent);
           sfx.perfectDodge();
         }
         return;
@@ -1602,7 +1584,7 @@ export class RealmClient {
           theme: t,
         });
         hb(L, tx, ty, t.accentDark, 6, 50, 2);
-        fx.text(e.x + e.fx * 18, e.y - 22, "SHANG!", t.accent);
+        fx.text(e.x + e.fx * 18, e.y - 22, tr("g.smite"), t.accent);
         fx.addShake(mine ? 0.3 : 0.1);
         if (mine) sfx.shang();
         return;
@@ -1621,7 +1603,7 @@ export class RealmClient {
         });
         hb(L, e.x, e.y, t.glow, 24, 120, 2);
         hb(L, e.x, e.y, t.accent, 14, 80, 2);
-        fx.text(e.x, e.y - 26, "OSMON HUKMI!", t.accent);
+        fx.text(e.x, e.y - 26, tr("g.verdict"), t.accent);
         fx.addShake(0.35);
         if (!mine) sfx.judgment();
         return;
@@ -1630,8 +1612,8 @@ export class RealmClient {
         const L = this.lookOf(e.pid),
           t = L.theme;
         hb(L, e.x, e.y, t.accent, 16, 90, 2);
-        fx.text(e.x, e.y - 22, "QASAM!", t.accent);
-        if (mine) this.toast("Qasam: dushmanlar sizni nishonga oldi", t.accent);
+        fx.text(e.x, e.y - 22, tr("g.oath"), t.accent);
+        if (mine) this.toast(tr("rc.oathAggro"), t.accent);
         else sfx.vow();
         return;
       }
@@ -1639,7 +1621,7 @@ export class RealmClient {
         const L = this.lookOf(e.pid),
           t = L.theme;
         hb(L, e.x, e.y, t.glow, 12, 60, 1);
-        fx.text(e.x, e.y - 18, "AURA", t.glow);
+        fx.text(e.x, e.y - 18, tr("rc.aura"), t.glow);
         return;
       }
     }

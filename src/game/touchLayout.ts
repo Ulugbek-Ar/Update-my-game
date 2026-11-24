@@ -291,7 +291,31 @@ export function touchLabels(hero: Hero): Record<"attack" | "dash", ButtonLabel> 
 
 /** Olam tugmalari */
 export const REALM_LABELS: Record<"interact" | "journal" | "map", ButtonLabel> = {
-  interact: { text: "GAPLASH", aria: "Gaplashish", icon: "talk" },
-  journal: { text: "JURNAL", aria: "Topshiriqlar jurnali", icon: "book" },
-  map: { text: "XARITA", aria: "Xarita", icon: "map" },
+  interact: {
+    get text() {
+      return tr("lay.interact");
+    },
+    get aria() {
+      return tr("rb.talkA");
+    },
+    icon: "talk",
+  },
+  journal: {
+    get text() {
+      return tr("lay.journal");
+    },
+    get aria() {
+      return tr("rb.journalA");
+    },
+    icon: "book",
+  },
+  map: {
+    get text() {
+      return tr("lay.map");
+    },
+    get aria() {
+      return tr("rb.mapA");
+    },
+    icon: "map",
+  },
 };

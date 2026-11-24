@@ -15,6 +15,7 @@
  *
  * DOM'siz, tasodif faqat sim.rng orqali — server (RealmRoom) va oflayn klient aynan bir xil ishlaydi.
  */
+import { t as tr } from "@/i18n";
 import { BIG_HIT, phaseFor } from "@/game/bossPower";
 import { AGGRO_THREAT } from "@/game/threat";
 import { RealmMob, type Mark } from "./mobs";
@@ -62,13 +63,23 @@ export const STORM_SOLO_OUT = 4;
 export const ENRAGE_DMG = 2;
 /** Faza nomlari (HUD) */
 export const PHASE_TEXT: Record<number, string> = {
-  1: "OLOV",
-  2: "LAVA TOSHQINI",
-  3: "KUL BO'RONI",
+  get 1() {
+    return tr("raid.ph1");
+  },
+  get 2() {
+    return tr("raid.ph2");
+  },
+  get 3() {
+    return tr("raid.ph3");
+  },
 };
 /** Birinchi g'alaba unvoni (id) va ko'rinadigan matni */
 export const KING_TITLE = "ashking";
-export const TITLE_TEXT: Record<string, string> = { [KING_TITLE]: "Kul qirolini yenggan" };
+export const TITLE_TEXT: Record<string, string> = {
+  get [KING_TITLE]() {
+    return tr("raid.kingTitle");
+  },
+};
 
 /** n o'yinchiga Kul qiroli joni: asosiy × (1 + 0.8 × (n − 1)). */
 export function kingHp(n: number) {

@@ -5,6 +5,7 @@
  * Klient faqat buyruq yuboradi (move, attack, ability, interact...), server RealmSim'ni tick qilib
  * holatni 10 Hz delta (faqat o'zgargan narsa) bilan qaytaradi. Tezlik, zarar va lut — serverda.
  */
+import { t as tr } from "@/i18n";
 import { z } from "zod";
 import type { Hero } from "@/game/hero";
 import type { AnimState } from "@/game/animation";
@@ -422,12 +423,24 @@ export type JoinReply = { ok: true; code: string } | { ok: false; reason: ErrRea
 
 /** Klientga ko'rsatiladigan xabar */
 export const ERR_TEXT: Record<ErrReason, string> = {
-  full: "Xona to'la",
-  busy: "Server band, keyinroq urinib ko'ring",
-  version: "Yangi versiyani yuklang — server yangilangan",
-  bad: "Ulanish xatosi",
-  rate: "Juda ko'p buyruq — ulanish uzildi",
-  member: "Gildiya zaliga faqat shu gildiya a'zolari kiradi",
+  get full() {
+    return tr("net.full");
+  },
+  get busy() {
+    return tr("net.busy");
+  },
+  get version() {
+    return tr("net.version");
+  },
+  get bad() {
+    return tr("net.bad");
+  },
+  get rate() {
+    return tr("net.rate");
+  },
+  get member() {
+    return tr("net.member");
+  },
 };
 
 /** Gildiya zali xonasining kodi (lobbi va HUD uchun) */
