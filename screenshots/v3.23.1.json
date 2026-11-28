@@ -1,0 +1,10 @@
+[
+  {
+    "title": "Kuch kartasidan keyin joystik va tugmalar joyida",
+    "steps": [
+      { "storage": { "pixel-rpg-tutorial-done": "1", "pixel-rpg-hero": "knight" } },
+      { "start": true },
+      { "wait": 1200 }
+    ]
+  }
+]

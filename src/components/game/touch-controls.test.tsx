@@ -1,5 +1,5 @@
 import { act, cleanup, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Input } from "@/game/input";
 import type { Hero } from "@/game/hero";
 import { DEFAULT_SETTINGS, DEFAULT_TOUCH, saveSettings, type TouchSettings } from "@/game/settings";
@@ -57,9 +57,50 @@ beforeEach(() => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: W });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: H });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("Telefon boshqaruvi (komponent)", () => {
+  it("restores controls and floating movement after a card is picked even when choices remain", () => {
+    vi.useFakeTimers();
+    setTouch({ stickMode: "floating" });
+    const t = Object.assign(target(), { stage: "upgrade", choices: [{}, {}, {}] });
+    const { container } = mount(t);
+    const canvas = container.querySelector("canvas");
+    const controls = container.querySelector(".touch-controls");
+    const attack = container.querySelector<HTMLButtonElement>(".touch-attack");
+    const dash = container.querySelector<HTMLButtonElement>(".touch-dash");
+    if (!canvas || !controls || !attack || !dash) throw new Error("Missing touch controls");
+
+    act(() => vi.advanceTimersByTime(120));
+    expect(controls).not.toBeVisible();
+    pointer(canvas, "pointerdown", 260, 230);
+    pointer(window, "pointermove", 330, 230);
+    expect(t.input.axis()).toEqual({ x: 0, y: 0 });
+
+    t.stage = "fight";
+    act(() => vi.advanceTimersByTime(120));
+    expect(t.choices).toHaveLength(3);
+    expect(controls).toBeVisible();
+    pointer(canvas, "pointerdown", 260, 230);
+    pointer(window, "pointermove", 330, 230);
+    expect(t.input.axis()).toEqual({ x: 1, y: 0 });
+    pointer(window, "pointerup", 330, 230);
+    expect(t.input.axis()).toEqual({ x: 0, y: 0 });
+
+    for (const button of [attack, dash]) button.setPointerCapture = () => {};
+    pointer(attack, "pointerdown", 850, 350);
+    expect(t.input.consumeAttack()).toBe(true);
+    pointer(attack, "pointerup", 850, 350);
+    expect(t.input.attackHeld()).toBe(false);
+    pointer(dash, "pointerdown", 790, 280);
+    expect(t.input.consumeDash()).toBe(true);
+    pointer(dash, "pointerup", 790, 280);
+    expect(t.input.dashHeld()).toBe(false);
+  });
+
   it("floating stick appears where the finger touches the left half and steers", () => {
     setTouch({ stickMode: "floating" });
     const t = target();

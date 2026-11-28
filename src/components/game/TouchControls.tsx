@@ -138,8 +138,8 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
   // Kuch kartasi tanlash oynasi ochiqmi (game.choices) — tugmalar yashiriladi
   const [picking, setPicking] = useState(false);
   useEffect(() => {
-    const g = game as { choices?: unknown[] };
-    const id = window.setInterval(() => setPicking((g.choices?.length ?? 0) > 0), 120);
+    const g = game as { stage?: string };
+    const id = window.setInterval(() => setPicking(g.stage === "upgrade"), 120);
     return () => window.clearInterval(id);
   }, [game]);
 
@@ -154,7 +154,7 @@ export function TouchControls({ game, realm }: { game: TouchTarget; realm?: Real
       const { ts, vp } = live.current;
       if (!inRect(floatingZone(ts, vp), e.clientX, e.clientY)) return;
       if (game.acceptsMove && !game.acceptsMove()) return;
-      if (((game as { choices?: unknown[] }).choices?.length ?? 0) > 0) return;
+      if ((game as { stage?: string }).stage === "upgrade") return;
       if (game.touchUiAt?.(e.clientX, e.clientY)) return;
       const c = floatingCenter(e.clientX, e.clientY, placeControl("stick", ts, vp).size, vp);
       pointer.current = e.pointerId;

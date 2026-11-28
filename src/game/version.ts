@@ -1,7 +1,7 @@
 /** O'yin versiyasi — bitta manba. Versiyani faqat shu yerda o'zgartiring. */
 /** Shu versiyaning "Yangiliklar" oynasi ko'rsatilganmi (localStorage) */
 export const SEEN_VERSION_KEY = "pixel-rpg-seen-version";
-export const GAME_VERSION = "3.23.0";
+export const GAME_VERSION = "3.23.1";
 
 export interface ChangelogEntry {
   version: string;
@@ -10,6 +10,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "3.23.1",
+    date: "2026-11-26",
+    notes:
+      "Xatolar tuzatildi. Telefonda kuch kartasi tanlangandan keyin joystik va tugmalar yo'qolib qolmaydi.",
+  },
   {
     version: "3.23.0",
     date: "2026-11-24",
